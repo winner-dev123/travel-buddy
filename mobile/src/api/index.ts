@@ -7,13 +7,19 @@ import { i18n } from '@/i18n';
 import { ApiClient } from './client';
 
 let defaultClient: ApiClient | undefined;
+let refresher: (() => Promise<boolean>) | undefined;
+
+/** Installed at startup by the session layer (it owns the refresh token). */
+export function setAccessTokenRefresher(refresh: () => Promise<boolean>): void {
+  refresher = refresh;
+}
 
 /**
  * The app-wide client, created lazily so that a missing
  * `EXPO_PUBLIC_API_BASE_URL` fails at first use with a clear message.
  *
- * Not yet implemented (Phase 1): transparent access-token refresh on
- * `401 token_expired` using the refresh token in secure storage.
+ * Access tokens are refreshed transparently on `401 token_expired` (see
+ * `setAccessTokenRefresher`).
  */
 export function getApiClient(): ApiClient {
   defaultClient ??= new ApiClient({
@@ -21,6 +27,7 @@ export function getApiClient(): ApiClient {
     getAccessToken: () => tokenStore.getAccessToken(),
     getLocale: () => i18n.language || 'en',
     generateId: randomUUID,
+    refreshAccessToken: async () => (refresher ? refresher() : false),
   });
   return defaultClient;
 }

@@ -260,3 +260,81 @@ describe('ApiClient network failures', () => {
     expect(error.kind).toBe('aborted');
   });
 });
+
+describe('access-token refresh', () => {
+  const expired = () =>
+    problemResponse(
+      { type: 'x', title: 'Expired', status: 401, code: 'token_expired', request_id: 'r' },
+      401,
+    );
+
+  it('refreshes once on token_expired and retries with the new token', async () => {
+    let token = 'old-token';
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValueOnce(expired())
+      .mockResolvedValueOnce(jsonResponse({ ok: 'after refresh' }));
+    const refreshAccessToken = jest.fn(async () => {
+      token = 'new-token';
+      return true;
+    });
+    const client = new ApiClient({
+      baseUrl: 'https://api.example.test',
+      getAccessToken: () => token,
+      getLocale: () => 'en',
+      generateId: () => '00000000-0000-4000-8000-000000000001',
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      refreshAccessToken,
+    });
+    await expect(client.get('/v1/feed')).resolves.toEqual({ ok: 'after refresh' });
+    expect(refreshAccessToken).toHaveBeenCalledTimes(1);
+    const retried = fetchImpl.mock.calls[1][1] as RequestInit;
+    expect((retried.headers as Record<string, string>).Authorization).toBe('Bearer new-token');
+  });
+
+  it('shares one refresh between concurrent failures', async () => {
+    const responses = [expired(), expired(), jsonResponse({ a: 1 }), jsonResponse({ b: 2 })];
+    const fetchImpl = jest.fn(async () => responses.shift() as Response);
+    let release: (value: boolean) => void = () => undefined;
+    const refreshAccessToken = jest.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          release = resolve;
+        }),
+    );
+    const client = new ApiClient({
+      baseUrl: 'https://api.example.test',
+      getAccessToken: () => 't',
+      getLocale: () => 'en',
+      generateId: () => '00000000-0000-4000-8000-000000000001',
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      refreshAccessToken,
+    });
+    const both = Promise.all([client.get('/v1/a'), client.get('/v1/b')]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    release(true);
+    await expect(both).resolves.toHaveLength(2);
+    expect(refreshAccessToken).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives up when the refresh fails, and never refreshes for other errors', async () => {
+    const refreshAccessToken = jest.fn(async () => false);
+    const { client } = setup({ refreshAccessToken }, expired());
+    await expect(client.get('/v1/feed')).rejects.toMatchObject({ code: 'token_expired' });
+    expect(refreshAccessToken).toHaveBeenCalledTimes(1);
+
+    const forbidden = problemResponse(
+      { type: 'x', title: 'No', status: 401, code: 'token_invalid', request_id: 'r' },
+      401,
+    );
+    const other = setup({ refreshAccessToken: jest.fn(async () => true) }, forbidden);
+    await expect(other.client.get('/v1/feed')).rejects.toMatchObject({ code: 'token_invalid' });
+  });
+
+  it('does not loop when the refresh endpoint itself reports an expired token', async () => {
+    const refreshAccessToken = jest.fn(async () => true);
+    const { client } = setup({ refreshAccessToken }, expired());
+    await expect(client.post('/v1/auth/refresh', { body: {} })).rejects.toBeInstanceOf(ApiProblem);
+    expect(refreshAccessToken).not.toHaveBeenCalled();
+  });
+});

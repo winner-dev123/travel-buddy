@@ -151,6 +151,30 @@ export async function restoreSession(client: ApiClient): Promise<void> {
   }
 }
 
+/**
+ * Rotate the refresh token for a new access token (the API client calls this on
+ * `401 token_expired`). A rejected refresh ends the session; a network error keeps it.
+ */
+export async function refreshAccessToken(client: ApiClient): Promise<boolean> {
+  const refreshToken = await tokenStore.getRefreshToken().catch(() => null);
+  if (!refreshToken) {
+    return false;
+  }
+  try {
+    const tokens = await client.post<SessionTokens>('/v1/auth/refresh', {
+      body: { refresh_token: refreshToken },
+    });
+    await applyTokens(tokens);
+    return true;
+  } catch (error) {
+    if (error instanceof ApiProblem) {
+      await tokenStore.clear();
+      useSessionStore.getState().setSignedOut();
+    }
+    return false;
+  }
+}
+
 export async function signOut(client: ApiClient): Promise<void> {
   try {
     if (tokenStore.getAccessToken()) {

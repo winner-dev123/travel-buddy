@@ -30,21 +30,40 @@ export interface ApiClientConfig {
   generateId: () => string;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
+  /**
+   * Called once when a request fails with `401 token_expired`; resolves `true` when a new access
+   * token is in place, and the request is then retried once. Concurrent failures share one call.
+   */
+  refreshAccessToken?: () => Promise<boolean>;
 }
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 const MUTATING_METHODS: ReadonlySet<HttpMethod> = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const REFRESH_PATH = '/v1/auth/refresh';
 
 export class ApiClient {
   private readonly config: Required<ApiClientConfig>;
+  private refreshing: Promise<boolean> | null = null;
 
   constructor(config: ApiClientConfig) {
     this.config = {
       fetchImpl: (input, init) => fetch(input, init),
       timeoutMs: DEFAULT_TIMEOUT_MS,
+      refreshAccessToken: async () => false,
       ...config,
       baseUrl: config.baseUrl.replace(/\/+$/, ''),
     };
+  }
+
+  /** One refresh at a time: concurrent `token_expired` failures wait for the same attempt. */
+  private refreshOnce(): Promise<boolean> {
+    this.refreshing ??= this.config
+      .refreshAccessToken()
+      .catch(() => false)
+      .finally(() => {
+        this.refreshing = null;
+      });
+    return this.refreshing;
   }
 
   newIdempotencyKey(): string {
@@ -72,6 +91,22 @@ export class ApiClient {
   }
 
   async request<T>(method: HttpMethod, path: string, options: RequestOptions = {}): Promise<T> {
+    try {
+      return await this.send<T>(method, path, options);
+    } catch (error) {
+      const expired =
+        error instanceof ApiProblem && error.status === 401 && error.code === 'token_expired';
+      if (!expired || path === REFRESH_PATH || !this.config.getAccessToken()) {
+        throw error;
+      }
+      if (!(await this.refreshOnce())) {
+        throw error;
+      }
+      return this.send<T>(method, path, options); // same idempotency key: safe to repeat
+    }
+  }
+
+  private async send<T>(method: HttpMethod, path: string, options: RequestOptions): Promise<T> {
     if (!path.startsWith('/')) {
       throw new ApiUsageError(`API paths must start with "/": "${path}"`);
     }

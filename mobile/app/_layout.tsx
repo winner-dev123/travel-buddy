@@ -5,8 +5,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { getApiClient } from '@/api';
-import { restoreSession } from '@/auth/session';
+import { getApiClient, setAccessTokenRefresher } from '@/api';
+import { refreshAccessToken, restoreSession } from '@/auth/session';
 import { useSessionStore } from '@/auth/sessionStore';
 import { i18n } from '@/i18n';
 import { resolveSupportedLocale } from '@/i18n/resolveLocale';
@@ -27,6 +27,7 @@ export default function RootLayout() {
 
   // Resume the platform session from the refresh token in secure storage (ADR-0003).
   useEffect(() => {
+    setAccessTokenRefresher(() => refreshAccessToken(getApiClient()));
     if (useSessionStore.getState().status === 'restoring') {
       void Promise.resolve()
         .then(() => restoreSession(getApiClient()))
