@@ -78,6 +78,27 @@ describe('mock platform — identity', () => {
     await expectApiError(anon.auth.refresh({ refresh_token: first.refresh_token }), 401, 'unauthenticated');
   });
 
+  it('accepts sessions created by another instance with the same key (serverless demo)', async () => {
+    const instanceA = createMockPlatform({ now, tokenSecret: 'shared-demo-key-0123456789abcdef0123' });
+    const instanceB = createMockPlatform({ now, tokenSecret: 'shared-demo-key-0123456789abcdef0123' });
+    const other = createMockPlatform({ now, tokenSecret: 'a-different-key-0123456789abcdef01234' });
+
+    const { result } = await signIn(instanceA, 'amelia');
+    const onB = clientFor(instanceB, result.tokens.access_token);
+    expect((await onB.me.get()).profile.handle).toBe('amelia');
+    const rotated = await clientFor(instanceB).auth.refresh({ refresh_token: result.tokens.refresh_token });
+    expect((await clientFor(instanceA, rotated.access_token).me.get()).profile.handle).toBe('amelia');
+    await expectApiError(clientFor(other, result.tokens.access_token).me.get(), 401, 'unauthenticated');
+
+    // A registered (non-seeded) user is rebuilt from the token's minimal identity.
+    const anon = clientFor(instanceA);
+    const { id_token } = await anon.auth.devIdpToken({ sub: 'new:x', email: 'x.traveler@example.test', name: 'X Traveler' });
+    const reg = await anon.auth.register({ ...REGISTER, id_token, birth_date: '1990-01-01', locale: 'fr' });
+    const meOnB = await clientFor(instanceB, reg.tokens.access_token).me.get();
+    expect(meOnB.profile.display_name).toBe('X Traveler');
+    expect(meOnB.preferences.ui_locale).toBe('fr');
+  });
+
   it('logout revokes the session', async () => {
     const { api } = await signIn(platform, 'yuki');
     await api.auth.logout();

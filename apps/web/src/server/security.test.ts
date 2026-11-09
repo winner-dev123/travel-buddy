@@ -76,7 +76,17 @@ describe('environment guards (docs/web/01 §7.1)', () => {
     expect(e.identityProvider).toBe('dev');
   });
 
-  it('refuses the mock adapter or dev identity outside development/test', () => {
+  it('allows a labelled demo deployment on the mock adapter, but only with a real session secret', () => {
+    expect(() => parseEnv({ APP_ENV: 'demo' })).toThrow(/SESSION_SECRET/);
+    const demo = parseEnv({ APP_ENV: 'demo', SESSION_SECRET: SECRET, VERCEL_PROJECT_PRODUCTION_URL: 'travel-buddy.vercel.app' });
+    expect(demo.apiMode).toBe('mock');
+    expect(demo.identityProvider).toBe('dev');
+    expect(demo.siteUrl).toBe('https://travel-buddy.vercel.app');
+    expect(demo.secureCookies).toBe(true);
+    expect(() => parseEnv({ APP_ENV: 'demo', SESSION_SECRET: 'travelbuddy-development-only-session-secret-do-not-use' })).toThrow(/development session secret/);
+  });
+
+  it('refuses the mock adapter or dev identity outside development/test/demo', () => {
     const base = {
       APP_ENV: 'production',
       API_BASE_URL: 'https://api.example.com',

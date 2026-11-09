@@ -14,7 +14,8 @@ export async function platformTransport(): Promise<Transport> {
   const e = env();
   if (e.apiMode === 'mock') {
     const { getSharedMockPlatform } = await import('@travelbuddy/api-client/mock');
-    transport = getSharedMockPlatform().transport;
+    // Same key in every serverless instance, so mock sessions survive across instances (demo).
+    transport = getSharedMockPlatform({ tokenSecret: e.sessionSecret }).transport;
   } else {
     transport = fetchTransport({ baseUrl: e.apiBaseUrl as string, timeoutMs: 10_000 });
   }

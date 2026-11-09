@@ -33,6 +33,7 @@ import {
   type UserRecord,
 } from './db';
 import { randomToken, uuidv7 } from './ids';
+import { signMockToken, verifyMockToken, type MockTokenClaims } from './tokens';
 import { MockHttpError, notFound, notInMock, problem, unauthenticated, validation } from './problems';
 import { Router } from './router';
 
@@ -140,8 +141,60 @@ function nearestCity(db: MockDb, point: { lat: number; lng: number }, maxKm = 50
   return best;
 }
 
-function issueTokens(now: number): TokenPair {
-  return { access: randomToken('mat'), accessExpiresAt: now + ACCESS_TTL_MS, refresh: randomToken('mrt'), refreshExpiresAt: now + REFRESH_TTL_MS };
+function issueTokens(db: MockDb, now: number, user: UserRecord, sessionId: string): TokenPair {
+  const persona = user.identitySub.startsWith('persona:');
+  // Non-seeded (registered) users carry minimal identity so another serverless instance can rebuild them.
+  const id = persona ? undefined : { h: user.handle, n: user.display_name, m: user.email, l: user.preferences.ui_locale };
+  const accessExpiresAt = now + ACCESS_TTL_MS;
+  const refreshExpiresAt = now + REFRESH_TTL_MS;
+  return {
+    access: signMockToken({ k: 'a', u: user.id, s: sessionId, e: accessExpiresAt, id }, db.tokenSecret),
+    accessExpiresAt,
+    refresh: signMockToken({ k: 'r', u: user.id, s: sessionId, e: refreshExpiresAt, id }, db.tokenSecret),
+    refreshExpiresAt,
+  };
+}
+
+/**
+ * Cross-instance support for serverless demos: rebuilds a user and session that were created by
+ * another instance, from a verified token. Seeded personas exist in every instance already.
+ */
+export function rebuildFromClaims(db: MockDb, claims: MockTokenClaims, token: string, now: number): { user: UserRecord; session: SessionRecord } | null {
+  let user = db.users.get(claims.u);
+  if (!user && claims.id) {
+    user = {
+      id: claims.u,
+      identitySub: `rebuilt:${claims.u}`,
+      handle: claims.id.h,
+      email: claims.id.m,
+      display_name: claims.id.n,
+      bio: null,
+      travel_styles: [],
+      home_country_code: null,
+      languages: [],
+      created_at: now,
+      updated_at: now,
+      roles: [],
+      status: 'active',
+      onboarding_completed: true,
+      preferences: defaultPreferences((SUPPORTED_LOCALES as readonly string[]).includes(claims.id.l) ? (claims.id.l as LocaleCode) : 'en'),
+      privacy: defaultPrivacy(),
+      browsePath: null,
+      premium: false,
+      birth_year: null,
+    };
+    db.users.set(user.id, user);
+  }
+  if (!user) return null;
+  let session = db.sessions.get(claims.s);
+  if (!session) {
+    const pair: TokenPair = claims.k === 'r'
+      ? { access: '', accessExpiresAt: 0, refresh: token, refreshExpiresAt: claims.e }
+      : { access: token, accessExpiresAt: claims.e, refresh: '', refreshExpiresAt: claims.e };
+    session = { id: claims.s, userId: user.id, client: 'web', createdAt: now, lastSeenAt: now, current: pair, previous: null, revoked: false };
+    db.sessions.set(session.id, session);
+  }
+  return { user, session };
 }
 
 function sessionTokens(db: MockDb, session: SessionRecord, pair: TokenPair): SessionTokens {
@@ -156,10 +209,11 @@ function sessionTokens(db: MockDb, session: SessionRecord, pair: TokenPair): Ses
 }
 
 function startSession(ctx: MockContext, user: UserRecord): SessionRecord {
-  const pair = issueTokens(ctx.now);
+  const sessionId = uuidv7(ctx.now);
+  const pair = issueTokens(ctx.db, ctx.now, user, sessionId);
   const client = str(ctx.body, 'client');
   const session: SessionRecord = {
-    id: uuidv7(ctx.now),
+    id: sessionId,
     userId: user.id,
     client: client === 'ios' || client === 'android' ? client : 'web',
     createdAt: ctx.now,
@@ -278,11 +332,25 @@ export function buildRouter(): Router<Handler> {
   r.add('POST', '/v1/auth/refresh', (ctx) => {
     const presented = str(ctx.body, 'refresh_token');
     if (!presented) throw unauthenticated();
+    const claims = verifyMockToken(presented, ctx.db.tokenSecret);
+    if (!claims || claims.k !== 'r') throw unauthenticated();
+    if (claims.e < ctx.now) throw problem(401, 'session_revoked', 'The session has expired.');
+    const known = ctx.db.sessions.get(claims.s);
+    if (known?.revoked) throw unauthenticated();
+    if (!known || (known.current.refresh !== presented && known.previous?.refresh !== presented)) {
+      // Session created or last rotated by another (serverless) instance: accept the signed token,
+      // rebuild locally and rotate from here. In-instance reuse detection below still applies.
+      const rebuilt = rebuildFromClaims(ctx.db, claims, presented, ctx.now);
+      if (!rebuilt) throw unauthenticated();
+      rebuilt.session.current = { ...rebuilt.session.current, refresh: presented, refreshExpiresAt: claims.e };
+    }
     for (const session of ctx.db.sessions.values()) {
       if (session.revoked) continue;
       if (session.current.refresh === presented) {
         if (session.current.refreshExpiresAt < ctx.now) throw problem(401, 'session_revoked', 'The session has expired.');
-        const next = issueTokens(ctx.now);
+        const owner = ctx.db.users.get(session.userId);
+        if (!owner) throw unauthenticated();
+        const next = issueTokens(ctx.db, ctx.now, owner, session.id);
         session.previous = { refresh: presented, rotatedAt: ctx.now, successor: next };
         session.current = next;
         session.lastSeenAt = ctx.now;

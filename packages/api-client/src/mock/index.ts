@@ -11,13 +11,16 @@
 import { SUPPORTED_LOCALES, type LocaleCode } from '@travelbuddy/domain-types';
 import type { ApiRequest, RawResponse, Transport } from '../core/types';
 import { MockDb } from './db';
-import { buildRouter, type MockContext } from './handlers';
+import { buildRouter, rebuildFromClaims, type MockContext } from './handlers';
+import { verifyMockToken } from './tokens';
 import { uuidv7 } from './ids';
 import { MockHttpError, problem, unauthenticated } from './problems';
 import { PERSONAS } from './fixtures/social';
 
 export interface MockPlatformOptions {
   now?: () => number;
+  /** HMAC key for mock tokens; pass the web's SESSION_SECRET so demo instances agree. */
+  tokenSecret?: string;
 }
 
 export interface MockPlatform {
@@ -51,7 +54,7 @@ function lowerKeys(headers: Record<string, string> | undefined): Record<string, 
 
 export function createMockPlatform(options: MockPlatformOptions = {}): MockPlatform {
   const now = options.now ?? Date.now;
-  const db = new MockDb(now);
+  const db = options.tokenSecret ? new MockDb(now, options.tokenSecret) : new MockDb(now);
   const router = buildRouter();
 
   const respond = (status: number, body: unknown, requestId: string, extra: Record<string, string> = {}): RawResponse => ({
@@ -102,11 +105,14 @@ export function createMockPlatform(options: MockPlatformOptions = {}): MockPlatf
         const query = request.query ?? {};
         const resolveAuth = () => {
           const token = /^Bearer (.+)$/.exec(authorization)?.[1];
-          const record = token ? db.accessTokens.get(token) : undefined;
-          if (!record) throw unauthenticated();
-          if (record.expiresAt < now()) throw problem(401, 'token_expired', 'The access token has expired.');
-          const session = db.sessions.get(record.sessionId);
-          const user = session ? db.users.get(session.userId) : undefined;
+          // Signed, self-describing tokens: any instance can validate them (serverless demos).
+          const claims = verifyMockToken(token, db.tokenSecret);
+          if (!token || !claims || claims.k !== 'a') throw unauthenticated();
+          if (claims.e < now()) throw problem(401, 'token_expired', 'The access token has expired.');
+          const known = db.sessions.get(claims.s);
+          const rebuilt = known ? { session: known, user: db.users.get(known.userId) } : rebuildFromClaims(db, claims, token, now());
+          const session = rebuilt?.session;
+          const user = rebuilt?.user;
           if (!session || session.revoked || !user) throw problem(401, 'session_revoked', 'The session is no longer valid.');
           if (user.status === 'suspended') throw problem(403, 'account_suspended', 'This account is suspended.');
           session.lastSeenAt = now();
@@ -151,9 +157,9 @@ const GLOBAL_KEY = Symbol.for('travelbuddy.mockPlatform');
  * Process-wide singleton so that every server entry point (RSC, route handlers, proxy) and every
  * dev-server hot reload sees the same in-memory state.
  */
-export function getSharedMockPlatform(): MockPlatform {
+export function getSharedMockPlatform(options: MockPlatformOptions = {}): MockPlatform {
   const g = globalThis as unknown as Record<symbol, MockPlatform | undefined>;
-  return (g[GLOBAL_KEY] ??= createMockPlatform());
+  return (g[GLOBAL_KEY] ??= createMockPlatform(options));
 }
 
 export interface DevPersona {

@@ -1,7 +1,15 @@
 {
   "extends": "@travelbuddy/config/tsconfig/base.json",
   "compilerOptions": {
-    "lib": ["ES2023", "DOM"]
+    "lib": [
+      "ES2023",
+      "DOM"
+    ],
+    "types": [
+      "node"
+    ]
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ]
 }

@@ -207,7 +207,11 @@ export class MockDb {
   readonly idempotency = new Map<string, { fingerprint: string; status: number; body: unknown }>();
   readonly devIdentities = new Map<string, DevIdentity>();
 
-  constructor(readonly now: () => number) {
+  constructor(
+    readonly now: () => number,
+    /** HMAC key for self-describing mock tokens (see tokens.ts). */
+    readonly tokenSecret = 'travelbuddy-mock-token-key-development-only',
+  ) {
     this.seed();
   }
 

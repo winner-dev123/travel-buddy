@@ -148,7 +148,7 @@ All endpoint functions take an `ApiClient` and return typed values from `@travel
 
 The platform backend does not exist yet. Until each backend module ships, the web runs against a **mock adapter** that obeys these rules:
 
-1. It is enabled only when `TB_API_MODE=mock` **and** `APP_ENV ∈ {development, test}`. `src/server/env-core.ts` throws at startup for any other combination.
+1. It is enabled only when `TB_API_MODE=mock` **and** `APP_ENV ∈ {development, test, demo}`. `src/server/env-core.ts` throws at startup for any other combination. `demo` is a hosted sample-data deployment (for example the Vercel demo while the platform backend is not live). It requires a real `SESSION_SECRET` and secure cookies, is `noindex`, and always shows the "Mock data" banner. It is never used for staging or production. Mock tokens are HMAC-signed with the session secret, so serverless instances with separate memory accept each other's sessions; data created by users (posts, profile edits) still lives only in the instance that handled the request.
 2. It lives at `@travelbuddy/api-client/mock` and is imported only by server files. It is never shipped to browsers.
 3. Every mocked response carries `X-TB-Mock: 1`, and the UI shows a persistent **"Mock data"** environment banner.
 4. It implements the documented `/v1` contract (paths, envelopes, error codes, authorization outcomes such as `404` for hidden resources). It is a contract simulator, not a UI shortcut.
