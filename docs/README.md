@@ -16,6 +16,7 @@ Phase 0 engineering artifacts (master prompt §26), all at **v1.0 draft for appr
 | 10 | Test strategy | [10-test-strategy.md](10-test-strategy.md) |
 | 11 | Infrastructure and deployment plan | [11-infrastructure-deployment.md](11-infrastructure-deployment.md) |
 | 12 | Initial repository structure | [12-repository-structure.md](12-repository-structure.md) |
+| 13 | DPIA: traveler discovery (draft for review) | [13-dpia-traveler-discovery.md](13-dpia-traveler-discovery.md) |
 | — | Architecture decision records | [adr/](adr/README.md) |
 | — | Web application (web workstream) | [web/](web/01-architecture.md) |
 
