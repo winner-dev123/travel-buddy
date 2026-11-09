@@ -24,6 +24,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/jobs/tick": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Run one bounded job tick (scheduler; Vercel Cron uses GET)
+         * @description Recovers jobs abandoned by crashed workers, relays unpublished outbox events into subscriber jobs and
+         *     runs due jobs within `JOBS_TICK_BUDGET_SECONDS` (ADR-0004, BL-1.09). For serverless deployments without
+         *     a long-running worker. Authenticated with `Authorization: Bearer <CRON_SECRET>`; returns `404` when
+         *     `CRON_SECRET` is not configured.
+         */
+        get: operations["runJobsTickGet"];
+        put?: never;
+        /**
+         * Run one bounded job tick (scheduler)
+         * @description Same as the GET form.
+         */
+        post: operations["runJobsTick"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health/ready": {
         parameters: {
             query?: never;
@@ -3547,6 +3574,19 @@ export interface components {
             /** @constant */
             status: "ok";
         };
+        JobTickResult: {
+            data: {
+                /** @description Outbox events turned into jobs. */
+                relayed: number;
+                succeeded: number;
+                /** @description Failed and rescheduled with backoff. */
+                retried: number;
+                /** @description Failed permanently or out of attempts. */
+                dead: number;
+                /** @description Abandoned by a crashed worker and re-queued. */
+                recovered: number;
+            };
+        };
         ReadinessStatus: {
             /** @enum {string} */
             status: "ready" | "not_ready";
@@ -5769,6 +5809,15 @@ export interface components {
         };
     };
     responses: {
+        /** @description Work done by this tick. */
+        JobTick: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["JobTickResult"];
+            };
+        };
         /** @description Error (RFC 9457 problem details). */
         Problem: {
             headers: {
@@ -6049,6 +6098,34 @@ export interface operations {
                     "application/json": components["schemas"]["LivenessStatus"];
                 };
             };
+        };
+    };
+    runJobsTickGet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["JobTick"];
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    runJobsTick: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["JobTick"];
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
         };
     };
     getReadiness: {
