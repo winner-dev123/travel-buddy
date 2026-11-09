@@ -3444,7 +3444,7 @@ export interface components {
          * @description Stable machine-readable error code. Clients switch on this, never on `title`. See docs/05 §6.
          * @enum {string}
          */
-        ErrorCode: "bad_request" | "validation_failed" | "invalid_cursor" | "method_not_allowed" | "unauthenticated" | "email_unverified" | "mfa_required" | "reauthentication_required" | "justification_required" | "token_expired" | "token_invalid" | "refresh_token_reused" | "session_revoked" | "forbidden" | "not_found" | "conflict" | "precondition_failed" | "precondition_required" | "idempotency_key_reused" | "idempotency_key_in_progress" | "rate_limited" | "entitlement_required" | "quota_exceeded" | "feature_disabled" | "age_restricted" | "consent_required" | "account_suspended" | "blocked_relationship" | "connection_required" | "connection_request_cooldown" | "connection_request_not_allowed" | "already_connected" | "discovery_disabled" | "location_unresolvable" | "group_capacity_reached" | "owner_must_transfer" | "invitation_invalid" | "invitation_not_allowed" | "member_restricted" | "chat_admins_only" | "message_edit_window_expired" | "challenge_not_active" | "challenge_locked" | "attempts_exhausted" | "attempt_cooldown" | "not_team_captain" | "reward_not_permitted" | "purchase_invalid" | "purchase_already_linked" | "media_not_ready" | "media_rejected" | "payload_too_large" | "unsupported_media_type" | "upstream_unavailable" | "ai_unavailable" | "ai_output_invalid" | "service_unavailable" | "internal_error";
+        ErrorCode: "bad_request" | "validation_failed" | "invalid_cursor" | "method_not_allowed" | "unauthenticated" | "email_unverified" | "mfa_required" | "reauthentication_required" | "justification_required" | "token_expired" | "token_invalid" | "refresh_token_reused" | "session_revoked" | "forbidden" | "not_found" | "conflict" | "precondition_failed" | "precondition_required" | "idempotency_key_reused" | "idempotency_key_in_progress" | "rate_limited" | "entitlement_required" | "quota_exceeded" | "feature_disabled" | "age_restricted" | "consent_required" | "account_suspended" | "account_restricted" | "blocked_relationship" | "connection_required" | "connection_request_cooldown" | "connection_request_not_allowed" | "already_connected" | "discovery_disabled" | "location_unresolvable" | "group_capacity_reached" | "owner_must_transfer" | "invitation_invalid" | "invitation_not_allowed" | "member_restricted" | "chat_admins_only" | "message_edit_window_expired" | "challenge_not_active" | "challenge_locked" | "attempts_exhausted" | "attempt_cooldown" | "not_team_captain" | "reward_not_permitted" | "purchase_invalid" | "purchase_already_linked" | "media_not_ready" | "media_rejected" | "payload_too_large" | "unsupported_media_type" | "upstream_unavailable" | "ai_unavailable" | "ai_output_invalid" | "service_unavailable" | "internal_error";
         FieldError: {
             /** @description JSON Pointer into the body (e.g. `/name`), or `query.<name>` / `header.<name>`. */
             field: string;
@@ -3780,9 +3780,13 @@ export interface components {
              */
             restrictions?: components["schemas"]["AccountRestriction"][];
         };
+        /**
+         * @description What a `restrict` moderation action limits (SAFE-013, docs/04 `moderation_actions.restriction_kind`).
+         * @enum {string}
+         */
+        RestrictionKind: "posting_limited" | "commenting_limited" | "messaging_limited" | "connection_requests_limited" | "discovery_disabled" | "media_upload_limited";
         AccountRestriction: {
-            /** @enum {string} */
-            kind: "posting_limited" | "commenting_limited" | "messaging_limited" | "connection_requests_limited" | "discovery_disabled" | "media_upload_limited";
+            kind: components["schemas"]["RestrictionKind"];
             /** @description Moderation reason code (e.g. `spam`, `harassment`), localized for display by the client. */
             reason_code: string;
             until: components["schemas"]["NullableTimestamp"];
@@ -5736,6 +5740,8 @@ export interface components {
             target_id: components["schemas"]["Uuid"];
             action: components["schemas"]["ModerationActionType"];
             reason_code: string;
+            /** @description Required when `action` is `restrict` (applies to users); not allowed otherwise. */
+            restriction_kind?: components["schemas"]["RestrictionKind"];
             notes?: string;
             report_id?: components["schemas"]["Uuid"];
             expires_at?: components["schemas"]["Timestamp"];
@@ -5755,6 +5761,7 @@ export interface components {
             target_type: components["schemas"]["ReportTargetType"];
             target_id: components["schemas"]["Uuid"];
             action: components["schemas"]["ModerationActionType"];
+            restriction_kind: components["schemas"]["RestrictionKind"] | null;
             reason_code: string;
             notes: string | null;
             actor: components["schemas"]["UserSummary"] | null;
