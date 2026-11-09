@@ -60,6 +60,38 @@ _TEMPLATES: Final[dict[str, tuple[Text, Text]]] = {
             "de": "{actor} folgt dir jetzt.",
         },
     ),
+    "connection_request": (
+        {
+            "en": "Connection request",
+            "es": "Solicitud de conexión",
+            "pt-BR": "Pedido de conexão",
+            "fr": "Demande de connexion",
+            "de": "Kontaktanfrage",
+        },
+        {
+            "en": "{actor} wants to connect with you.",
+            "es": "{actor} quiere conectar contigo.",
+            "pt-BR": "{actor} quer se conectar com você.",
+            "fr": "{actor} souhaite se connecter avec vous.",
+            "de": "{actor} möchte sich mit dir verbinden.",
+        },
+    ),
+    "connection_accepted": (
+        {
+            "en": "You're connected",
+            "es": "Ya estáis conectados",
+            "pt-BR": "Vocês estão conectados",
+            "fr": "Vous êtes connectés",
+            "de": "Ihr seid verbunden",
+        },
+        {
+            "en": "{actor} accepted your connection request.",
+            "es": "{actor} aceptó tu solicitud de conexión.",
+            "pt-BR": "{actor} aceitou seu pedido de conexão.",
+            "fr": "{actor} a accepté votre demande de connexion.",
+            "de": "{actor} hat deine Kontaktanfrage angenommen.",
+        },
+    ),
     "post_reaction": (
         {
             "en": "New reaction",

@@ -57,6 +57,8 @@ class ErrorCode(StrEnum):
     BLOCKED_RELATIONSHIP = "blocked_relationship"
     CONNECTION_REQUIRED = "connection_required"
     CONNECTION_REQUEST_COOLDOWN = "connection_request_cooldown"
+    CONNECTION_REQUEST_NOT_ALLOWED = "connection_request_not_allowed"
+    ALREADY_CONNECTED = "already_connected"
     GROUP_CAPACITY_REACHED = "group_capacity_reached"
     INVITATION_INVALID = "invitation_invalid"
     CHALLENGE_NOT_ACTIVE = "challenge_not_active"
@@ -100,6 +102,8 @@ _DEFAULT_STATUS: Mapping[ErrorCode, HTTPStatus] = {
     ErrorCode.BLOCKED_RELATIONSHIP: HTTPStatus.FORBIDDEN,
     ErrorCode.CONNECTION_REQUIRED: HTTPStatus.FORBIDDEN,
     ErrorCode.CONNECTION_REQUEST_COOLDOWN: HTTPStatus.CONFLICT,
+    ErrorCode.CONNECTION_REQUEST_NOT_ALLOWED: HTTPStatus.FORBIDDEN,
+    ErrorCode.ALREADY_CONNECTED: HTTPStatus.CONFLICT,
     ErrorCode.GROUP_CAPACITY_REACHED: HTTPStatus.CONFLICT,
     ErrorCode.INVITATION_INVALID: HTTPStatus.GONE,
     ErrorCode.CHALLENGE_NOT_ACTIVE: HTTPStatus.CONFLICT,

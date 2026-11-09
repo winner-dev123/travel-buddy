@@ -911,3 +911,11 @@ async def ensure_system_account(
         session, user_id=account_id, handle=handle, display_name=display_name, bio=bio
     )
     return True
+
+
+async def account_created_at(session: AsyncSession, user_id: uuid.UUID) -> datetime | None:
+    """When the account was created (new-account limits, CONN-005)."""
+    created: datetime | None = await session.scalar(
+        select(User.created_at).where(User.id == user_id)
+    )
+    return created

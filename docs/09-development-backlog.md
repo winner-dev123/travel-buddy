@@ -97,9 +97,9 @@ Web-workstream items (Next.js app, BFF, web admin) are tracked by the web workst
 | BL-2.01 | Discovery consent + privacy settings UI and API | S | 1.04 | DISC-001, DISC-010 |
 | BL-2.02 | Discovery sessions (start/stop, TTL, invisible mode, GPS → destination resolution and discard) | M | 1.07 | DISC-002, DISC-003, DISC-006, LOC-009 |
 | BL-2.03 | Discover endpoint: matching score (interests, dates, languages, styles), block filtering, randomization within bands | M | 2.02, 1.12 | DISC-004, DISC-005, DISC-007, DISC-008 |
-| BL-2.04 | Connection state machine + requests API + inbox | M | 1.04 | CONN-001..003, CONN-006..008 |
-| BL-2.05 | Request policies, rate limits, new-account restrictions | S | 2.04, 1.15 | CONN-004, CONN-005, SAFE-006 |
-| BL-2.06 | Block integration with connections and discovery | S | 2.04 | CONN-009 |
+| BL-2.04 | Connection state machine + requests API + inbox | M | 1.04 | CONN-001..003, CONN-006..008 | ✅ Done: `connection_requests` + canonical `user_connections` (migration 0019); pure state machine with every transition unit-tested (only the recipient accepts/declines, only the requester cancels, nothing connects without an accept); inbox (incoming/outgoing, by status), idempotent send, accept returns the connection, decline/cancel 204, connections list, silent idempotent removal; relationship state and `can_request_connection` on public profiles; notifications for requests and acceptances; 30-day expiry |
+| BL-2.05 | Request policies, rate limits, new-account restrictions | S | 2.04, 1.15 | CONN-004, CONN-005, SAFE-006 | 🟡 Mostly done with BL-2.04: recipient policy (everyone / shared context = exploring the same destination / nobody) and blocks refused with one generic `connection_request_not_allowed`; 30-day decline cooldown; `contact` rate limit plus 5 a day for accounts under 7 days; `connection_requests_limited` restriction enforced. Group and discovery contexts join when those features land |
+| BL-2.06 | Block integration with connections and discovery | S | 2.04 | CONN-009 | 🟡 Connections part done: blocking ends the connection and cancels pending requests in the block transaction (CONN-009). Discovery part lands with BL-2.03 |
 | BL-2.07 | Anti-enumeration limits + abuse signals | S | 2.03 | DISC-009, SAFE-011 |
 | BL-2.08 | Mobile: Companions tab (discover, requests inbox, profile preview, safety guidance) | L | 2.03, 2.04 | DISC-*, SAFE-008 |
 | BL-2.09 | Security tests: location enumeration, trilateration impossibility, block leakage | M | 2.03 | T-LOC-01..04 |

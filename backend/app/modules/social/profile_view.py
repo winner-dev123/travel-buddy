@@ -9,12 +9,15 @@ for unrestricted public profiles whose owner opted into search-engine indexing.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Awaitable, Callable
+from datetime import datetime
 from typing import Literal
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.errors import AppError, ErrorCode
+from app.core.time import Clock, SystemClock
 from app.modules.identity import service as identity
 from app.modules.profiles import service as profiles
 from app.modules.social.models import Follow, FollowStatus
@@ -29,9 +32,23 @@ def _not_found() -> AppError:
     return AppError(ErrorCode.NOT_FOUND, "Profile not found.")
 
 
+# From the composition root (connections, same layer): (relationship, can_request_connection).
+RelationshipProvider = Callable[
+    [AsyncSession, uuid.UUID, uuid.UUID, datetime], Awaitable[tuple[str, bool]]
+]
+
+
 class PublicProfileService:
-    def __init__(self, *, sessionmaker: async_sessionmaker[AsyncSession]) -> None:
+    def __init__(
+        self,
+        *,
+        sessionmaker: async_sessionmaker[AsyncSession],
+        clock: Clock | None = None,
+        relationship: RelationshipProvider | None = None,
+    ) -> None:
         self._sessionmaker = sessionmaker
+        self._clock = clock or SystemClock()
+        self._relationship = relationship
 
     async def by_handle(self, viewer_id: uuid.UUID, handle: str) -> PublicProfile:
         async with self._sessionmaker() as session:
@@ -72,6 +89,11 @@ class PublicProfileService:
             (card.account_private and follow_status != "following") or card.profile_connections_only
         )
         counts = None if restricted else await self._counts(session, user_id)
+        relationship, can_request = "none", False
+        if not own and self._relationship is not None:
+            relationship, can_request = await self._relationship(
+                session, viewer_id, user_id, self._clock.now()
+            )
         return PublicProfile(
             id=user_id,
             handle=card.handle,
@@ -92,6 +114,8 @@ class PublicProfileService:
             ),
             counts=counts,
             follow_status=follow_status,
+            relationship=relationship,  # type: ignore[arg-type]
+            can_request_connection=can_request,
         )
 
     @staticmethod

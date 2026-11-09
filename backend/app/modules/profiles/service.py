@@ -646,3 +646,13 @@ async def create_system_profile(
     session.add(UserPreferences(user_id=user_id, ui_locale="en"))
     session.add(UserPrivacySettings(user_id=user_id, search_engine_indexing=True))
     await session.flush()
+
+
+async def connection_policy(session: AsyncSession, user_id: uuid.UUID) -> str:
+    """The user's ``connection_requests_from`` setting (CONN-004); unknown users accept nobody."""
+    policy: str | None = await session.scalar(
+        select(UserPrivacySettings.connection_requests_from).where(
+            UserPrivacySettings.user_id == user_id
+        )
+    )
+    return policy or "nobody"

@@ -23,6 +23,7 @@ TASKS = {
     "retention.feed",
     "retention.notifications",
     "retention.media",
+    "retention.connections",
 }
 
 

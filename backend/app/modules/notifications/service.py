@@ -117,6 +117,23 @@ async def notify_from_event(
             payload={"post_id": str(post), "comment_id": data.get("comment_id")},
             dedupe_key=f"post_comment:{data.get('comment_id') or event_id}",
         )
+    if event_type in ("connection.requested", "connection.accepted"):
+        requester, recipient = _uuid(data.get("requester_id")), _uuid(data.get("recipient_id"))
+        if requester is None or recipient is None:
+            return False
+        requested = event_type == "connection.requested"
+        to_user, actor = (recipient, requester) if requested else (requester, recipient)
+        kind = "connection_request" if requested else "connection_accepted"
+        return await notify(
+            session,
+            user_id=to_user,
+            kind=kind,
+            actor_id=actor,
+            entity_type="user",
+            entity_id=actor,
+            payload={"request_id": data.get("request_id")},
+            dedupe_key=f"{kind}:{data.get('request_id') or event_id}",
+        )
     if event_type == "moderation.action_applied":
         affected = _uuid(data.get("user_id"))
         target_type = str(data.get("target_type"))
@@ -152,6 +169,8 @@ EVENTS = (
     "post.reacted",
     "post.commented",
     "moderation.action_applied",
+    "connection.requested",
+    "connection.accepted",
 )
 
 
