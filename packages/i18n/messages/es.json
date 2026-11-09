@@ -773,6 +773,16 @@
   "settings": {
     "title": "Ajustes",
     "more": "Los ajustes de cuenta, notificaciones, sesiones y exportación de datos llegarán en fases posteriores.",
+    "blocked": {
+      "heading": "Cuentas bloqueadas",
+      "hint": "Las personas que bloqueas no pueden ver tus publicaciones ni tu perfil, y tú no verás los suyos. Desbloquear no restablece los seguimientos.",
+      "empty": "No has bloqueado a nadie.",
+      "unblock": "Desbloquear",
+      "unblockLabel": "Desbloquear a {name}",
+      "loadMore": "Ver más",
+      "error": "No pudimos cargar tus cuentas bloqueadas.",
+      "unblockError": "No pudimos desbloquear a {name}. Inténtalo de nuevo."
+    },
     "privacy": {
       "heading": "Privacidad",
       "discovery": "Descubrimiento de viajeros",

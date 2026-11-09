@@ -38,6 +38,7 @@ import type {
   UpdatePostRequest,
   UpdatePreferencesRequest,
   UpdatePrivacySettingsRequest,
+  UserSummary,
   UUID,
 } from '@travelbuddy/domain-types';
 import { newIdempotencyKey, type ApiClient } from './core/client';
@@ -182,6 +183,8 @@ export function createApi(c: ApiClient) {
       unfollow: (userId: UUID) => c.request<void>({ method: 'DELETE', path: `/v1/users/${enc(userId)}/follow` }),
       block: (userId: UUID) => c.request<void>({ method: 'PUT', path: `/v1/users/${enc(userId)}/block` }),
       unblock: (userId: UUID) => c.request<void>({ method: 'DELETE', path: `/v1/users/${enc(userId)}/block` }),
+      /** Accounts the signed-in user has blocked (privacy centre, SAFE-001). */
+      blocks: (query: CursorQuery = {}) => c.request<Page<UserSummary>>({ method: 'GET', path: '/v1/users/me/blocks', query: { ...query } }),
     },
 
     reports: {

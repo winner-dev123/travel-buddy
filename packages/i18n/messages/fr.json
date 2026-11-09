@@ -773,6 +773,16 @@
   "settings": {
     "title": "Paramètres",
     "more": "Les paramètres du compte, des notifications, des sessions et de l’export de données arriveront dans des phases ultérieures.",
+    "blocked": {
+      "heading": "Comptes bloqués",
+      "hint": "Les personnes que vous bloquez ne voient ni vos publications ni votre profil, et vous ne voyez plus les leurs. Débloquer ne rétablit pas les abonnements.",
+      "empty": "Vous n’avez bloqué personne.",
+      "unblock": "Débloquer",
+      "unblockLabel": "Débloquer {name}",
+      "loadMore": "Afficher plus",
+      "error": "Impossible de charger vos comptes bloqués.",
+      "unblockError": "Impossible de débloquer {name}. Réessayez."
+    },
     "privacy": {
       "heading": "Confidentialité",
       "discovery": "Découverte de voyageurs",

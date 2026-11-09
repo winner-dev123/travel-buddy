@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import type { LocaleCode } from '@travelbuddy/i18n';
 import { Container } from '@travelbuddy/ui';
+import { BlockedUsers } from '@/features/settings/blocked-users';
 import { PrivacySettingsForm } from '@/features/settings/privacy-settings';
 import { getMe } from '@/server/viewer';
 
@@ -16,6 +17,12 @@ export default async function SettingsPage({ params }: { params: Promise<{ local
           {t('privacy.heading')}
         </h2>
         <PrivacySettingsForm initial={me.privacy} />
+      </section>
+      <section aria-labelledby="blocked-heading" className="flex flex-col gap-3">
+        <h2 id="blocked-heading" className="text-lg font-semibold">
+          {t('blocked.heading')}
+        </h2>
+        <BlockedUsers />
       </section>
       <p className="text-sm text-muted-foreground">{t('more')}</p>
     </Container>

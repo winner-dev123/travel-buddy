@@ -8,4 +8,5 @@ export const qk = {
   destinationSearch: (q: string) => ['destinations', 'search', q] as const,
   post: (id: string) => ['post', id] as const,
   comments: (postId: string) => ['post', postId, 'comments'] as const,
+  blocks: () => ['me', 'blocks'] as const,
 };

@@ -242,6 +242,19 @@ describe('mock platform — social and privacy', () => {
     await expectApiError(api.feed.get({ tab: 'following', cursor: first.page.next_cursor }), 422, 'validation_failed');
   });
 
+  it('lists the accounts I blocked, and unblocking removes them from the list', async () => {
+    const { api: amelia } = await signIn(platform, 'amelia');
+    const { result: lucasAuth } = await signIn(platform, 'lucas');
+    expect((await amelia.users.blocks()).data).toEqual([]);
+    await amelia.users.block(lucasAuth.user.account.id);
+    await amelia.users.block(lucasAuth.user.account.id); // idempotent
+    const listed = await amelia.users.blocks();
+    expect(listed.data.map((u) => u.handle)).toEqual(['lucas']);
+    expect(listed.page).toEqual({ next_cursor: null, has_more: false });
+    await amelia.users.unblock(lucasAuth.user.account.id);
+    expect((await amelia.users.blocks()).data).toEqual([]);
+  });
+
   it('upserts one reaction per user and blocks hide content both ways', async () => {
     const { api: amelia } = await signIn(platform, 'amelia');
     const { api: lucas, result: lucasAuth } = await signIn(platform, 'lucas');

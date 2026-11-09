@@ -835,6 +835,14 @@ export function buildRouter(): Router<Handler> {
     return noContent();
   });
 
+  r.add('GET', '/v1/users/me/blocks', (ctx) => {
+    const { user } = ctx.auth();
+    const blocked = [...ctx.db.blocks]
+      .filter((key) => key.startsWith(`${user.id}:`))
+      .map((key) => ctx.db.userSummary(key.slice(user.id.length + 1)));
+    return ok(paginate(blocked, ctx, `blocks:${user.id}`, 50));
+  });
+
   r.add('PUT', '/v1/users/:userId/block', (ctx) => {
     const { user } = ctx.auth();
     const target = otherUser(ctx, user);

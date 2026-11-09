@@ -773,6 +773,16 @@
   "settings": {
     "title": "Settings",
     "more": "Account, notification, session and data-export settings arrive in later phases.",
+    "blocked": {
+      "heading": "Blocked accounts",
+      "hint": "People you block can’t see your posts or profile, and you won’t see theirs. Unblocking doesn’t restore follows.",
+      "empty": "You haven’t blocked anyone.",
+      "unblock": "Unblock",
+      "unblockLabel": "Unblock {name}",
+      "loadMore": "Show more",
+      "error": "We couldn’t load your blocked accounts.",
+      "unblockError": "We couldn’t unblock {name}. Try again."
+    },
     "privacy": {
       "heading": "Privacy",
       "discovery": "Traveler discovery",

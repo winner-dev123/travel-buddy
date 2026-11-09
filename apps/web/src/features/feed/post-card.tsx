@@ -64,6 +64,7 @@ export function PostCard({ post, onHidden }: { post: Post; onHidden?: (postId: s
     onSuccess: () => {
       onHidden?.(post.id);
       void queryClient.invalidateQueries({ queryKey: qk.feedAll() });
+      void queryClient.invalidateQueries({ queryKey: qk.blocks() });
     },
   });
 

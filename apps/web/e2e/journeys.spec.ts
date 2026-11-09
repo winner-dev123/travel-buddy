@@ -77,6 +77,29 @@ test('a place recommendation needs a destination, and the default destination ca
   await page.getByRole('button', { name: 'Discard draft' }).click();
 });
 
+test('blocking from a post, then unblocking in privacy settings', async ({ page }) => {
+  // Lucas and the author he blocks are used by no other test: tests run in parallel against one mock server,
+  // and a block removes follows both ways, which would reshuffle another persona's feed.
+  await signInAs(page, /Lucas Almeida/);
+  const article = page.getByRole('article').filter({ hasNotText: /Lucas Almeida|Noah Fischer|Yuki Tanaka|Amelia Clarke/ }).first();
+  const labelId = await article.getAttribute('aria-labelledby');
+  // textContent, not innerText: post cards use content-visibility: auto, so off-screen text is not rendered.
+  const author = ((await page.locator(`[id="${labelId}"]`).textContent()) ?? '').trim();
+  expect(author).not.toBe('');
+  await article.getByLabel('More actions').click();
+  await article.getByRole('button', { name: `Block ${author}`, exact: true }).click();
+  await expect(page.getByRole('article', { name: author, exact: true })).toHaveCount(0);
+
+  await page.goto('/settings');
+  await hydrated(page);
+  const blocked = page.getByRole('list', { name: 'Blocked accounts' });
+  await expect(blocked.getByText(author, { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: `Unblock ${author}` }).click();
+  await expect(page.getByText('You haven’t blocked anyone.')).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('You haven’t blocked anyone.')).toBeVisible();
+});
+
 test('reacting to a post is optimistic and persisted', async ({ page }) => {
   await signInAs(page, /Noah Fischer/);
   const first = page.getByRole('article').first();

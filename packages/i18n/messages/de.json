@@ -773,6 +773,16 @@
   "settings": {
     "title": "Einstellungen",
     "more": "Einstellungen für Konto, Benachrichtigungen, Sitzungen und Datenexport kommen in späteren Phasen.",
+    "blocked": {
+      "heading": "Blockierte Konten",
+      "hint": "Personen, die du blockierst, sehen deine Beiträge und dein Profil nicht, und du siehst ihre nicht. Entblocken stellt Folgen nicht wieder her.",
+      "empty": "Du hast niemanden blockiert.",
+      "unblock": "Entblocken",
+      "unblockLabel": "{name} entblocken",
+      "loadMore": "Mehr anzeigen",
+      "error": "Deine blockierten Konten konnten nicht geladen werden.",
+      "unblockError": "{name} konnte nicht entblockt werden. Versuch es noch einmal."
+    },
     "privacy": {
       "heading": "Datenschutz",
       "discovery": "Reisenden-Suche",

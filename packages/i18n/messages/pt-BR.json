@@ -773,6 +773,16 @@
   "settings": {
     "title": "Configurações",
     "more": "As configurações de conta, notificações, sessões e exportação de dados chegam em fases futuras.",
+    "blocked": {
+      "heading": "Contas bloqueadas",
+      "hint": "Pessoas que você bloqueia não veem seus posts nem seu perfil, e você não verá os delas. Desbloquear não restaura quem seguia quem.",
+      "empty": "Você não bloqueou ninguém.",
+      "unblock": "Desbloquear",
+      "unblockLabel": "Desbloquear {name}",
+      "loadMore": "Ver mais",
+      "error": "Não foi possível carregar suas contas bloqueadas.",
+      "unblockError": "Não foi possível desbloquear {name}. Tente de novo."
+    },
     "privacy": {
       "heading": "Privacidade",
       "discovery": "Descoberta de viajantes",
