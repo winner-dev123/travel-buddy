@@ -167,7 +167,7 @@ Web-workstream items (Next.js app, BFF, web admin) are tracked by the web workst
 | BL-6.05 | Privacy review, DPIA sign-off, records of processing, policies | M | SAFE-010 |
 | BL-6.06 | App Store / Play readiness (UGC policies, account deletion in-app, privacy labels, data safety form) | M | — |
 | BL-6.07 | Penetration test + remediation | M | NFR-006 |
-| BL-6.09 | Supabase production readiness: upgrade to Pro, PITR add-on (NFR-004), decide region (EU project if needed), connection headroom (compute/IPv4 add-on), disable Data API, rotate DB password into the secret manager (ADR-0018). Auth (ADR-0020): CAPTCHA, leaked-password protection, custom SMTP, Auth Admin API deletion in the BL-1.17 saga | S | NFR-003/004, SAFE-010, T-AUTH-11 |
+| BL-6.09 | Supabase production readiness: upgrade to Pro, PITR add-on (NFR-004), decide region (EU project if needed), connection headroom (compute/IPv4 add-on), disable Data API, rotate DB password into the secret manager (ADR-0018). Auth (ADR-0020): CAPTCHA, leaked-password protection, custom SMTP, Auth rate limits raised for BFF egress (shared Vercel IPs), Auth Admin API deletion in the BL-1.17 saga | S | NFR-003/004, SAFE-010, T-AUTH-11 |
 | BL-6.08 | Destination launch operations playbook | S | — |
 
 ## 9. Phase 7 — Global expansion (themes)

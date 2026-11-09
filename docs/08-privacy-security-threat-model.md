@@ -105,7 +105,7 @@ Verification column: **U** = unit test, **I** = integration test, **S** = securi
 | T-AUTH-08 | Dev IdP enabled in prod | Process refuses to boot if a dev adapter is configured with `APP_ENV=production` | U |
 | T-AUTH-09 | Staff account taken over with a password alone | Staff permissions require `mfa` in the session `amr` (Supabase `aal2` after TOTP) or `403 mfa_required` (ADM-007). Admin routes enforce 30 min idle / 12 h absolute limits (ADM-008) | U, I |
 | T-AUTH-10 | Auth codes or tokens redirected to an attacker-controlled site | Exact redirect-URL allow-list in Supabase Auth (no wildcard hosts). PKCE on web and mobile. The web callback validates `state` and the `next` path (same-origin only) | S, I |
-| T-AUTH-11 | Sign-up spam or credential stuffing against the public Supabase Auth endpoints | Supabase Auth rate limits now. Before launch: CAPTCHA (Turnstile/hCaptcha), leaked-password protection, custom SMTP (ADR-0020) | O |
+| T-AUTH-11 | Sign-up spam or credential stuffing against the public Supabase Auth endpoints; conversely, per-IP limits locking out everyone, because the web BFF reaches Supabase from shared Vercel egress IPs | Supabase Auth rate limits now. Before launch: CAPTCHA (Turnstile/hCaptcha) so abuse is stopped per user rather than per IP, raised Auth rate limits sized for BFF traffic, our own per-account/per-client-IP limits on the BFF and token exchange (BL-1.15), leaked-password protection, custom SMTP (ADR-0020, docs/web/01 §6) | O |
 
 ### 4.3 Authorization and data isolation (A2, A8)
 
