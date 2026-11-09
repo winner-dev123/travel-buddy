@@ -59,9 +59,11 @@ export async function POST(request: NextRequest) {
   if (recent.firstTime(payload.event_id)) {
     // Privacy-relevant changes must never serve stale content; ordinary updates may (stale-while-revalidate).
     const profile = PRIVACY_REASONS.has(payload.reason) ? { expire: 0 } : 'max';
-    for (const tag of payload.tags) {
-      if (TAG.test(tag)) revalidateTag(tag, profile);
-    }
+    const tags = new Set(payload.tags.filter((tag) => TAG.test(tag)));
+    // Catalog fetches are tagged `destinations` (a destination's slug isn't known before fetching it by path,
+    // and guide lists hang off the destination), so destination and guide changes purge the catalog too.
+    if ([...tags].some((tag) => tag.startsWith('destination:') || tag.startsWith('guide:'))) tags.add('destinations');
+    for (const tag of tags) revalidateTag(tag, profile);
   }
   return new NextResponse(null, { status: 204 });
 }

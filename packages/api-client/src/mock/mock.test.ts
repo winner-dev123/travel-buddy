@@ -134,6 +134,9 @@ describe('mock platform — destinations and guides', () => {
     expect(tokyo.continent).toBe('asia');
     expect(tokyo.ancestors.map((a) => a.slug)).toEqual(['japan']);
     expect(tokyo.has_guides).toBe(true);
+    // Slugs follow the platform seed rule, so switching to the live API keeps them.
+    expect(tokyo.slug).toBe('tokyo-jp');
+    expect((await pt.destinations.lookup('brazil/rio-de-janeiro/copacabana')).slug).toBe('copacabana-rio-de-janeiro-br');
   });
 
   it('lists destinations anonymously with filters and a stable slug order for sitemaps', async () => {
@@ -214,7 +217,7 @@ describe('mock platform — social and privacy', () => {
     const { api } = await signIn(platform, 'amelia');
     const nearby = await api.feed.get({ tab: 'nearby', near: '-22.971,-43.182', radius_km: 5 });
     expect(nearby.context.source).toBe('gps');
-    expect(nearby.context.destination?.slug).toBe('rio-de-janeiro');
+    expect(nearby.context.destination?.slug).toBe('rio-de-janeiro-br');
     expect(JSON.stringify(nearby)).not.toContain('-22.971');
     await expectApiError(api.feed.get({ tab: 'nearby' }), 422, 'validation_failed');
   });

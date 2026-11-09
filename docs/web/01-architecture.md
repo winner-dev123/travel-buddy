@@ -247,7 +247,7 @@ All routes accept an optional locale prefix: none for `en`, `/es`, `/pt-br`, `/f
 |---|---|
 | `GET /api/auth/login?intent=login\|signup\|reset&provider=&next=&locale=` | Start an OIDC (or dev) login, sign-up or password-reset flow |
 | `GET /api/auth/refresh?next=` | Navigation-time token refresh hop (Server Components cannot set cookies) |
-| `POST /api/revalidate` | Platform cache-revalidation webhook (contract `webhooks: webCacheRevalidation`, SAFE-012): HMAC `X-TB-Signature`, 300 s skew, two rotation secrets (`WEB_REVALIDATE_SECRETS`), idempotent on `event_id`; privacy reasons revalidate with `expire: 0` so stale content is never served |
+| `POST /api/revalidate` | Platform cache-revalidation webhook (contract `webhooks: webCacheRevalidation`, SAFE-012): HMAC `X-TB-Signature`, 300 s skew, two rotation secrets (`WEB_REVALIDATE_SECRETS`), idempotent on `event_id`; privacy reasons revalidate with `expire: 0` so stale content is never served; `destination:*`/`guide:*` also purge the `destinations` catalog tag, because a destination's slug (`rio-de-janeiro-br`) isn't known when it is fetched by path |
 | `GET /api/auth/callback` | OIDC callback → platform session cookie |
 | `POST /api/auth/dev` | Development identity sign-in (dev/test only) |
 | `POST /api/auth/logout` | Revoke the platform session and clear cookies |

@@ -9,8 +9,9 @@ const CATALOG = { revalidate: 3600, tags: ['destinations'] };
 export const getDestination = cache(async (locale: string, path: string): Promise<Destination | null> => {
   const api = await publicApi(locale);
   try {
-    const slug = path.split('/').pop() ?? path;
-    return await api.destinations.lookup(path, { ...CATALOG, tags: ['destinations', `destination:${slug}`] });
+    // The slug (e.g. rio-de-janeiro-br) is unknown until the response arrives, so this fetch can't carry
+    // `destination:<slug>`; the revalidation receiver maps destination:* to the `destinations` tag instead.
+    return await api.destinations.lookup(path, CATALOG);
   } catch (error) {
     if (isApiError(error) && error.status === 404) return null;
     throw error;

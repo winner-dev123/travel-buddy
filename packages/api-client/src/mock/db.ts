@@ -226,7 +226,9 @@ export class MockDb {
       const rec: DestinationRecord = {
         id: fixtureId(`destination:${f.path}`),
         path: f.path,
-        slug: parts[parts.length - 1] as string,
+        // Same rule as the platform seed (backend destinations/seeding.py slug_for): country = segment,
+        // otherwise the segments below the country, innermost first, plus the country code (copacabana-rio-de-janeiro-br).
+        slug: f.kind === 'country' ? (parts[0] as string) : [...parts.slice(1).reverse(), f.country_code.toLowerCase()].join('-'),
         parentPath: parts.length > 1 ? parts.slice(0, -1).join('/') : null,
         f,
       };
