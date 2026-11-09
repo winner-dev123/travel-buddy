@@ -87,7 +87,7 @@ class InteractionService:
     ) -> ReactionResult:
         """Idempotent upsert: the same reaction is a no-op, a different one replaces it."""
         async with self._sessionmaker() as session, session.begin():
-            await visible_post(session, post_id, viewer_id)
+            post = await visible_post(session, post_id, viewer_id)
             inserted = await session.execute(
                 insert(Reaction)
                 .values(post_id=post_id, user_id=viewer_id, reaction=reaction)
@@ -112,6 +112,7 @@ class InteractionService:
                         "post_id": str(post_id),
                         "user_id": str(viewer_id),
                         "reaction": reaction,
+                        "post_author_id": str(post.author_id),
                     },
                 )
             return ReactionResult.model_validate(

@@ -259,12 +259,14 @@ class AdminService:
         self, session: AsyncSession, staff: Staff, request: ModerationActionRequest
     ) -> ModerationActionOut:
         action, target = request.action, request.target_type
+        # The user the action affects (content author or the account), told via a notification.
+        affected: uuid.UUID | None = request.target_id if target == "user" else None
         if action in _CONTENT_STATES:
             if target not in ("post", "comment") or (
                 action == "limit_visibility" and target != "post"
             ):
                 raise _invalid("/target_type", f"'{action}' does not apply to a {target}.")
-            await social.moderate_content(
+            affected = await social.moderate_content(
                 session, target, request.target_id, _CONTENT_STATES[action]
             )
         elif action in _ACCOUNT_STATUSES:
@@ -281,7 +283,7 @@ class AdminService:
             )
         elif action == "remove_member":
             raise _invalid("/action", "Group moderation arrives with groups (Phase 5).")
-        # warn / restrict are recorded; their user-facing effects arrive with BL-1.16 / BL-1.28.
+        # warn / restrict are recorded and notified; restrictions take effect with BL-1.28.
         row = await trust_safety.record_action(
             session,
             target_type=target,
@@ -301,7 +303,14 @@ class AdminService:
             aggregate_type=target,
             aggregate_id=request.target_id,
             event_type="moderation.action_applied",
-            payload={"action_id": str(row.id), "action": action, "target_type": target},
+            payload={
+                "action_id": str(row.id),
+                "action": action,
+                "target_type": target,
+                "target_id": str(request.target_id),
+                "reason_code": request.reason_code,
+                "user_id": str(affected) if affected else None,
+            },
         )
         [out] = await self._actions(session, [row])
         return out

@@ -53,6 +53,8 @@ from app.modules.identity.config import IdentitySettings
 from app.modules.identity.service import IdentityService
 from app.modules.location import service as location_service
 from app.modules.location.api import router as location_router
+from app.modules.notifications import service as notifications_service
+from app.modules.notifications.api import router as notifications_router
 from app.modules.platform.api import AfterResponseTickMiddleware, internal_router
 from app.modules.platform.service import (
     EventRouter,
@@ -221,6 +223,9 @@ def create_app(
         blocks=block_service,
         providers=evidence_providers(),
     )
+    app.state.notification_service = notifications_service.NotificationService(
+        sessionmaker=database.sessionmaker, cursors=cursor_codec
+    )
     app.state.admin_service = AdminService(
         sessionmaker=database.sessionmaker, cursors=cursor_codec, clock=clock
     )
@@ -277,6 +282,7 @@ def create_app(
     app.include_router(social_router)
     app.include_router(trust_safety_router)
     app.include_router(feed_router)
+    app.include_router(notifications_router)
     app.include_router(admin_router)
     app.include_router(internal_router)
     if dev_idp is not None:  # absent → 404 (contract: not available in this environment)
@@ -324,6 +330,8 @@ def build_job_runner(
     )
     social_service.subscribe(router)
     handlers.update(social_service.make_handlers(database.sessionmaker))
+    notifications_service.subscribe(router)
+    handlers.update(notifications_service.make_handlers(database.sessionmaker))
     return JobRunner(sessionmaker=database.sessionmaker, router=router, handlers=handlers)
 
 

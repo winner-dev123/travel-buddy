@@ -544,3 +544,18 @@ async def user_evidence(session: AsyncSession, user_id: uuid.UUID) -> dict[str, 
         "bio": profile.bio,
         "account_visibility": profile.account_visibility,
     }
+
+
+async def wants_notification(
+    session: AsyncSession, user_id: uuid.UUID, kind: str, channel: str = "in_app"
+) -> bool:
+    """Whether ``user_id`` receives ``kind`` on ``channel`` (on unless they turned it off)."""
+    preferences = await session.get(UserPreferences, user_id)
+    if preferences is None:
+        return False
+    return _notification_matrix(preferences.notification_settings).get(kind, {}).get(channel, True)
+
+
+async def ui_locale(session: AsyncSession, user_id: uuid.UUID) -> str:
+    preferences = await session.get(UserPreferences, user_id)
+    return preferences.ui_locale if preferences else "en"
