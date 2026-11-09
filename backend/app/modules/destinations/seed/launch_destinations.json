@@ -1,0 +1,1081 @@
+{
+ "version": 1,
+ "boundary_source": "approximate-bbox",
+ "notes": "Launch catalog mirroring the web fixture paths. Boundaries are approximate bounding boxes for point resolution; replace with licensed polygons before relying on edges.",
+ "destinations": [
+  {
+   "path": "brazil",
+   "kind": "country",
+   "country_code": "BR",
+   "continent": "south_america",
+   "time_zone": "America/Sao_Paulo",
+   "centroid": {
+    "lat": -14.235,
+    "lng": -51.925
+   },
+   "bbox": {
+    "south": -33.75,
+    "west": -73.99,
+    "north": 5.27,
+    "east": -34.79
+   },
+   "featured": false,
+   "names": {
+    "en": "Brazil",
+    "es": "Brasil",
+    "pt-BR": "Brasil",
+    "fr": "Brésil",
+    "de": "Brasilien"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
+   "path": "japan",
+   "kind": "country",
+   "country_code": "JP",
+   "continent": "asia",
+   "time_zone": "Asia/Tokyo",
+   "centroid": {
+    "lat": 36.205,
+    "lng": 138.253
+   },
+   "bbox": {
+    "south": 24.0,
+    "west": 122.9,
+    "north": 45.6,
+    "east": 145.9
+   },
+   "featured": false,
+   "names": {
+    "en": "Japan",
+    "es": "Japón",
+    "pt-BR": "Japão",
+    "fr": "Japon",
+    "de": "Japan"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
+   "path": "portugal",
+   "kind": "country",
+   "country_code": "PT",
+   "continent": "europe",
+   "time_zone": "Europe/Lisbon",
+   "centroid": {
+    "lat": 39.4,
+    "lng": -8.22
+   },
+   "bbox": {
+    "south": 36.96,
+    "west": -9.53,
+    "north": 42.15,
+    "east": -6.19
+   },
+   "featured": false,
+   "names": {
+    "en": "Portugal",
+    "es": "Portugal",
+    "pt-BR": "Portugal",
+    "fr": "Portugal",
+    "de": "Portugal"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
+   "path": "spain",
+   "kind": "country",
+   "country_code": "ES",
+   "continent": "europe",
+   "time_zone": "Europe/Madrid",
+   "centroid": {
+    "lat": 40.46,
+    "lng": -3.75
+   },
+   "bbox": {
+    "south": 35.95,
+    "west": -9.39,
+    "north": 43.79,
+    "east": 4.33
+   },
+   "featured": false,
+   "names": {
+    "en": "Spain",
+    "es": "España",
+    "pt-BR": "Espanha",
+    "fr": "Espagne",
+    "de": "Spanien"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
+   "path": "france",
+   "kind": "country",
+   "country_code": "FR",
+   "continent": "europe",
+   "time_zone": "Europe/Paris",
+   "centroid": {
+    "lat": 46.23,
+    "lng": 2.21
+   },
+   "bbox": {
+    "south": 41.33,
+    "west": -5.14,
+    "north": 51.09,
+    "east": 9.56
+   },
+   "featured": false,
+   "names": {
+    "en": "France",
+    "es": "Francia",
+    "pt-BR": "França",
+    "fr": "France",
+    "de": "Frankreich"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
+   "path": "italy",
+   "kind": "country",
+   "country_code": "IT",
+   "continent": "europe",
+   "time_zone": "Europe/Rome",
+   "centroid": {
+    "lat": 41.87,
+    "lng": 12.57
+   },
+   "bbox": {
+    "south": 35.49,
+    "west": 6.63,
+    "north": 47.09,
+    "east": 18.52
+   },
+   "featured": false,
+   "names": {
+    "en": "Italy",
+    "es": "Italia",
+    "pt-BR": "Itália",
+    "fr": "Italie",
+    "de": "Italien"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
+   "path": "mexico",
+   "kind": "country",
+   "country_code": "MX",
+   "continent": "north_america",
+   "time_zone": "America/Mexico_City",
+   "centroid": {
+    "lat": 23.63,
+    "lng": -102.55
+   },
+   "bbox": {
+    "south": 14.53,
+    "west": -118.4,
+    "north": 32.72,
+    "east": -86.7
+   },
+   "featured": false,
+   "names": {
+    "en": "Mexico",
+    "es": "México",
+    "pt-BR": "México",
+    "fr": "Mexique",
+    "de": "Mexiko"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
+   "path": "peru",
+   "kind": "country",
+   "country_code": "PE",
+   "continent": "south_america",
+   "time_zone": "America/Lima",
+   "centroid": {
+    "lat": -9.19,
+    "lng": -75.02
+   },
+   "bbox": {
+    "south": -18.35,
+    "west": -81.33,
+    "north": -0.04,
+    "east": -68.65
+   },
+   "featured": false,
+   "names": {
+    "en": "Peru",
+    "es": "Perú",
+    "pt-BR": "Peru",
+    "fr": "Pérou",
+    "de": "Peru"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
+   "path": "morocco",
+   "kind": "country",
+   "country_code": "MA",
+   "continent": "africa",
+   "time_zone": "Africa/Casablanca",
+   "centroid": {
+    "lat": 31.79,
+    "lng": -7.09
+   },
+   "bbox": {
+    "south": 27.66,
+    "west": -13.17,
+    "north": 35.92,
+    "east": -0.99
+   },
+   "featured": false,
+   "names": {
+    "en": "Morocco",
+    "es": "Marruecos",
+    "pt-BR": "Marrocos",
+    "fr": "Maroc",
+    "de": "Marokko"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
+   "path": "south-africa",
+   "kind": "country",
+   "country_code": "ZA",
+   "continent": "africa",
+   "time_zone": "Africa/Johannesburg",
+   "centroid": {
+    "lat": -30.56,
+    "lng": 22.94
+   },
+   "bbox": {
+    "south": -34.84,
+    "west": 16.45,
+    "north": -22.13,
+    "east": 32.89
+   },
+   "featured": false,
+   "names": {
+    "en": "South Africa",
+    "es": "Sudáfrica",
+    "pt-BR": "África do Sul",
+    "fr": "Afrique du Sud",
+    "de": "Südafrika"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
+   "path": "thailand",
+   "kind": "country",
+   "country_code": "TH",
+   "continent": "asia",
+   "time_zone": "Asia/Bangkok",
+   "centroid": {
+    "lat": 15.87,
+    "lng": 100.99
+   },
+   "bbox": {
+    "south": 5.61,
+    "west": 97.34,
+    "north": 20.46,
+    "east": 105.64
+   },
+   "featured": false,
+   "names": {
+    "en": "Thailand",
+    "es": "Tailandia",
+    "pt-BR": "Tailândia",
+    "fr": "Thaïlande",
+    "de": "Thailand"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
+   "path": "australia",
+   "kind": "country",
+   "country_code": "AU",
+   "continent": "oceania",
+   "time_zone": "Australia/Sydney",
+   "centroid": {
+    "lat": -25.27,
+    "lng": 133.78
+   },
+   "bbox": {
+    "south": -43.64,
+    "west": 113.34,
+    "north": -10.67,
+    "east": 153.57
+   },
+   "featured": false,
+   "names": {
+    "en": "Australia",
+    "es": "Australia",
+    "pt-BR": "Austrália",
+    "fr": "Australie",
+    "de": "Australien"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
+   "path": "united-states",
+   "kind": "country",
+   "country_code": "US",
+   "continent": "north_america",
+   "time_zone": "America/New_York",
+   "centroid": {
+    "lat": 37.09,
+    "lng": -95.71
+   },
+   "bbox": {
+    "south": 24.52,
+    "west": -124.77,
+    "north": 49.38,
+    "east": -66.95
+   },
+   "featured": false,
+   "names": {
+    "en": "United States",
+    "es": "Estados Unidos",
+    "pt-BR": "Estados Unidos",
+    "fr": "États-Unis",
+    "de": "Vereinigte Staaten"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
+   "path": "iceland",
+   "kind": "country",
+   "country_code": "IS",
+   "continent": "europe",
+   "time_zone": "Atlantic/Reykjavik",
+   "centroid": {
+    "lat": 64.96,
+    "lng": -19.02
+   },
+   "bbox": {
+    "south": 63.3,
+    "west": -24.55,
+    "north": 66.57,
+    "east": -13.5
+   },
+   "featured": false,
+   "names": {
+    "en": "Iceland",
+    "es": "Islandia",
+    "pt-BR": "Islândia",
+    "fr": "Islande",
+    "de": "Island"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
+   "path": "brazil/rio-de-janeiro",
+   "kind": "city",
+   "country_code": "BR",
+   "continent": "south_america",
+   "time_zone": "America/Sao_Paulo",
+   "centroid": {
+    "lat": -22.9068,
+    "lng": -43.1729
+   },
+   "bbox": {
+    "south": -23.08,
+    "west": -43.8,
+    "north": -22.75,
+    "east": -43.1
+   },
+   "featured": true,
+   "names": {
+    "en": "Rio de Janeiro",
+    "es": "Rio de Janeiro",
+    "pt-BR": "Rio de Janeiro",
+    "fr": "Rio de Janeiro",
+    "de": "Rio de Janeiro"
+   },
+   "taglines": {
+    "en": "Granite peaks, golden beaches and samba in the streets.",
+    "es": "Picos de granito, playas doradas y samba en las calles.",
+    "pt-BR": "Picos de granito, praias douradas e samba nas ruas.",
+    "fr": "Pics de granit, plages dorées et samba dans les rues.",
+    "de": "Granitgipfel, goldene Strände und Samba auf den Straßen."
+   },
+   "alt_names": {
+    "en": [
+     "Rio"
+    ]
+   }
+  },
+  {
+   "path": "japan/tokyo",
+   "kind": "city",
+   "country_code": "JP",
+   "continent": "asia",
+   "time_zone": "Asia/Tokyo",
+   "centroid": {
+    "lat": 35.6762,
+    "lng": 139.6503
+   },
+   "bbox": {
+    "south": 35.5,
+    "west": 138.94,
+    "north": 35.9,
+    "east": 139.92
+   },
+   "featured": true,
+   "names": {
+    "en": "Tokyo",
+    "es": "Tokio",
+    "pt-BR": "Tóquio",
+    "fr": "Tokyo",
+    "de": "Tokio"
+   },
+   "taglines": {
+    "en": "Where centuries-old shrines meet the world’s busiest crossings.",
+    "es": "Donde santuarios centenarios se cruzan con las intersecciones más concurridas del mundo.",
+    "pt-BR": "Onde santuários centenários encontram os cruzamentos mais movimentados do mundo.",
+    "fr": "Là où des sanctuaires séculaires côtoient les carrefours les plus animés du monde.",
+    "de": "Wo jahrhundertealte Schreine auf die belebtesten Kreuzungen der Welt treffen."
+   },
+   "alt_names": {
+    "en": [
+     "東京"
+    ]
+   }
+  },
+  {
+   "path": "japan/kyoto",
+   "kind": "city",
+   "country_code": "JP",
+   "continent": "asia",
+   "time_zone": "Asia/Tokyo",
+   "centroid": {
+    "lat": 35.0116,
+    "lng": 135.7681
+   },
+   "bbox": {
+    "south": 34.88,
+    "west": 135.56,
+    "north": 35.32,
+    "east": 135.88
+   },
+   "featured": false,
+   "names": {
+    "en": "Kyoto",
+    "es": "Kioto",
+    "pt-BR": "Quioto",
+    "fr": "Kyoto",
+    "de": "Kyoto"
+   },
+   "taglines": {
+    "en": "Temples, gardens and wooden machiya streets.",
+    "es": "Templos, jardines y calles de casas machiya.",
+    "pt-BR": "Templos, jardins e ruas de casas machiya.",
+    "fr": "Temples, jardins et ruelles de maisons machiya.",
+    "de": "Tempel, Gärten und Gassen mit Machiya-Holzhäusern."
+   },
+   "alt_names": {
+    "en": [
+     "京都"
+    ]
+   }
+  },
+  {
+   "path": "portugal/lisbon",
+   "kind": "city",
+   "country_code": "PT",
+   "continent": "europe",
+   "time_zone": "Europe/Lisbon",
+   "centroid": {
+    "lat": 38.7223,
+    "lng": -9.1393
+   },
+   "bbox": {
+    "south": 38.69,
+    "west": -9.23,
+    "north": 38.8,
+    "east": -9.09
+   },
+   "featured": true,
+   "names": {
+    "en": "Lisbon",
+    "es": "Lisboa",
+    "pt-BR": "Lisboa",
+    "fr": "Lisbonne",
+    "de": "Lissabon"
+   },
+   "taglines": {
+    "en": "Seven hills, tiled façades and the sound of fado.",
+    "es": "Siete colinas, fachadas de azulejos y el sonido del fado.",
+    "pt-BR": "Sete colinas, fachadas de azulejo e o som do fado.",
+    "fr": "Sept collines, façades d’azulejos et le son du fado.",
+    "de": "Sieben Hügel, Kachelfassaden und der Klang des Fado."
+   },
+   "alt_names": {}
+  },
+  {
+   "path": "spain/barcelona",
+   "kind": "city",
+   "country_code": "ES",
+   "continent": "europe",
+   "time_zone": "Europe/Madrid",
+   "centroid": {
+    "lat": 41.3874,
+    "lng": 2.1686
+   },
+   "bbox": {
+    "south": 41.32,
+    "west": 2.05,
+    "north": 41.47,
+    "east": 2.23
+   },
+   "featured": true,
+   "names": {
+    "en": "Barcelona",
+    "es": "Barcelona",
+    "pt-BR": "Barcelona",
+    "fr": "Barcelona",
+    "de": "Barcelona"
+   },
+   "taglines": {
+    "en": "Gaudí’s city between the mountains and the Mediterranean.",
+    "es": "La ciudad de Gaudí entre la montaña y el Mediterráneo.",
+    "pt-BR": "A cidade de Gaudí entre as montanhas e o Mediterrâneo.",
+    "fr": "La ville de Gaudí, entre montagnes et Méditerranée.",
+    "de": "Gaudís Stadt zwischen Bergen und Mittelmeer."
+   },
+   "alt_names": {}
+  },
+  {
+   "path": "france/paris",
+   "kind": "city",
+   "country_code": "FR",
+   "continent": "europe",
+   "time_zone": "Europe/Paris",
+   "centroid": {
+    "lat": 48.8566,
+    "lng": 2.3522
+   },
+   "bbox": {
+    "south": 48.815,
+    "west": 2.224,
+    "north": 48.902,
+    "east": 2.47
+   },
+   "featured": true,
+   "names": {
+    "en": "Paris",
+    "es": "París",
+    "pt-BR": "Paris",
+    "fr": "Paris",
+    "de": "Paris"
+   },
+   "taglines": {
+    "en": "Museums, cafés and boulevards along the Seine.",
+    "es": "Museos, cafés y bulevares a orillas del Sena.",
+    "pt-BR": "Museus, cafés e bulevares às margens do Sena.",
+    "fr": "Musées, cafés et boulevards le long de la Seine.",
+    "de": "Museen, Cafés und Boulevards an der Seine."
+   },
+   "alt_names": {}
+  },
+  {
+   "path": "italy/rome",
+   "kind": "city",
+   "country_code": "IT",
+   "continent": "europe",
+   "time_zone": "Europe/Rome",
+   "centroid": {
+    "lat": 41.9028,
+    "lng": 12.4964
+   },
+   "bbox": {
+    "south": 41.65,
+    "west": 12.23,
+    "north": 42.05,
+    "east": 12.86
+   },
+   "featured": false,
+   "names": {
+    "en": "Rome",
+    "es": "Roma",
+    "pt-BR": "Roma",
+    "fr": "Rome",
+    "de": "Rom"
+   },
+   "taglines": {
+    "en": "Three thousand years of history around every corner.",
+    "es": "Tres mil años de historia en cada esquina.",
+    "pt-BR": "Três mil anos de história em cada esquina.",
+    "fr": "Trois mille ans d’histoire à chaque coin de rue.",
+    "de": "Dreitausend Jahre Geschichte an jeder Ecke."
+   },
+   "alt_names": {}
+  },
+  {
+   "path": "mexico/mexico-city",
+   "kind": "city",
+   "country_code": "MX",
+   "continent": "north_america",
+   "time_zone": "America/Mexico_City",
+   "centroid": {
+    "lat": 19.4326,
+    "lng": -99.1332
+   },
+   "bbox": {
+    "south": 19.05,
+    "west": -99.37,
+    "north": 19.59,
+    "east": -98.94
+   },
+   "featured": true,
+   "names": {
+    "en": "Mexico City",
+    "es": "Ciudad de México",
+    "pt-BR": "Cidade do México",
+    "fr": "Mexico",
+    "de": "Mexiko-Stadt"
+   },
+   "taglines": {
+    "en": "Murals, markets and some of the world’s best street food.",
+    "es": "Murales, mercados y parte de la mejor comida callejera del mundo.",
+    "pt-BR": "Murais, mercados e algumas das melhores comidas de rua do mundo.",
+    "fr": "Fresques, marchés et l’une des meilleures cuisines de rue au monde.",
+    "de": "Wandbilder, Märkte und einige der besten Straßenküchen der Welt."
+   },
+   "alt_names": {
+    "en": [
+     "CDMX",
+     "Ciudad de Mexico"
+    ]
+   }
+  },
+  {
+   "path": "peru/cusco",
+   "kind": "city",
+   "country_code": "PE",
+   "continent": "south_america",
+   "time_zone": "America/Lima",
+   "centroid": {
+    "lat": -13.532,
+    "lng": -71.9675
+   },
+   "bbox": {
+    "south": -13.57,
+    "west": -72.02,
+    "north": -13.49,
+    "east": -71.89
+   },
+   "featured": false,
+   "names": {
+    "en": "Cusco",
+    "es": "Cusco",
+    "pt-BR": "Cusco",
+    "fr": "Cuzco",
+    "de": "Cusco"
+   },
+   "taglines": {
+    "en": "The old Inca capital, high in the Andes.",
+    "es": "La antigua capital inca, en lo alto de los Andes.",
+    "pt-BR": "A antiga capital inca, no alto dos Andes.",
+    "fr": "L’ancienne capitale inca, perchée dans les Andes.",
+    "de": "Die alte Inka-Hauptstadt hoch in den Anden."
+   },
+   "alt_names": {
+    "en": [
+     "Cuzco",
+     "Qosqo"
+    ]
+   }
+  },
+  {
+   "path": "morocco/marrakesh",
+   "kind": "city",
+   "country_code": "MA",
+   "continent": "africa",
+   "time_zone": "Africa/Casablanca",
+   "centroid": {
+    "lat": 31.6295,
+    "lng": -7.9811
+   },
+   "bbox": {
+    "south": 31.55,
+    "west": -8.1,
+    "north": 31.7,
+    "east": -7.92
+   },
+   "featured": false,
+   "names": {
+    "en": "Marrakesh",
+    "es": "Marrakech",
+    "pt-BR": "Marrakech",
+    "fr": "Marrakech",
+    "de": "Marrakesch"
+   },
+   "taglines": {
+    "en": "Souks, riads and the rhythm of Jemaa el-Fnaa.",
+    "es": "Zocos, riads y el ritmo de Yamaa el Fna.",
+    "pt-BR": "Souks, riads e o ritmo da Jemaa el-Fna.",
+    "fr": "Souks, riads et le rythme de Jemaa el-Fna.",
+    "de": "Souks, Riads und der Rhythmus des Djemaa el Fna."
+   },
+   "alt_names": {
+    "en": [
+     "Marrakech"
+    ]
+   }
+  },
+  {
+   "path": "south-africa/cape-town",
+   "kind": "city",
+   "country_code": "ZA",
+   "continent": "africa",
+   "time_zone": "Africa/Johannesburg",
+   "centroid": {
+    "lat": -33.9249,
+    "lng": 18.4241
+   },
+   "bbox": {
+    "south": -34.36,
+    "west": 18.3,
+    "north": -33.47,
+    "east": 18.99
+   },
+   "featured": true,
+   "names": {
+    "en": "Cape Town",
+    "es": "Ciudad del Cabo",
+    "pt-BR": "Cidade do Cabo",
+    "fr": "Le Cap",
+    "de": "Kapstadt"
+   },
+   "taglines": {
+    "en": "Table Mountain, two oceans and endless coastline.",
+    "es": "La Montaña de la Mesa, dos océanos y costa sin fin.",
+    "pt-BR": "Montanha da Mesa, dois oceanos e um litoral sem fim.",
+    "fr": "La montagne de la Table, deux océans et une côte infinie.",
+    "de": "Tafelberg, zwei Ozeane und endlose Küste."
+   },
+   "alt_names": {}
+  },
+  {
+   "path": "thailand/bangkok",
+   "kind": "city",
+   "country_code": "TH",
+   "continent": "asia",
+   "time_zone": "Asia/Bangkok",
+   "centroid": {
+    "lat": 13.7563,
+    "lng": 100.5018
+   },
+   "bbox": {
+    "south": 13.49,
+    "west": 100.33,
+    "north": 13.96,
+    "east": 100.94
+   },
+   "featured": false,
+   "names": {
+    "en": "Bangkok",
+    "es": "Bangkok",
+    "pt-BR": "Bangkok",
+    "fr": "Bangkok",
+    "de": "Bangkok"
+   },
+   "taglines": {
+    "en": "Golden temples and a city that never stops eating.",
+    "es": "Templos dorados y una ciudad que nunca deja de comer.",
+    "pt-BR": "Templos dourados e uma cidade que nunca para de comer.",
+    "fr": "Des temples dorés et une ville qui ne cesse jamais de manger.",
+    "de": "Goldene Tempel und eine Stadt, die nie aufhört zu essen."
+   },
+   "alt_names": {
+    "en": [
+     "Krung Thep"
+    ]
+   }
+  },
+  {
+   "path": "australia/sydney",
+   "kind": "city",
+   "country_code": "AU",
+   "continent": "oceania",
+   "time_zone": "Australia/Sydney",
+   "centroid": {
+    "lat": -33.8688,
+    "lng": 151.2093
+   },
+   "bbox": {
+    "south": -34.17,
+    "west": 150.52,
+    "north": -33.42,
+    "east": 151.34
+   },
+   "featured": false,
+   "names": {
+    "en": "Sydney",
+    "es": "Sídney",
+    "pt-BR": "Sydney",
+    "fr": "Sydney",
+    "de": "Sydney"
+   },
+   "taglines": {
+    "en": "Harbour views, coastal walks and surf beaches.",
+    "es": "Vistas a la bahía, paseos costeros y playas de surf.",
+    "pt-BR": "Vista para a baía, trilhas costeiras e praias de surfe.",
+    "fr": "Vue sur la baie, balades côtières et plages de surf.",
+    "de": "Hafenblicke, Küstenwanderungen und Surfstrände."
+   },
+   "alt_names": {}
+  },
+  {
+   "path": "united-states/new-york-city",
+   "kind": "city",
+   "country_code": "US",
+   "continent": "north_america",
+   "time_zone": "America/New_York",
+   "centroid": {
+    "lat": 40.7128,
+    "lng": -74.006
+   },
+   "bbox": {
+    "south": 40.48,
+    "west": -74.26,
+    "north": 40.92,
+    "east": -73.7
+   },
+   "featured": false,
+   "names": {
+    "en": "New York City",
+    "es": "Nueva York",
+    "pt-BR": "Nova York",
+    "fr": "New York",
+    "de": "New York City"
+   },
+   "taglines": {
+    "en": "Five boroughs, countless neighbourhoods, one skyline.",
+    "es": "Cinco distritos, incontables barrios y un solo horizonte.",
+    "pt-BR": "Cinco distritos, incontáveis bairros e um único horizonte.",
+    "fr": "Cinq arrondissements, d’innombrables quartiers, une seule skyline.",
+    "de": "Fünf Boroughs, unzählige Viertel, eine Skyline."
+   },
+   "alt_names": {
+    "en": [
+     "NYC",
+     "New York"
+    ]
+   }
+  },
+  {
+   "path": "iceland/reykjavik",
+   "kind": "city",
+   "country_code": "IS",
+   "continent": "europe",
+   "time_zone": "Atlantic/Reykjavik",
+   "centroid": {
+    "lat": 64.1466,
+    "lng": -21.9426
+   },
+   "bbox": {
+    "south": 64.07,
+    "west": -22.05,
+    "north": 64.18,
+    "east": -21.69
+   },
+   "featured": false,
+   "names": {
+    "en": "Reykjavík",
+    "es": "Reykjavík",
+    "pt-BR": "Reykjavík",
+    "fr": "Reykjavík",
+    "de": "Reykjavík"
+   },
+   "taglines": {
+    "en": "A colourful capital at the edge of the Arctic.",
+    "es": "Una capital colorida al borde del Ártico.",
+    "pt-BR": "Uma capital colorida à beira do Ártico.",
+    "fr": "Une capitale colorée aux portes de l’Arctique.",
+    "de": "Eine bunte Hauptstadt am Rand der Arktis."
+   },
+   "alt_names": {
+    "en": [
+     "Reykjavik"
+    ]
+   }
+  },
+  {
+   "path": "brazil/rio-de-janeiro/copacabana",
+   "kind": "neighborhood",
+   "country_code": "BR",
+   "continent": "south_america",
+   "time_zone": "America/Sao_Paulo",
+   "centroid": {
+    "lat": -22.9711,
+    "lng": -43.1822
+   },
+   "bbox": {
+    "south": -22.99,
+    "west": -43.197,
+    "north": -22.962,
+    "east": -43.169
+   },
+   "featured": false,
+   "names": {
+    "en": "Copacabana",
+    "es": "Copacabana",
+    "pt-BR": "Copacabana",
+    "fr": "Copacabana",
+    "de": "Copacabana"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
+   "path": "brazil/rio-de-janeiro/ipanema",
+   "kind": "neighborhood",
+   "country_code": "BR",
+   "continent": "south_america",
+   "time_zone": "America/Sao_Paulo",
+   "centroid": {
+    "lat": -22.9838,
+    "lng": -43.2096
+   },
+   "bbox": {
+    "south": -22.99,
+    "west": -43.215,
+    "north": -22.978,
+    "east": -43.197
+   },
+   "featured": false,
+   "names": {
+    "en": "Ipanema",
+    "es": "Ipanema",
+    "pt-BR": "Ipanema",
+    "fr": "Ipanema",
+    "de": "Ipanema"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
+   "path": "brazil/rio-de-janeiro/santa-teresa",
+   "kind": "neighborhood",
+   "country_code": "BR",
+   "continent": "south_america",
+   "time_zone": "America/Sao_Paulo",
+   "centroid": {
+    "lat": -22.9216,
+    "lng": -43.1886
+   },
+   "bbox": {
+    "south": -22.93,
+    "west": -43.2,
+    "north": -22.912,
+    "east": -43.178
+   },
+   "featured": false,
+   "names": {
+    "en": "Santa Teresa",
+    "es": "Santa Teresa",
+    "pt-BR": "Santa Teresa",
+    "fr": "Santa Teresa",
+    "de": "Santa Teresa"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
+   "path": "japan/tokyo/asakusa",
+   "kind": "neighborhood",
+   "country_code": "JP",
+   "continent": "asia",
+   "time_zone": "Asia/Tokyo",
+   "centroid": {
+    "lat": 35.7148,
+    "lng": 139.7967
+   },
+   "bbox": {
+    "south": 35.705,
+    "west": 139.785,
+    "north": 35.722,
+    "east": 139.805
+   },
+   "featured": false,
+   "names": {
+    "en": "Asakusa",
+    "es": "Asakusa",
+    "pt-BR": "Asakusa",
+    "fr": "Asakusa",
+    "de": "Asakusa"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
+   "path": "japan/tokyo/shibuya",
+   "kind": "neighborhood",
+   "country_code": "JP",
+   "continent": "asia",
+   "time_zone": "Asia/Tokyo",
+   "centroid": {
+    "lat": 35.6595,
+    "lng": 139.7005
+   },
+   "bbox": {
+    "south": 35.645,
+    "west": 139.685,
+    "north": 35.675,
+    "east": 139.715
+   },
+   "featured": false,
+   "names": {
+    "en": "Shibuya",
+    "es": "Shibuya",
+    "pt-BR": "Shibuya",
+    "fr": "Shibuya",
+    "de": "Shibuya"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
+   "path": "portugal/lisbon/alfama",
+   "kind": "neighborhood",
+   "country_code": "PT",
+   "continent": "europe",
+   "time_zone": "Europe/Lisbon",
+   "centroid": {
+    "lat": 38.7114,
+    "lng": -9.13
+   },
+   "bbox": {
+    "south": 38.708,
+    "west": -9.137,
+    "north": 38.716,
+    "east": -9.124
+   },
+   "featured": false,
+   "names": {
+    "en": "Alfama",
+    "es": "Alfama",
+    "pt-BR": "Alfama",
+    "fr": "Alfama",
+    "de": "Alfama"
+   },
+   "taglines": {},
+   "alt_names": {}
+  }
+ ]
+}

@@ -26,6 +26,8 @@ from app.core.security.access_tokens import (
 )
 from app.core.time import Clock, SystemClock
 from app.modules.client_config.api import router as client_config_router
+from app.modules.destinations.api import router as destinations_router
+from app.modules.destinations.service import DestinationService
 from app.modules.health.api import ReadinessCheck
 from app.modules.health.api import router as health_router
 from app.modules.identity.adapters.dev_idp import DevIdentityProvider
@@ -138,9 +140,13 @@ def create_app(
     app.state.database = database
     app.state.redis = redis
     app.state.feature_flags = FeatureFlags(settings.feature_flags)
-    app.state.cursor_codec = CursorCodec(
+    cursor_codec = CursorCodec(
         settings.cursor_signing_key.get_secret_value().encode("utf-8"),
         ttl_seconds=settings.cursor_ttl_seconds,
+    )
+    app.state.cursor_codec = cursor_codec
+    app.state.destination_service = DestinationService(
+        sessionmaker=database.sessionmaker, cursors=cursor_codec
     )
     app.state.readiness_checks = (
         dict(readiness_checks)
@@ -189,6 +195,7 @@ def create_app(
     app.include_router(client_config_router)
     app.include_router(auth_router)
     app.include_router(me_router)
+    app.include_router(destinations_router)
     app.include_router(internal_router)
     if dev_idp is not None:  # absent → 404 (contract: not available in this environment)
         app.include_router(dev_idp_router)

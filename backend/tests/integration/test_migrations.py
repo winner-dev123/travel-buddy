@@ -117,6 +117,11 @@ def test_required_extensions_and_indexes_exist(migrated: str) -> None:
         "ix_idempotency_keys__expires_at",
         "ix_audit_logs__resource",
         "ix_audit_logs__actor",
+        "uq_destinations__slug",
+        "uq_destinations__sibling_segment",
+        "ix_destinations__path",
+        "ix_destination_localizations__name_trgm",
+        "ix_destination_boundaries__boundary",
     } <= {row[0] for row in indexes}
 
 

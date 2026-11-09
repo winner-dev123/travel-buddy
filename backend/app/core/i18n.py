@@ -23,3 +23,29 @@ def negotiate_ui_locale(tag: str | None) -> str:
         if supported.lower().split("-", 1)[0] == language:
             return supported
     return DEFAULT_LOCALE
+
+
+def parse_accept_language(header: str | None, *, limit: int = 8) -> list[str]:
+    """Language tags from an ``Accept-Language`` header, best first (RFC 9110 q-values).
+
+    Malformed entries and ``*`` are skipped; at most ``limit`` tags are returned.
+    """
+    if not header:
+        return []
+    weighted: list[tuple[float, int, str]] = []
+    for index, part in enumerate(header.split(",")[:32]):
+        tag, _, params = part.strip().partition(";")
+        tag = tag.strip()
+        if not tag or tag == "*" or len(tag) > 35:
+            continue
+        quality = 1.0
+        params = params.strip()
+        if params.startswith("q="):
+            try:
+                quality = float(params[2:])
+            except ValueError:
+                continue
+        if quality <= 0:
+            continue
+        weighted.append((-quality, index, tag))
+    return [tag for _, _, tag in sorted(weighted)][:limit]

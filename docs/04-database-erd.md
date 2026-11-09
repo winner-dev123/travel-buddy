@@ -193,16 +193,19 @@ erDiagram
 | slug | text uq | `rio-de-janeiro-br` |
 | path_segment | text | URL segment, unique among siblings: `uq (parent_id, path_segment)` (NULL parent treated as root via `COALESCE`). Supports `GET /v1/destinations/lookup?path=brazil/rio-de-janeiro` and `DestinationSummary.path` |
 | default_name | text | English or ASCII fallback |
-| centroid | geography(Point) | GiST |
-| boundary | geography(MultiPolygon) NULL | GiST. Used for `ST_Covers` point resolution |
+| centroid_lat, centroid_lng | double precision | Public centroid (`GeoPoint`). Plain columns so the catalog, hierarchy and search work without PostGIS |
 | time_zone | text | IANA |
 | path | uuid[] | Ancestor IDs root→self (denormalized, for cheap ancestor/descendant queries). GIN |
 | depth | smallint | |
 | geonames_id, osm_relation_id, wikidata_id | NULL | Each `uq` when present |
-| popularity_score | real | Recomputed nightly from content volume |
+| popularity_score | real | Recomputed nightly from content volume (seeded with an editorial score until then) |
 | is_featured | bool | |
+| has_guides | bool | Maintained from guides events (Phase 4) |
 | status | text | `active`, `hidden` |
 | created_at, updated_at | | |
+
+### destination_boundaries (PostGIS)
+`destination_id PK FK CASCADE`, `boundary geography(MultiPolygon, 4326)` (GiST), `source` (license/provenance key, e.g. `approximate-bbox`, `osm:<relation>`), `updated_at`. Used only for `ST_Covers` point resolution (LOC-005), so databases without PostGIS still run everything else. Launch rows are approximate bounding boxes (docs/09 BL-1.05).
 
 ### destination_localizations
 `destination_id FK CASCADE`, `locale`, `name`, `alt_names text[]`, `tagline text NULL` (≤ 140, editorial one-liner for directory cards), PK `(destination_id, locale)`. Trigram GIN on `unaccent(lower(name))` for search.

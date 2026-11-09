@@ -59,6 +59,7 @@ class ErrorCode(StrEnum):
     INVITATION_INVALID = "invitation_invalid"
     CHALLENGE_NOT_ACTIVE = "challenge_not_active"
     ATTEMPTS_EXHAUSTED = "attempts_exhausted"
+    LOCATION_UNRESOLVABLE = "location_unresolvable"
     UPSTREAM_UNAVAILABLE = "upstream_unavailable"
     SERVICE_UNAVAILABLE = "service_unavailable"
     INTERNAL_ERROR = "internal_error"
@@ -69,6 +70,7 @@ _DEFAULT_STATUS: Mapping[ErrorCode, HTTPStatus] = {
     ErrorCode.INVALID_CURSOR: HTTPStatus.BAD_REQUEST,
     ErrorCode.UNAUTHENTICATED: HTTPStatus.UNAUTHORIZED,
     ErrorCode.MFA_REQUIRED: HTTPStatus.FORBIDDEN,
+    ErrorCode.LOCATION_UNRESOLVABLE: HTTPStatus.UNPROCESSABLE_ENTITY,
     ErrorCode.REAUTHENTICATION_REQUIRED: HTTPStatus.UNAUTHORIZED,
     ErrorCode.JUSTIFICATION_REQUIRED: HTTPStatus.BAD_REQUEST,
     ErrorCode.TOKEN_EXPIRED: HTTPStatus.UNAUTHORIZED,

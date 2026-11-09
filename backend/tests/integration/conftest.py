@@ -18,7 +18,8 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
-from sqlalchemy import text
+from geoalchemy2 import Geography
+from sqlalchemy import Table, text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.core.db import SECURE_PUBLIC_SCHEMA_SQL
@@ -57,6 +58,17 @@ def _alembic_upgrade(url: str) -> None:
     command.upgrade(config, "head")
 
 
+_F_UNACCENT_SQL = """
+CREATE OR REPLACE FUNCTION public.f_unaccent(text) RETURNS text
+LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT
+AS $body$ SELECT public.unaccent('public.unaccent'::regdictionary, $1) $body$
+"""
+
+
+def _needs_postgis(table: Table) -> bool:
+    return any(isinstance(column.type, Geography) for column in table.columns)
+
+
 def _create_all(url: str) -> None:
     async def create() -> None:
         engine = create_async_engine(url)
@@ -64,10 +76,14 @@ def _create_all(url: str) -> None:
             async with engine.begin() as conn:
                 for extension in ("citext", "pg_trgm", "unaccent"):
                     await conn.execute(text(f"CREATE EXTENSION IF NOT EXISTS {extension}"))
+                # Same IMMUTABLE wrapper the baseline migration creates (destination search).
+                await conn.execute(text(_F_UNACCENT_SQL))
                 # Rebuild so the schema always matches the current models (create_all never
                 # alters existing tables). Only ever runs against a local test database.
-                await conn.run_sync(Base.metadata.drop_all)
-                await conn.run_sync(Base.metadata.create_all)
+                # PostGIS-only tables are skipped: this path runs only without PostGIS.
+                tables = [t for t in Base.metadata.sorted_tables if not _needs_postgis(t)]
+                await conn.run_sync(lambda sync: Base.metadata.drop_all(sync, tables=tables))
+                await conn.run_sync(lambda sync: Base.metadata.create_all(sync, tables=tables))
                 # Same hardening the migration environment applies after every run.
                 await conn.execute(text(SECURE_PUBLIC_SCHEMA_SQL))
         finally:
