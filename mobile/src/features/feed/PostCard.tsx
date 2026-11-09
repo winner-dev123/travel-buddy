@@ -58,12 +58,14 @@ function MediaPreview({ media }: { media: MediaRef }) {
 export interface PostCardProps {
   post: Post;
   onOpen?: (post: Post) => void;
+  /** Tapping the author opens their profile (signed in only). */
+  onOpenAuthor?: (userId: string) => void;
   /** Guests can read but not react. */
   interactive?: boolean;
 }
 
 /** One story in a feed (SCR-021 card). */
-export function PostCard({ post, onOpen, interactive = true }: PostCardProps) {
+export function PostCard({ post, onOpen, onOpenAuthor, interactive = true }: PostCardProps) {
   const { t } = useTranslation();
   const theme = useAppTheme();
   const [liked, setLiked] = useState(Boolean(post.viewer?.reaction));
@@ -98,7 +100,16 @@ export function PostCard({ post, onOpen, interactive = true }: PostCardProps) {
       ]}
       testID={`post-card-${post.id}`}
     >
-      <View style={styles.header}>
+      <Pressable
+        style={styles.header}
+        onPress={onOpenAuthor ? () => onOpenAuthor(post.author.id) : undefined}
+        disabled={!onOpenAuthor}
+        accessibilityRole={onOpenAuthor ? 'link' : undefined}
+        accessibilityLabel={
+          onOpenAuthor ? t('post.authorA11y', { name: post.author.display_name }) : undefined
+        }
+        testID={`post-author-${post.id}`}
+      >
         <Avatar user={post.author} />
         <View style={styles.headerText}>
           <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>
@@ -110,7 +121,7 @@ export function PostCard({ post, onOpen, interactive = true }: PostCardProps) {
               .join(' · ')}
           </Text>
         </View>
-      </View>
+      </Pressable>
       {post.body ? (
         <Text style={[theme.typography.body, { color: theme.colors.textPrimary }]}>
           {post.body}

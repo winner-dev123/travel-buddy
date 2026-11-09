@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -18,6 +18,7 @@ import { getApiClient } from '@/api';
 import { useSessionStore } from '@/auth/sessionStore';
 import { FeatureGate } from '@/components/FeatureGate';
 import { Button, Notice } from '@/components/Form';
+import { accountKeys, unreadCount } from '@/features/account/api';
 import { feedKeys, fetchFeed, fetchPublicPosts } from '@/features/feed/api';
 import { PostCard } from '@/features/feed/PostCard';
 import type { FeedPage, Post } from '@/features/feed/types';
@@ -63,15 +64,49 @@ function HomeFeed() {
   const context = pages[0]?.context;
 
   const open = (post: Post) => router.push({ pathname: '/post/[id]', params: { id: post.id } });
+  const openAuthor = (userId: string) =>
+    router.push({ pathname: '/user/[id]', params: { id: userId } });
+  const unread = useQuery({
+    queryKey: accountKeys.unread,
+    queryFn: () => unreadCount(getApiClient()),
+    enabled: signedIn,
+  });
 
   const header = (
     <View style={{ gap: theme.spacing[3], paddingBottom: theme.spacing[3] }}>
-      <Text
-        accessibilityRole="header"
-        style={[theme.typography.title1, { color: theme.colors.textPrimary }]}
-      >
-        {t('feed.title')}
-      </Text>
+      <View style={styles.titleRow}>
+        <Text
+          style={[theme.typography.title1, styles.flex, { color: theme.colors.textPrimary }]}
+          accessibilityRole="header"
+        >
+          {t('feed.title')}
+        </Text>
+        {signedIn ? (
+          <Pressable
+            onPress={() => router.push('/notifications')}
+            accessibilityRole="button"
+            accessibilityLabel={
+              unread.data
+                ? t('notifications.unreadA11y', { count: unread.data })
+                : t('notifications.title')
+            }
+            hitSlop={8}
+            testID="feed-notifications"
+          >
+            <Ionicons name="notifications-outline" size={26} color={theme.colors.textPrimary} />
+            {unread.data ? (
+              <View style={[styles.badge, { backgroundColor: theme.colors.danger }]}>
+                <Text
+                  style={[theme.typography.caption, { color: theme.colors.onDanger }]}
+                  testID="feed-unread"
+                >
+                  {unread.data > 99 ? '99+' : unread.data}
+                </Text>
+              </View>
+            ) : null}
+          </Pressable>
+        ) : null}
+      </View>
       {signedIn ? (
         <View style={styles.chips} accessibilityRole="tablist">
           {TABS.map((value) => {
@@ -136,7 +171,14 @@ function HomeFeed() {
       <FlatList
         data={posts}
         keyExtractor={(post) => post.id}
-        renderItem={({ item }) => <PostCard post={item} onOpen={open} interactive={signedIn} />}
+        renderItem={({ item }) => (
+          <PostCard
+            post={item}
+            onOpen={open}
+            onOpenAuthor={signedIn ? openAuthor : undefined}
+            interactive={signedIn}
+          />
+        )}
         ItemSeparatorComponent={() => <View style={{ height: theme.spacing[3] }} />}
         ListHeaderComponent={header}
         contentContainerStyle={{ padding: theme.spacing[4], paddingBottom: theme.spacing[16] }}
@@ -190,6 +232,17 @@ function HomeFeed() {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   chips: { flexDirection: 'row', gap: 8 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  flex: { flex: 1 },
+  badge: {
+    position: 'absolute',
+    top: -6,
+    right: -8,
+    borderRadius: 999,
+    minWidth: 18,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+  },
   chip: {
     borderWidth: 1,
     borderRadius: 999,

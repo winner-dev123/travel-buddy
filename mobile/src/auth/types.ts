@@ -9,6 +9,21 @@ export interface SessionTokens {
   session_id: string;
 }
 
+export type RestrictionKind =
+  | 'posting_limited'
+  | 'commenting_limited'
+  | 'messaging_limited'
+  | 'connection_requests_limited'
+  | 'discovery_disabled'
+  | 'media_upload_limited';
+
+export interface AccountRestriction {
+  kind: RestrictionKind;
+  reason_code: string;
+  until: string | null;
+  appealable: boolean;
+}
+
 export interface Me {
   account: {
     id: string;
@@ -16,6 +31,8 @@ export interface Me {
     email_verified: boolean;
     status: 'active' | 'pending_deletion';
     primary_locale: string;
+    deletion_scheduled_for?: string | null;
+    restrictions?: AccountRestriction[];
   };
   profile: {
     id: string;
@@ -23,6 +40,7 @@ export interface Me {
     display_name: string;
     bio: string | null;
     account_visibility: 'public' | 'private';
+    avatar?: { id: string; status: string; url: string | null } | null;
   };
   preferences: { ui_locale: string; time_zone: string };
   privacy: { discovery_enabled: boolean; search_engine_indexing: boolean };

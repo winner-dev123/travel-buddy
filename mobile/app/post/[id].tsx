@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -28,6 +28,7 @@ export default function PostDetailScreen() {
   const theme = useAppTheme();
   const signedIn = useSessionStore((state) => state.status === 'signed_in');
   const queryClient = useQueryClient();
+  const router = useRouter();
   const [draft, setDraft] = useState('');
   // One idempotency key per comment the user writes; retries of the same comment reuse it.
   const commentKey = useRef<string>(getApiClient().newIdempotencyKey());
@@ -74,7 +75,32 @@ export default function PostDetailScreen() {
               </Notice>
             ) : (
               <View style={{ gap: theme.spacing[4] }}>
-                <PostCard post={post.data} interactive={signedIn} />
+                <PostCard
+                  post={post.data}
+                  interactive={signedIn}
+                  onOpenAuthor={
+                    signedIn
+                      ? (userId) => router.push({ pathname: '/user/[id]', params: { id: userId } })
+                      : undefined
+                  }
+                />
+                {signedIn && !post.data.viewer?.is_author ? (
+                  <Button
+                    label={t('post.report')}
+                    variant="secondary"
+                    onPress={() =>
+                      router.push({
+                        pathname: '/report',
+                        params: {
+                          type: 'post',
+                          target: post.data.id,
+                          name: post.data.author.display_name,
+                        },
+                      })
+                    }
+                    testID="post-report"
+                  />
+                ) : null}
                 <Text
                   accessibilityRole="header"
                   style={[theme.typography.title3, { color: theme.colors.textPrimary }]}

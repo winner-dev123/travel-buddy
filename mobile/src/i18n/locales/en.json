@@ -186,7 +186,41 @@
     "discoveryOff": "Traveler discovery is off",
     "discoveryOn": "Traveler discovery is on",
     "indexingOff": "Search engines cannot index your profile",
-    "indexingOn": "Search engines may index your public profile"
+    "indexingOn": "Search engines may index your public profile",
+    "private": "Private account",
+    "deletionPending": "Your account is scheduled for deletion on {{date}}. Signing in or cancelling now keeps it.",
+    "cancelDeletion": "Keep my account",
+    "restriction": "{{what}} is limited on your account.",
+    "restrictionUntil": "{{what}} is limited on your account until {{date}}.",
+    "editProfile": "Edit profile",
+    "blocked": "Blocked accounts",
+    "deleteAccount": "Delete account",
+    "bio": "Bio",
+    "privateAccount": "Private account",
+    "privateAccountHint": "Only approved followers see your stories. New followers need your approval.",
+    "searchIndexing": "Let search engines show my public profile",
+    "searchIndexingHint": "Off by default. When on, your public profile and public stories can appear in Google and other search engines.",
+    "searchIndexingPrivate": "Private accounts are never shown in search engines, whatever this setting says.",
+    "saving": "Saving…",
+    "blockedHint": "Blocked people can't see your profile or stories, and you won't see theirs. They aren't told.",
+    "unblock": "Unblock",
+    "unblockFailed": "Couldn't unblock. Try again.",
+    "noBlocked": "You haven't blocked anyone.",
+    "deleteExplain": "Deleting your account removes your profile, stories, comments, photos and messages.",
+    "deleteGrace": "You have 30 days to change your mind: signing in again during that time cancels the deletion. After that it can't be undone.",
+    "deleteReason": "Why are you leaving? (optional)",
+    "deleteConfirm": "I understand my account will be deleted after 30 days",
+    "deleteSubmit": "Delete my account",
+    "restrictions": {
+      "posting_limited": "Posting",
+      "commenting_limited": "Commenting",
+      "messaging_limited": "Messaging",
+      "connection_requests_limited": "Connection requests",
+      "discovery_disabled": "Traveler discovery",
+      "media_upload_limited": "Photo uploads"
+    },
+    "bioHint_one": "{{count}} character left",
+    "bioHint_other": "{{count}} characters left"
   },
   "feed": {
     "title": "Travel stories",
@@ -237,7 +271,9 @@
       "experience": "Experience"
     },
     "commentsCount_one": "{{count}} comment",
-    "commentsCount_other": "{{count}} comments"
+    "commentsCount_other": "{{count}} comments",
+    "report": "Report this story",
+    "authorA11y": "Open {{name}}'s profile"
   },
   "compose": {
     "open": "Share a story",
@@ -261,5 +297,54 @@
     "restricted": "Posting is limited on your account right now.",
     "bodyHint_one": "{{count}} character left",
     "bodyHint_other": "{{count}} characters left"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "Nothing new yet.",
+    "error": "We couldn't load notifications.",
+    "unreadA11y_one": "{{count}} unread notification",
+    "unreadA11y_other": "{{count}} unread notifications"
+  },
+  "user": {
+    "notFound": "This profile isn't available.",
+    "counts": "{{posts}} stories · {{followers}} followers · {{following}} following",
+    "private": "This account is private. Follow to see their stories.",
+    "follow": "Follow",
+    "unfollow": "Unfollow",
+    "requested": "Requested",
+    "report": "Report",
+    "block": "Block",
+    "actionFailed": "That didn't work. Try again."
+  },
+  "report": {
+    "title": "Report",
+    "thanks": "Thanks for telling us.",
+    "next": "Our team reviews reports and acts on anything that breaks the community guidelines. We won't tell them who reported.",
+    "close": "Done",
+    "question": {
+      "post": "What's wrong with this story?",
+      "comment": "What's wrong with this comment?",
+      "user": "What's wrong with this account?"
+    },
+    "urgent": "If someone is in immediate danger, contact local emergency services first.",
+    "details": "Anything else we should know? (optional)",
+    "alsoBlock": "Also block this person",
+    "alsoBlockName": "Also block {{name}}",
+    "failed": "Your report wasn't sent. Try again.",
+    "submit": "Send report",
+    "reasons": {
+      "spam": "Spam",
+      "harassment": "Harassment or bullying",
+      "hate": "Hate speech",
+      "scam": "Scam or fraud",
+      "impersonation": "Impersonation",
+      "sexual_content": "Sexual content",
+      "violence": "Violence or threats",
+      "self_harm": "Self-harm",
+      "minor_safety": "A child's safety",
+      "privacy_violation": "Shares private information",
+      "illegal": "Illegal activity",
+      "other": "Something else"
+    }
   }
 }

@@ -187,7 +187,42 @@
     "discoveryOff": "El descubrimiento de viajeros está desactivado",
     "discoveryOn": "El descubrimiento de viajeros está activado",
     "indexingOff": "Los buscadores no pueden indexar tu perfil",
-    "indexingOn": "Los buscadores pueden indexar tu perfil público"
+    "indexingOn": "Los buscadores pueden indexar tu perfil público",
+    "private": "Cuenta privada",
+    "deletionPending": "Tu cuenta se eliminará el {{date}}. Si inicias sesión o cancelas ahora, se conservará.",
+    "cancelDeletion": "Conservar mi cuenta",
+    "restriction": "{{what}} está limitado en tu cuenta.",
+    "restrictionUntil": "{{what}} está limitado en tu cuenta hasta el {{date}}.",
+    "editProfile": "Editar perfil",
+    "blocked": "Cuentas bloqueadas",
+    "deleteAccount": "Eliminar cuenta",
+    "bio": "Biografía",
+    "privateAccount": "Cuenta privada",
+    "privateAccountHint": "Solo tus seguidores aprobados ven tus historias. Los nuevos seguidores necesitan tu aprobación.",
+    "searchIndexing": "Permitir que los buscadores muestren mi perfil público",
+    "searchIndexingHint": "Desactivado por defecto. Si lo activas, tu perfil e historias públicas pueden aparecer en Google y otros buscadores.",
+    "searchIndexingPrivate": "Las cuentas privadas nunca aparecen en los buscadores, sea cual sea este ajuste.",
+    "saving": "Guardando…",
+    "blockedHint": "Las personas bloqueadas no ven tu perfil ni tus historias, y tú no ves las suyas. No se les avisa.",
+    "unblock": "Desbloquear",
+    "unblockFailed": "No se pudo desbloquear. Inténtalo de nuevo.",
+    "noBlocked": "No has bloqueado a nadie.",
+    "deleteExplain": "Eliminar tu cuenta borra tu perfil, historias, comentarios, fotos y mensajes.",
+    "deleteGrace": "Tienes 30 días para cambiar de opinión: si vuelves a iniciar sesión en ese plazo, se cancela la eliminación. Después no se puede deshacer.",
+    "deleteReason": "¿Por qué te vas? (opcional)",
+    "deleteConfirm": "Entiendo que mi cuenta se eliminará en 30 días",
+    "deleteSubmit": "Eliminar mi cuenta",
+    "restrictions": {
+      "posting_limited": "Publicar",
+      "commenting_limited": "Comentar",
+      "messaging_limited": "Enviar mensajes",
+      "connection_requests_limited": "Solicitudes de conexión",
+      "discovery_disabled": "Descubrir viajeros",
+      "media_upload_limited": "Subir fotos"
+    },
+    "bioHint_one": "Queda {{count}} carácter",
+    "bioHint_many": "Quedan {{count}} de caracteres",
+    "bioHint_other": "Quedan {{count}} caracteres"
   },
   "feed": {
     "title": "Historias de viaje",
@@ -239,7 +274,9 @@
     },
     "commentsCount_one": "{{count}} comentario",
     "commentsCount_many": "{{count}} de comentarios",
-    "commentsCount_other": "{{count}} comentarios"
+    "commentsCount_other": "{{count}} comentarios",
+    "report": "Denunciar esta historia",
+    "authorA11y": "Abrir el perfil de {{name}}"
   },
   "compose": {
     "open": "Compartir una historia",
@@ -264,5 +301,55 @@
     "bodyHint_one": "Queda {{count}} carácter",
     "bodyHint_many": "Quedan {{count}} de caracteres",
     "bodyHint_other": "Quedan {{count}} caracteres"
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "empty": "Aún no hay novedades.",
+    "error": "No pudimos cargar las notificaciones.",
+    "unreadA11y_one": "{{count}} notificación sin leer",
+    "unreadA11y_many": "{{count}} de notificaciones sin leer",
+    "unreadA11y_other": "{{count}} notificaciones sin leer"
+  },
+  "user": {
+    "notFound": "Este perfil no está disponible.",
+    "counts": "{{posts}} historias · {{followers}} seguidores · {{following}} siguiendo",
+    "private": "Esta cuenta es privada. Síguela para ver sus historias.",
+    "follow": "Seguir",
+    "unfollow": "Dejar de seguir",
+    "requested": "Solicitado",
+    "report": "Denunciar",
+    "block": "Bloquear",
+    "actionFailed": "No funcionó. Inténtalo de nuevo."
+  },
+  "report": {
+    "title": "Denunciar",
+    "thanks": "Gracias por avisarnos.",
+    "next": "Nuestro equipo revisa las denuncias y actúa ante lo que incumpla las normas de la comunidad. No diremos quién denunció.",
+    "close": "Listo",
+    "question": {
+      "post": "¿Qué problema tiene esta historia?",
+      "comment": "¿Qué problema tiene este comentario?",
+      "user": "¿Qué problema tiene esta cuenta?"
+    },
+    "urgent": "Si alguien está en peligro inmediato, contacta primero con los servicios de emergencia locales.",
+    "details": "¿Algo más que debamos saber? (opcional)",
+    "alsoBlock": "Bloquear también a esta persona",
+    "alsoBlockName": "Bloquear también a {{name}}",
+    "failed": "Tu denuncia no se envió. Inténtalo de nuevo.",
+    "submit": "Enviar denuncia",
+    "reasons": {
+      "spam": "Spam",
+      "harassment": "Acoso o intimidación",
+      "hate": "Discurso de odio",
+      "scam": "Estafa o fraude",
+      "impersonation": "Suplantación de identidad",
+      "sexual_content": "Contenido sexual",
+      "violence": "Violencia o amenazas",
+      "self_harm": "Autolesiones",
+      "minor_safety": "La seguridad de un menor",
+      "privacy_violation": "Comparte información privada",
+      "illegal": "Actividad ilegal",
+      "other": "Otra cosa"
+    }
   }
 }

@@ -186,7 +186,41 @@
     "discoveryOff": "Reisenden-Entdeckung ist aus",
     "discoveryOn": "Reisenden-Entdeckung ist an",
     "indexingOff": "Suchmaschinen dürfen dein Profil nicht indexieren",
-    "indexingOn": "Suchmaschinen dürfen dein öffentliches Profil indexieren"
+    "indexingOn": "Suchmaschinen dürfen dein öffentliches Profil indexieren",
+    "private": "Privates Konto",
+    "deletionPending": "Dein Konto wird am {{date}} gelöscht. Wenn du dich anmeldest oder jetzt abbrichst, bleibt es erhalten.",
+    "cancelDeletion": "Konto behalten",
+    "restriction": "{{what}} ist für dein Konto eingeschränkt.",
+    "restrictionUntil": "{{what}} ist für dein Konto bis {{date}} eingeschränkt.",
+    "editProfile": "Profil bearbeiten",
+    "blocked": "Blockierte Konten",
+    "deleteAccount": "Konto löschen",
+    "bio": "Bio",
+    "privateAccount": "Privates Konto",
+    "privateAccountHint": "Nur bestätigte Follower sehen deine Geschichten. Neue Follower brauchen deine Zustimmung.",
+    "searchIndexing": "Suchmaschinen dürfen mein öffentliches Profil zeigen",
+    "searchIndexingHint": "Standardmäßig aus. Wenn aktiviert, können dein öffentliches Profil und deine öffentlichen Geschichten bei Google und anderen Suchmaschinen erscheinen.",
+    "searchIndexingPrivate": "Private Konten erscheinen nie in Suchmaschinen, unabhängig von dieser Einstellung.",
+    "saving": "Wird gespeichert …",
+    "blockedHint": "Blockierte Personen sehen dein Profil und deine Geschichten nicht, und du siehst ihre nicht. Sie werden nicht benachrichtigt.",
+    "unblock": "Entsperren",
+    "unblockFailed": "Entsperren fehlgeschlagen. Versuche es erneut.",
+    "noBlocked": "Du hast niemanden blockiert.",
+    "deleteExplain": "Wenn du dein Konto löschst, werden dein Profil, deine Geschichten, Kommentare, Fotos und Nachrichten entfernt.",
+    "deleteGrace": "Du hast 30 Tage Bedenkzeit: Meldest du dich in dieser Zeit wieder an, wird die Löschung abgebrochen. Danach ist sie endgültig.",
+    "deleteReason": "Warum gehst du? (optional)",
+    "deleteConfirm": "Ich verstehe, dass mein Konto nach 30 Tagen gelöscht wird",
+    "deleteSubmit": "Mein Konto löschen",
+    "restrictions": {
+      "posting_limited": "Beiträge",
+      "commenting_limited": "Kommentare",
+      "messaging_limited": "Nachrichten",
+      "connection_requests_limited": "Kontaktanfragen",
+      "discovery_disabled": "Reisende entdecken",
+      "media_upload_limited": "Foto-Uploads"
+    },
+    "bioHint_one": "Noch {{count}} Zeichen",
+    "bioHint_other": "Noch {{count}} Zeichen"
   },
   "feed": {
     "title": "Reisegeschichten",
@@ -237,7 +271,9 @@
       "experience": "Erlebnis"
     },
     "commentsCount_one": "{{count}} Kommentar",
-    "commentsCount_other": "{{count}} Kommentare"
+    "commentsCount_other": "{{count}} Kommentare",
+    "report": "Diese Geschichte melden",
+    "authorA11y": "Profil von {{name}} öffnen"
   },
   "compose": {
     "open": "Geschichte teilen",
@@ -261,5 +297,54 @@
     "restricted": "Veröffentlichen ist für dein Konto derzeit eingeschränkt.",
     "bodyHint_one": "Noch {{count}} Zeichen",
     "bodyHint_other": "Noch {{count}} Zeichen"
+  },
+  "notifications": {
+    "title": "Benachrichtigungen",
+    "empty": "Noch nichts Neues.",
+    "error": "Benachrichtigungen konnten nicht geladen werden.",
+    "unreadA11y_one": "{{count}} ungelesene Benachrichtigung",
+    "unreadA11y_other": "{{count}} ungelesene Benachrichtigungen"
+  },
+  "user": {
+    "notFound": "Dieses Profil ist nicht verfügbar.",
+    "counts": "{{posts}} Geschichten · {{followers}} Follower · {{following}} folgt",
+    "private": "Dieses Konto ist privat. Folge ihm, um die Geschichten zu sehen.",
+    "follow": "Folgen",
+    "unfollow": "Nicht mehr folgen",
+    "requested": "Angefragt",
+    "report": "Melden",
+    "block": "Blockieren",
+    "actionFailed": "Das hat nicht geklappt. Versuche es erneut."
+  },
+  "report": {
+    "title": "Melden",
+    "thanks": "Danke für deinen Hinweis.",
+    "next": "Unser Team prüft Meldungen und handelt bei Verstößen gegen die Community-Richtlinien. Wir sagen nicht, wer gemeldet hat.",
+    "close": "Fertig",
+    "question": {
+      "post": "Was stimmt mit dieser Geschichte nicht?",
+      "comment": "Was stimmt mit diesem Kommentar nicht?",
+      "user": "Was stimmt mit diesem Konto nicht?"
+    },
+    "urgent": "Wenn jemand in akuter Gefahr ist, wende dich zuerst an den örtlichen Notruf.",
+    "details": "Sollten wir noch etwas wissen? (optional)",
+    "alsoBlock": "Diese Person auch blockieren",
+    "alsoBlockName": "{{name}} auch blockieren",
+    "failed": "Deine Meldung wurde nicht gesendet. Versuche es erneut.",
+    "submit": "Meldung senden",
+    "reasons": {
+      "spam": "Spam",
+      "harassment": "Belästigung oder Mobbing",
+      "hate": "Hassrede",
+      "scam": "Betrug",
+      "impersonation": "Identitätsdiebstahl",
+      "sexual_content": "Sexuelle Inhalte",
+      "violence": "Gewalt oder Drohungen",
+      "self_harm": "Selbstverletzung",
+      "minor_safety": "Die Sicherheit eines Kindes",
+      "privacy_violation": "Teilt private Informationen",
+      "illegal": "Illegale Aktivität",
+      "other": "Etwas anderes"
+    }
   }
 }

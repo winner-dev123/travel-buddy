@@ -187,7 +187,42 @@
     "discoveryOff": "La découverte de voyageurs est désactivée",
     "discoveryOn": "La découverte de voyageurs est activée",
     "indexingOff": "Les moteurs de recherche ne peuvent pas indexer votre profil",
-    "indexingOn": "Les moteurs de recherche peuvent indexer votre profil public"
+    "indexingOn": "Les moteurs de recherche peuvent indexer votre profil public",
+    "private": "Compte privé",
+    "deletionPending": "Votre compte sera supprimé le {{date}}. Vous connecter ou annuler maintenant le conserve.",
+    "cancelDeletion": "Garder mon compte",
+    "restriction": "{{what}} est limité(e) sur votre compte.",
+    "restrictionUntil": "{{what}} est limité(e) sur votre compte jusqu'au {{date}}.",
+    "editProfile": "Modifier le profil",
+    "blocked": "Comptes bloqués",
+    "deleteAccount": "Supprimer le compte",
+    "bio": "Bio",
+    "privateAccount": "Compte privé",
+    "privateAccountHint": "Seuls vos abonnés approuvés voient vos récits. Les nouveaux abonnés ont besoin de votre accord.",
+    "searchIndexing": "Autoriser les moteurs de recherche à afficher mon profil public",
+    "searchIndexingHint": "Désactivé par défaut. Une fois activé, votre profil et vos récits publics peuvent apparaître dans Google et d'autres moteurs de recherche.",
+    "searchIndexingPrivate": "Les comptes privés n'apparaissent jamais dans les moteurs de recherche, quel que soit ce réglage.",
+    "saving": "Enregistrement…",
+    "blockedHint": "Les personnes bloquées ne voient ni votre profil ni vos récits, et vous ne voyez pas les leurs. Elles ne sont pas prévenues.",
+    "unblock": "Débloquer",
+    "unblockFailed": "Impossible de débloquer. Réessayez.",
+    "noBlocked": "Vous n'avez bloqué personne.",
+    "deleteExplain": "Supprimer votre compte efface votre profil, vos récits, commentaires, photos et messages.",
+    "deleteGrace": "Vous avez 30 jours pour changer d'avis : vous reconnecter pendant cette période annule la suppression. Ensuite, c'est définitif.",
+    "deleteReason": "Pourquoi partez-vous ? (facultatif)",
+    "deleteConfirm": "Je comprends que mon compte sera supprimé dans 30 jours",
+    "deleteSubmit": "Supprimer mon compte",
+    "restrictions": {
+      "posting_limited": "La publication",
+      "commenting_limited": "Les commentaires",
+      "messaging_limited": "La messagerie",
+      "connection_requests_limited": "Les demandes de connexion",
+      "discovery_disabled": "La découverte de voyageurs",
+      "media_upload_limited": "L'envoi de photos"
+    },
+    "bioHint_one": "{{count}} caractère restant",
+    "bioHint_many": "{{count}} de caractères restants",
+    "bioHint_other": "{{count}} caractères restants"
   },
   "feed": {
     "title": "Récits de voyage",
@@ -239,7 +274,9 @@
     },
     "commentsCount_one": "{{count}} commentaire",
     "commentsCount_many": "{{count}} de commentaires",
-    "commentsCount_other": "{{count}} commentaires"
+    "commentsCount_other": "{{count}} commentaires",
+    "report": "Signaler ce récit",
+    "authorA11y": "Ouvrir le profil de {{name}}"
   },
   "compose": {
     "open": "Partager un récit",
@@ -264,5 +301,55 @@
     "bodyHint_one": "{{count}} caractère restant",
     "bodyHint_many": "{{count}} de caractères restants",
     "bodyHint_other": "{{count}} caractères restants"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "Rien de nouveau pour l'instant.",
+    "error": "Impossible de charger les notifications.",
+    "unreadA11y_one": "{{count}} notification non lue",
+    "unreadA11y_many": "{{count}} de notifications non lues",
+    "unreadA11y_other": "{{count}} notifications non lues"
+  },
+  "user": {
+    "notFound": "Ce profil n'est pas disponible.",
+    "counts": "{{posts}} récits · {{followers}} abonnés · {{following}} abonnements",
+    "private": "Ce compte est privé. Abonnez-vous pour voir ses récits.",
+    "follow": "Suivre",
+    "unfollow": "Ne plus suivre",
+    "requested": "Demandé",
+    "report": "Signaler",
+    "block": "Bloquer",
+    "actionFailed": "Cela n'a pas fonctionné. Réessayez."
+  },
+  "report": {
+    "title": "Signaler",
+    "thanks": "Merci de nous avoir prévenus.",
+    "next": "Notre équipe examine les signalements et agit contre tout ce qui enfreint les règles de la communauté. Nous ne dirons pas qui a signalé.",
+    "close": "Terminé",
+    "question": {
+      "post": "Quel est le problème avec ce récit ?",
+      "comment": "Quel est le problème avec ce commentaire ?",
+      "user": "Quel est le problème avec ce compte ?"
+    },
+    "urgent": "Si quelqu'un est en danger immédiat, contactez d'abord les services d'urgence locaux.",
+    "details": "Autre chose à nous dire ? (facultatif)",
+    "alsoBlock": "Bloquer aussi cette personne",
+    "alsoBlockName": "Bloquer aussi {{name}}",
+    "failed": "Votre signalement n'a pas été envoyé. Réessayez.",
+    "submit": "Envoyer le signalement",
+    "reasons": {
+      "spam": "Spam",
+      "harassment": "Harcèlement ou intimidation",
+      "hate": "Discours haineux",
+      "scam": "Arnaque ou fraude",
+      "impersonation": "Usurpation d'identité",
+      "sexual_content": "Contenu sexuel",
+      "violence": "Violence ou menaces",
+      "self_harm": "Automutilation",
+      "minor_safety": "La sécurité d'un enfant",
+      "privacy_violation": "Divulgue des informations privées",
+      "illegal": "Activité illégale",
+      "other": "Autre chose"
+    }
   }
 }

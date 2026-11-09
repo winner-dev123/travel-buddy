@@ -56,6 +56,13 @@ export default function RootLayout() {
           <Stack.Screen name="(onboarding)" />
           <Stack.Screen name="post/[id]" />
           <Stack.Screen name="compose" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="report" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="notifications" />
+          <Stack.Screen name="user/[id]" />
+          <Stack.Screen name="settings/profile" />
+          <Stack.Screen name="settings/privacy" />
+          <Stack.Screen name="settings/blocked" />
+          <Stack.Screen name="settings/delete-account" />
           <Stack.Screen name="+not-found" />
         </Stack>
         <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />

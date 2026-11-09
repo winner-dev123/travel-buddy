@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -9,7 +10,11 @@ import { describeAuthError } from '@/auth/errors';
 import { signOut } from '@/auth/session';
 import { useSessionStore } from '@/auth/sessionStore';
 import type { Me } from '@/auth/types';
-import { Button, Notice, TextField } from '@/components/Form';
+import { Button, Notice } from '@/components/Form';
+import { MenuRow } from '@/components/MenuRow';
+import { accountKeys, cancelDeletion, unreadCount } from '@/features/account/api';
+import { Avatar } from '@/features/feed/PostCard';
+import type { UserSummary } from '@/features/feed/types';
 import { useAppTheme } from '@/theme/useAppTheme';
 
 /** SCR-100 Profile (Phase 1 slice): account, display name, privacy summary, sign out. */
@@ -58,91 +63,146 @@ export default function ProfileScreen() {
 }
 
 function SignedInProfile({ me }: { me: Me }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const theme = useAppTheme();
-  const setMe = useSessionStore((state) => state.setMe);
-  const [displayName, setDisplayName] = useState(me.profile.display_name);
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<{ tone: 'error' | 'success'; text: string } | null>(null);
+  const router = useRouter();
+  const [cancelling, setCancelling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const unread = useQuery({
+    queryKey: accountKeys.unread,
+    queryFn: () => unreadCount(getApiClient()),
+  });
+  const restrictions = me.account.restrictions ?? [];
+  const pending = me.account.status === 'pending_deletion';
 
-  async function save(): Promise<void> {
-    setNotice(null);
-    setBusy(true);
+  async function undoDeletion(): Promise<void> {
+    setError(null);
+    setCancelling(true);
     try {
-      const updated = await getApiClient().patch<Me>('/v1/users/me', {
-        body: { display_name: displayName },
-      });
-      setMe(updated);
-      setNotice({ tone: 'success', text: t('account.saved') });
+      await cancelDeletion(getApiClient());
     } catch (caught) {
-      setNotice({ tone: 'error', text: describeAuthError(caught, t) });
+      setError(describeAuthError(caught, t));
     } finally {
-      setBusy(false);
+      setCancelling(false);
     }
   }
 
-  const row = (label: string, value: string, testID: string) => (
-    <View style={{ gap: theme.spacing[1] }}>
-      <Text style={[theme.typography.label, { color: theme.colors.textSecondary }]}>{label}</Text>
-      <Text style={[theme.typography.body, { color: theme.colors.textPrimary }]} testID={testID}>
-        {value}
-      </Text>
-    </View>
-  );
+  const date = (iso: string) => new Date(iso).toLocaleDateString(i18n.language);
 
   return (
     <SafeAreaView style={[styles.fill, { backgroundColor: theme.colors.background }]}>
       <ScrollView
         contentContainerStyle={{ padding: theme.spacing[6], gap: theme.spacing[4] }}
-        keyboardShouldPersistTaps="handled"
         testID="profile-signed-in"
       >
-        <Text
-          accessibilityRole="header"
-          style={[theme.typography.title1, { color: theme.colors.textPrimary }]}
-          testID="profile-display-name"
-        >
-          {me.profile.display_name}
-        </Text>
-        {row(t('account.handle'), `@${me.profile.handle}`, 'profile-handle')}
-        {row(
-          t('account.email'),
-          `${me.account.email ?? '—'} · ${
-            me.account.email_verified ? t('account.verified') : t('account.notVerified')
-          }`,
-          'profile-email',
-        )}
-        {notice ? (
-          <Notice tone={notice.tone} testID="profile-notice">
-            {notice.text}
-          </Notice>
+        <View style={styles.header}>
+          <Avatar
+            user={{
+              id: me.profile.id,
+              handle: me.profile.handle,
+              display_name: me.profile.display_name,
+              avatar: (me.profile.avatar as UserSummary['avatar']) ?? null,
+            }}
+            size={64}
+          />
+          <View style={styles.fill}>
+            <Text
+              accessibilityRole="header"
+              style={[theme.typography.title2, { color: theme.colors.textPrimary }]}
+              testID="profile-display-name"
+            >
+              {me.profile.display_name}
+            </Text>
+            <Text
+              style={[theme.typography.body, { color: theme.colors.textSecondary }]}
+              testID="profile-handle"
+            >
+              @{me.profile.handle}
+              {me.profile.account_visibility === 'private' ? ` · ${t('account.private')}` : ''}
+            </Text>
+          </View>
+        </View>
+        {me.profile.bio ? (
+          <Text style={[theme.typography.body, { color: theme.colors.textPrimary }]}>
+            {me.profile.bio}
+          </Text>
         ) : null}
-        <TextField
-          label={t('account.displayName')}
-          value={displayName}
-          onChangeText={setDisplayName}
-          maxLength={50}
-          testID="profile-display-name-input"
-        />
-        <Button
-          label={t('account.save')}
-          onPress={() => void save()}
-          busy={busy}
-          disabled={!displayName.trim() || displayName === me.profile.display_name}
-          testID="profile-save"
-        />
         <Text
-          accessibilityRole="header"
-          style={[theme.typography.title3, { color: theme.colors.textPrimary }]}
+          style={[theme.typography.caption, { color: theme.colors.textSecondary }]}
+          testID="profile-email"
         >
-          {t('account.privacyHeading')}
+          {`${me.account.email ?? '—'} · ${
+            me.account.email_verified ? t('account.verified') : t('account.notVerified')
+          }`}
         </Text>
-        <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>
-          {me.privacy.discovery_enabled ? t('account.discoveryOn') : t('account.discoveryOff')}
-        </Text>
-        <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>
-          {me.privacy.search_engine_indexing ? t('account.indexingOn') : t('account.indexingOff')}
-        </Text>
+        {pending ? (
+          <View style={{ gap: theme.spacing[2] }} testID="profile-deletion-pending">
+            <Notice tone="error">
+              {t('account.deletionPending', {
+                date: me.account.deletion_scheduled_for
+                  ? date(me.account.deletion_scheduled_for)
+                  : '—',
+              })}
+            </Notice>
+            <Button
+              label={t('account.cancelDeletion')}
+              onPress={() => void undoDeletion()}
+              busy={cancelling}
+              testID="profile-cancel-deletion"
+            />
+          </View>
+        ) : null}
+        {restrictions.map((restriction) => (
+          <Notice
+            tone="info"
+            key={restriction.kind}
+            testID={`profile-restriction-${restriction.kind}`}
+          >
+            {restriction.until
+              ? t('account.restrictionUntil', {
+                  what: t(`account.restrictions.${restriction.kind}`),
+                  date: date(restriction.until),
+                })
+              : t('account.restriction', { what: t(`account.restrictions.${restriction.kind}`) })}
+          </Notice>
+        ))}
+        {error ? <Notice tone="error">{error}</Notice> : null}
+        <View>
+          <MenuRow
+            icon="notifications-outline"
+            label={t('notifications.title')}
+            detail={unread.data ? String(unread.data) : undefined}
+            onPress={() => router.push('/notifications')}
+            testID="profile-menu-notifications"
+          />
+          <MenuRow
+            icon="person-outline"
+            label={t('account.editProfile')}
+            onPress={() => router.push('/settings/profile')}
+            testID="profile-menu-edit"
+          />
+          <MenuRow
+            icon="lock-closed-outline"
+            label={t('account.privacyHeading')}
+            onPress={() => router.push('/settings/privacy')}
+            testID="profile-menu-privacy"
+          />
+          <MenuRow
+            icon="ban-outline"
+            label={t('account.blocked')}
+            onPress={() => router.push('/settings/blocked')}
+            testID="profile-menu-blocked"
+          />
+          {!pending ? (
+            <MenuRow
+              icon="trash-outline"
+              label={t('account.deleteAccount')}
+              destructive
+              onPress={() => router.push('/settings/delete-account')}
+              testID="profile-menu-delete"
+            />
+          ) : null}
+        </View>
         <Button
           variant="secondary"
           label={t('account.signOut')}
@@ -157,4 +217,5 @@ function SignedInProfile({ me }: { me: Me }) {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 16 },
 });
