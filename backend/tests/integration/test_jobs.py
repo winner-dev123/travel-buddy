@@ -327,7 +327,7 @@ def test_indexing_change_reaches_the_web_via_the_cron_tick(webhook_app: WebhookA
     [request] = webhook_app.received
     payload = _assert_signed(request)
     assert payload["reason"] == "indexing_consent_changed"
-    assert payload["tags"] == [f"profile:{handle}", "sitemap"]
+    assert payload["tags"] == [f"profile:{handle}", "stories", "sitemap"]
     event_id = db_scalar(
         webhook_app.db_url,
         "SELECT id::text FROM outbox_events WHERE event_type = 'privacy.updated'",
@@ -346,7 +346,12 @@ def test_handle_change_is_pushed_right_after_the_response(inline_webhook_app: We
     [request] = inline_webhook_app.received
     payload = _assert_signed(request)
     assert payload["reason"] == "profile_visibility_changed"
-    assert payload["tags"] == [f"profile:{new_handle}", f"profile:{old_handle}", "sitemap"]
+    assert payload["tags"] == [
+        f"profile:{new_handle}",
+        f"profile:{old_handle}",
+        "stories",
+        "sitemap",
+    ]
 
 
 def test_ordinary_edits_send_no_webhook(inline_webhook_app: WebhookApp) -> None:

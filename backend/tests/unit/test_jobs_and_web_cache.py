@@ -49,23 +49,26 @@ def test_backoff_doubles_to_a_cap_and_spans_about_an_hour() -> None:
         (
             "profile.updated",
             {"handle": "ana.new", "previous_handle": "ana.old", "changed": ["handle"]},
-            ("profile_visibility_changed", ("profile:ana.new", "profile:ana.old", "sitemap")),
+            (
+                "profile_visibility_changed",
+                ("profile:ana.new", "profile:ana.old", "stories", "sitemap"),
+            ),
         ),
         (
             "profile.updated",
             {"handle": "ana", "changed": ["account_visibility", "bio"]},
-            ("profile_visibility_changed", ("profile:ana", "sitemap")),
+            ("profile_visibility_changed", ("profile:ana", "stories", "sitemap")),
         ),
         ("profile.updated", {"handle": "ana", "changed": ["bio", "display_name"]}, None),
         (
             "privacy.updated",
             {"handle": "ana", "changed": ["search_engine_indexing"]},
-            ("indexing_consent_changed", ("profile:ana", "sitemap")),
+            ("indexing_consent_changed", ("profile:ana", "stories", "sitemap")),
         ),
         (
             "privacy.updated",
             {"handle": "ana", "changed": ["profile_visibility", "search_engine_indexing"]},
-            ("profile_visibility_changed", ("profile:ana", "sitemap")),
+            ("profile_visibility_changed", ("profile:ana", "stories", "sitemap")),
         ),
         ("discovery.disabled", {"user_id": "x"}, None),
         ("privacy.updated", {"handle": "ana", "changed": "not-a-list"}, None),
@@ -149,7 +152,7 @@ async def test_delivery_sends_a_signed_contract_body() -> None:
         "event_id": "0190f5c2-0000-7000-8000-000000000001",
         "occurred_at": "2026-11-09T12:00:00+00:00",
         "reason": "indexing_consent_changed",
-        "tags": ["profile:ana", "sitemap"],
+        "tags": ["profile:ana", "stories", "sitemap"],
     }
     timestamp = int(datetime(2026, 11, 9, 12, 0, 5, tzinfo=UTC).timestamp())
     assert request.headers["X-TB-Signature"] == signature_header(SECRET.encode(), timestamp, body)

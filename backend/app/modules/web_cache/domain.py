@@ -55,7 +55,11 @@ def revalidation_for(event_type: str, data: Mapping[str, Any]) -> Revalidation |
         tags += [t for t in (_profile_tag(data.get("handle")),) if t]
     else:
         return None
-    tags.append("sitemap")
+    # The author's public stories change visibility/indexability with the account. Story pages
+    # cannot be tagged by author (the tag is chosen before the data is fetched), so the whole
+    # `stories` tag is purged: coarse but cheap at this scale. `profile:<handle>` stays for the
+    # public profile pages to come.
+    tags += ["stories", "sitemap"]
     return Revalidation(reason=reason, tags=tuple(dict.fromkeys(tags)))
 
 
