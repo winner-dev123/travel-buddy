@@ -21,10 +21,11 @@ MODULES_ROOT = APP_ROOT / "modules"
 PUBLIC_SUBMODULES = frozenset({"service", "events", "schemas"})
 
 # Architecture section 4.3. Every module directory must be registered here.
-LAYERS: dict[str, int] = {
+LAYERS: dict[str, float] = {
     "platform": 1,
     "observability": 1,
-    "media": 1,
+    # 1.5: uses platform jobs and idempotency; below profiles/destinations (avatars, covers).
+    "media": 1.5,
     "destinations": 2,
     "billing": 2,
     "profiles": 2,

@@ -72,6 +72,7 @@ from app.modules.identity.schemas import (
     SessionOut,
     SessionTokens,
 )
+from app.modules.media import service as media
 from app.modules.platform import service as platform
 from app.modules.profiles import service as profiles_service
 from app.modules.profiles.schemas import (
@@ -843,6 +844,7 @@ async def delete_due_accounts(session: AsyncSession, *, limit: int = 25) -> int:
                 payload={"issuer": link.issuer, "subject": link.subject},
                 dedupe_key=f"idp-delete:{link.issuer}:{link.subject}",
             )
+        await media.schedule_owner_erasure(session, user.id)
         author = (await profiles_service.authors(session, [user.id])).get(user.id)
         platform.record_event(
             session,

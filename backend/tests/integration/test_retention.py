@@ -22,6 +22,7 @@ TASKS = {
     "retention.trust_safety",
     "retention.feed",
     "retention.notifications",
+    "retention.media",
 }
 
 

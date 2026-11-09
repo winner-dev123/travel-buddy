@@ -149,7 +149,8 @@ Cross-module reactions use **domain events** through the transactional outbox (Â
 
 ```
 Layer 0  core
-Layer 1  platform, observability, media
+Layer 1  platform, observability
+Layer 1b media (uses platform jobs and idempotency; profiles and destinations reference media)
 Layer 2  profiles, destinations, billing
 Layer 3  identity, trust_safety, location
 Layer 4  connections, social, trips, guides

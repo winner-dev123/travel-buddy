@@ -18,8 +18,9 @@ from app.core.config import get_settings
 from app.core.db import Database
 from app.core.logging import configure_logging
 from app.core.time import SystemClock
-from app.main import build_job_runner
+from app.main import build_job_runner, build_media_storage
 from app.modules.identity.config import IdentitySettings
+from app.modules.media.config import MediaSettings
 from app.modules.web_cache.config import WebCacheSettings
 
 logger = logging.getLogger("app.worker")
@@ -50,6 +51,12 @@ async def run(*, once: bool, idle_sleep_seconds: float) -> None:
             identity_settings=IdentitySettings(),
             http_client=http_client,
             clock=SystemClock(),
+            # In-process storage would not be shared with the API: workers need real storage.
+            media_storage=(
+                build_media_storage(media, http_client, SystemClock())
+                if (media := MediaSettings()).resolved_storage == "s3"
+                else None
+            ),
         )
         try:
             while not stop.is_set():

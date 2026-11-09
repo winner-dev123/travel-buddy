@@ -39,6 +39,16 @@ With no `REDIS_URL`, `RATE_LIMIT_STORE=auto` counts in PostgreSQL (UNLOGGED `rat
 
 `SUPABASE_SECRET_KEY` (server-only; a `sb_secret_…` key or the legacy `service_role` JWT) lets the deletion saga delete the Supabase Auth user once an account's 30-day grace ends. Without it, our data is still erased and the job logs `idp_account_not_deleted`. The saga runs from the hourly periodic task, so on staging it needs the cron tick (`CRON_SECRET`) or after-response ticks.
 
+### 1.4 Media storage (BL-1.08, ADR-0022)
+
+Without storage settings, uploads answer `503` and everything else works. To enable uploads on Supabase Storage:
+
+1. Storage → create bucket `media-quarantine` (**private**, file size limit 25 MB, allowed types `image/jpeg,image/png,image/webp`) and bucket `media-public` (**public**).
+2. Storage → S3 connection → create an access key pair.
+3. Set on the API project: `MEDIA_S3_ENDPOINT=https://<ref>.supabase.co/storage/v1/s3`, `MEDIA_S3_REGION=<project region>`, `MEDIA_S3_ACCESS_KEY_ID`, `MEDIA_S3_SECRET_ACCESS_KEY`, `MEDIA_PUBLIC_BASE_URL=https://<ref>.supabase.co/storage/v1/object/public/media-public`.
+
+Processing runs as a job (worker, cron tick or after-response tick).
+
 ## 2. Runtime topology (production reference)
 
 ```mermaid

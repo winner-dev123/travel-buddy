@@ -286,20 +286,21 @@ erDiagram
 ### media_assets (shared)
 | Column | Notes |
 |---|---|
-| id uuid PK | |
-| owner_id FK→users SET NULL | |
-| purpose | `post`, `avatar`, `message`, `group_cover`, `challenge`, `guide`, `audio`, `export` |
-| bucket | `quarantine`, `public`, `private` |
-| storage_key | `uq` |
+| id uuid PK | UUIDv7 |
+| owner_id FK→users CASCADE | Account erasure deletes the rows; the saga queues deletion of the stored objects |
+| purpose | `post`, `avatar`, `message`, `group_cover`, `challenge` (implemented); `guide`, `audio`, `export` arrive with their modules |
+| quarantine_key | Object key in the quarantine bucket (`<owner>/<id>`); processed variants live in the public bucket |
 | mime_type, bytes, sha256 | Declared values are checked against actual values after upload |
 | width, height, duration_ms | NULL |
 | status | `pending_upload`, `scanning`, `ready`, `rejected`, `deleted` |
 | rejection_reason | NULL |
-| metadata_stripped_at | NULL. Must be set before `ready` for images and video |
+| alt_text | NULL, ≤ 300 |
+| finalized_at, processed_at | NULL. Variants are re-encoded without EXIF/GPS before `ready`, so `processed_at` marks metadata removal |
 | attribution_text, attribution_license, attribution_url | NULL. Required for editorial purposes (`guide`, `audio`, destination covers). Exposed as `MediaRef.attribution` (DEST-007) |
 | rights_verified_at, rights_verified_by FK→users SET NULL | NULL. Editorial media cannot be attached to published content until set. Not exposed in the API |
-| variants | jsonb (`{"w320": key, ...}`) |
-| created_at, updated_at | |
+| variants | jsonb `[{"width", "height", "key"}]`, largest first (WebP) |
+| created_at | `ix (owner_id, created_at DESC)`, `ix (status, created_at)` (purges) |
+| (editorial) attribution_*, rights_verified_* | Added with destination covers and guides (DEST-007) |
 
 ### posts
 | Column | Notes |

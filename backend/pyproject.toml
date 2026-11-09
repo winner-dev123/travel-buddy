@@ -21,6 +21,7 @@ dependencies = [
   "redis>=5.0",
   "pyjwt[crypto]>=2.9",
   "httpx>=0.27",
+  "pillow>=11.0,<13",  # media re-encoding: EXIF/GPS stripping and WebP variants (POST-004)
   "tzdata>=2024.1",  # IANA zones for time_zone validation where the OS has none (Windows, slim images)
 ]
 
