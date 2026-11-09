@@ -15,6 +15,7 @@ import { browserApi } from '@/lib/api-browser';
 import { qk } from '@/lib/query-keys';
 import { useViewer } from '@/features/shell/viewer-context';
 import { Composer } from './composer';
+import { applyFeedReset } from './feed-reset';
 import { getFeedLocationPreference } from './location-preference';
 import { PostCard } from './post-card';
 import { useDeviceLocation } from './use-device-location';
@@ -68,7 +69,17 @@ export function FeedView() {
     initialPageParam: null as string | null,
     getNextPageParam: (last) => (last.page.has_more ? last.page.next_cursor : undefined),
     enabled: tab !== 'nearby' || location.near !== null,
+    select: applyFeedReset,
   });
+
+  // An expired snapshot restarts the list (page.reset): say so and return to the top of the new list.
+  // After applyFeedReset a restarted list begins with the reset page, which (unlike a first load) came from a cursor.
+  const restartKey = feed.data?.pages[0]?.page.reset === true ? (feed.data.pageParams[0] ?? null) : null;
+  const restarted = restartKey !== null;
+  const listTop = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (restartKey) listTop.current?.scrollIntoView({ block: 'start' });
+  }, [restartKey]);
 
   const sentinel = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -203,6 +214,10 @@ export function FeedView() {
             </div>
           ))}
         </div>
+      ) : feed.isError && isApiError(feed.error) && feed.error.code === 'location_unresolvable' ? (
+        <Alert tone="warning" title={t('error.locationTitle')}>
+          <p>{t('error.locationBody')}</p>
+        </Alert>
       ) : feed.isError ? (
         <Alert tone="danger" title={t('error.title')}>
           <p>{isApiError(feed.error) && feed.error.requestId ? t('error.bodyRef', { id: feed.error.requestId }) : t('error.body')}</p>
@@ -225,7 +240,12 @@ export function FeedView() {
           }
         />
       ) : (
-        <div className="flex flex-col gap-4">
+        <div ref={listTop} className="flex scroll-mt-4 flex-col gap-4">
+          {restarted ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              {t('refreshed')}
+            </p>
+          ) : null}
           {posts.map((p) => (
             <PostCard key={p.id} post={p} onHidden={hide} />
           ))}

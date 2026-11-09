@@ -204,6 +204,9 @@ export class MockDb {
   readonly reactions = new Map<string, Map<string, ReactionType>>();
   readonly bookmarks = new Set<string>();
   readonly shares = new Map<string, number>();
+  /** Feed feedback (FEED-007): `${userId}:${postId}` hidden from that user's feeds; `${userId}:${authorId}` demoted. */
+  readonly feedHidden = new Set<string>();
+  readonly feedSeeLess = new Set<string>();
   readonly follows = new Set<string>();
   readonly blocks = new Set<string>();
   readonly reports: { id: string; reporterId: string; targetType: string; targetId: string; reason: string; createdAt: number }[] = [];

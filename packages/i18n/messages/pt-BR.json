@@ -665,10 +665,13 @@
       "title": "Não foi possível carregar seu feed",
       "body": "Verifique sua conexão e tente novamente.",
       "bodyRef": "Verifique sua conexão e tente novamente. Referência: {id}",
-      "retry": "Tentar de novo"
+      "retry": "Tentar de novo",
+      "locationTitle": "Não conseguimos localizar você perto de um destino",
+      "locationBody": "Sua localização aproximada ainda não fica perto de uma cidade que cobrimos. Escolha um destino."
     },
     "loadMore": "Carregar mais",
-    "end": "Você já viu tudo."
+    "end": "Você já viu tudo.",
+    "refreshed": "Seu feed foi atualizado com os posts mais recentes."
   },
   "post": {
     "visibility": {
@@ -680,6 +683,10 @@
     "moreActions": "Mais ações",
     "report": "Denunciar publicação",
     "block": "Bloquear {name}",
+    "hide": "Ocultar post",
+    "notInterested": "Não tenho interesse",
+    "seeLess": "Ver menos de {name}",
+    "feedbackError": "Não foi possível salvar. Tente de novo.",
     "yourPost": "Esta é a sua publicação",
     "tags": "Tags",
     "like": "Curtir",

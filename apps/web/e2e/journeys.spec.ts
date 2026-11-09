@@ -100,6 +100,21 @@ test('blocking from a post, then unblocking in privacy settings', async ({ page 
   await expect(page.getByText('You haven’t blocked anyone.')).toBeVisible();
 });
 
+test('hiding a post from the feed keeps it hidden after a reload', async ({ page }) => {
+  await signInAs(page, /Sofia Rossi/); // used by no other test (feedback changes this persona's feed)
+  const article = page.getByRole('article').filter({ hasNotText: 'Sofia Rossi' }).first();
+  const labelId = await article.getAttribute('aria-labelledby');
+  const postId = labelId?.replace(/^post-|-author$/g, '') ?? '';
+  expect(postId).not.toBe('');
+  await article.getByLabel('More actions').click();
+  await article.getByRole('button', { name: 'Hide post' }).click();
+  await expect(page.locator(`article[aria-labelledby="${labelId}"]`)).toHaveCount(0);
+  await page.reload();
+  await hydrated(page);
+  await expect(page.getByRole('article').first()).toBeVisible();
+  await expect(page.locator(`article[aria-labelledby="${labelId}"]`)).toHaveCount(0);
+});
+
 test('reacting to a post is optimistic and persisted', async ({ page }) => {
   await signInAs(page, /Noah Fischer/);
   const first = page.getByRole('article').first();

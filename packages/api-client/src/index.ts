@@ -2,4 +2,4 @@ export { ApiClient, buildQueryString, newIdempotencyKey, type ApiClientOptions }
 export { ApiError, isApiError, isRetryable } from './core/errors';
 export { fetchTransport, type FetchTransportOptions } from './core/fetch-transport';
 export type { ApiRequest, CacheHint, HttpMethod, QueryValue, RawResponse, Transport } from './core/types';
-export { createApi, type Api, type FeedQuery } from './endpoints';
+export { createApi, type Api, type FeedFeedbackKind, type FeedQuery } from './endpoints';

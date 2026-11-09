@@ -665,10 +665,13 @@
       "title": "No pudimos cargar tu feed",
       "body": "Revisa tu conexión e inténtalo de nuevo.",
       "bodyRef": "Revisa tu conexión e inténtalo de nuevo. Referencia: {id}",
-      "retry": "Reintentar"
+      "retry": "Reintentar",
+      "locationTitle": "No pudimos ubicarte cerca de un destino",
+      "locationBody": "Tu ubicación aproximada no está cerca de una ciudad que cubramos todavía. Elige un destino."
     },
     "loadMore": "Cargar más",
-    "end": "Estás al día."
+    "end": "Estás al día.",
+    "refreshed": "Tu feed se actualizó con las publicaciones más recientes."
   },
   "post": {
     "visibility": {
@@ -680,6 +683,10 @@
     "moreActions": "Más acciones",
     "report": "Denunciar publicación",
     "block": "Bloquear a {name}",
+    "hide": "Ocultar publicación",
+    "notInterested": "No me interesa",
+    "seeLess": "Ver menos de {name}",
+    "feedbackError": "No pudimos guardarlo. Inténtalo de nuevo.",
     "yourPost": "Esta es tu publicación",
     "tags": "Etiquetas",
     "like": "Me gusta",

@@ -665,10 +665,13 @@
       "title": "We couldn’t load your feed",
       "body": "Check your connection and try again.",
       "bodyRef": "Check your connection and try again. Reference: {id}",
-      "retry": "Retry"
+      "retry": "Retry",
+      "locationTitle": "We couldn’t place you near a destination",
+      "locationBody": "Your approximate location isn’t near a city we cover yet. Choose a destination instead."
     },
     "loadMore": "Load more",
-    "end": "You’re all caught up."
+    "end": "You’re all caught up.",
+    "refreshed": "Your feed was refreshed with the latest posts."
   },
   "post": {
     "visibility": {
@@ -680,6 +683,10 @@
     "moreActions": "More actions",
     "report": "Report post",
     "block": "Block {name}",
+    "hide": "Hide post",
+    "notInterested": "Not interested",
+    "seeLess": "See less from {name}",
+    "feedbackError": "We couldn’t save that. Try again.",
     "yourPost": "This is your post",
     "tags": "Tags",
     "like": "Like",

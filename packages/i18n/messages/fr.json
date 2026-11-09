@@ -665,10 +665,13 @@
       "title": "Nous n’avons pas pu charger votre fil",
       "body": "Vérifiez votre connexion et réessayez.",
       "bodyRef": "Vérifiez votre connexion et réessayez. Référence : {id}",
-      "retry": "Réessayer"
+      "retry": "Réessayer",
+      "locationTitle": "Impossible de vous situer près d’une destination",
+      "locationBody": "Votre position approximative n’est pas encore proche d’une ville que nous couvrons. Choisissez plutôt une destination."
     },
     "loadMore": "Charger plus",
-    "end": "Vous avez tout vu."
+    "end": "Vous avez tout vu.",
+    "refreshed": "Votre fil a été actualisé avec les dernières publications."
   },
   "post": {
     "visibility": {
@@ -680,6 +683,10 @@
     "moreActions": "Plus d’actions",
     "report": "Signaler la publication",
     "block": "Bloquer {name}",
+    "hide": "Masquer la publication",
+    "notInterested": "Pas intéressé",
+    "seeLess": "Voir moins de {name}",
+    "feedbackError": "Impossible d’enregistrer. Réessayez.",
     "yourPost": "C’est votre publication",
     "tags": "Tags",
     "like": "J’aime",

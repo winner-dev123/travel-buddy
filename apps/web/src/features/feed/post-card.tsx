@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useFormatter, useLocale, useNow, useTranslations } from 'next-intl';
-import { Bookmark, Flag, Heart, MapPin, MessageCircle, MoreHorizontal, Share2, ShieldBan } from 'lucide-react';
+import { Bookmark, EyeOff, Flag, Heart, MapPin, MessageCircle, MoreHorizontal, Share2, ShieldBan, ThumbsDown, UserMinus } from 'lucide-react';
+import type { FeedFeedbackKind } from '@travelbuddy/api-client';
 import type { Post, PostCounts, ReactionType } from '@travelbuddy/domain-types';
 import { Avatar, Badge, cn } from '@travelbuddy/ui';
 import { DestinationArt } from '@/components/destination-art';
@@ -68,6 +69,12 @@ export function PostCard({ post, onHidden }: { post: Post; onHidden?: (postId: s
     },
   });
 
+  // FEED-007, feed only: the card disappears once the platform recorded the feedback.
+  const feedback = useMutation({
+    mutationFn: (kind: FeedFeedbackKind) => browserApi().feed.feedback(post.id, kind),
+    onSuccess: () => onHidden?.(post.id),
+  });
+
   const share = async () => {
     const url = `${window.location.origin}${localizedPath(locale, `/stories/${post.id}`)}`;
     // Records the share (contract: increments the share count). Not awaited before the share sheet, which
@@ -121,6 +128,22 @@ export function PostCard({ post, onHidden }: { post: Post; onHidden?: (postId: s
           <div className="absolute end-0 top-10 z-20 flex w-52 flex-col rounded-2xl border border-border bg-surface p-1.5 shadow-lift">
             {!post.viewer.is_author ? (
               <>
+                {onHidden ? (
+                  <>
+                    <button type="button" onClick={() => feedback.mutate('hide')} className="flex items-center gap-2 rounded-xl px-3 py-2 text-start text-sm hover:bg-surface-muted">
+                      <EyeOff className="size-4" aria-hidden="true" />
+                      {t('hide')}
+                    </button>
+                    <button type="button" onClick={() => feedback.mutate('not_interested')} className="flex items-center gap-2 rounded-xl px-3 py-2 text-start text-sm hover:bg-surface-muted">
+                      <ThumbsDown className="size-4" aria-hidden="true" />
+                      {t('notInterested')}
+                    </button>
+                    <button type="button" onClick={() => feedback.mutate('see_less_author')} className="flex items-center gap-2 rounded-xl px-3 py-2 text-start text-sm hover:bg-surface-muted">
+                      <UserMinus className="size-4" aria-hidden="true" />
+                      {t('seeLess', { name: post.author.display_name })}
+                    </button>
+                  </>
+                ) : null}
                 <button type="button" onClick={() => setReportOpen(true)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-start text-sm hover:bg-surface-muted">
                   <Flag className="size-4" aria-hidden="true" />
                   {t('report')}
@@ -136,6 +159,11 @@ export function PostCard({ post, onHidden }: { post: Post; onHidden?: (postId: s
           </div>
         </details>
       </header>
+      {feedback.isError ? (
+        <p role="alert" className="px-4 pt-2 text-xs text-danger">
+          {t('feedbackError')}
+        </p>
+      ) : null}
 
       <div className="flex flex-col gap-3 px-4 py-3">
         <p className="whitespace-pre-line text-[0.95rem] leading-relaxed" lang={post.language}>

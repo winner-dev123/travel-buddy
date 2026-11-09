@@ -42,6 +42,8 @@ import type {
   UUID,
 } from '@travelbuddy/domain-types';
 import { newIdempotencyKey, type ApiClient } from './core/client';
+
+export type FeedFeedbackKind = 'hide' | 'not_interested' | 'see_less_author';
 import type { CacheHint } from './core/types';
 
 const enc = encodeURIComponent;
@@ -156,6 +158,9 @@ export function createApi(c: ApiClient) {
     feed: {
       get: (query: FeedQuery, signal?: AbortSignal) =>
         c.request<FeedPage>({ method: 'GET', path: '/v1/feed', query: { ...query }, signal, cache: 'no-store' }),
+      /** FEED-007: hide a post, mark it not interesting, or see less from its author. Idempotent (204). */
+      feedback: (postId: UUID, kind: FeedFeedbackKind) =>
+        c.request<void>({ method: 'POST', path: '/v1/feed/feedback', body: { post_id: postId, kind } }),
     },
 
     posts: {

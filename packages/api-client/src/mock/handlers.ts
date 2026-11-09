@@ -612,6 +612,17 @@ export function buildRouter(): Router<Handler> {
   });
 
   // ---- feed ----------------------------------------------------------------------------------
+  r.add('POST', '/v1/feed/feedback', (ctx) => {
+    const { user } = ctx.auth();
+    const kind = ctx.body?.kind as string | undefined;
+    if (!kind || !['hide', 'not_interested', 'see_less_author'].includes(kind)) throw validation('kind', 'invalid', 'Unknown feedback kind.');
+    const post = ctx.db.posts.get(String(ctx.body?.post_id ?? ''));
+    if (!post || !ctx.db.canView(user, post)) throw notFound();
+    ctx.db.feedHidden.add(`${user.id}:${post.id}`);
+    if (kind === 'see_less_author') ctx.db.feedSeeLess.add(`${user.id}:${post.authorId}`);
+    return noContent();
+  });
+
   r.add('GET', '/v1/feed', (ctx) => {
     const { user } = ctx.auth();
     const tab = (ctx.query('tab') ?? 'for_you') as FeedTab;
@@ -622,7 +633,7 @@ export function buildRouter(): Router<Handler> {
     const radius = intParam(ctx.query('radius_km'), 10, 1, 50);
     const destId = ctx.query('destination_id');
     const db = ctx.db;
-    const visible = [...db.posts.values()].filter((p) => db.canView(user, p));
+    const visible = [...db.posts.values()].filter((p) => db.canView(user, p) && !db.feedHidden.has(`${user.id}:${p.id}`));
     const browse = user.browsePath ? (db.destinationsByPath.get(user.browsePath) ?? null) : null;
     const within = (d: DestinationRecord) => visible.filter((p) => db.isWithin(p.destinationPath, d.path));
 
@@ -677,7 +688,8 @@ export function buildRouter(): Router<Handler> {
       const c = db.counts(p, user);
       const interest = p.tags.filter((t) => (user.travel_styles as string[]).includes(t)).length * 0.5;
       const ageDays = (ctx.now - p.createdAt) / 86_400_000;
-      return Math.log1p(c.reactions + 2 * c.comments) * 1.2 + interest - ageDays;
+      const seeLess = db.feedSeeLess.has(`${user.id}:${p.authorId}`) ? 5 : 0;
+      return Math.log1p(c.reactions + 2 * c.comments) * 1.2 + interest - ageDays - seeLess;
     };
     const ranked = candidates
       .map((p) => ({ p, s: score(p) }))

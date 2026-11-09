@@ -242,6 +242,20 @@ describe('mock platform — social and privacy', () => {
     await expectApiError(api.feed.get({ tab: 'following', cursor: first.page.next_cursor }), 422, 'validation_failed');
   });
 
+  it('honours feed feedback: hidden posts never come back, and see-less demotes the author (FEED-007)', async () => {
+    const { api } = await signIn(platform, 'noah');
+    const before = (await api.feed.get({ tab: 'for_you', limit: 50 })).data.filter((p) => !p.viewer.is_author);
+    expect(before.length).toBeGreaterThan(2);
+    const [first, second] = before;
+    await api.feed.feedback(first!.id, 'hide');
+    await api.feed.feedback(first!.id, 'hide'); // idempotent
+    await api.feed.feedback(second!.id, 'see_less_author');
+    const after = (await api.feed.get({ tab: 'for_you', limit: 50 })).data;
+    expect(after.map((p) => p.id)).not.toContain(first!.id);
+    expect(after.map((p) => p.id)).not.toContain(second!.id);
+    await expectApiError(api.feed.feedback(first!.id, 'nope' as never), 422, 'validation_failed');
+  });
+
   it('lists the accounts I blocked, and unblocking removes them from the list', async () => {
     const { api: amelia } = await signIn(platform, 'amelia');
     const { result: lucasAuth } = await signIn(platform, 'lucas');

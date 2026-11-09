@@ -665,10 +665,13 @@
       "title": "Wir konnten deinen Feed nicht laden",
       "body": "Prüfe deine Verbindung und versuche es noch einmal.",
       "bodyRef": "Prüfe deine Verbindung und versuche es noch einmal. Referenz: {id}",
-      "retry": "Erneut versuchen"
+      "retry": "Erneut versuchen",
+      "locationTitle": "Wir konnten dich keinem Reiseziel zuordnen",
+      "locationBody": "Dein ungefährer Standort liegt noch nicht in der Nähe einer Stadt, die wir abdecken. Wähle stattdessen ein Reiseziel."
     },
     "loadMore": "Mehr laden",
-    "end": "Du bist auf dem neuesten Stand."
+    "end": "Du bist auf dem neuesten Stand.",
+    "refreshed": "Dein Feed wurde mit den neuesten Beiträgen aktualisiert."
   },
   "post": {
     "visibility": {
@@ -680,6 +683,10 @@
     "moreActions": "Weitere Aktionen",
     "report": "Beitrag melden",
     "block": "{name} blockieren",
+    "hide": "Beitrag ausblenden",
+    "notInterested": "Kein Interesse",
+    "seeLess": "Weniger von {name} anzeigen",
+    "feedbackError": "Das konnte nicht gespeichert werden. Versuch es noch einmal.",
     "yourPost": "Das ist dein Beitrag",
     "tags": "Tags",
     "like": "Gefällt mir",
