@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ids import uuid7
 from app.core.request_context import current_request_id
+from app.modules.platform import idempotency
 from app.modules.platform.jobs import (
     EventRouter,
     Job,
@@ -37,6 +38,7 @@ __all__ = [
     "TickResult",
     "backoff",
     "enqueue",
+    "idempotency",
     "record_event",
     "track_outbox_events",
 ]

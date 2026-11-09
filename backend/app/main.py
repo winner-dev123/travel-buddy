@@ -39,6 +39,8 @@ from app.modules.location import service as location_service
 from app.modules.location.api import router as location_router
 from app.modules.platform.api import AfterResponseTickMiddleware, internal_router
 from app.modules.platform.service import EventRouter, JobHandler, JobRunner
+from app.modules.social import service as social_service
+from app.modules.social.api import router as social_router
 from app.modules.web_cache import service as web_cache_service
 from app.modules.web_cache.config import WebCacheSettings
 
@@ -154,6 +156,9 @@ def create_app(
     app.state.location_service = location_service.LocationService(
         sessionmaker=database.sessionmaker
     )
+    app.state.post_service = social_service.PostService(
+        sessionmaker=database.sessionmaker, cursors=cursor_codec
+    )
     app.state.readiness_checks = (
         dict(readiness_checks)
         if readiness_checks is not None
@@ -203,6 +208,7 @@ def create_app(
     app.include_router(me_router)
     app.include_router(destinations_router)
     app.include_router(location_router)
+    app.include_router(social_router)
     app.include_router(internal_router)
     if dev_idp is not None:  # absent → 404 (contract: not available in this environment)
         app.include_router(dev_idp_router)
@@ -223,4 +229,6 @@ def build_job_runner(
     handlers[web_cache_service.JOB_KIND] = web_cache_service.make_handler(
         web_cache_settings, http_client, clock
     )
+    social_service.subscribe(router)
+    handlers.update(social_service.make_handlers(database.sessionmaker))
     return JobRunner(sessionmaker=database.sessionmaker, router=router, handlers=handlers)

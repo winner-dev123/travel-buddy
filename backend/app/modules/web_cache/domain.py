@@ -34,8 +34,25 @@ def _changed(data: Mapping[str, Any]) -> frozenset[str]:
     return frozenset(c for c in changed if isinstance(c, str))
 
 
+def _post_revalidation(event_type: str, data: Mapping[str, Any]) -> Revalidation | None:
+    post_id = data.get("post_id")
+    if not isinstance(post_id, str):
+        return None
+    if event_type == "post.published" and data.get("public") is True:
+        reason = "post_published"
+    elif event_type == "post.deleted" and data.get("was_public") is True:
+        reason = "post_deleted"
+    elif event_type == "post.updated" and data.get("was_public") != data.get("public"):
+        reason = "post_visibility_changed"
+    else:
+        return None  # private posts are never cached; ordinary edits refresh through ISR
+    return Revalidation(reason=reason, tags=(f"story:{post_id}", "stories", "sitemap"))
+
+
 def revalidation_for(event_type: str, data: Mapping[str, Any]) -> Revalidation | None:
     """The webhook to send for an outbox event, or ``None`` when no cached page is affected."""
+    if event_type.startswith("post."):
+        return _post_revalidation(event_type, data)
     changed = _changed(data)
     tags: list[str] = []
     if event_type == "profile.updated":

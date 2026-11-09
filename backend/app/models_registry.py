@@ -11,6 +11,7 @@ from app.modules.location import models as location_models
 from app.modules.observability import models as observability_models
 from app.modules.platform import models as platform_models
 from app.modules.profiles import models as profiles_models
+from app.modules.social import models as social_models
 
 __all__ = [
     "Base",
@@ -20,4 +21,5 @@ __all__ = [
     "observability_models",
     "platform_models",
     "profiles_models",
+    "social_models",
 ]

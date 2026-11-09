@@ -22,7 +22,13 @@ logger = logging.getLogger(__name__)
 
 JOB_KIND = "web_cache.revalidate"
 QUEUE = "default"
-_EVENT_TYPES = ("profile.updated", "privacy.updated")
+_EVENT_TYPES = (
+    "profile.updated",
+    "privacy.updated",
+    "post.published",
+    "post.updated",
+    "post.deleted",
+)
 _RETRYABLE_CLIENT_ERRORS = frozenset({408, 425, 429})
 
 

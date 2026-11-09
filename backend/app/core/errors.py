@@ -43,6 +43,7 @@ class ErrorCode(StrEnum):
     CONFLICT = "conflict"
     PRECONDITION_FAILED = "precondition_failed"
     IDEMPOTENCY_KEY_REUSED = "idempotency_key_reused"
+    IDEMPOTENCY_KEY_IN_PROGRESS = "idempotency_key_in_progress"
     PAYLOAD_TOO_LARGE = "payload_too_large"
     UNSUPPORTED_MEDIA_TYPE = "unsupported_media_type"
     RATE_LIMITED = "rate_limited"
@@ -84,6 +85,7 @@ _DEFAULT_STATUS: Mapping[ErrorCode, HTTPStatus] = {
     ErrorCode.CONFLICT: HTTPStatus.CONFLICT,
     ErrorCode.PRECONDITION_FAILED: HTTPStatus.PRECONDITION_FAILED,
     ErrorCode.IDEMPOTENCY_KEY_REUSED: HTTPStatus.CONFLICT,
+    ErrorCode.IDEMPOTENCY_KEY_IN_PROGRESS: HTTPStatus.CONFLICT,
     ErrorCode.PAYLOAD_TOO_LARGE: HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
     ErrorCode.UNSUPPORTED_MEDIA_TYPE: HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
     ErrorCode.RATE_LIMITED: HTTPStatus.TOO_MANY_REQUESTS,

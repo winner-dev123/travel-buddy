@@ -9,6 +9,8 @@ from __future__ import annotations
 import secrets
 import uuid
 import zoneinfo
+from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from functools import cache
 from typing import Any
@@ -464,3 +466,46 @@ async def has_discovery_consent(session: AsyncSession, user_id: uuid.UUID) -> bo
     """A current ``traveler_discovery`` consent (mirrored from the identity consent ledger)."""
     privacy = await session.get(UserPrivacySettings, user_id)
     return privacy is not None and privacy.discovery_consent_version is not None
+
+
+@dataclass(frozen=True, slots=True)
+class AuthorInfo:
+    """What other modules may know about a user: public identity plus visibility flags."""
+
+    id: uuid.UUID
+    handle: str
+    display_name: str
+    account_private: bool
+    search_engine_indexing: bool
+    ui_locale: str
+
+
+async def authors(
+    session: AsyncSession, user_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, AuthorInfo]:
+    if not user_ids:
+        return {}
+    rows = await session.execute(
+        select(
+            UserProfile.user_id,
+            UserProfile.handle,
+            UserProfile.display_name,
+            UserProfile.account_visibility,
+            UserPrivacySettings.search_engine_indexing,
+            UserPreferences.ui_locale,
+        )
+        .join(UserPrivacySettings, UserPrivacySettings.user_id == UserProfile.user_id)
+        .join(UserPreferences, UserPreferences.user_id == UserProfile.user_id)
+        .where(UserProfile.user_id.in_(set(user_ids)))
+    )
+    return {
+        row.user_id: AuthorInfo(
+            id=row.user_id,
+            handle=row.handle,
+            display_name=row.display_name,
+            account_private=row.account_visibility == "private",
+            search_engine_indexing=row.search_engine_indexing,
+            ui_locale=row.ui_locale,
+        )
+        for row in rows
+    }

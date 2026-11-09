@@ -407,3 +407,11 @@ async def summaries_by_id(
         await session.scalars(select(DestinationRow).where(DestinationRow.id.in_(ids), _ACTIVE))
     ).all()
     return {summary.id: summary for summary in await _summaries(session, rows, preferences)}
+
+
+async def ancestry(session: AsyncSession, destination_id: uuid.UUID) -> list[uuid.UUID] | None:
+    """IDs root -> self of an ACTIVE destination (post fan-out, LOC-006), or None."""
+    path = await session.scalar(
+        select(DestinationRow.path).where(DestinationRow.id == destination_id, _ACTIVE)
+    )
+    return list(path) if path is not None else None
