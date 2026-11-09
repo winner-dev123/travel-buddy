@@ -168,6 +168,8 @@ export interface DevPersona {
   display_name: string;
   email: string;
   note: string;
+  /** Holds a staff role, so dev sign-in simulates a second factor (ADM-007 requires MFA for staff). */
+  staff: boolean;
 }
 
 /** Personas offered by the development persona picker (`/dev/login`). */
@@ -178,5 +180,6 @@ export function listDevPersonas(): DevPersona[] {
     display_name: p.display_name,
     email: p.email,
     note: p.persona_note,
+    staff: (p.roles ?? []).length > 0,
   }));
 }

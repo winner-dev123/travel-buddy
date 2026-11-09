@@ -23,7 +23,7 @@ The web adds a new client (the browser) and a new **server** (the Next.js proces
 |---|---|---|
 | AW1 `tb_session` cookie (sealed platform access + refresh tokens) | High (= doc 08 A4) | Browser cookie jar (HttpOnly) → Next.js server memory per request |
 | AW2 `SESSION_SECRET` (cookie sealing key) | Critical | Secret manager → Next.js env |
-| AW3 OIDC client secret | High | Secret manager → Next.js env |
+| AW3 Supabase Auth tokens in transit through the BFF (sealed `tb_idp_*` cookies) | High | Sealed with `SESSION_SECRET`, HttpOnly, ≤ 15 min; Supabase session signed out after exchange |
 | AW4 `tb_csrf` token | Medium | JS-readable cookie |
 | AW5 Admin console UI and its data | High (= doc 08 A3, A7) | `/admin/**` |
 | AW6 Rendered HTML / RSC payloads | Varies | CDN (public) or browser only (private) |
@@ -49,7 +49,7 @@ flowchart LR
   JS -- "HTTPS (cookies, X-CSRF-Token)" --> CDN --> NX
   NX -- "Bearer, X-Request-ID" --> API
   JS -- "WSS + single-use ticket" --> RT
-  NX -- "OIDC code exchange" --> IDP
+  NX -- "PKCE code exchange (Supabase Auth)" --> IDP
 ```
 
 Boundary rules (in addition to doc 08 §3): (W1) the web tier is **trusted infrastructure** and must not run on an untrusted edge (ADR-0011); (W2) the CDN caches only responses explicitly marked public, and must never cache a response that set or depended on a cookie; (W3) the BFF forwards only `/v1/*` paths, only allowed methods, and never forwards browser cookies or arbitrary headers upstream.
@@ -65,7 +65,7 @@ Verification legend as in doc 08 §4: **U** unit, **I** integration, **S** secur
 | T-WEB-01 | Info disclosure / Spoofing | XSS steals platform tokens | Tokens only in the sealed HttpOnly `tb_session` cookie; never in JS, `localStorage`, URLs or RSC payloads (ADR-0011) | S (assert no token in `document.cookie`, storage, HTML), R |
 | T-WEB-02 | Tampering | Attacker edits or forges `tb_session` | JWE `dir` + `A256GCM` (authenticated encryption); key ≥ 256 bits derived from `SESSION_SECRET`; any decrypt failure = anonymous + cookie cleared | U |
 | T-WEB-03 | Spoofing | CSRF: third-party site triggers a mutation with the user's cookies | `SameSite=Lax`; double-submit `X-CSRF-Token` = `tb_csrf` (constant-time compare) on every non-GET BFF call; `Origin`/`Sec-Fetch-Site: same-origin` check; no state change on GET; logout is POST | U, S |
-| T-WEB-04 | Spoofing | Login CSRF / session fixation | OIDC `state` + `nonce` + PKCE (S256) in a sealed `tb_oidc` cookie bound to the browser; new `tb_session` and rotated `tb_csrf` on every login | U, S |
+| T-WEB-04 | Spoofing | Login CSRF / session fixation | PKCE (S256) verifier in a sealed, HttpOnly `tb_idp_flow` cookie bound to the browser; a code injected from elsewhere cannot be exchanged, and a replayed callback fails. New `tb_session` and rotated `tb_csrf` on every login. Email/password endpoints require the double-submit CSRF token | U, S |
 | T-WEB-05 | Elevation | Open redirect via `next=` sends the user to a phishing page after login | `next` must be a relative path matching `^/(?!/)` (02 §3.3); otherwise `/feed` | U |
 | T-WEB-06 | Denial / Spoofing | Parallel refreshes trip reuse detection and log the user out | Backend 30 s reuse leeway (doc 02 §8); proxy refresh coalesced per request; on `refresh_token_reused` → sign out with a security notice | I |
 | T-WEB-07 | Info disclosure | Session survives on a shared computer | Logout clears cookies and calls `POST /v1/auth/logout`; `/settings/sessions` lists and revokes web sessions; TanStack Query cache cleared on logout and on user switch | S |
@@ -116,7 +116,7 @@ Normative design: [ADR-0011](../adr/0011-web-bff-cookie-sessions.md). Implementa
 | Sealing | JWE compact, `alg: dir`, `enc: A256GCM`, `kid` header to support key rotation (two active keys during rotation; `SESSION_SECRET` and `SESSION_SECRET_PREVIOUS`) |
 | Payload | `{at, at_exp, rt, uid, sid, roles, v}`. No profile data, no email |
 | Refresh | Proxy refresh at < 60 s remaining; BFF refresh on `401 token_expired`; a failed refresh clears the cookie and returns `401 session_expired` |
-| IdP | OIDC discovery, PKCE S256, `state` + `nonce`, `response_type=code`, confidential client (secret only on the server). ID token verification is done by the backend (doc 08 T-AUTH-01); the BFF validates `state` and passes `nonce` to `POST /v1/auth/login` |
+| IdP | Supabase Auth (ADR-0020): server-side calls with the publishable key, Auth endpoints only; PKCE S256 for social and email-link flows. Token verification is done by the backend (doc 08 T-AUTH-01). Supabase sessions are signed out right after the exchange and never stored in the browser. Provider error text is never shown; codes map to fixed messages |
 | Re-authentication | Account deletion, email change and session revocation of *other* sessions require `auth_time` within 10 minutes (IdP `max_age=600` round-trip) |
 | Credential stuffing, enumeration | Delegated to the IdP (doc 08 T-AUTH-04/05). The web shows uniform error messages and never says whether an email exists |
 | Age gate | `/register` collects `birth_date`, sends it once to `POST /v1/auth/register` (it travels sealed in `tb_oidc`), and never stores it client-side (AUTH-008) |
@@ -127,7 +127,7 @@ Normative design: [ADR-0011](../adr/0011-web-bff-cookie-sessions.md). Implementa
 * Non-safe BFF methods require **all** of: a valid session, `X-CSRF-Token` equal to the `tb_csrf` cookie (constant-time), and `Sec-Fetch-Site: same-origin` or (when absent) an `Origin` equal to `NEXT_PUBLIC_SITE_URL`.
 * `tb_csrf` is rotated on login and logout. It is not secret from same-origin script (by design). XSS defeats CSRF protection, which is why XSS prevention and CSP (§6–7) are first-class.
 * Next.js Server Actions are **not** used for platform mutations (01 §6), so there is a single CSRF path to audit.
-* OIDC callback CSRF is covered by `state` (T-WEB-04).
+* IdP callback CSRF is covered by the PKCE verifier bound to the browser (T-WEB-04). Password recovery always answers the same way, so it doesn't reveal whether an account exists.
 
 ## 6. XSS and output encoding
 
@@ -159,7 +159,7 @@ default-src 'self';
 base-uri 'none';
 object-src 'none';
 frame-ancestors 'none';
-form-action 'self' {OIDC_ISSUER origin};
+form-action 'self';
 img-src 'self' data: blob: {MEDIA_CDN} {MAP_TILE_HOSTS};
 media-src 'self' {MEDIA_CDN};
 font-src 'self';
@@ -226,7 +226,7 @@ Verified by a Playwright header test per route class (10 §8) and by an external
 | Other users' data | Query cache (memory) | — | Cleared on logout/user switch |
 | Drafts (composer, onboarding) | `localStorage`, namespaced by user ID | — | Cleared on logout; media drafts are not persisted |
 | Precise location | Memory, one request | One request | §9 |
-| Secrets (`SESSION_SECRET`, `OIDC_CLIENT_SECRET`) | Never | Env from secret manager | Only `NEXT_PUBLIC_*` variables reach the client bundle; a CI check fails if a known secret name is prefixed `NEXT_PUBLIC_` or appears in `.next/static` |
+| Secrets (`SESSION_SECRET`, `WEB_REVALIDATE_SECRETS`) | Never | Env from secret manager | Only `NEXT_PUBLIC_*` variables reach the client bundle; a CI check fails if a known secret name is prefixed `NEXT_PUBLIC_` or appears in `.next/static` |
 
 Secrets management follows doc 11 §6: secret manager, runtime injection, rotation (sealing keys rotate quarterly with a two-key overlap), gitleaks in CI.
 

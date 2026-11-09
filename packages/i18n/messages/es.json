@@ -386,7 +386,8 @@
     "invalid": "Este valor no es válido.",
     "mustAccept": "Acepta para continuar.",
     "tooMany": "Has seleccionado demasiados.",
-    "underage": "Debes tener al menos 18 años para unirte."
+    "underage": "Debes tener al menos 18 años para unirte.",
+    "passwordMismatch": "Las contraseñas no coinciden."
   },
   "auth": {
     "panelQuote": "«El mundo es un libro, y quienes no viajan leen solo una página.»",
@@ -396,13 +397,34 @@
       "subtitle": "Inicia sesión para continuar tu viaje.",
       "forgot": "¿Olvidaste tu contraseña?",
       "noAccount": "¿Eres nuevo en Travel Buddy?",
-      "createAccount": "Crear una cuenta"
+      "createAccount": "Crear una cuenta",
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "submit": "Iniciar sesión",
+      "emailFormLabel": "Iniciar sesión con correo electrónico"
     },
     "errors": {
       "expired": "Tu sesión terminó. Vuelve a iniciar sesión.",
       "providerUnavailable": "El inicio de sesión no está disponible temporalmente. Inténtalo de nuevo más tarde.",
       "reauth": "Por seguridad, vuelve a iniciar sesión para continuar en el área de administración.",
-      "mfa": "El área de administración requiere iniciar sesión con autenticación multifactor. Vuelve a iniciar sesión con tu segundo factor."
+      "mfa": "El área de administración requiere iniciar sesión con autenticación multifactor. Vuelve a iniciar sesión con tu segundo factor.",
+      "invalidCredentials": "Correo electrónico o contraseña incorrectos.",
+      "emailNotConfirmed": "Primero confirma tu correo electrónico. Revisa tu bandeja de entrada para encontrar el enlace que te enviamos.",
+      "rateLimited": "Demasiados intentos. Espera unos minutos y vuelve a intentarlo.",
+      "signupDisabled": "Los nuevos registros están cerrados en este momento.",
+      "conflict": "Ya existe una cuenta con este correo electrónico. Prueba a iniciar sesión.",
+      "weakPassword": "Elige una contraseña más segura.",
+      "samePassword": "La nueva contraseña debe ser distinta de la actual.",
+      "linkExpired": "Este paso ha caducado. Vuelve a empezar.",
+      "linkInvalid": "No pudimos completar el inicio de sesión desde ese enlace. Puede que haya caducado o que se haya abierto en otro navegador. Vuelve a intentarlo.",
+      "cancelled": "Se canceló el inicio de sesión.",
+      "emailUnverified": "Verifica tu correo electrónico con tu proveedor de inicio de sesión y vuelve a intentarlo.",
+      "accountSuspended": "Esta cuenta está suspendida. Contacta con soporte si crees que es un error.",
+      "accountDeleted": "Esta cuenta se ha eliminado.",
+      "ageRestricted": "Debes tener al menos 18 años para usar Travel Buddy.",
+      "consentRequired": "Acabamos de actualizar nuestros términos o nuestra política de privacidad. Revísalos y vuelve a enviar el formulario.",
+      "identityRejected": "No pudimos verificar tu inicio de sesión. Vuelve a intentarlo.",
+      "generic": "Algo salió mal. Vuelve a intentarlo."
     },
     "dev": {
       "noticeTitle": "Inicio de sesión de desarrollo",
@@ -435,18 +457,41 @@
         "exists": "Ya existe una cuenta con este correo electrónico. Prueba a iniciar sesión.",
         "generic": "No pudimos crear tu cuenta. Inténtalo de nuevo.",
         "consentChanged": "Acabamos de actualizar nuestros términos o la política de privacidad. Revísalos y vuelve a enviar el formulario."
-      }
+      },
+      "password": "Contraseña",
+      "passwordHint": "Al menos 8 caracteres."
     },
     "forgot": {
       "title": "Restablece tu contraseña",
       "body": "Nuestro proveedor de inicio de sesión te enviará por correo un enlace seguro para restablecer tu contraseña.",
       "cta": "Continuar al restablecimiento de contraseña",
-      "back": "Volver a iniciar sesión"
+      "back": "Volver a iniciar sesión",
+      "emailBody": "Introduce el correo electrónico de tu cuenta y te enviaremos un enlace para elegir una nueva contraseña.",
+      "email": "Correo electrónico",
+      "submit": "Enviar enlace",
+      "sent": "Si existe una cuenta con esa dirección, te hemos enviado un enlace. Ábrelo en este navegador."
     },
     "verify": {
       "title": "Revisa tu bandeja de entrada",
       "body": "Te enviamos un enlace de verificación. Ábrelo en este dispositivo para confirmar tu correo electrónico y luego inicia sesión.",
       "cta": "Ir a iniciar sesión"
+    },
+    "or": "o",
+    "reset": {
+      "title": "Elige una nueva contraseña",
+      "body": "Introduce una nueva contraseña para tu cuenta.",
+      "password": "Nueva contraseña",
+      "confirm": "Confirma la nueva contraseña",
+      "submit": "Guardar e iniciar sesión",
+      "expired": "Este enlace para restablecer la contraseña ha caducado o se abrió en otro navegador.",
+      "requestNew": "Solicitar un enlace nuevo"
+    },
+    "complete": {
+      "title": "Termina de crear tu cuenta",
+      "subtitle": "Solo dos datos más antes de empezar a explorar.",
+      "submit": "Crear cuenta",
+      "expired": "Este paso ha caducado. Vuelve a iniciar sesión.",
+      "backToLogin": "Volver a iniciar sesión"
     }
   },
   "onboarding": {

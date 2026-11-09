@@ -1,10 +1,12 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import type { LocaleCode } from '@travelbuddy/i18n';
 import { Alert } from '@travelbuddy/ui';
+import { OrDivider } from '@/features/auth/or-divider';
 import { ProviderButtons } from '@/features/auth/provider-buttons';
 import { RegisterForm } from '@/features/auth/register-form';
 import { Link } from '@/i18n/navigation';
 import { env } from '@/server/env';
+import { enabledSocialProviders } from '@/server/platform-signin';
 import { safeNextPath } from '@/server/safe-redirect';
 
 export default async function RegisterPage({
@@ -19,7 +21,8 @@ export default async function RegisterPage({
   const sp = await searchParams;
   const t = await getTranslations('auth');
   const next = safeNextPath(sp.next);
-  const devIdentity = env().identityProvider === 'dev';
+  const provider = env().identityProvider;
+  const social = provider === 'supabase' ? await enabledSocialProviders() : [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -27,12 +30,18 @@ export default async function RegisterPage({
         <h1 className="font-display text-4xl font-semibold">{t('register.title')}</h1>
         <p className="text-muted-foreground">{t('register.subtitle')}</p>
       </div>
-      {devIdentity ? (
+      {provider === 'dev' ? (
         <>
           <Alert tone="warning" title={t('dev.noticeTitle')}>
             {t('dev.registerNotice')}
           </Alert>
           <RegisterForm next={next} />
+        </>
+      ) : provider === 'supabase' ? (
+        <>
+          <ProviderButtons intent="signup" next={next} providers={social} />
+          {social.length > 0 ? <OrDivider label={t('or')} /> : null}
+          <RegisterForm next={next} withPassword />
         </>
       ) : (
         <ProviderButtons intent="signup" next={next} />

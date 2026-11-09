@@ -386,7 +386,8 @@
     "invalid": "This value isn’t valid.",
     "mustAccept": "Please accept to continue.",
     "tooMany": "You’ve selected too many.",
-    "underage": "You must be at least 18 years old to join."
+    "underage": "You must be at least 18 years old to join.",
+    "passwordMismatch": "The passwords don’t match."
   },
   "auth": {
     "panelQuote": "“The world is a book, and those who do not travel read only one page.”",
@@ -396,13 +397,34 @@
       "subtitle": "Log in to continue your journey.",
       "forgot": "Forgot your password?",
       "noAccount": "New to Travel Buddy?",
-      "createAccount": "Create an account"
+      "createAccount": "Create an account",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Log in",
+      "emailFormLabel": "Log in with email"
     },
     "errors": {
       "expired": "Your session ended. Please log in again.",
       "providerUnavailable": "Sign-in is temporarily unavailable. Please try again later.",
       "reauth": "For security, please sign in again to continue to the admin area.",
-      "mfa": "The admin area requires a sign-in with multi-factor authentication. Please sign in again with your second factor."
+      "mfa": "The admin area requires a sign-in with multi-factor authentication. Please sign in again with your second factor.",
+      "invalidCredentials": "Incorrect email or password.",
+      "emailNotConfirmed": "Please confirm your email address first. Check your inbox for the link we sent.",
+      "rateLimited": "Too many attempts. Please wait a few minutes and try again.",
+      "signupDisabled": "New sign-ups are closed at the moment.",
+      "conflict": "An account with this email already exists. Try logging in instead.",
+      "weakPassword": "Please choose a stronger password.",
+      "samePassword": "Your new password must be different from your current one.",
+      "linkExpired": "This step has expired. Please start again.",
+      "linkInvalid": "We couldn’t finish signing you in from that link. It may have expired or been opened in a different browser. Please try again.",
+      "cancelled": "Sign-in was cancelled.",
+      "emailUnverified": "Please verify your email address with your sign-in provider, then try again.",
+      "accountSuspended": "This account is suspended. Contact support if you think this is a mistake.",
+      "accountDeleted": "This account has been deleted.",
+      "ageRestricted": "You must be at least 18 years old to use Travel Buddy.",
+      "consentRequired": "Our terms or privacy policy were just updated. Please review them and submit again.",
+      "identityRejected": "We couldn’t verify your sign-in. Please try again.",
+      "generic": "Something went wrong. Please try again."
     },
     "dev": {
       "noticeTitle": "Development sign-in",
@@ -435,18 +457,41 @@
         "exists": "An account with this email already exists. Try logging in instead.",
         "generic": "We couldn’t create your account. Please try again.",
         "consentChanged": "Our terms or privacy policy were just updated. Please review them and submit again."
-      }
+      },
+      "password": "Password",
+      "passwordHint": "At least 8 characters."
     },
     "forgot": {
       "title": "Reset your password",
       "body": "Our sign-in provider will email you a secure link to reset your password.",
       "cta": "Continue to password reset",
-      "back": "Back to log in"
+      "back": "Back to log in",
+      "emailBody": "Enter the email address for your account and we’ll send you a link to choose a new password.",
+      "email": "Email",
+      "submit": "Send reset link",
+      "sent": "If an account exists for that address, a reset link is on its way. Open it in this browser."
     },
     "verify": {
       "title": "Check your inbox",
       "body": "We sent you a verification link. Open it on this device to confirm your email address, then log in.",
       "cta": "Go to log in"
+    },
+    "or": "or",
+    "reset": {
+      "title": "Choose a new password",
+      "body": "Enter a new password for your account.",
+      "password": "New password",
+      "confirm": "Confirm new password",
+      "submit": "Save and log in",
+      "expired": "This password-reset link has expired or was opened in a different browser.",
+      "requestNew": "Request a new link"
+    },
+    "complete": {
+      "title": "Finish creating your account",
+      "subtitle": "Just two more details before you start exploring.",
+      "submit": "Create account",
+      "expired": "This step expired. Please sign in again.",
+      "backToLogin": "Back to log in"
     }
   },
   "onboarding": {

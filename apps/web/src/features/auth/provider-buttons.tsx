@@ -21,34 +21,52 @@ function AppleMark() {
   );
 }
 
+export type ProviderOption = 'google' | 'apple' | 'email';
+
 /**
  * Social / email entry points. Each starts an IdP flow through `/api/auth/login`; the IdP owns
- * credentials (doc 02 §8). Plain links, so they work without JavaScript.
+ * credentials (doc 02 §8). Plain links, so they work without JavaScript. `providers` limits the
+ * buttons to what the identity provider has enabled.
  */
-export async function ProviderButtons({ intent, next }: { intent: 'login' | 'signup'; next: string }) {
+export async function ProviderButtons({
+  intent,
+  next,
+  providers = ['google', 'apple', 'email'],
+}: {
+  intent: 'login' | 'signup';
+  next: string;
+  providers?: readonly ProviderOption[];
+}) {
+  if (providers.length === 0) return null;
   const [t, locale] = await Promise.all([getTranslations('auth.providers'), getLocale()]);
   const href = (provider: string) =>
     `/api/auth/login?${new URLSearchParams({ intent, provider, next, locale }).toString()}`;
   return (
     <div className="flex flex-col gap-3">
-      <Button asChild variant="secondary" size="lg">
-        <a href={href('google')}>
-          <GoogleMark />
-          {t('google')}
-        </a>
-      </Button>
-      <Button asChild variant="secondary" size="lg">
-        <a href={href('apple')}>
-          <AppleMark />
-          {t('apple')}
-        </a>
-      </Button>
-      <Button asChild variant="secondary" size="lg">
-        <a href={href('email')}>
-          <Mail aria-hidden="true" />
-          {t('email')}
-        </a>
-      </Button>
+      {providers.includes('google') ? (
+        <Button asChild variant="secondary" size="lg">
+          <a href={href('google')}>
+            <GoogleMark />
+            {t('google')}
+          </a>
+        </Button>
+      ) : null}
+      {providers.includes('apple') ? (
+        <Button asChild variant="secondary" size="lg">
+          <a href={href('apple')}>
+            <AppleMark />
+            {t('apple')}
+          </a>
+        </Button>
+      ) : null}
+      {providers.includes('email') ? (
+        <Button asChild variant="secondary" size="lg">
+          <a href={href('email')}>
+            <Mail aria-hidden="true" />
+            {t('email')}
+          </a>
+        </Button>
+      ) : null}
     </div>
   );
 }

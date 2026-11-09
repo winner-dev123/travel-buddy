@@ -19,6 +19,8 @@ const loginBody = z.object({
   sub: z.string().min(1).max(200),
   email: z.string().email(),
   name: z.string().max(80).optional(),
+  /** Staff personas: simulate a completed second factor (dev IdP `mfa`, ADM-007). */
+  mfa: z.boolean().optional(),
   next: z.string().optional(),
   locale: z.string().max(10).default('en'),
 });
@@ -73,7 +75,7 @@ export async function POST(request: NextRequest) {
   try {
     let result;
     if (input.mode === 'login') {
-      const identity = { sub: input.sub, email: input.email, name: input.name };
+      const identity = { sub: input.sub, email: input.email, name: input.name, ...(input.mfa ? { mfa: true } : {}) };
       const { id_token } = await api.auth.devIdpToken(identity);
       try {
         result = await api.auth.login({ id_token, client: 'web' });

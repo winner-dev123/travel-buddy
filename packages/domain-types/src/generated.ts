@@ -190,7 +190,8 @@ export interface paths {
          * @description **Exists only when `APP_ENV ∈ {development, test}`. Returns `404` in staging and production**, and the
          *     process refuses to boot with the dev IdP enabled there. The token is an EdDSA (Ed25519) JWT with
          *     `kid = dev-1`, `iss = urn:travelbuddy:dev-idp`, `aud = travelbuddy-api`, claims
-         *     `sub`, `email`, `email_verified`, `name`, `iat`, `exp` (10 min), optional `nonce`, and `amr = ["dev"]`.
+         *     `sub`, `email`, `email_verified`, `name`, `iat`, `exp` (10 min), optional `nonce`, and `amr = ["dev"]`
+         *     (`["dev", "mfa"]` when `mfa: true`).
          *     It is consumed by `/v1/auth/register` and `/v1/auth/login` through the **same** OIDC verifier as
          *     production tokens (the verifier is chosen by the token's `iss`).
          */
@@ -235,7 +236,16 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Update my profile */
+        /**
+         * Update my profile
+         * @description Partial update: omitted fields are unchanged; `null` clears the nullable fields (`bio`, `avatar_media_id`,
+         *     `home_country_code`, `home_region`). Text is normalized (whitespace collapsed, invisible/bidi control
+         *     characters removed); list fields are de-duplicated case-insensitively.
+         *     **Handle** (PROF-003): case-insensitively unique (`409 conflict`). Reserved names are rejected with
+         *     `422` and `errors[].code = reserved`. The handle generated at registration can be replaced at once;
+         *     after that, one change per 30 days (`422`, `errors[].code = change_too_soon`, top-level `next_change_at`).
+         *     `avatar_media_id` must reference a finalized upload of the caller (`errors[].code = not_found` otherwise).
+         */
         patch: operations["updateMe"];
         trace?: never;
     };
@@ -310,7 +320,13 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Update my preferences */
+        /**
+         * Update my preferences
+         * @description `ui_locale` must be one of `client-config.supported_locales` (`errors[].code = unsupported`). `time_zone` must
+         *     be an IANA zone (`errors[].code = unknown`). `notification_settings` is **merged** per notification type and
+         *     channel: only the channels sent change. The response returns explicit choices only; clients apply their
+         *     defaults to missing entries.
+         */
         patch: operations["updateMyPreferences"];
         trace?: never;
     };
@@ -330,7 +346,7 @@ export interface paths {
         head?: never;
         /**
          * Update my privacy settings
-         * @description Enabling `discovery_enabled` requires a current `traveler_discovery` consent record (`consent_required` otherwise). Disabling discovery immediately ends any active discovery session.
+         * @description Enabling `discovery_enabled` requires a current `traveler_discovery` consent record (`403 consent_required` with top-level `consent_type`, otherwise). Disabling discovery immediately ends any active discovery session. Changing `search_engine_indexing` appends a `search_indexing` consent record.
          */
         patch: operations["updateMyPrivacySettings"];
         trace?: never;
@@ -347,7 +363,7 @@ export interface paths {
         put?: never;
         /**
          * Grant or withdraw a consent (append-only record)
-         * @description Withdrawing `traveler_discovery` disables discovery and ends active sessions. Withdrawing `location` stops server use of device location for "Nearby".
+         * @description Withdrawing `traveler_discovery` disables discovery and ends active sessions. Withdrawing `location` stops server use of device location for "Nearby". `search_indexing` is the same switch as `PrivacySettings.search_engine_indexing`. `terms` and `privacy_policy` cannot be withdrawn here (`errors[].code = cannot_withdraw`; that is account deletion) and only their current version can be accepted (`outdated_version`).
          */
         post: operations["recordMyConsent"];
         delete?: never;
@@ -3662,6 +3678,11 @@ export interface components {
             name?: string;
             /** @description Copied into the `nonce` claim when supplied. */
             nonce?: string;
+            /**
+             * @description Simulates a completed second factor: `amr` becomes `["dev", "mfa"]`. Staff permissions require it (ADM-007).
+             * @default false
+             */
+            mfa?: boolean;
         };
         DevIdpToken: {
             id_token: string;

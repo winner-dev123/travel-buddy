@@ -19,7 +19,7 @@ const handleI18nRouting = createMiddleware(routing);
 const PROTECTED =
   /^\/(feed|posts|explore|saved|assistant|trips|companions|messages|groups|tours|profile|notifications|membership|settings|onboarding|admin)(\/|$)/;
 const AUTH_ONLY_FOR_GUESTS = /^\/(login|register)(\/|$)/;
-const OTHER_DYNAMIC = /^\/(dev|forgot-password|verify-email)(\/|$)/;
+const OTHER_DYNAMIC = /^\/(dev|forgot-password|verify-email|reset-password|complete-registration)(\/|$)/;
 
 function stripLocale(pathname: string): { locale: string; prefix: string; rest: string } {
   const lower = pathname.toLowerCase();

@@ -386,7 +386,8 @@
     "invalid": "Cette valeur n’est pas valide.",
     "mustAccept": "Veuillez accepter pour continuer.",
     "tooMany": "Vous en avez sélectionné trop.",
-    "underage": "Vous devez avoir au moins 18 ans pour vous inscrire."
+    "underage": "Vous devez avoir au moins 18 ans pour vous inscrire.",
+    "passwordMismatch": "Les mots de passe ne correspondent pas."
   },
   "auth": {
     "panelQuote": "« Le monde est un livre, et ceux qui ne voyagent pas n’en lisent qu’une page. »",
@@ -396,13 +397,34 @@
       "subtitle": "Connectez-vous pour poursuivre votre voyage.",
       "forgot": "Mot de passe oublié ?",
       "noAccount": "Nouveau sur Travel Buddy ?",
-      "createAccount": "Créer un compte"
+      "createAccount": "Créer un compte",
+      "email": "E-mail",
+      "password": "Mot de passe",
+      "submit": "Se connecter",
+      "emailFormLabel": "Se connecter avec un e-mail"
     },
     "errors": {
       "expired": "Votre session a pris fin. Veuillez vous reconnecter.",
       "providerUnavailable": "La connexion est temporairement indisponible. Veuillez réessayer plus tard.",
       "reauth": "Pour des raisons de sécurité, reconnectez-vous pour accéder à l’espace d’administration.",
-      "mfa": "L’espace d’administration exige une connexion avec authentification multifacteur. Reconnectez-vous avec votre second facteur."
+      "mfa": "L’espace d’administration exige une connexion avec authentification multifacteur. Reconnectez-vous avec votre second facteur.",
+      "invalidCredentials": "E-mail ou mot de passe incorrect.",
+      "emailNotConfirmed": "Veuillez d’abord confirmer votre adresse e-mail. Cherchez le lien que nous vous avons envoyé dans votre boîte de réception.",
+      "rateLimited": "Trop de tentatives. Patientez quelques minutes, puis réessayez.",
+      "signupDisabled": "Les nouvelles inscriptions sont fermées pour le moment.",
+      "conflict": "Un compte existe déjà avec cet e-mail. Essayez plutôt de vous connecter.",
+      "weakPassword": "Choisissez un mot de passe plus robuste.",
+      "samePassword": "Le nouveau mot de passe doit être différent de l’actuel.",
+      "linkExpired": "Cette étape a expiré. Veuillez recommencer.",
+      "linkInvalid": "Nous n’avons pas pu finaliser votre connexion à partir de ce lien. Il a peut-être expiré ou été ouvert dans un autre navigateur. Veuillez réessayer.",
+      "cancelled": "La connexion a été annulée.",
+      "emailUnverified": "Veuillez vérifier votre adresse e-mail auprès de votre fournisseur de connexion, puis réessayer.",
+      "accountSuspended": "Ce compte est suspendu. Contactez l’assistance si vous pensez qu’il s’agit d’une erreur.",
+      "accountDeleted": "Ce compte a été supprimé.",
+      "ageRestricted": "Vous devez avoir au moins 18 ans pour utiliser Travel Buddy.",
+      "consentRequired": "Nos conditions ou notre politique de confidentialité viennent d’être mises à jour. Veuillez les consulter, puis envoyer à nouveau le formulaire.",
+      "identityRejected": "Nous n’avons pas pu vérifier votre connexion. Veuillez réessayer.",
+      "generic": "Une erreur s’est produite. Veuillez réessayer."
     },
     "dev": {
       "noticeTitle": "Connexion de développement",
@@ -435,18 +457,41 @@
         "exists": "Un compte avec cet e-mail existe déjà. Essayez plutôt de vous connecter.",
         "generic": "Nous n’avons pas pu créer votre compte. Veuillez réessayer.",
         "consentChanged": "Nos conditions ou notre politique de confidentialité viennent d’être mises à jour. Veuillez les consulter et réessayer."
-      }
+      },
+      "password": "Mot de passe",
+      "passwordHint": "Au moins 8 caractères."
     },
     "forgot": {
       "title": "Réinitialisez votre mot de passe",
       "body": "Notre fournisseur de connexion vous enverra par e-mail un lien sécurisé pour réinitialiser votre mot de passe.",
       "cta": "Continuer vers la réinitialisation",
-      "back": "Retour à la connexion"
+      "back": "Retour à la connexion",
+      "emailBody": "Saisissez l’adresse e-mail de votre compte et nous vous enverrons un lien pour choisir un nouveau mot de passe.",
+      "email": "E-mail",
+      "submit": "Envoyer le lien",
+      "sent": "Si un compte existe pour cette adresse, un lien de réinitialisation est en route. Ouvrez-le dans ce navigateur."
     },
     "verify": {
       "title": "Consultez votre boîte de réception",
       "body": "Nous vous avons envoyé un lien de vérification. Ouvrez-le sur cet appareil pour confirmer votre adresse e-mail, puis connectez-vous.",
       "cta": "Aller à la connexion"
+    },
+    "or": "ou",
+    "reset": {
+      "title": "Choisissez un nouveau mot de passe",
+      "body": "Saisissez un nouveau mot de passe pour votre compte.",
+      "password": "Nouveau mot de passe",
+      "confirm": "Confirmez le nouveau mot de passe",
+      "submit": "Enregistrer et se connecter",
+      "expired": "Ce lien de réinitialisation a expiré ou a été ouvert dans un autre navigateur.",
+      "requestNew": "Demander un nouveau lien"
+    },
+    "complete": {
+      "title": "Finalisez la création de votre compte",
+      "subtitle": "Plus que deux informations avant de commencer à explorer.",
+      "submit": "Créer le compte",
+      "expired": "Cette étape a expiré. Veuillez vous reconnecter.",
+      "backToLogin": "Retour à la connexion"
     }
   },
   "onboarding": {

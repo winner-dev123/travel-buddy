@@ -97,10 +97,8 @@ describe('environment guards (docs/web/01 §7.1)', () => {
       APP_ENV: 'production',
       API_BASE_URL: 'https://api.example.com',
       SESSION_SECRET: SECRET,
-      OIDC_ISSUER: 'https://idp.example.com',
-      OIDC_CLIENT_ID: 'web',
-      OIDC_CLIENT_SECRET: 'secret',
-      OIDC_REDIRECT_URI: 'https://www.example.com/api/auth/callback',
+      SUPABASE_URL: 'https://project.supabase.co',
+      SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_example',
       NEXT_PUBLIC_MAP_STYLE_URL: 'https://tiles.example.com/style.json',
     };
     expect(() => parseEnv(base)).not.toThrow();

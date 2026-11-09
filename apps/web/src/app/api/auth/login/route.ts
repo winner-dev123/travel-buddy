@@ -1,4 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { env } from '@/server/env';
+import { FLOW_COOKIE, FLOW_COOKIE_PATH, FLOW_TTL_SECONDS, idpCookieOptions } from '@/server/idp-flow';
 import { identityProvider, type LoginIntent, type SocialProvider } from '@/server/identity';
 import { safeNextPath } from '@/server/safe-redirect';
 import { localizedPath } from '@/lib/paths';
@@ -16,8 +18,13 @@ export async function GET(request: NextRequest) {
   const locale = params.get('locale') ?? 'en';
   const next = safeNextPath(params.get('next'));
   try {
-    const url = await identityProvider().authorizationUrl({ intent, provider, next, locale });
-    return NextResponse.redirect(new URL(url, request.url), 303);
+    const start = await identityProvider().start({ intent, provider, next, locale });
+    const response = NextResponse.redirect(new URL(start.url, request.url), 303);
+    if (start.flowCookie) {
+      response.cookies.set(FLOW_COOKIE, start.flowCookie, idpCookieOptions(env().secureCookies, FLOW_TTL_SECONDS, FLOW_COOKIE_PATH));
+    }
+    response.headers.set('cache-control', 'no-store');
+    return response;
   } catch {
     return NextResponse.redirect(new URL(`${localizedPath(locale, '/login')}?error=provider_unavailable`, request.url), 303);
   }

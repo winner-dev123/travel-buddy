@@ -29,7 +29,7 @@ Aligned with doc 11 §1. Web-specific settings:
 | `staging` | `staging` | `live` | Staging API/realtime | IdP test tenant | Stripe test mode | **Off** | Team + testers (SSO/IP allow-list) |
 | `production` | `production` | `live` | Production | Production IdP | Stripe live | **On** | Public |
 
-The boot guard (`src/server/env-core.ts`) refuses: `TB_API_MODE=mock` or the dev IdP with `APP_ENV ∈ {staging, production}`; a missing or short `SESSION_SECRET`; a missing `NEXT_PUBLIC_MAP_STYLE_URL` or `OIDC_*` in production (08 T-WEB-08).
+The boot guard (`src/server/env-core.ts`) refuses: `TB_API_MODE=mock` or the dev IdP with `APP_ENV ∈ {staging, production}`; a missing or short `SESSION_SECRET`; a missing `NEXT_PUBLIC_MAP_STYLE_URL` in staging/production; missing `SUPABASE_URL`/`SUPABASE_PUBLISHABLE_KEY`, or a secret/service-role key, when the Supabase identity provider is active (08 T-WEB-08).
 
 ## 3. Configuration
 
@@ -44,8 +44,8 @@ The boot guard (`src/server/env-core.ts`) refuses: `TB_API_MODE=mock` or the dev
 | `SESSION_SECRET` | **secret** | runtime | all except mock-only local | ≥ 32 bytes random. JWE sealing key (ADR-0011) |
 | `SESSION_SECRET_PREVIOUS` | **secret** | runtime | during rotation | Accepted for unsealing only |
 | `COOKIE_HOST_PREFIX` | config | runtime | staging, prod = `true` | Enables `__Host-` cookie names (08 §4) |
-| `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_REDIRECT_URI` | config | runtime | staging, prod | |
-| `OIDC_CLIENT_SECRET` | **secret** | runtime | staging, prod | |
+| `TB_IDENTITY_PROVIDER` | config | runtime | all | `supabase` (default outside dev/test), `dev` (dev/test/demo only) |
+| `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` | config | runtime | staging, prod | Publishable key only (public by design, ADR-0020); the redirect URI `<site>/api/auth/callback` must be in Supabase's allow-list |
 | `NEXT_PUBLIC_SITE_URL` | public | **build** (inlined) | all | Canonical origin for metadata, sitemaps and CSRF `Origin` checks |
 | `NEXT_PUBLIC_MAP_STYLE_URL` | public | **build** (inlined) | prod (dev falls back to the demo style) | ADR-0014. The tile provider key must be a **public, domain-restricted** key |
 | `MEDIA_CDN_ORIGIN` | config | **build** (`next.config` image `remotePatterns`) | all | Media/CDN host for `next/image` |
@@ -86,7 +86,7 @@ The web runs as a container service using the infra stream's generic `service` m
 
 | Concern | Why containers |
 |---|---|
-| Trust boundary | The BFF unseals tokens and holds `SESSION_SECRET` and `OIDC_CLIENT_SECRET`. ADR-0011 requires trusted infrastructure in our VPC, not a multi-tenant edge runtime |
+| Trust boundary | The BFF unseals tokens and holds `SESSION_SECRET` (the Supabase publishable key is not a secret). ADR-0011 requires trusted infrastructure in our VPC, not a multi-tenant edge runtime |
 | Latency to the API | In-VPC calls to the internal API endpoint beat edge → public API round-trips for every authenticated request |
 | Streaming | AI chat SSE and long-lived responses need a stable process and generous timeouts |
 | Shared cache | ISR and on-demand revalidation need a shared cache handler (§5), simpler on a fixed fleet |
@@ -208,12 +208,11 @@ Logs are JSON to stdout with `request_id`, pseudonymous `user_id`, route templat
 
 ## 12. Secrets management
 
-Per doc 11 §6: secrets live only in the secret manager and are injected at runtime. Web secrets are `SESSION_SECRET`, `SESSION_SECRET_PREVIOUS`, `OIDC_CLIENT_SECRET`, `ISR_CACHE_REDIS_URL`, `ERROR_TRACKING_DSN` and the revalidation HMAC key.
+Per doc 11 §6: secrets live only in the secret manager and are injected at runtime. Web secrets are `SESSION_SECRET`, `SESSION_SECRET_PREVIOUS`, `ISR_CACHE_REDIS_URL`, `ERROR_TRACKING_DSN` and the revalidation HMAC key.
 
 | Secret | Rotation |
 |---|---|
 | `SESSION_SECRET` | Quarterly and on suspicion. Set the new key as current and the old as `_PREVIOUS` for one refresh lifetime window or until forced re-login is acceptable. Rotation without overlap logs everyone out (acceptable as an incident response) |
-| `OIDC_CLIENT_SECRET` | Per IdP policy (≥ yearly); dual-secret support at the IdP during rotation |
 | Revalidation HMAC key | Quarterly; dual-key verification during rotation |
 
 Staging and production never share secret values. Preview environments get their own.
@@ -224,7 +223,7 @@ The web tier is **stateless**. Recovery is redeploying the last known-good image
 
 ## 14. Production readiness checklist (web)
 
-- [ ] Boot guard verified: production refuses mock, dev IdP, short secrets, missing OIDC or map style.
+- [ ] Boot guard verified: production refuses mock, dev IdP, short secrets, missing Supabase settings or a privileged Supabase key, or a missing map style.
 - [ ] Cookies use `__Host-` names in production; `Secure` and `HttpOnly` as specified (08 §13.1).
 - [ ] CSP enforced (strict profile on dynamic routes, static profile on public pages); security headers verified by scan (08 §7).
 - [ ] CDN rules match §6; a test proves no `Set-Cookie` or private route is cached.

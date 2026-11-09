@@ -12,6 +12,7 @@ export interface PersonaOption {
   display_name: string;
   email: string;
   note: string;
+  staff: boolean;
 }
 
 /** Development identity provider UI (dev/test only). Signs in as a seeded persona. */
@@ -24,7 +25,7 @@ export function DevPersonaPicker({ personas, next }: { personas: PersonaOption[]
   const signIn = async (p: PersonaOption) => {
     setPending(p.sub);
     setError(false);
-    const res = await postAuth<{ redirect?: string }>('/api/auth/dev', { mode: 'login', sub: p.sub, email: p.email, name: p.display_name, next, locale });
+    const res = await postAuth<{ redirect?: string }>('/api/auth/dev', { mode: 'login', sub: p.sub, email: p.email, name: p.display_name, mfa: p.staff, next, locale });
     if (res.ok && res.data.redirect) {
       window.location.assign(res.data.redirect);
     } else {

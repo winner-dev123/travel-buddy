@@ -23,6 +23,7 @@ export const V = {
   mustAccept: 'validation.mustAccept',
   tooMany: 'validation.tooMany',
   underage: 'validation.underage',
+  passwordMismatch: 'validation.passwordMismatch',
 } as const;
 
 /** Limits copied from the contract schemas (UpdateMyProfileRequest, CreatePostRequest, …). */
@@ -91,6 +92,32 @@ export const registerSchema = z.object({
   terms_accepted: z.literal(true, { message: V.mustAccept }),
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
+
+/** Password rules for identity-provider accounts (Supabase Auth, ADR-0020). 72 is the bcrypt limit. */
+export const PASSWORD_LIMITS = { min: 8, max: 72 } as const;
+export const passwordSchema = z
+  .string()
+  .min(PASSWORD_LIMITS.min, { message: V.tooShort })
+  .max(PASSWORD_LIMITS.max, { message: V.tooLong });
+
+/** Email + password registration: the platform fields plus the IdP password. */
+export const passwordRegisterSchema = registerSchema.extend({ password: passwordSchema });
+export type PasswordRegisterInput = z.infer<typeof passwordRegisterSchema>;
+
+export const emailSignInSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1, { message: V.required }).max(PASSWORD_LIMITS.max, { message: V.tooLong }),
+});
+export type EmailSignInInput = z.infer<typeof emailSignInSchema>;
+
+/** Finishing registration after the IdP step (social sign-in or an expired signup flow). */
+export const completeRegistrationSchema = registerSchema.pick({ birth_date: true, terms_accepted: true });
+export type CompleteRegistrationInput = z.infer<typeof completeRegistrationSchema>;
+
+export const resetPasswordSchema = z
+  .object({ password: passwordSchema, confirm: z.string() })
+  .refine((v) => v.password === v.confirm, { message: V.passwordMismatch, path: ['confirm'] });
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 export const tagSchema = z.string().trim().min(1).max(LIMITS.tags.itemMax, { message: V.tooLong });
 

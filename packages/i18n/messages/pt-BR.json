@@ -386,7 +386,8 @@
     "invalid": "Este valor não é válido.",
     "mustAccept": "Aceite para continuar.",
     "tooMany": "Você selecionou itens demais.",
-    "underage": "Você precisa ter pelo menos 18 anos para participar."
+    "underage": "Você precisa ter pelo menos 18 anos para participar.",
+    "passwordMismatch": "As senhas não coincidem."
   },
   "auth": {
     "panelQuote": "“O mundo é um livro, e quem não viaja lê apenas uma página.”",
@@ -396,13 +397,34 @@
       "subtitle": "Entre para continuar sua jornada.",
       "forgot": "Esqueceu a senha?",
       "noAccount": "Novo no Travel Buddy?",
-      "createAccount": "Criar uma conta"
+      "createAccount": "Criar uma conta",
+      "email": "E-mail",
+      "password": "Senha",
+      "submit": "Entrar",
+      "emailFormLabel": "Entrar com e-mail"
     },
     "errors": {
       "expired": "Sua sessão terminou. Entre novamente.",
       "providerUnavailable": "O login está temporariamente indisponível. Tente novamente mais tarde.",
       "reauth": "Por segurança, entre novamente para continuar na área de administração.",
-      "mfa": "A área de administração exige login com autenticação multifator. Entre novamente usando seu segundo fator."
+      "mfa": "A área de administração exige login com autenticação multifator. Entre novamente usando seu segundo fator.",
+      "invalidCredentials": "E-mail ou senha incorretos.",
+      "emailNotConfirmed": "Confirme seu e-mail primeiro. Procure na sua caixa de entrada o link que enviamos.",
+      "rateLimited": "Muitas tentativas. Aguarde alguns minutos e tente novamente.",
+      "signupDisabled": "Novos cadastros estão fechados no momento.",
+      "conflict": "Já existe uma conta com este e-mail. Tente entrar.",
+      "weakPassword": "Escolha uma senha mais forte.",
+      "samePassword": "A nova senha precisa ser diferente da atual.",
+      "linkExpired": "Esta etapa expirou. Comece de novo.",
+      "linkInvalid": "Não conseguimos concluir seu login por esse link. Ele pode ter expirado ou sido aberto em outro navegador. Tente novamente.",
+      "cancelled": "O login foi cancelado.",
+      "emailUnverified": "Verifique seu e-mail no seu provedor de login e tente novamente.",
+      "accountSuspended": "Esta conta está suspensa. Fale com o suporte se achar que é um engano.",
+      "accountDeleted": "Esta conta foi excluída.",
+      "ageRestricted": "Você precisa ter pelo menos 18 anos para usar o Travel Buddy.",
+      "consentRequired": "Acabamos de atualizar nossos termos ou nossa política de privacidade. Revise-os e envie novamente.",
+      "identityRejected": "Não conseguimos verificar seu login. Tente novamente.",
+      "generic": "Algo deu errado. Tente novamente."
     },
     "dev": {
       "noticeTitle": "Login de desenvolvimento",
@@ -435,18 +457,41 @@
         "exists": "Já existe uma conta com este e-mail. Tente entrar.",
         "generic": "Não foi possível criar sua conta. Tente novamente.",
         "consentChanged": "Nossos termos ou a política de privacidade acabaram de ser atualizados. Revise-os e envie novamente."
-      }
+      },
+      "password": "Senha",
+      "passwordHint": "Pelo menos 8 caracteres."
     },
     "forgot": {
       "title": "Redefinir sua senha",
       "body": "Nosso provedor de login enviará um link seguro por e-mail para você redefinir sua senha.",
       "cta": "Continuar para a redefinição de senha",
-      "back": "Voltar para o login"
+      "back": "Voltar para o login",
+      "emailBody": "Informe o e-mail da sua conta e enviaremos um link para você escolher uma nova senha.",
+      "email": "E-mail",
+      "submit": "Enviar link",
+      "sent": "Se existir uma conta com esse endereço, um link de redefinição está a caminho. Abra-o neste navegador."
     },
     "verify": {
       "title": "Confira sua caixa de entrada",
       "body": "Enviamos um link de verificação para você. Abra-o neste dispositivo para confirmar seu e-mail e depois entre.",
       "cta": "Ir para o login"
+    },
+    "or": "ou",
+    "reset": {
+      "title": "Escolha uma nova senha",
+      "body": "Digite uma nova senha para sua conta.",
+      "password": "Nova senha",
+      "confirm": "Confirme a nova senha",
+      "submit": "Salvar e entrar",
+      "expired": "Este link de redefinição de senha expirou ou foi aberto em outro navegador.",
+      "requestNew": "Pedir um novo link"
+    },
+    "complete": {
+      "title": "Conclua a criação da sua conta",
+      "subtitle": "Só mais dois dados antes de começar a explorar.",
+      "submit": "Criar conta",
+      "expired": "Esta etapa expirou. Entre novamente.",
+      "backToLogin": "Voltar para o login"
     }
   },
   "onboarding": {
