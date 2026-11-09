@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/server.notification.new.schema.json",
+  "title": "server → client: notification.new",
+  "description": "A new in-app notification (mirrors GET /v1/notifications items). Never includes private message bodies.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "notification.new"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "notification": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "envelope.schema.json#/$defs/Uuid"
+            },
+            "type": {
+              "type": "string"
+            },
+            "actor": {
+              "anyOf": [
+                {
+                  "$ref": "envelope.schema.json#/$defs/UserSummary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "entity_type": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "entity_id": {
+              "anyOf": [
+                {
+                  "$ref": "envelope.schema.json#/$defs/Uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": {
+              "type": "string"
+            },
+            "body": {
+              "type": "string"
+            },
+            "data": {
+              "type": "object"
+            },
+            "created_at": {
+              "$ref": "envelope.schema.json#/$defs/Timestamp"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "type",
+            "actor",
+            "entity_type",
+            "entity_id",
+            "title",
+            "body",
+            "data",
+            "created_at"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "notification"
+      ]
+    }
+  }
+}

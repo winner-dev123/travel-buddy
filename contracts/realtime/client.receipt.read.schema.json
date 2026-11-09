@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/client.receipt.read.schema.json",
+  "title": "client → server: receipt.read",
+  "description": "Advance my read watermark (monotonic; lower values ignored).",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "receipt.read"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "conversation_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "read_through_seq": {
+          "$ref": "envelope.schema.json#/$defs/Seq"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "conversation_id",
+        "read_through_seq"
+      ]
+    }
+  },
+  "not": {
+    "required": [
+      "reply_to"
+    ]
+  }
+}

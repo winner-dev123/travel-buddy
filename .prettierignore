@@ -1,0 +1,19 @@
+# Owned by other work streams (backend / mobile / contracts / infra) — formatted by their own tooling.
+backend
+mobile
+contracts
+infra
+docs
+docker-compose.yml
+README.md
+
+# Generated
+node_modules
+.next
+coverage
+playwright-report
+test-results
+reports
+package-lock.json
+apps/web/public/vendor
+packages/domain-types/src/generated.ts

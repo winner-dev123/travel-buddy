@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/server.error.schema.json",
+  "title": "server → client: error",
+  "description": "A client frame failed. `reply_to` references it. The connection stays open unless a close follows.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "error"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "envelope.schema.json#/$defs/RealtimeErrorCode"
+        },
+        "message": {
+          "type": "string"
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "conversation_id": {
+          "anyOf": [
+            {
+              "$ref": "envelope.schema.json#/$defs/Uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "client_message_id": {
+          "anyOf": [
+            {
+              "$ref": "envelope.schema.json#/$defs/Uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "details": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ]
+    }
+  }
+}

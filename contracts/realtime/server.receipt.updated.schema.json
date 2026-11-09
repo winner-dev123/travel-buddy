@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/server.receipt.updated.schema.json",
+  "title": "server → client: receipt.updated",
+  "description": "Another member's watermark advanced. Read watermarks are only sent when both parties have read receipts enabled. Delivered watermarks are only sent in direct conversations.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "receipt.updated"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "conversation_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "user_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "read_through_seq": {
+          "$ref": "envelope.schema.json#/$defs/Seq"
+        },
+        "delivered_through_seq": {
+          "$ref": "envelope.schema.json#/$defs/Seq"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "conversation_id",
+        "user_id"
+      ],
+      "minProperties": 3
+    }
+  }
+}

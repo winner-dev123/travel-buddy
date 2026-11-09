@@ -1,0 +1,4 @@
+{
+  "extends": "@travelbuddy/config/tsconfig/base.json",
+  "include": ["src", "messages"]
+}

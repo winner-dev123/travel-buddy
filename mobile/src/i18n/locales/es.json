@@ -1,0 +1,129 @@
+{
+  "common": {
+    "appName": "Travel Buddy",
+    "retry": "Reintentar"
+  },
+  "tabs": {
+    "home": "Inicio",
+    "explore": "Explorar",
+    "companions": "Compañeros",
+    "messages": "Mensajes",
+    "profile": "Perfil"
+  },
+  "placeholder": {
+    "comingInPhase": "Disponible en la fase {{phase}}",
+    "notAvailableYet": "Esta parte de la aplicación aún está en desarrollo. Nada de lo que se muestra aquí son datos reales.",
+    "plannedCapabilities_one": "{{count}} función prevista",
+    "plannedCapabilities_many": "{{count}} de funciones previstas",
+    "plannedCapabilities_other": "{{count}} funciones previstas"
+  },
+  "features": {
+    "auth": {
+      "title": "Iniciar sesión",
+      "capabilities": {
+        "emailSignIn": "Inicia sesión con correo electrónico, Apple o Google",
+        "sessions": "Gestiona los dispositivos con sesión iniciada",
+        "verification": "Verificación del correo y restablecimiento de la contraseña"
+      }
+    },
+    "onboarding": {
+      "title": "Primeros pasos",
+      "capabilities": {
+        "profileBasics": "Elige un nombre visible y una foto opcional",
+        "interests": "Elige tus intereses y estilos de viaje",
+        "destination": "Indica tu destino actual o próximo"
+      }
+    },
+    "feed": {
+      "title": "Feed de viajes",
+      "capabilities": {
+        "localFeed": "Publicaciones de viajeros sobre el destino que estás explorando",
+        "filters": "Filtra por ciudad, país, radio, idioma y categoría",
+        "interactions": "Reacciona, comenta, guarda y sigue"
+      }
+    },
+    "explore": {
+      "title": "Explorar",
+      "capabilities": {
+        "map": "Descubrimiento de destinos en el mapa",
+        "attractions": "Atracciones y recomendaciones",
+        "assistant": "Planificación de itinerarios con IA"
+      }
+    },
+    "companions": {
+      "title": "Compañeros",
+      "capabilities": {
+        "discovery": "Descubrimiento voluntario de viajeros en la misma ciudad",
+        "requests": "Envía y acepta solicitudes de conexión",
+        "groups": "Grupos de compañeros de viaje"
+      }
+    },
+    "messaging": {
+      "title": "Mensajes",
+      "capabilities": {
+        "direct": "Mensajes privados con tus conexiones",
+        "groups": "Conversaciones de grupo",
+        "activities": "Acertijos y desafíos en grupo"
+      }
+    },
+    "profile": {
+      "title": "Perfil",
+      "capabilities": {
+        "posts": "Tus publicaciones y contenido guardado",
+        "trips": "Viajes e itinerarios",
+        "privacy": "Privacidad, suscripción y ajustes de la cuenta"
+      }
+    },
+    "discovery": {
+      "title": "Descubrimiento de viajeros"
+    },
+    "groups": {
+      "title": "Grupos de viaje"
+    },
+    "challenges": {
+      "title": "Desafíos de grupo"
+    },
+    "aiItinerary": {
+      "title": "Planificador de viajes con IA"
+    },
+    "offlineGuides": {
+      "title": "Guías sin conexión"
+    },
+    "subscriptions": {
+      "title": "Premium"
+    }
+  },
+  "offline": {
+    "onlineOnly": "Solo con conexión",
+    "onlineOnlyA11y": "Solo con conexión. Esta función necesita conexión a internet.",
+    "offlineNow": "Sin conexión",
+    "offlineNowA11y": "No tienes conexión. Esta función no estará disponible hasta que vuelvas a conectarte."
+  },
+  "safety": {
+    "discoveryTitle": "Antes de quedar con otros viajeros",
+    "discoveryIntro": "El descubrimiento de viajeros es opcional y está desactivado por defecto. No podemos garantizar que quedar con alguien que encuentres aquí sea seguro.",
+    "tipPublicPlaces": "La primera vez, queda en lugares públicos y concurridos.",
+    "tipTellSomeone": "Cuéntale a alguien de confianza adónde vas.",
+    "tipPersonalDetails": "No compartas datos personales como tu hotel, tu dirección o tu teléfono hasta que tengas confianza.",
+    "tipCoarseLocation": "Solo se muestra tu ciudad o tu barrio. Tu ubicación exacta nunca se comparte.",
+    "tipBlockReport": "Puedes bloquear y denunciar a cualquier persona en cualquier momento.",
+    "guideWithoutDiscovery": "Puedes usar todas las funciones de la guía de viaje sin activar el descubrimiento."
+  },
+  "onboarding": {
+    "stepsHeading": "Pasos de configuración",
+    "steps": {
+      "account": "Crea tu cuenta",
+      "ageTerms": "Confirma tu edad y acepta los términos",
+      "profile": "Nombre visible y foto",
+      "language": "Idioma",
+      "interests": "Intereses y estilos de viaje",
+      "destination": "Destino actual o próximo",
+      "location": "Permiso de ubicación (opcional)",
+      "discovery": "Descubrimiento de viajeros (desactivado por defecto)"
+    }
+  },
+  "notFound": {
+    "title": "Página no encontrada",
+    "goHome": "Ir a Inicio"
+  }
+}

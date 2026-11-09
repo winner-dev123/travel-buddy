@@ -1,0 +1,100 @@
+@import 'tailwindcss';
+@import '@travelbuddy/ui/tokens.css';
+
+/* Scan the shared UI package for class names (it lives outside this app's directory). */
+@source '../../../../packages/ui/src';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--tb-background);
+    color: var(--tb-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--tb-ring);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--tb-secondary) 35%, transparent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Long-form readable copy (destination overviews, legal pages). */
+  .prose-travel {
+    font-size: 1.0625rem;
+    line-height: 1.75;
+    color: var(--tb-foreground);
+  }
+  .prose-travel p + p {
+    margin-top: 1rem;
+  }
+  .prose-travel h2 {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .eyebrow {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--tb-primary-strong);
+  }
+}
+
+@utility skip-link {
+  position: absolute;
+  inset-inline-start: 1rem;
+  top: -100px;
+  z-index: 100;
+  border-radius: 999px;
+  background: var(--tb-primary);
+  color: var(--tb-primary-foreground);
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  &:focus {
+    top: 1rem;
+  }
+}
+
+/* Feed cards: let the browser skip rendering off-screen cards (cheap virtualization). */
+@utility cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 480px;
+}

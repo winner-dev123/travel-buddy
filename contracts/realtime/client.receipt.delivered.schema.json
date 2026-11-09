@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/client.receipt.delivered.schema.json",
+  "title": "client → server: receipt.delivered",
+  "description": "Advance my delivered watermark (monotonic).",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "receipt.delivered"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "conversation_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "delivered_through_seq": {
+          "$ref": "envelope.schema.json#/$defs/Seq"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "conversation_id",
+        "delivered_through_seq"
+      ]
+    }
+  },
+  "not": {
+    "required": [
+      "reply_to"
+    ]
+  }
+}

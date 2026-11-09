@@ -1,0 +1,21 @@
+{
+  "name": "@travelbuddy/validation",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Zod schemas shared by Travel Buddy clients. The backend re-validates everything.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@travelbuddy/domain-types": "*",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@travelbuddy/config": "*"
+  }
+}

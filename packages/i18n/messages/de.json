@@ -1,0 +1,785 @@
+{
+  "meta": {
+    "siteName": "Travel Buddy",
+    "defaultTitle": "Travel Buddy — Entdecke die Welt. Finde deine Leute.",
+    "defaultDescription": "Entdecke Reiseziele, lies Geschichten echter Reisender, plane Trips mit KI und lerne Menschen kennen, die deine Abenteuer teilen."
+  },
+  "common": {
+    "skipToContent": "Zum Inhalt springen",
+    "close": "Schließen"
+  },
+  "env": {
+    "mockTitle": "Mock-Daten",
+    "mockDescription": "Diese Umgebung nutzt den Mock-Adapter für die Entwicklung. Die Inhalte sind Beispieldaten, Zahlungen, KI, Chat und Uploads sind deaktiviert."
+  },
+  "theme": {
+    "label": "Farbschema",
+    "light": "Hell",
+    "dark": "Dunkel",
+    "system": "System"
+  },
+  "locale": {
+    "label": "Sprache"
+  },
+  "nav": {
+    "home": "Travel Buddy Startseite",
+    "primary": "Hauptmenü",
+    "destinations": "Reiseziele",
+    "stories": "Stories",
+    "pricing": "Premium",
+    "download": "App holen",
+    "login": "Anmelden",
+    "join": "Kostenlos starten",
+    "menu": "Menü"
+  },
+  "footer": {
+    "explore": "Entdecken",
+    "destinations": "Reiseziele",
+    "stories": "Reisegeschichten",
+    "premium": "Premium",
+    "company": "Unternehmen",
+    "about": "Über uns",
+    "apps": "Mobile Apps",
+    "legal": "Rechtliches",
+    "terms": "Nutzungsbedingungen",
+    "privacy": "Datenschutz",
+    "cookies": "Cookie-Richtlinie",
+    "guidelines": "Community-Richtlinien",
+    "tagline": "Entdecke außergewöhnliche Orte, plane unvergessliche Reisen und sei unterwegs mit Menschen, die deine Abenteuer teilen.",
+    "copyright": "© {year} Travel Buddy",
+    "noLiveInfo": "Bestätige Öffnungszeiten, Preise und Einreisebestimmungen immer bei offiziellen Stellen."
+  },
+  "continents": {
+    "africa": "Afrika",
+    "asia": "Asien",
+    "europe": "Europa",
+    "middle_east": "Naher Osten",
+    "north_america": "Nordamerika",
+    "central_america_caribbean": "Mittelamerika & Karibik",
+    "south_america": "Südamerika",
+    "oceania": "Ozeanien"
+  },
+  "search": {
+    "label": "Reiseziele suchen",
+    "placeholder": "Wohin soll es gehen?",
+    "error": "Die Suche ist gerade nicht verfügbar.",
+    "noResults": "Keine Reiseziele gefunden.",
+    "kind": {
+      "country": "Land",
+      "admin_region": "Region",
+      "city": "Stadt",
+      "district": "Bezirk",
+      "neighborhood": "Viertel",
+      "area": "Gebiet"
+    }
+  },
+  "stories": {
+    "meta": {
+      "title": "Reisegeschichten echter Reisender",
+      "description": "Öffentliche Stories, Tipps und Momente, die Reisende aus aller Welt teilen.",
+      "storyTitle": "{title} — eine Story von {author}"
+    },
+    "eyebrow": "Stories",
+    "title": "Stories von unterwegs",
+    "subtitle": "Momente, Tipps und Entdeckungen, die Reisende öffentlich teilen.",
+    "empty": "Noch keine öffentlichen Stories.",
+    "unavailable": "Stories sind gerade nicht verfügbar. Bitte versuche es später noch einmal.",
+    "publicOnlyNote": "Hier erscheinen nur Stories, die ihre Autorinnen und Autoren ausdrücklich öffentlich gemacht haben.",
+    "reactionCount": "{count, plural, =0 {Keine Reaktionen} one {# Reaktion} other {# Reaktionen}}",
+    "commentCount": "{count, plural, =0 {Keine Kommentare} one {# Kommentar} other {# Kommentare}}",
+    "tags": "Tags",
+    "joinConversation": "Diskutiere mit",
+    "report": "Melden",
+    "related": "Mehr Stories von {name}"
+  },
+  "download": {
+    "meta": {
+      "title": "Hol dir die Travel Buddy App",
+      "description": "Nimm deine Trips, Guides und Gespräche mit — auf iOS und Android."
+    },
+    "eyebrow": "Mobile Apps",
+    "title": "Deine Reise, immer dabei",
+    "subtitle": "Dein Konto, deine Trips, gespeicherten Orte und Gespräche bleiben zwischen Web sowie iOS- und Android-App synchron.",
+    "appStore": "App Store",
+    "appStoreEyebrow": "Lade es im",
+    "googlePlay": "Google Play",
+    "googlePlayEyebrow": "Jetzt bei",
+    "comingSoon": "Bald verfügbar",
+    "points": {
+      "sync": {
+        "title": "Immer synchron",
+        "body": "Ein Konto für Web, iOS und Android."
+      },
+      "offline": {
+        "title": "Offline-Guides",
+        "body": "Lade Guides und Trips herunter, bevor du den Empfang verlierst."
+      },
+      "audio": {
+        "title": "Audiotouren",
+        "body": "Ortsbezogene Audioguides für unterwegs."
+      },
+      "web": {
+        "title": "Plane am großen Bildschirm",
+        "body": "Recherchiere und organisiere im Web, reise mit dem Handy."
+      }
+    }
+  },
+  "home": {
+    "meta": {
+      "title": "Entdecke die Welt. Finde deine Leute.",
+      "description": "Entdecke außergewöhnliche Orte, plane unvergessliche Reisen mit KI und lerne Reisende kennen, die deine Abenteuer teilen."
+    },
+    "hero": {
+      "eyebrow": "Gemeinsam reisen",
+      "titleStart": "Entdecke die Welt.",
+      "titleAccent": "Finde deine Leute.",
+      "subtitle": "Entdecke außergewöhnliche Orte, plane unvergessliche Reisen und lerne Reisende kennen, die deine Abenteuer teilen.",
+      "ctaExplore": "Jetzt entdecken",
+      "ctaPlan": "Meinen Trip planen",
+      "ctaJoin": "Community beitreten",
+      "chipNearby": "Stories in deiner Nähe",
+      "chipItinerary": "5-Tage-Route",
+      "chipStories": "Reisende in Lissabon"
+    },
+    "discover": {
+      "eyebrow": "Warum Travel Buddy",
+      "title": "Alles, was ein Trip braucht, an einem Ort",
+      "subtitle": "Vom ersten Funken Inspiration bis zu den Freundschaften, die du unterwegs schließt.",
+      "local": {
+        "title": "Sieh, was dort los ist, wo du gerade bist",
+        "body": "Ein Feed, der deinem Reiseziel folgt, damit du Stories und Tipps von dem Ort siehst, an dem du wirklich bist."
+      },
+      "plan": {
+        "title": "Plane mit einer KI, die ihre Quellen zeigt",
+        "body": "Tagesgenaue Routen aus echten Orten, die du bearbeiten, umsortieren und in deinem Trip speichern kannst."
+      },
+      "together": {
+        "title": "Reise mit Menschen, nicht nur zu Orten",
+        "body": "Lerne passende Reisende kennen — ganz nach deinen Regeln —, tritt Gruppen bei und teile die Reise."
+      }
+    },
+    "popular": {
+      "eyebrow": "Beliebte Reiseziele",
+      "title": "Wohin Reisende gerade fahren",
+      "cta": "Alle Reiseziele",
+      "unavailable": "Reiseziele sind gerade nicht verfügbar."
+    },
+    "stories": {
+      "eyebrow": "Reisegeschichten",
+      "title": "Frisch von unterwegs",
+      "subtitle": "Öffentliche Stories unserer Community.",
+      "cta": "Mehr Stories lesen"
+    },
+    "ai": {
+      "eyebrow": "KI-Reiseplaner",
+      "title": "Deine nächsten fünf Tage, in Sekunden skizziert",
+      "subtitle": "Sag dem Assistenten, was du liebst: Strände, lokales Essen, Fotografie, Abenteuer. Du bekommst einen strukturierten Plan, den du zu deinem machen kannst.",
+      "points": {
+        "grounded": "Aus echten Orten in unserem Katalog erstellt, mit Quellen, wo sinnvoll.",
+        "editable": "Neu generieren, anpassen und Tage umsortieren, dann direkt in deinem Trip speichern.",
+        "honest": "Erfundene Öffnungszeiten, Preise oder Reiseregeln werden nie als geprüft dargestellt."
+      },
+      "sample": {
+        "title": "Rio de Janeiro · Tag 3 von 5",
+        "badge": "Illustration",
+        "d1": {
+          "title": "Zuckerhut zur goldenen Stunde",
+          "body": "Mit der Seilbahn vor Sonnenuntergang hoch, Abendessen in Botafogo."
+        },
+        "d2": {
+          "title": "Wanderwege im Tijuca-Wald",
+          "body": "Morgens wandern zu einem Wasserfall, nachmittags im Botanischen Garten."
+        },
+        "d3": {
+          "title": "Santa Teresa & Lapa",
+          "body": "Street-Art, lokale Cafés und abends Live-Samba."
+        },
+        "disclaimer": "Beispiel nur zur Illustration. Echte Routen werden aus deinen Vorlieben und geprüften Ortsdaten erstellt."
+      }
+    },
+    "community": {
+      "eyebrow": "Community",
+      "title": "Reisebegleitung, Gruppen und gemeinsame Abenteuer — mit eingebautem Datenschutz",
+      "companions": {
+        "title": "Finde Reisebegleitung",
+        "body": "Entscheide dich bewusst dafür, Reisende zu treffen, die zur selben Zeit zum selben Ort unterwegs sind. Du bist unsichtbar, bis du etwas anderes wählst.",
+        "p1": "Standardmäßig aus, mit unsichtbarem Modus",
+        "p2": "Es wird nur deine Stadt oder dein Viertel angezeigt, nie dein genauer Standort"
+      },
+      "groups": {
+        "title": "Gruppen & Challenges",
+        "body": "Erstelle Premium-Reisegruppen, chatte mit Mitgliedern und löse gemeinsam Rätsel für Abzeichen und Angeberrechte."
+      },
+      "audio": {
+        "title": "Audioguides",
+        "body": "Selbstgeführte Touren mit Stopps auf der Karte, Wiedergabesteuerung und Offline-Downloads, sofern dein Browser sie erlaubt."
+      }
+    },
+    "premium": {
+      "eyebrow": "Premium",
+      "title": "Mit Premium weiterkommen",
+      "subtitle": "Schalte Gruppenerstellung, mehr KI-Planung und Premium-Guides frei. Sicherheitsfunktionen sind für alle immer kostenlos.",
+      "items": {
+        "groups": {
+          "title": "Reisegruppen erstellen",
+          "body": "Gründe Gruppen, starte Challenges und verwalte Mitglieder."
+        },
+        "ai": {
+          "title": "Mehr KI-Planung",
+          "body": "Höhere monatliche Routenlimits und Neuplanung von Trips."
+        },
+        "guides": {
+          "title": "Premium-Guides",
+          "body": "Ausführliche Reiseführer und erweiterte Audiotouren."
+        },
+        "offline": {
+          "title": "Erweiterter Offline-Modus",
+          "body": "Mehr herunterladbare Guides für Zeiten abseits des Netzes."
+        }
+      },
+      "cta": "Tarife vergleichen"
+    },
+    "apps": {
+      "title": "Nimm Travel Buddy mit",
+      "subtitle": "Gleiches Konto, gleiche Trips, gleiche Freunde: im Web, auf iOS und Android."
+    }
+  },
+  "destinations": {
+    "meta": {
+      "title": "Reiseziele rund um die Welt",
+      "description": "Stöbere nach Region durch Städte und Länder, mit Reiseführern und Stories echter Reisender."
+    },
+    "eyebrow": "Reiseziele",
+    "title": "Wohin geht es als Nächstes?",
+    "subtitle": "Stöbere nach Region durch Reiseziele, lies ihre Guides und sieh, was Reisende teilen.",
+    "continentsNav": "Zu einer Region springen",
+    "unavailable": "Reiseziele sind gerade nicht verfügbar. Bitte versuche es später noch einmal.",
+    "countries": "Länder"
+  },
+  "destination": {
+    "meta": {
+      "title": "{name}, {country}: Reiseführer & Stories",
+      "countryTitle": "{name}: Reiseführer, Städte & Stories",
+      "description": "Reiseführer, Highlights und Stories von Reisenden in {name}."
+    },
+    "breadcrumb": "Brotkrumennavigation",
+    "breadcrumbDestinations": "Reiseziele",
+    "planCta": "Reise nach {name} planen",
+    "joinCta": "Community beitreten",
+    "overview": "Überblick",
+    "contentLanguageNote": "Dieser Guide ist derzeit auf Englisch verfügbar.",
+    "noGuide": "Ein Guide für dieses Reiseziel wird gerade geschrieben.",
+    "citiesIn": "Städte in {name}",
+    "neighbourhoods": "Viertel",
+    "stories": "Stories aus {name}",
+    "noStories": "Hier gibt es noch keine öffentlichen Stories. Teile als Erste:r eine.",
+    "faq": "Häufige Fragen",
+    "contentFooter": "Inhalt: {license}. Zuletzt aktualisiert: {date}.",
+    "noLiveInfo": "Travel Buddy veröffentlicht keine aktuellen Öffnungszeiten, Preise, Einreisebestimmungen oder Reisehinweise; prüfe vor der Reise offizielle Quellen.",
+    "sidebar": "Details zum Reiseziel",
+    "facts": "Gut zu wissen",
+    "timeZone": "Zeitzone",
+    "itineraryTitle": "Routenvorschläge",
+    "itineraryBody": "Lass den KI-Assistenten einen Tagesplan für {name} entwerfen, den du bearbeiten und speichern kannst.",
+    "audioTitle": "Audiotouren",
+    "audioBody": "Selbstgeführte Audiotouren für dieses Reiseziel sind unterwegs.",
+    "map": {
+      "label": "Karte von {name}",
+      "failed": "Die Karte konnte nicht geladen werden.",
+      "devStyle": "Entwicklungskarte",
+      "openExternal": "In OpenStreetMap öffnen"
+    }
+  },
+  "pricing": {
+    "meta": {
+      "title": "Premium-Mitgliedschaft",
+      "description": "Vergleiche Free und Premium: Reisegruppen, mehr KI-Planung, Premium-Guides und Offline-Downloads."
+    },
+    "eyebrow": "Mitgliedschaft",
+    "title": "Wähle, wie du reist",
+    "subtitle": "Starte kostenlos. Upgrade, wenn du Gruppen erstellen, mehr mit KI planen und Premium-Guides freischalten willst.",
+    "included": "Enthalten",
+    "notIncluded": "Nicht enthalten",
+    "limited": "Eingeschränkt",
+    "free": {
+      "name": "Free",
+      "description": "Entdecke Reiseziele, teile Stories, lerne Reisende kennen und tritt Gruppen bei.",
+      "cta": "Kostenloses Konto erstellen"
+    },
+    "premium": {
+      "badge": "Am flexibelsten",
+      "name": "Premium",
+      "description": "Alles aus Free, plus Gruppenerstellung, Challenges, mehr KI-Planung und Premium-Guides.",
+      "priceNote": "Monats- und Jahrestarife. Den Preis siehst du an der Kasse in deiner Währung.",
+      "cta": "Premium holen"
+    },
+    "compare": "Tarife vergleichen",
+    "feature": "Funktion",
+    "rows": {
+      "explore": "Reiseführer & Karte",
+      "stories": "Reisestories teilen und lesen",
+      "companions": "Reisebegleitung finden",
+      "messaging": "Private Nachrichten",
+      "joinGroups": "Reisegruppen beitreten",
+      "createGroups": "Reisegruppen erstellen",
+      "challenges": "Gruppen-Challenges erstellen",
+      "ai": "KI-Routenplanung",
+      "premiumGuides": "Premium-Guides & Audiotouren",
+      "offline": "Offline-Downloads"
+    },
+    "safetyTitle": "Sicherheit gibt es nie hinter einer Paywall",
+    "safetyBody": "Blockieren, Melden, Datenschutzeinstellungen und Moderationstools stehen allen in jedem Tarif zur Verfügung.",
+    "storeNote": "Schon über den App Store oder Google Play abonniert? Dein Premium gilt auch hier. Verwalte es in deinem Store-Konto."
+  },
+  "about": {
+    "meta": {
+      "title": "Über Travel Buddy",
+      "description": "Ein globaler Reiseführer und eine Community, gebaut auf Datenschutz, Ehrlichkeit und echten Verbindungen."
+    },
+    "eyebrow": "Über uns",
+    "title": "Reisen ist besser, wenn man es teilt",
+    "p1": "Travel Buddy bringt Reiseziel-Inspiration, KI-Reiseplanung und eine Community von Reisenden an einem Ort zusammen, im Web und in unseren iOS- und Android-Apps.",
+    "p2": "Wir glauben, dass die besten Reisen großartige Informationen mit großartigen Menschen verbinden, deshalb gestalten wir für beides.",
+    "principlesTitle": "Wofür wir stehen",
+    "principles": {
+      "privacy": "Datenschutz als Standard: keine genauen Standorte, Entdeckung nur auf Wunsch, und du entscheidest, wer dich erreichen kann.",
+      "honesty": "Keine erfundenen Fakten: Wir stellen ungeprüfte Öffnungszeiten, Preise oder Reiseregeln nicht als Wahrheit dar.",
+      "safety": "Sicherheit für alle: Blockieren, Melden und Moderation sind kostenlos und immer verfügbar.",
+      "everywhere": "Überall, wo du bist: ein Konto für Web, iOS und Android, in deiner Sprache."
+    }
+  },
+  "legal": {
+    "draftTitle": "Entwurf — rechtliche Prüfung ausstehend",
+    "draftBody": "Diese Seite fasst unsere Produktzusagen zusammen. Der verbindliche Rechtstext wird hier nach der rechtlichen Prüfung veröffentlicht.",
+    "terms": {
+      "title": "Nutzungsbedingungen",
+      "summary": "Travel Buddy richtet sich an Erwachsene ab 18 Jahren. Die Rechte an deinen Beiträgen bleiben bei dir, du bestimmst, wer sie sehen kann, und du stimmst zu, unsere Community-Richtlinien einzuhalten."
+    },
+    "privacy": {
+      "title": "Datenschutz",
+      "summary": "Wir speichern niemals deinen genauen Gerätestandort. Funktionen in der Nähe nutzen eine gerundete Position, die nur für die jeweilige Anfrage verwendet wird. Die Reisenden-Suche ist standardmäßig aus und zeigt nur eine Stadt oder ein Viertel. Du kannst deine Daten exportieren oder löschen."
+    },
+    "cookies": {
+      "title": "Cookie-Richtlinie",
+      "summary": "Wir verwenden unbedingt erforderliche Cookies für Anmeldung und Sicherheit sowie ein Cookie, das sich deine Sprache merkt. Ohne deine Einwilligung läuft kein Tracking durch Dritte."
+    },
+    "guidelines": {
+      "title": "Community-Richtlinien",
+      "summary": "Sei respektvoll, sei ehrlich und achte darauf, dass andere sicher sind. Belästigung, Hass, Betrug und das Weitergeben privater Informationen anderer sind nicht erlaubt und können gemeldet werden."
+    }
+  },
+  "errors": {
+    "notFoundTitle": "Diese Seite haben wir nicht gefunden",
+    "notFoundBody": "Sie wurde vielleicht verschoben, privat gestellt oder hat nie existiert.",
+    "home": "Zur Startseite",
+    "destinations": "Reiseziele ansehen",
+    "genericTitle": "Etwas ist schiefgelaufen",
+    "genericBody": "Bitte versuche es noch einmal. Wenn das Problem bleibt, wende dich mit der Referenz unten an den Support.",
+    "reference": "Referenz: {id}",
+    "retry": "Erneut versuchen"
+  },
+  "validation": {
+    "required": "Dieses Feld ist erforderlich.",
+    "tooShort": "Das ist zu kurz.",
+    "tooLong": "Das ist zu lang.",
+    "invalid": "Dieser Wert ist ungültig.",
+    "mustAccept": "Bitte stimme zu, um fortzufahren.",
+    "tooMany": "Du hast zu viele ausgewählt.",
+    "underage": "Du musst mindestens 18 Jahre alt sein, um beizutreten."
+  },
+  "auth": {
+    "panelQuote": "„Die Welt ist ein Buch, und wer nicht reist, liest nur eine Seite davon.“",
+    "backHome": "Zurück zur Startseite",
+    "login": {
+      "title": "Willkommen zurück",
+      "subtitle": "Melde dich an, um deine Reise fortzusetzen.",
+      "forgot": "Passwort vergessen?",
+      "noAccount": "Neu bei Travel Buddy?",
+      "createAccount": "Konto erstellen"
+    },
+    "errors": {
+      "expired": "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.",
+      "providerUnavailable": "Die Anmeldung ist vorübergehend nicht verfügbar. Bitte versuche es später noch einmal.",
+      "reauth": "Bitte melde dich aus Sicherheitsgründen erneut an, um den Admin-Bereich zu nutzen.",
+      "mfa": "Der Admin-Bereich erfordert eine Anmeldung mit Multi-Faktor-Authentifizierung. Bitte melde dich mit deinem zweiten Faktor erneut an."
+    },
+    "dev": {
+      "noticeTitle": "Entwicklungs-Anmeldung",
+      "noticeBody": "Diese Umgebung nutzt den Identitätsanbieter für die Entwicklung. Die Buttons unten öffnen statt Google, Apple oder E-Mail eine Persona-Auswahl.",
+      "registerNotice": "Entwicklungs-Registrierung: Es wird keine E-Mail gesendet, und das Konto existiert nur in dieser Umgebung.",
+      "title": "Wähle eine Testperson",
+      "subtitle": "Melde dich sofort als vorbereitete:r Reisende:r an, um die App zu erkunden.",
+      "error": "Anmeldung fehlgeschlagen. Läuft die Plattform (oder der Mock-Adapter)?",
+      "orRegister": "Lieber ein neues Konto?",
+      "registerLink": "Neue:n Reisende:n registrieren"
+    },
+    "providers": {
+      "google": "Weiter mit Google",
+      "apple": "Weiter mit Apple",
+      "email": "Weiter mit E-Mail"
+    },
+    "register": {
+      "title": "Werde Teil von Travel Buddy",
+      "subtitle": "Erstelle dein kostenloses Konto. Das dauert weniger als eine Minute.",
+      "haveAccount": "Du hast schon ein Konto?",
+      "signIn": "Anmelden",
+      "displayName": "Anzeigename",
+      "email": "E-Mail",
+      "birthDate": "Geburtsdatum",
+      "birthDateHint": "Du musst mindestens 18 sein. Wir speichern nur dein Geburtsjahr.",
+      "terms": "Ich stimme den <terms>Nutzungsbedingungen</terms> zu und habe die <privacy>Datenschutzerklärung</privacy> gelesen.",
+      "submit": "Konto erstellen",
+      "errors": {
+        "ageRestricted": "Du musst mindestens 18 Jahre alt sein, um Travel Buddy zu nutzen.",
+        "exists": "Mit dieser E-Mail-Adresse gibt es schon ein Konto. Versuche stattdessen, dich anzumelden.",
+        "generic": "Wir konnten dein Konto nicht erstellen. Bitte versuche es noch einmal."
+      }
+    },
+    "forgot": {
+      "title": "Passwort zurücksetzen",
+      "body": "Unser Anmeldeanbieter schickt dir per E-Mail einen sicheren Link zum Zurücksetzen deines Passworts.",
+      "cta": "Weiter zum Zurücksetzen",
+      "back": "Zurück zur Anmeldung"
+    },
+    "verify": {
+      "title": "Schau in dein Postfach",
+      "body": "Wir haben dir einen Bestätigungslink geschickt. Öffne ihn auf diesem Gerät, um deine E-Mail-Adresse zu bestätigen, und melde dich dann an.",
+      "cta": "Zur Anmeldung"
+    }
+  },
+  "onboarding": {
+    "progress": "Schritt {current} von {total}",
+    "back": "Zurück",
+    "skip": "Überspringen",
+    "next": "Weiter",
+    "finish": "Jetzt entdecken",
+    "saveError": "Wir konnten deine Einstellungen nicht speichern. Bitte versuche es noch einmal.",
+    "saveErrorRef": "Wir konnten deine Einstellungen nicht speichern. Referenz: {id}",
+    "profile": {
+      "title": "Richten wir dein Profil ein",
+      "subtitle": "So sehen dich andere Reisende.",
+      "name": "Anzeigename",
+      "nameRequired": "Bitte gib einen Anzeigenamen ein.",
+      "bio": "Kurzbeschreibung",
+      "bioHint": "Optional. Bis zu 300 Zeichen."
+    },
+    "language": {
+      "title": "Wähle deine Sprache",
+      "subtitle": "Du kannst sie jederzeit ändern."
+    },
+    "interests": {
+      "title": "Wie reist du gern?",
+      "subtitle": "Wähle so viele, wie du magst. Damit passen wir deinen Feed an."
+    },
+    "home": {
+      "title": "Woher kommst du?",
+      "subtitle": "Optional. Später entscheidest du, ob andere es sehen können.",
+      "label": "Heimatland",
+      "hint": "Dein Heimatland nutzen wir nie, um zu bestimmen, welche lokalen Inhalte du siehst.",
+      "none": "Möchte ich nicht sagen"
+    },
+    "destination": {
+      "title": "Wo bist du gerade, oder wohin geht es als Nächstes?",
+      "subtitle": "Dein Feed konzentriert sich auf dieses Reiseziel. Du kannst es jederzeit ändern.",
+      "label": "Reiseziel suchen",
+      "selected": "Dein Feed konzentriert sich auf {name}."
+    },
+    "location": {
+      "title": "Standort im Feed nutzen?",
+      "subtitle": "Optional. So können wir dir Stories von dem Ort zeigen, an dem du gerade bist.",
+      "p1": "Wir nutzen deine ungefähre Position (etwa 100 m) nur in dem Moment, in dem du den Feed lädst.",
+      "p2": "Dein Standort wird nie gespeichert und niemandem angezeigt.",
+      "p3": "Du kannst das jederzeit in den Einstellungen oder in deinem Browser ausschalten.",
+      "allow": "Standort erlauben",
+      "granted": "Standort aktiviert",
+      "denied": "Der Standortzugriff wurde blockiert. Du kannst Reiseziele trotzdem manuell auswählen.",
+      "unsupported": "Dein Browser unterstützt keine Standortfreigabe. Du kannst Reiseziele manuell auswählen."
+    },
+    "discovery": {
+      "title": "Reisende in der Nähe treffen?",
+      "subtitle": "Die Reisenden-Suche ist standardmäßig aus. Aktiviere sie nur, wenn du gefunden werden möchtest.",
+      "toggle": "Passende Reisende dürfen mich entdecken",
+      "toggleHint": "Du kannst das jederzeit ausschalten oder in den unsichtbaren Modus wechseln.",
+      "p1": "Andere sehen nur deine Stadt oder dein Viertel, nie deinen genauen Standort oder deine Entfernung.",
+      "p2": "Deine privaten Reisedaten werden nie angezeigt.",
+      "p3": "Du bestimmst, wer dir Kontaktanfragen senden darf."
+    }
+  },
+  "travelStyles": {
+    "adventure": "Abenteuer",
+    "backpacking": "Backpacking",
+    "luxury": "Luxus",
+    "food": "Essen & Trinken",
+    "culture": "Kultur",
+    "photography": "Fotografie",
+    "digital_nomad": "Digitaler Nomade",
+    "nature": "Natur",
+    "family": "Familie"
+  },
+  "shell": {
+    "home": "Start",
+    "explore": "Entdecken",
+    "trips": "Meine Trips",
+    "companions": "Begleitung",
+    "groups": "Gruppen",
+    "messages": "Nachrichten",
+    "profile": "Profil",
+    "assistant": "KI-Assistent",
+    "admin": "Admin",
+    "settings": "Einstellungen",
+    "logout": "Abmelden",
+    "navLabel": "App-Navigation",
+    "premium": "Premium",
+    "more": "Mehr"
+  },
+  "comingSoon": {
+    "heading": "Kommt in Phase {phase}",
+    "explore": {
+      "title": "Entdecken",
+      "body": "Die interaktive Karte mit Sehenswürdigkeiten, Restaurants, Stränden und gespeicherten Orten entsteht gemeinsam mit dem Orte-Dienst."
+    },
+    "trips": {
+      "title": "Meine Trips",
+      "body": "Die Reiseplanung mit Tagesrouten und Sortieren per Drag-and-drop kommt mit dem Trips-Dienst."
+    },
+    "companions": {
+      "title": "Reisebegleitung",
+      "body": "Die freiwillige Reisenden-Suche und Kontaktanfragen kommen mit den Diensten für Entdeckung und Verbindungen."
+    },
+    "groups": {
+      "title": "Reisegruppen",
+      "body": "Premium-Reisegruppen, Einladungen und Gruppenchat kommen mit dem Gruppen-Dienst."
+    },
+    "messages": {
+      "title": "Nachrichten",
+      "body": "Private Echtzeit-Nachrichten kommen mit dem Nachrichten-Dienst. Sie werden nie simuliert."
+    },
+    "assistant": {
+      "title": "KI-Reiseassistent",
+      "body": "Der KI-Routenplaner kommt mit dem KI-Dienst. Die Pläne basieren auf echten Orten und erfinden nie aktuelle Informationen."
+    },
+    "saved": {
+      "title": "Gespeichert",
+      "body": "Gespeicherte Orte, Beiträge und Touren sammeln sich hier."
+    },
+    "notifications": {
+      "title": "Benachrichtigungen",
+      "body": "Deine Benachrichtigungszentrale kommt mit dem Benachrichtigungs-Dienst."
+    },
+    "membership": {
+      "title": "Mitgliedschaft",
+      "body": "Abos und Bezahlvorgang kommen mit dem Abrechnungs-Dienst. Zahlungen werden nie simuliert."
+    }
+  },
+  "feed": {
+    "metaTitle": "Start",
+    "title": "Hi {name}, das ist gerade los",
+    "tabsLabel": "Feed-Ansichten",
+    "tabs": {
+      "for_you": "Für dich",
+      "nearby": "In der Nähe",
+      "following": "Folge ich",
+      "destinations": "Reiseziele"
+    },
+    "locationLabel": "Feed-Standort",
+    "context": {
+      "loading": "Wir suchen Stories für dich…",
+      "pickPrompt": "Wähle ein Reiseziel, um deinen Feed zu fokussieren.",
+      "following": "Beiträge von Leuten, denen du folgst",
+      "global": "Beliebte Beiträge aus aller Welt",
+      "interests": "Beiträge passend zu deinen Reiseinteressen",
+      "nearby": "Beiträge im Umkreis von {radius} km um deinen ungefähren Standort",
+      "gps": "Zeigt {name} · basierend auf deinem aktuellen Standort",
+      "trip": "Zeigt {name} · aus deinem bevorstehenden Trip",
+      "selected": "Zeigt {name} · dein gewähltes Reiseziel"
+    },
+    "changeDestination": "Reiseziel ändern",
+    "clearDestination": "Reiseziel entfernen",
+    "useLocation": "Meinen Standort nutzen",
+    "stopUsingLocation": "Standort nicht mehr nutzen",
+    "radius": "Umkreis",
+    "radiusKm": "{km} km",
+    "shareLocation": "Ungefähren Standort teilen",
+    "locationPrivacy": "Auf etwa 100 m gerundet, nur für diese Anfrage verwendet, nie gespeichert.",
+    "locationDenied": "Der Standortzugriff ist in deinem Browser blockiert. Wähle stattdessen ein Reiseziel.",
+    "locationUnavailable": "Wir konnten deinen Standort nicht ermitteln. Wähle stattdessen ein Reiseziel.",
+    "empty": {
+      "nearbyTitle": "Sieh, was um dich herum los ist",
+      "nearbyBody": "Teile deinen ungefähren Standort, um Beiträge aus der Nähe zu sehen. Es wird nichts gespeichert.",
+      "for_youTitle": "Noch keine Beiträge in {name}",
+      "for_youBody": "Teile als Erste:r einen Moment oder entdecke ein anderes Reiseziel.",
+      "followingTitle": "Dein Folge-Feed ist leer",
+      "followingBody": "Folge Reisenden, deren Stories dir gefallen, und ihre Beiträge erscheinen hier.",
+      "destinationsTitle": "Noch keine Beiträge in {name}",
+      "destinationsBody": "Wähle ein Reiseziel, um zu sehen, was Reisende dort teilen."
+    },
+    "loading": "Beiträge werden geladen",
+    "error": {
+      "title": "Wir konnten deinen Feed nicht laden",
+      "body": "Prüfe deine Verbindung und versuche es noch einmal.",
+      "bodyRef": "Prüfe deine Verbindung und versuche es noch einmal. Referenz: {id}",
+      "retry": "Erneut versuchen"
+    },
+    "loadMore": "Mehr laden",
+    "end": "Du bist auf dem neuesten Stand."
+  },
+  "post": {
+    "visibility": {
+      "public": "Öffentlich",
+      "followers": "Follower",
+      "connections": "Kontakte",
+      "private": "Nur ich"
+    },
+    "moreActions": "Weitere Aktionen",
+    "report": "Beitrag melden",
+    "block": "{name} blockieren",
+    "yourPost": "Das ist dein Beitrag",
+    "tags": "Tags",
+    "like": "Gefällt mir",
+    "unlike": "Gefällt mir zurücknehmen",
+    "comments": "{count, plural, =0 {Keine Kommentare} one {# Kommentar} other {# Kommentare}}",
+    "share": "Teilen",
+    "copied": "Link kopiert",
+    "save": "Beitrag speichern",
+    "unsave": "Aus Gespeichertem entfernen"
+  },
+  "report": {
+    "title": "Diesen Inhalt melden",
+    "description": "Meldungen sind vertraulich. Die Autorin oder der Autor erfährt nicht, wer gemeldet hat.",
+    "thanksTitle": "Danke für deinen Hinweis",
+    "thanksBody": "Unser Moderationsteam prüft diese Meldung.",
+    "reasonLabel": "Was ist das Problem?",
+    "reasons": {
+      "spam": "Spam",
+      "harassment": "Belästigung oder Mobbing",
+      "hate": "Hassrede",
+      "sexual_content": "Sexuelle Inhalte",
+      "minor_safety": "Kinderschutz",
+      "violence": "Gewalt oder Drohungen",
+      "self_harm": "Selbstverletzung",
+      "scam": "Betrug",
+      "privacy_violation": "Teilt private Informationen",
+      "impersonation": "Identitätsmissbrauch",
+      "illegal": "Illegale Aktivität",
+      "other": "Etwas anderes"
+    },
+    "detailsLabel": "Details",
+    "detailsHint": "Optional. Bis zu 1.000 Zeichen.",
+    "alsoBlock": "Autor:in auch blockieren",
+    "error": "Wir konnten deine Meldung nicht senden. Bitte versuche es noch einmal.",
+    "submit": "Meldung senden"
+  },
+  "composer": {
+    "prompt": "Teile einen Moment deiner Reise…",
+    "continueDraft": "Entwurf fortsetzen…",
+    "restricted": "Das Posten ist für dein Konto vorübergehend bis {date} eingeschränkt.",
+    "restrictedIndefinite": "Das Posten ist für dein Konto derzeit eingeschränkt. Wende dich an den Support, wenn du das für einen Fehler hältst.",
+    "title": "Beitrag erstellen",
+    "bodyLabel": "Was ist los?",
+    "counter": "{count} / {max}",
+    "placeholder": "Erzähl Reisenden von einem Ort, einem Tipp oder einem Moment.",
+    "destinationLabel": "Reiseziel",
+    "removeDestination": "Reiseziel entfernen",
+    "noGps": "Wir hängen nie deine genaue GPS-Position an, nur das Reiseziel, das du wählst.",
+    "kindLabel": "Art",
+    "kinds": {
+      "experience": "Moment",
+      "tip": "Tipp",
+      "attraction_recommendation": "Sehenswertes",
+      "restaurant_recommendation": "Zum Essen"
+    },
+    "visibilityLabel": "Wer darf das sehen?",
+    "publicHint": "Öffentliche Beiträge können auf der öffentlichen Website und in Suchmaschinen erscheinen.",
+    "addMedia": "Fotos oder Video hinzufügen",
+    "mediaUnavailable": "Foto- und Video-Uploads kommen mit dem Medien-Dienst.",
+    "error": "Wir konnten deinen Beitrag nicht veröffentlichen. Dein Entwurf ist gespeichert.",
+    "errorRef": "Wir konnten deinen Beitrag nicht veröffentlichen. Dein Entwurf ist gespeichert. Referenz: {id}",
+    "discard": "Entwurf verwerfen",
+    "publish": "Veröffentlichen"
+  },
+  "postDetail": {
+    "back": "Zurück zum Feed",
+    "notFoundTitle": "Dieser Beitrag ist nicht verfügbar",
+    "notFoundBody": "Er wurde vielleicht gelöscht oder privat gestellt.",
+    "errorTitle": "Wir konnten diesen Beitrag nicht laden",
+    "errorBody": "Bitte versuche es später noch einmal.",
+    "comments": "Kommentare",
+    "addComment": "Kommentar hinzufügen…",
+    "commentError": "Wir konnten deinen Kommentar nicht senden. Bitte versuche es noch einmal.",
+    "send": "Kommentieren",
+    "noComments": "Noch keine Kommentare.",
+    "deletedUser": "Gelöschter Nutzer",
+    "deletedComment": "Dieser Kommentar wurde gelöscht."
+  },
+  "profile": {
+    "settings": "Einstellungen",
+    "noBio": "Noch keine Kurzbeschreibung.",
+    "counts": {
+      "posts": "Beiträge",
+      "followers": "Follower",
+      "following": "Folge ich"
+    },
+    "styles": "Reisestile",
+    "browsing": "Erkundet gerade {name}"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "more": "Einstellungen für Konto, Benachrichtigungen, Sitzungen und Datenexport kommen in späteren Phasen.",
+    "privacy": {
+      "heading": "Datenschutz",
+      "discovery": "Reisenden-Suche",
+      "discoveryHint": "Passende Reisende dürfen dich finden. Standardmäßig aus.",
+      "granularity": "Genauigkeit der Suche",
+      "granularityHint": "Das genaueste Gebiet, das andere sehen können. Nie dein genauer Standort.",
+      "city": "Stadt",
+      "neighborhood": "Viertel",
+      "profileVisibility": "Profilsichtbarkeit",
+      "profileVisibilityHint": "Wer dein Profil sehen kann.",
+      "public": "Alle auf Travel Buddy",
+      "connections": "Nur Kontakte",
+      "requests": "Kontaktanfragen",
+      "requestsHint": "Wer dir Anfragen senden darf.",
+      "everyone": "Alle",
+      "sharedContext": "Leute, mit denen ich eine Gruppe oder einen Trip teile",
+      "nobody": "Niemand",
+      "searchIndexing": "Suchmaschinen dürfen meine öffentlichen Inhalte anzeigen",
+      "searchIndexingHint": "Standardmäßig aus. Wenn aktiviert, können deine öffentlichen Geschichten und dein öffentliches Profil bei Google und anderen Suchmaschinen erscheinen.",
+      "feedLocation": "Standort in meinem Feed nutzen",
+      "feedLocationHint": "Nur in diesem Browser. Deine ungefähre Position wird pro Anfrage genutzt und nie gespeichert.",
+      "error": "Wir konnten diese Änderung nicht speichern. Sie wurde rückgängig gemacht."
+    }
+  },
+  "admin": {
+    "badge": "Team",
+    "navLabel": "Admin-Navigation",
+    "signedInAs": "Angemeldet als {name} ({roles})",
+    "backToApp": "Zurück zur App",
+    "nav": {
+      "overview": "Übersicht",
+      "reports": "Meldungen",
+      "users": "Nutzer",
+      "groups": "Gruppen",
+      "challenges": "Challenges",
+      "destinations": "Reiseziele",
+      "billing": "Abrechnung",
+      "audit": "Audit-Log"
+    },
+    "overview": {
+      "title": "Übersicht",
+      "noDataTitle": "Analytics-Dienst nicht verbunden",
+      "noDataBody": "Kennzahlen werden nur aus der Analytics-API der Plattform angezeigt. Wir zeigen nie geschätzte oder Beispielzahlen.",
+      "metricsTitle": "Noch keine Kennzahlen",
+      "metricsBody": "Nutzer, Abos, Umsatz, Beiträge, Gruppen und offene Meldungen erscheinen hier, sobald die Analytics- und Admin-Dienste live sind.",
+      "moderationNote": "Moderationstools (Meldewarteschlange, Nutzer- und Inhaltsaktionen, Audit-Log) kommen in Phase 8."
+    },
+    "idle": {
+      "title": "Noch da?",
+      "body": "Aus Sicherheitsgründen enden Team-Sitzungen nach 30 Minuten ohne Aktivität. Du musst dich in {seconds} Sekunden erneut anmelden.",
+      "stay": "Ich bin noch da"
+    },
+    "comingSoon": {
+      "title": "Kommt in Phase 8",
+      "body": "Dieser Administrationsbereich entsteht gemeinsam mit den Admin-APIs der Plattform."
+    }
+  }
+}

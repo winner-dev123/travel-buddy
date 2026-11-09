@@ -1,0 +1,37 @@
+{
+  "protocol": "travelbuddy-realtime",
+  "version": 1,
+  "endpoint": "/v1/realtime",
+  "client_frames": [
+    "auth",
+    "message.delete",
+    "message.edit",
+    "message.send",
+    "ping",
+    "receipt.delivered",
+    "receipt.read",
+    "sync.request",
+    "typing.start",
+    "typing.stop"
+  ],
+  "server_frames": [
+    "auth.error",
+    "auth.expiring",
+    "auth.ok",
+    "challenge.event",
+    "conversation.updated",
+    "error",
+    "membership.changed",
+    "message.ack",
+    "message.deleted",
+    "message.new",
+    "message.updated",
+    "notification.new",
+    "pong",
+    "rate_limited",
+    "receipt.updated",
+    "session.revoked",
+    "sync.required",
+    "typing"
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/server.rate_limited.schema.json",
+  "title": "server → client: rate_limited",
+  "description": "A client frame was rejected by rate limiting. Retry after `retry_after_ms`. Repeated abuse closes the connection with 4008.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "rate_limited"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "scope": {
+          "enum": [
+            "message_send",
+            "typing",
+            "receipts",
+            "frames",
+            "auth"
+          ]
+        },
+        "retry_after_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "client_message_id": {
+          "anyOf": [
+            {
+              "$ref": "envelope.schema.json#/$defs/Uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "retry_after_ms"
+      ]
+    }
+  }
+}

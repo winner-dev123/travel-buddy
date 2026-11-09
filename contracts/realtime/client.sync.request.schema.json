@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/client.sync.request.schema.json",
+  "title": "client → server: sync.request",
+  "description": "Sent after `auth.ok` on (re)connect with the last seq the client holds per conversation. The server replies with `sync.required` listing conversations to catch up via REST.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "sync.request"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "conversations": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "type": "object",
+            "properties": {
+              "conversation_id": {
+                "$ref": "envelope.schema.json#/$defs/Uuid"
+              },
+              "last_seq": {
+                "$ref": "envelope.schema.json#/$defs/Seq"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "conversation_id",
+              "last_seq"
+            ]
+          }
+        },
+        "conversation_list_synced_at": {
+          "anyOf": [
+            {
+              "$ref": "envelope.schema.json#/$defs/Timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "When the client last fetched GET /v1/conversations; lets the server report new conversations."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "conversations"
+      ]
+    }
+  },
+  "not": {
+    "required": [
+      "reply_to"
+    ]
+  }
+}

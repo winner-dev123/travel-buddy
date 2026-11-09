@@ -1,0 +1,129 @@
+{
+  "common": {
+    "appName": "Travel Buddy",
+    "retry": "Réessayer"
+  },
+  "tabs": {
+    "home": "Accueil",
+    "explore": "Explorer",
+    "companions": "Compagnons",
+    "messages": "Messages",
+    "profile": "Profil"
+  },
+  "placeholder": {
+    "comingInPhase": "Disponible en phase {{phase}}",
+    "notAvailableYet": "Cette partie de l'application est encore en cours de développement. Rien de ce qui s'affiche ici n'est une donnée réelle.",
+    "plannedCapabilities_one": "{{count}} fonctionnalité prévue",
+    "plannedCapabilities_many": "{{count}} de fonctionnalités prévues",
+    "plannedCapabilities_other": "{{count}} fonctionnalités prévues"
+  },
+  "features": {
+    "auth": {
+      "title": "Connexion",
+      "capabilities": {
+        "emailSignIn": "Connectez-vous avec une adresse e-mail, Apple ou Google",
+        "sessions": "Gérez les appareils connectés",
+        "verification": "Vérification de l'e-mail et réinitialisation du mot de passe"
+      }
+    },
+    "onboarding": {
+      "title": "Premiers pas",
+      "capabilities": {
+        "profileBasics": "Choisissez un nom d'affichage et une photo facultative",
+        "interests": "Choisissez vos centres d'intérêt et vos styles de voyage",
+        "destination": "Indiquez votre destination actuelle ou à venir"
+      }
+    },
+    "feed": {
+      "title": "Fil de voyage",
+      "capabilities": {
+        "localFeed": "Publications de voyageurs sur la destination que vous consultez",
+        "filters": "Filtrez par ville, pays, rayon, langue et catégorie",
+        "interactions": "Réagissez, commentez, enregistrez et abonnez-vous"
+      }
+    },
+    "explore": {
+      "title": "Explorer",
+      "capabilities": {
+        "map": "Découverte des destinations sur la carte",
+        "attractions": "Sites à visiter et recommandations",
+        "assistant": "Planification d'itinéraires par IA"
+      }
+    },
+    "companions": {
+      "title": "Compagnons",
+      "capabilities": {
+        "discovery": "Découverte facultative de voyageurs dans la même ville",
+        "requests": "Envoyez et acceptez des demandes de connexion",
+        "groups": "Groupes de compagnons de voyage"
+      }
+    },
+    "messaging": {
+      "title": "Messages",
+      "capabilities": {
+        "direct": "Messages privés avec vos connexions",
+        "groups": "Conversations de groupe",
+        "activities": "Énigmes et défis de groupe"
+      }
+    },
+    "profile": {
+      "title": "Profil",
+      "capabilities": {
+        "posts": "Vos publications et contenus enregistrés",
+        "trips": "Voyages et itinéraires",
+        "privacy": "Confidentialité, abonnement et paramètres du compte"
+      }
+    },
+    "discovery": {
+      "title": "Découverte de voyageurs"
+    },
+    "groups": {
+      "title": "Groupes de voyage"
+    },
+    "challenges": {
+      "title": "Défis de groupe"
+    },
+    "aiItinerary": {
+      "title": "Planificateur de voyage IA"
+    },
+    "offlineGuides": {
+      "title": "Guides hors ligne"
+    },
+    "subscriptions": {
+      "title": "Premium"
+    }
+  },
+  "offline": {
+    "onlineOnly": "En ligne uniquement",
+    "onlineOnlyA11y": "En ligne uniquement. Cette fonctionnalité nécessite une connexion Internet.",
+    "offlineNow": "Hors ligne",
+    "offlineNowA11y": "Vous êtes hors ligne. Cette fonctionnalité est indisponible jusqu'à votre reconnexion."
+  },
+  "safety": {
+    "discoveryTitle": "Avant de rencontrer d'autres voyageurs",
+    "discoveryIntro": "La découverte de voyageurs est facultative et désactivée par défaut. Nous ne pouvons pas garantir que rencontrer une personne trouvée ici soit sans danger.",
+    "tipPublicPlaces": "Pour une première rencontre, choisissez un lieu public et fréquenté.",
+    "tipTellSomeone": "Prévenez une personne de confiance de l'endroit où vous allez.",
+    "tipPersonalDetails": "Gardez pour vous vos informations personnelles, comme votre hôtel, votre adresse ou votre numéro de téléphone, tant que vous n'êtes pas en confiance.",
+    "tipCoarseLocation": "Seule votre ville ou votre quartier est affiché. Votre position exacte n'est jamais partagée.",
+    "tipBlockReport": "Vous pouvez bloquer et signaler n'importe qui à tout moment.",
+    "guideWithoutDiscovery": "Vous pouvez utiliser toutes les fonctionnalités du guide de voyage sans activer la découverte."
+  },
+  "onboarding": {
+    "stepsHeading": "Étapes de configuration",
+    "steps": {
+      "account": "Créez votre compte",
+      "ageTerms": "Confirmez votre âge et acceptez les conditions",
+      "profile": "Nom d'affichage et photo",
+      "language": "Langue",
+      "interests": "Centres d'intérêt et styles de voyage",
+      "destination": "Destination actuelle ou à venir",
+      "location": "Autorisation de localisation (facultative)",
+      "discovery": "Découverte de voyageurs (désactivée par défaut)"
+    }
+  },
+  "notFound": {
+    "title": "Page introuvable",
+    "goHome": "Aller à l'accueil"
+  }
+}

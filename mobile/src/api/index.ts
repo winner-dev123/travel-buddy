@@ -1,0 +1,33 @@
+import { randomUUID } from 'expo-crypto';
+
+import { tokenStore } from '@/auth/tokenStore';
+import { getApiBaseUrl } from '@/config/env';
+import { i18n } from '@/i18n';
+
+import { ApiClient } from './client';
+
+let defaultClient: ApiClient | undefined;
+
+/**
+ * The app-wide client, created lazily so that a missing
+ * `EXPO_PUBLIC_API_BASE_URL` fails at first use with a clear message.
+ *
+ * Not yet implemented (Phase 1): transparent access-token refresh on
+ * `401 token_expired` using the refresh token in secure storage.
+ */
+export function getApiClient(): ApiClient {
+  defaultClient ??= new ApiClient({
+    baseUrl: getApiBaseUrl(),
+    getAccessToken: () => tokenStore.getAccessToken(),
+    getLocale: () => i18n.language || 'en',
+    generateId: randomUUID,
+  });
+  return defaultClient;
+}
+
+export { ApiClient } from './client';
+export type { ApiClientConfig, HttpMethod, QueryValue, RequestOptions } from './client';
+export { ApiNetworkError, ApiProblem, ApiUsageError, isProblemDocument } from './errors';
+export type { NetworkFailureKind, ProblemDocument, ProblemFieldError } from './errors';
+export { getNextCursor } from './pagination';
+export type { CursorPage, CursorPageParams, PageInfo } from './pagination';

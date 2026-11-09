@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/client.message.edit.schema.json",
+  "title": "client → server: message.edit",
+  "description": "Edit own message within the edit window (default 15 min).",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "message.edit"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "conversation_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "message_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "conversation_id",
+        "message_id",
+        "body"
+      ]
+    }
+  },
+  "not": {
+    "required": [
+      "reply_to"
+    ]
+  }
+}

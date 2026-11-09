@@ -1,0 +1,160 @@
+/*
+ * Travel Buddy design tokens (docs/web/04-design-system.md, docs/web/01 §13).
+ *
+ * Raw values live in --tb-* custom properties so that themes can swap them at runtime.
+ * Tailwind CSS 4 utilities (bg-primary, text-muted-foreground, …) are mapped via @theme inline.
+ *
+ * Contrast notes (WCAG 2.2 AA):
+ *  - primary #087F8C on white 4.75:1 → OK for text and as a fill behind white text.
+ *  - secondary #15B8A6 with white is 2.5:1 → teal is decorative or uses dark foreground (6.3:1).
+ *  - accent #FF735C with white is 2.7:1 → coral CTAs use dark foreground #17252A (5.9:1).
+ *  - the brief's secondary text #69777B is 4.44:1 on #FAFAF7 → body copy uses #5F6D71 (5.1:1);
+ *    #69777B remains available as --tb-slate for icons and large text.
+ */
+
+@theme inline {
+  --color-background: var(--tb-background);
+  --color-surface: var(--tb-surface);
+  --color-surface-muted: var(--tb-surface-muted);
+  --color-foreground: var(--tb-foreground);
+  --color-muted-foreground: var(--tb-muted-foreground);
+  --color-slate: var(--tb-slate);
+  --color-border: var(--tb-border);
+  --color-input: var(--tb-input);
+  --color-ring: var(--tb-ring);
+  --color-overlay: var(--tb-overlay);
+
+  --color-primary: var(--tb-primary);
+  --color-primary-hover: var(--tb-primary-hover);
+  --color-primary-foreground: var(--tb-primary-foreground);
+  --color-primary-soft: var(--tb-primary-soft);
+  --color-primary-strong: var(--tb-primary-strong);
+  --color-secondary: var(--tb-secondary);
+  --color-secondary-foreground: var(--tb-secondary-foreground);
+  --color-secondary-soft: var(--tb-secondary-soft);
+  --color-accent: var(--tb-accent);
+  --color-accent-hover: var(--tb-accent-hover);
+  --color-accent-foreground: var(--tb-accent-foreground);
+  --color-accent-soft: var(--tb-accent-soft);
+
+  --color-success: var(--tb-success);
+  --color-warning: var(--tb-warning);
+  --color-danger: var(--tb-danger);
+  --color-info: var(--tb-info);
+
+  --font-display: var(--font-fraunces), 'Iowan Old Style', Georgia, ui-serif, serif;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --shadow-card: var(--tb-shadow-card);
+  --shadow-lift: var(--tb-shadow-lift);
+}
+
+@theme {
+  --ease-travel: cubic-bezier(0.22, 1, 0.36, 1);
+  --radius-card: 1.25rem;
+  --radius-pill: 999px;
+
+  /* Fluid display sizes */
+  --text-display: clamp(2.5rem, 1.6rem + 4vw, 4.75rem);
+  --text-display--line-height: 1.04;
+  --text-headline: clamp(1.875rem, 1.4rem + 2vw, 3rem);
+  --text-headline--line-height: 1.1;
+}
+
+:root {
+  color-scheme: light;
+  --tb-background: #fafaf7;
+  --tb-surface: #ffffff;
+  --tb-surface-muted: #f1f4f0;
+  --tb-foreground: #17252a;
+  --tb-muted-foreground: #5f6d71;
+  --tb-slate: #69777b;
+  --tb-border: #e2e7e3;
+  --tb-input: #cfd7d3;
+  --tb-ring: #087f8c;
+  --tb-overlay: rgb(14 26 29 / 0.55);
+
+  --tb-primary: #087f8c;
+  --tb-primary-hover: #066a75;
+  --tb-primary-foreground: #ffffff;
+  --tb-primary-soft: #e2f3f4;
+  /* Small primary-coloured text on tinted fills (5.8:1 on primary-soft; #087F8C is only ~4.2:1). */
+  --tb-primary-strong: #066a75;
+  --tb-secondary: #15b8a6;
+  --tb-secondary-foreground: #17252a;
+  --tb-secondary-soft: #ddf5f1;
+  --tb-accent: #ff735c;
+  --tb-accent-hover: #ff5f45;
+  --tb-accent-foreground: #17252a;
+  --tb-accent-soft: #ffece8;
+
+  --tb-success: #1e7f4f;
+  --tb-warning: #9a6200;
+  --tb-danger: #c2362b;
+  --tb-info: #1f6fb2;
+
+  --tb-shadow-card: 0 1px 2px rgb(23 37 42 / 0.05), 0 6px 20px rgb(23 37 42 / 0.06);
+  --tb-shadow-lift: 0 12px 40px rgb(23 37 42 / 0.14);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --tb-background: #0e1a1d;
+  --tb-surface: #142429;
+  --tb-surface-muted: #1a2e34;
+  --tb-foreground: #ecf2f1;
+  --tb-muted-foreground: #9db0b3;
+  --tb-slate: #8a9c9f;
+  --tb-border: #243a40;
+  --tb-input: #31494f;
+  --tb-ring: #2fb3bf;
+  --tb-overlay: rgb(0 0 0 / 0.6);
+
+  --tb-primary: #2fb3bf;
+  --tb-primary-hover: #4cc3ce;
+  --tb-primary-foreground: #0e1a1d;
+  --tb-primary-soft: #12343a;
+    --tb-primary-strong: #4cc3ce;
+  --tb-secondary: #2dd4bf;
+  --tb-secondary-foreground: #0e1a1d;
+  --tb-secondary-soft: #113a36;
+  --tb-accent: #ff8a75;
+  --tb-accent-hover: #ff9d8b;
+  --tb-accent-foreground: #17252a;
+  --tb-accent-soft: #3a2420;
+
+  --tb-success: #4cc38a;
+  --tb-warning: #e0a43a;
+  --tb-danger: #f07167;
+  --tb-info: #6cb4ee;
+
+  --tb-shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 20px rgb(0 0 0 / 0.25);
+  --tb-shadow-lift: 0 12px 40px rgb(0 0 0 / 0.45);
+}
+
+/* Before hydration (or without JS), follow the OS preference unless light was chosen explicitly. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --tb-background: #0e1a1d;
+    --tb-surface: #142429;
+    --tb-surface-muted: #1a2e34;
+    --tb-foreground: #ecf2f1;
+    --tb-muted-foreground: #9db0b3;
+    --tb-slate: #8a9c9f;
+    --tb-border: #243a40;
+    --tb-input: #31494f;
+    --tb-ring: #2fb3bf;
+    --tb-primary: #2fb3bf;
+    --tb-primary-hover: #4cc3ce;
+    --tb-primary-foreground: #0e1a1d;
+    --tb-primary-soft: #12343a;
+    --tb-primary-strong: #4cc3ce;
+    --tb-secondary: #2dd4bf;
+    --tb-secondary-foreground: #0e1a1d;
+    --tb-secondary-soft: #113a36;
+    --tb-accent: #ff8a75;
+    --tb-accent-hover: #ff9d8b;
+    --tb-accent-soft: #3a2420;
+  }
+}

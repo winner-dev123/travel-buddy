@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/server.pong.schema.json",
+  "title": "server → client: pong",
+  "description": "Heartbeat reply.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "pong"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "server_time": {
+          "$ref": "envelope.schema.json#/$defs/Timestamp"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "server_time"
+      ]
+    }
+  }
+}

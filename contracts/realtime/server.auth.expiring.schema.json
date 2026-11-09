@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/server.auth.expiring.schema.json",
+  "title": "server → client: auth.expiring",
+  "description": "Sent 60 s before `auth_expires_at`. The client sends a fresh `auth` frame (new access token, or a new ticket for web) on the same connection. Without one, the connection is closed with 4001.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "auth.expiring"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "expires_at": {
+          "$ref": "envelope.schema.json#/$defs/Timestamp"
+        },
+        "accepts": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "access_token",
+              "ticket"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "expires_at",
+        "accepts"
+      ]
+    }
+  }
+}

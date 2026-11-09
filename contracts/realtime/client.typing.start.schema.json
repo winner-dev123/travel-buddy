@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/client.typing.start.schema.json",
+  "title": "client → server: typing.start",
+  "description": "Typing indicator. Ephemeral (8 s TTL). At most one per 3 s per conversation; repeat to extend.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "typing.start"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "conversation_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "conversation_id"
+      ]
+    }
+  },
+  "not": {
+    "required": [
+      "reply_to"
+    ]
+  }
+}

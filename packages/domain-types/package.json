@@ -1,0 +1,17 @@
+{
+  "name": "@travelbuddy/domain-types",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Platform-neutral TypeScript types mirroring the Travel Buddy /v1 API contract (doc 02 §5).",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@travelbuddy/config": "*"
+  }
+}

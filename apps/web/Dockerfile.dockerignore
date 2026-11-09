@@ -1,0 +1,16 @@
+# Build-context filter for apps/web/Dockerfile only (BuildKit per-Dockerfile ignore file),
+# so the repository root .dockerignore stays free for other work streams.
+**/node_modules
+**/.next
+**/coverage
+**/playwright-report
+**/test-results
+**/.env
+**/.env.*
+!**/.env.example
+.git
+backend
+mobile
+infra
+docs
+apps/web/public/vendor

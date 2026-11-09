@@ -1,0 +1,14 @@
+{
+  "extends": "@travelbuddy/config/tsconfig/react-library.json",
+  "compilerOptions": {
+    "allowJs": false,
+    "incremental": true,
+    "types": ["node"],
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "plugins": [{ "name": "next" }]
+  },
+  "include": ["next-env.d.ts", "src/**/*.ts", "src/**/*.tsx", ".next/types/**/*.ts", "e2e/**/*.ts", "*.ts"],
+  "exclude": ["node_modules"]
+}

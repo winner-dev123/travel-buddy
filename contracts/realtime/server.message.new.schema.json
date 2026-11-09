@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/server.message.new.schema.json",
+  "title": "server → client: message.new",
+  "description": "A new message in a conversation the user belongs to. Also delivered to the sender's other devices.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "message.new"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "$ref": "envelope.schema.json#/$defs/Message"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "message"
+      ]
+    }
+  }
+}

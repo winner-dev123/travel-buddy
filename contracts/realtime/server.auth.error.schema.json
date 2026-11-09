@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/server.auth.error.schema.json",
+  "title": "server → client: auth.error",
+  "description": "Authentication failed. Followed by a close with the code in `close_code`.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "auth.error"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "enum": [
+            "unauthenticated",
+            "token_expired",
+            "token_invalid",
+            "ticket_invalid",
+            "session_revoked",
+            "account_suspended",
+            "origin_not_allowed",
+            "auth_timeout"
+          ]
+        },
+        "message": {
+          "type": "string"
+        },
+        "close_code": {
+          "type": "integer",
+          "minimum": 4000,
+          "maximum": 4999
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "close_code"
+      ]
+    }
+  }
+}

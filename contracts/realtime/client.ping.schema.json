@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/client.ping.schema.json",
+  "title": "client → server: ping",
+  "description": "Application heartbeat (every 25 s). The server answers with `pong`.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "ping"
+    },
+    "data": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  "not": {
+    "required": [
+      "reply_to"
+    ]
+  }
+}

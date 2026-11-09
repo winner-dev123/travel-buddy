@@ -1,0 +1,128 @@
+{
+  "common": {
+    "appName": "Travel Buddy",
+    "retry": "Try again"
+  },
+  "tabs": {
+    "home": "Home",
+    "explore": "Explore",
+    "companions": "Companions",
+    "messages": "Messages",
+    "profile": "Profile"
+  },
+  "placeholder": {
+    "comingInPhase": "Coming in Phase {{phase}}",
+    "notAvailableYet": "This part of the app is still being built. Nothing shown here is real data.",
+    "plannedCapabilities_one": "{{count}} planned capability",
+    "plannedCapabilities_other": "{{count}} planned capabilities"
+  },
+  "features": {
+    "auth": {
+      "title": "Sign in",
+      "capabilities": {
+        "emailSignIn": "Sign in with email, Apple or Google",
+        "sessions": "Manage your signed-in devices",
+        "verification": "Email verification and password reset"
+      }
+    },
+    "onboarding": {
+      "title": "Getting started",
+      "capabilities": {
+        "profileBasics": "Choose a display name and an optional photo",
+        "interests": "Pick your travel interests and styles",
+        "destination": "Set your current or upcoming destination"
+      }
+    },
+    "feed": {
+      "title": "Travel feed",
+      "capabilities": {
+        "localFeed": "Posts from travelers about the destination you are browsing",
+        "filters": "Filter by city, country, radius, language and category",
+        "interactions": "React, comment, bookmark and follow"
+      }
+    },
+    "explore": {
+      "title": "Explore",
+      "capabilities": {
+        "map": "Map-based destination discovery",
+        "attractions": "Attractions and recommendations",
+        "assistant": "AI itinerary planning"
+      }
+    },
+    "companions": {
+      "title": "Companions",
+      "capabilities": {
+        "discovery": "Opt-in discovery of travelers in the same city",
+        "requests": "Send and accept connection requests",
+        "groups": "Travel companion groups"
+      }
+    },
+    "messaging": {
+      "title": "Messages",
+      "capabilities": {
+        "direct": "Private messages with your connections",
+        "groups": "Group conversations",
+        "activities": "Group riddles and challenges"
+      }
+    },
+    "profile": {
+      "title": "Profile",
+      "capabilities": {
+        "posts": "Your posts and saved content",
+        "trips": "Trips and itineraries",
+        "privacy": "Privacy, subscription and account settings"
+      }
+    },
+    "discovery": {
+      "title": "Traveler discovery"
+    },
+    "groups": {
+      "title": "Travel groups"
+    },
+    "challenges": {
+      "title": "Group challenges"
+    },
+    "aiItinerary": {
+      "title": "AI trip planner"
+    },
+    "offlineGuides": {
+      "title": "Offline guides"
+    },
+    "subscriptions": {
+      "title": "Premium"
+    }
+  },
+  "offline": {
+    "onlineOnly": "Online only",
+    "onlineOnlyA11y": "Online only. This feature needs an internet connection.",
+    "offlineNow": "Offline",
+    "offlineNowA11y": "You are offline. This feature is unavailable until you reconnect."
+  },
+  "safety": {
+    "discoveryTitle": "Before you meet other travelers",
+    "discoveryIntro": "Traveler discovery is optional and off by default. We cannot guarantee that meeting someone you find here is safe.",
+    "tipPublicPlaces": "Meet for the first time in busy public places.",
+    "tipTellSomeone": "Tell someone you trust where you are going.",
+    "tipPersonalDetails": "Keep personal details such as your hotel, address and phone number private until you are comfortable.",
+    "tipCoarseLocation": "Only your city or neighborhood is shown. Your exact location is never shared.",
+    "tipBlockReport": "You can block and report anyone at any time.",
+    "guideWithoutDiscovery": "You can use every travel guide feature without turning on discovery."
+  },
+  "onboarding": {
+    "stepsHeading": "Setup steps",
+    "steps": {
+      "account": "Create your account",
+      "ageTerms": "Confirm your age and accept the terms",
+      "profile": "Display name and photo",
+      "language": "Language",
+      "interests": "Interests and travel styles",
+      "destination": "Current or upcoming destination",
+      "location": "Location permission (optional)",
+      "discovery": "Traveler discovery (off by default)"
+    }
+  },
+  "notFound": {
+    "title": "Page not found",
+    "goHome": "Go to Home"
+  }
+}

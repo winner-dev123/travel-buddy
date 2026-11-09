@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/server.membership.changed.schema.json",
+  "title": "server → client: membership.changed",
+  "description": "Membership in a group or team conversation changed. When the subject is the receiving user and the change removes access (left, removed), the server stops delivering events for that conversation immediately after this frame.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "membership.changed"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "conversation_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "group_id": {
+          "anyOf": [
+            {
+              "$ref": "envelope.schema.json#/$defs/Uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "user_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "change": {
+          "enum": [
+            "joined",
+            "left",
+            "removed",
+            "restricted",
+            "unrestricted",
+            "role_changed"
+          ]
+        },
+        "role": {
+          "enum": [
+            "owner",
+            "admin",
+            "moderator",
+            "member",
+            null
+          ]
+        },
+        "restricted_until": {
+          "anyOf": [
+            {
+              "$ref": "envelope.schema.json#/$defs/Timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "effective_at": {
+          "$ref": "envelope.schema.json#/$defs/Timestamp"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "conversation_id",
+        "group_id",
+        "user_id",
+        "change",
+        "effective_at"
+      ]
+    }
+  }
+}

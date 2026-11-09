@@ -1,0 +1,22 @@
+{
+  "name": "@travelbuddy/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Typed client for the Travel Buddy /v1 platform API. `./mock` is a server-only development adapter.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./mock": "./src/mock/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@travelbuddy/domain-types": "*",
+    "@travelbuddy/validation": "*"
+  },
+  "devDependencies": {
+    "@travelbuddy/config": "*"
+  }
+}

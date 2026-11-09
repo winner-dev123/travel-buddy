@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/server.message.updated.schema.json",
+  "title": "server → client: message.updated",
+  "description": "A message was edited, or its reactions or pin state changed.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "message.updated"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "$ref": "envelope.schema.json#/$defs/Message"
+        },
+        "change": {
+          "enum": [
+            "edited",
+            "reactions",
+            "pinned",
+            "unpinned",
+            "moderated"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "message",
+        "change"
+      ]
+    }
+  }
+}

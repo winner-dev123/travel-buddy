@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/server.message.ack.schema.json",
+  "title": "server → client: message.ack",
+  "description": "The message was durably persisted. `duplicate = true` when the client_message_id had already been accepted (retry); the original message's id and seq are returned.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "message.ack"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "conversation_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "client_message_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "message_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "seq": {
+          "$ref": "envelope.schema.json#/$defs/Seq"
+        },
+        "created_at": {
+          "$ref": "envelope.schema.json#/$defs/Timestamp"
+        },
+        "duplicate": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "conversation_id",
+        "client_message_id",
+        "message_id",
+        "seq",
+        "created_at",
+        "duplicate"
+      ]
+    }
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/server.sync.required.schema.json",
+  "title": "server → client: sync.required",
+  "description": "The client must catch up via REST GET /v1/conversations/{id}/messages?after_seq={from_seq}. Sent in reply to `sync.request`, after fanout gaps, after the server drops buffered events (backpressure), or after a membership resubscribe. `full_resync = true` means refetch GET /v1/conversations as well.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "sync.required"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "enum": [
+            "reconnect",
+            "gap_detected",
+            "backpressure",
+            "resubscribed",
+            "server_recovered"
+          ]
+        },
+        "full_resync": {
+          "type": "boolean"
+        },
+        "conversations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "conversation_id": {
+                "$ref": "envelope.schema.json#/$defs/Uuid"
+              },
+              "from_seq": {
+                "$ref": "envelope.schema.json#/$defs/Seq"
+              },
+              "server_last_seq": {
+                "$ref": "envelope.schema.json#/$defs/Seq"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "conversation_id",
+              "from_seq",
+              "server_last_seq"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "reason",
+        "full_resync",
+        "conversations"
+      ]
+    }
+  }
+}

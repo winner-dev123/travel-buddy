@@ -1,0 +1,68 @@
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.p8
+*.key
+secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# Node / React Native / Expo
+node_modules/
+.expo/
+.expo-shared/
+web-build/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+mobile/ios/
+mobile/android/
+apps/mobile/ios/
+apps/mobile/android/
+
+# Next.js / web
+.next/
+out/
+next-env.d.ts
+coverage/
+playwright-report/
+test-results/
+blob-report/
+.vercel
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+
+# Generated reports
+reports/
+
+# Generated vendor assets (apps/web/scripts/copy-vendor.mjs)
+apps/web/public/vendor/

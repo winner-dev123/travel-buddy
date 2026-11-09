@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/server.message.deleted.schema.json",
+  "title": "server → client: message.deleted",
+  "description": "A message became a tombstone (sender delete or moderator removal).",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "message.deleted"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "conversation_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "message_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "seq": {
+          "$ref": "envelope.schema.json#/$defs/Seq"
+        },
+        "deleted_at": {
+          "$ref": "envelope.schema.json#/$defs/Timestamp"
+        },
+        "by_moderator": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "conversation_id",
+        "message_id",
+        "seq",
+        "deleted_at",
+        "by_moderator"
+      ]
+    }
+  }
+}

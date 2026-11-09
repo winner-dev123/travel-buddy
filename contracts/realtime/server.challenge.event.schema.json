@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/server.challenge.event.schema.json",
+  "title": "server → client: challenge.event",
+  "description": "Group challenge lifecycle event for members of the group. Never includes accepted answers or other members' submission contents.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "challenge.event"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "challenge_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "group_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "event": {
+          "enum": [
+            "activated",
+            "hint_released",
+            "submission_evaluated",
+            "winner_determined",
+            "results_published",
+            "cancelled",
+            "extended"
+          ]
+        },
+        "hint": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "$ref": "envelope.schema.json#/$defs/Uuid"
+                },
+                "sort_order": {
+                  "type": "integer"
+                },
+                "body": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "sort_order",
+                "body"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "submission": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "submission_id": {
+                  "$ref": "envelope.schema.json#/$defs/Uuid"
+                },
+                "evaluation_status": {
+                  "enum": [
+                    "pending",
+                    "correct",
+                    "incorrect",
+                    "needs_review",
+                    "void"
+                  ]
+                },
+                "attempts_remaining": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "submission_id",
+                "evaluation_status",
+                "attempts_remaining"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Only for `submission_evaluated`, only to the submitter (or the team)."
+        },
+        "ends_at": {
+          "$ref": "envelope.schema.json#/$defs/Timestamp"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "challenge_id",
+        "group_id",
+        "event"
+      ]
+    }
+  }
+}

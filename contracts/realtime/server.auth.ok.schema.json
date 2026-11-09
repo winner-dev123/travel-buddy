@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/server.auth.ok.schema.json",
+  "title": "server → client: auth.ok",
+  "description": "Authentication accepted. Conversation subscriptions are implicit (all conversations the user is an active member of).",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "auth.ok"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "user_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "session_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "connection_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "server_time": {
+          "$ref": "envelope.schema.json#/$defs/Timestamp"
+        },
+        "auth_expires_at": {
+          "$ref": "envelope.schema.json#/$defs/Timestamp",
+          "description": "When this connection's authorization lapses unless re-authenticated (access-token expiry for mobile; ticket issuance + 15 min for web)."
+        },
+        "heartbeat_interval_s": {
+          "type": "integer",
+          "minimum": 5
+        },
+        "limits": {
+          "type": "object",
+          "properties": {
+            "max_inbound_frame_bytes": {
+              "type": "integer"
+            },
+            "message_send_per_minute": {
+              "type": "integer"
+            },
+            "typing_min_interval_s": {
+              "type": "integer"
+            },
+            "frames_per_minute": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "max_inbound_frame_bytes",
+            "message_send_per_minute",
+            "typing_min_interval_s",
+            "frames_per_minute"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "user_id",
+        "session_id",
+        "connection_id",
+        "server_time",
+        "auth_expires_at",
+        "heartbeat_interval_s",
+        "limits"
+      ]
+    }
+  }
+}

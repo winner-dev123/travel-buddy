@@ -1,0 +1,128 @@
+{
+  "common": {
+    "appName": "Travel Buddy",
+    "retry": "Erneut versuchen"
+  },
+  "tabs": {
+    "home": "Start",
+    "explore": "Entdecken",
+    "companions": "Reisepartner",
+    "messages": "Nachrichten",
+    "profile": "Profil"
+  },
+  "placeholder": {
+    "comingInPhase": "Verfügbar in Phase {{phase}}",
+    "notAvailableYet": "Dieser Bereich der App befindet sich noch in Entwicklung. Hier werden keine echten Daten angezeigt.",
+    "plannedCapabilities_one": "{{count}} geplante Funktion",
+    "plannedCapabilities_other": "{{count}} geplante Funktionen"
+  },
+  "features": {
+    "auth": {
+      "title": "Anmelden",
+      "capabilities": {
+        "emailSignIn": "Mit E-Mail, Apple oder Google anmelden",
+        "sessions": "Angemeldete Geräte verwalten",
+        "verification": "E-Mail-Bestätigung und Zurücksetzen des Passworts"
+      }
+    },
+    "onboarding": {
+      "title": "Erste Schritte",
+      "capabilities": {
+        "profileBasics": "Anzeigenamen und optional ein Foto wählen",
+        "interests": "Interessen und Reisestile auswählen",
+        "destination": "Aktuelles oder nächstes Reiseziel angeben"
+      }
+    },
+    "feed": {
+      "title": "Reise-Feed",
+      "capabilities": {
+        "localFeed": "Beiträge von Reisenden über das Reiseziel, das du gerade ansiehst",
+        "filters": "Nach Stadt, Land, Umkreis, Sprache und Kategorie filtern",
+        "interactions": "Reagieren, kommentieren, speichern und folgen"
+      }
+    },
+    "explore": {
+      "title": "Entdecken",
+      "capabilities": {
+        "map": "Reiseziele auf der Karte entdecken",
+        "attractions": "Sehenswürdigkeiten und Empfehlungen",
+        "assistant": "Reiseplanung mit KI"
+      }
+    },
+    "companions": {
+      "title": "Reisepartner",
+      "capabilities": {
+        "discovery": "Freiwillige Entdeckung von Reisenden in derselben Stadt",
+        "requests": "Kontaktanfragen senden und annehmen",
+        "groups": "Reisegruppen"
+      }
+    },
+    "messaging": {
+      "title": "Nachrichten",
+      "capabilities": {
+        "direct": "Private Nachrichten mit deinen Kontakten",
+        "groups": "Gruppenunterhaltungen",
+        "activities": "Rätsel und Gruppenherausforderungen"
+      }
+    },
+    "profile": {
+      "title": "Profil",
+      "capabilities": {
+        "posts": "Deine Beiträge und gespeicherten Inhalte",
+        "trips": "Reisen und Reisepläne",
+        "privacy": "Datenschutz, Abo und Kontoeinstellungen"
+      }
+    },
+    "discovery": {
+      "title": "Reisende entdecken"
+    },
+    "groups": {
+      "title": "Reisegruppen"
+    },
+    "challenges": {
+      "title": "Gruppenherausforderungen"
+    },
+    "aiItinerary": {
+      "title": "KI-Reiseplaner"
+    },
+    "offlineGuides": {
+      "title": "Offline-Reiseführer"
+    },
+    "subscriptions": {
+      "title": "Premium"
+    }
+  },
+  "offline": {
+    "onlineOnly": "Nur online",
+    "onlineOnlyA11y": "Nur online. Diese Funktion benötigt eine Internetverbindung.",
+    "offlineNow": "Offline",
+    "offlineNowA11y": "Du bist offline. Diese Funktion ist erst wieder verfügbar, wenn du verbunden bist."
+  },
+  "safety": {
+    "discoveryTitle": "Bevor du andere Reisende triffst",
+    "discoveryIntro": "Die Entdeckung von Reisenden ist freiwillig und standardmäßig ausgeschaltet. Wir können nicht garantieren, dass ein Treffen mit Personen, die du hier findest, sicher ist.",
+    "tipPublicPlaces": "Triff dich beim ersten Mal an belebten, öffentlichen Orten.",
+    "tipTellSomeone": "Sag einer Vertrauensperson, wohin du gehst.",
+    "tipPersonalDetails": "Behalte persönliche Angaben wie Hotel, Adresse und Telefonnummer für dich, bis du dich wohlfühlst.",
+    "tipCoarseLocation": "Angezeigt wird nur deine Stadt oder dein Viertel. Dein genauer Standort wird nie geteilt.",
+    "tipBlockReport": "Du kannst jederzeit jede Person blockieren und melden.",
+    "guideWithoutDiscovery": "Du kannst alle Reiseführer-Funktionen nutzen, ohne die Entdeckung einzuschalten."
+  },
+  "onboarding": {
+    "stepsHeading": "Einrichtungsschritte",
+    "steps": {
+      "account": "Konto erstellen",
+      "ageTerms": "Alter bestätigen und Bedingungen akzeptieren",
+      "profile": "Anzeigename und Foto",
+      "language": "Sprache",
+      "interests": "Interessen und Reisestile",
+      "destination": "Aktuelles oder nächstes Reiseziel",
+      "location": "Standortberechtigung (optional)",
+      "discovery": "Reisende entdecken (standardmäßig aus)"
+    }
+  },
+  "notFound": {
+    "title": "Seite nicht gefunden",
+    "goHome": "Zur Startseite"
+  }
+}

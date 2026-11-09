@@ -1,0 +1,4 @@
+{
+  "extends": "@travelbuddy/config/tsconfig/react-library.json",
+  "include": ["src"]
+}

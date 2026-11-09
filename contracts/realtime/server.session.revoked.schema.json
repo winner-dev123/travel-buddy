@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/server.session.revoked.schema.json",
+  "title": "server → client: session.revoked",
+  "description": "The session was revoked (logout elsewhere, refresh-token reuse, admin suspension, account deletion). The connection closes with 4003 and the client must not reconnect with this session.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "session.revoked"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "enum": [
+            "logout",
+            "user_revoked",
+            "reuse_detected",
+            "admin",
+            "account_suspended",
+            "account_deleted",
+            "password_changed"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "reason"
+      ]
+    }
+  }
+}

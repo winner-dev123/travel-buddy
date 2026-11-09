@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/server.conversation.updated.schema.json",
+  "title": "server → client: conversation.updated",
+  "description": "Conversation metadata changed (title, mute, send permission, pins, new conversation, archive). Fields absent = unchanged.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "conversation.updated"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "conversation_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "created": {
+          "type": "boolean",
+          "description": "True when the user just gained this conversation (new DM or group joined)."
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "last_seq": {
+          "$ref": "envelope.schema.json#/$defs/Seq"
+        },
+        "muted_until": {
+          "anyOf": [
+            {
+              "$ref": "envelope.schema.json#/$defs/Timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "notification_level": {
+          "enum": [
+            "all",
+            "mentions",
+            "none"
+          ]
+        },
+        "can_send": {
+          "type": "boolean"
+        },
+        "send_restriction": {
+          "enum": [
+            "connection_required",
+            "blocked",
+            "member_restricted",
+            "chat_admins_only",
+            "archived",
+            null
+          ]
+        },
+        "pinned_message_ids": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "$ref": "envelope.schema.json#/$defs/Uuid"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "conversation_id"
+      ]
+    }
+  }
+}

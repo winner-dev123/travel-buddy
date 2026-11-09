@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.travelbuddy.example/realtime/client.message.send.schema.json",
+  "title": "client → server: message.send",
+  "description": "Send a message. Goes through the same messaging service as REST POST /v1/conversations/{id}/messages: persisted first, then `message.ack`. Idempotent on (conversation, sender, client_message_id).",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "message.send"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "conversation_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "client_message_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "kind": {
+          "enum": [
+            "text",
+            "image"
+          ],
+          "default": "text"
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "attachment_media_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "$ref": "envelope.schema.json#/$defs/Uuid"
+          }
+        },
+        "reply_to_message_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "thread_root_id": {
+          "$ref": "envelope.schema.json#/$defs/Uuid"
+        },
+        "mentions": {
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "envelope.schema.json#/$defs/Uuid"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "conversation_id",
+        "client_message_id"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "body"
+          ]
+        },
+        {
+          "required": [
+            "attachment_media_ids"
+          ]
+        }
+      ]
+    }
+  },
+  "not": {
+    "required": [
+      "reply_to"
+    ]
+  }
+}
