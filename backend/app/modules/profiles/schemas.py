@@ -9,6 +9,7 @@ from typing import Annotated, Any, ClassVar, Literal
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StringConstraints, model_validator
 
 from app.core.i18n import LOCALE_TAG_PATTERN
+from app.modules.media.schemas import MediaRef
 
 LocaleTag = Annotated[str, StringConstraints(pattern=LOCALE_TAG_PATTERN, max_length=35)]
 TravelStyle = Literal[
@@ -119,7 +120,7 @@ class MyProfile(_Model):
     handle: str
     display_name: str
     bio: str | None
-    avatar: None  # MediaRef once the media module lands (BL-1.08); always null until then
+    avatar: MediaRef | None
     home_country_code: str | None
     home_region: str | None
     travel_styles: list[str]
@@ -181,4 +182,4 @@ class UserSummary(_Model):
     id: uuid.UUID
     handle: str
     display_name: str
-    avatar: None = None  # MediaRef once media lands (BL-1.08)
+    avatar: MediaRef | None = None

@@ -195,11 +195,7 @@ class FollowService:
             has_more = len(rows) > limit
             rows = rows[:limit]
             users = await profiles.authors(session, [r[1] for r in rows])
-        data = [
-            UserSummary(id=u.id, handle=u.handle, display_name=u.display_name)
-            for u in (users.get(r[1]) for r in rows)
-            if u is not None
-        ]
+        data = [profiles.user_summary(u) for u in (users.get(r[1]) for r in rows) if u is not None]
         next_cursor = (
             self._cursors.encode(
                 {"at": rows[-1][0].isoformat(), "id": str(rows[-1][1])}, scope=scope

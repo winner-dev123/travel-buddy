@@ -498,7 +498,7 @@ def _position(payload: dict[str, Any]) -> tuple[datetime, uuid.UUID]:
 
 
 def _user(author: profiles.AuthorInfo) -> UserSummary:
-    return UserSummary(id=author.id, handle=author.handle, display_name=author.display_name)
+    return profiles.user_summary(author)
 
 
 async def _comments(

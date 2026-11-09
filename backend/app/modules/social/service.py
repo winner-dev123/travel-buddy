@@ -51,7 +51,6 @@ from app.modules.social.schemas import (
     PostCounts,
     PostViewerState,
     UpdatePostRequest,
-    UserSummary,
 )
 from app.modules.trust_safety import service as trust_safety
 
@@ -587,9 +586,7 @@ async def _assemble(
         is_author = post.author_id == viewer_id
         payload: dict[str, Any] = {
             "id": post.id,
-            "author": UserSummary(
-                id=author.id, handle=author.handle, display_name=author.display_name
-            ),
+            "author": profiles.user_summary(author),
             "kind": post.kind,
             "body": post.body,
             "language": post.language,

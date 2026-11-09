@@ -207,7 +207,7 @@ class PublicProfile(_Response):
     id: uuid.UUID
     handle: str
     display_name: str
-    avatar: None = None  # MediaRef once media lands (BL-1.08)
+    avatar: MediaRef | None = None
     bio: str | None
     home_country_code: str | None
     travel_styles: list[str]

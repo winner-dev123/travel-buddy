@@ -336,3 +336,66 @@ def test_hard_deleting_a_post_removes_its_stored_photos(media: LiveApp) -> None:
         )
         == 0
     )
+
+
+# ─────────────────────────────── avatars ───────────────────────────────
+
+
+@pytest.mark.req("PROF-001", "POST-004")
+def test_avatars_appear_everywhere_and_replacing_one_erases_the_old(media: LiveApp) -> None:
+    token, user_id = _user(media)
+    first = _upload(media, token, jpeg_with_gps(512, 512, orientation=1), purpose="avatar")
+    _finalize(media, token, first)
+    _tick(media)
+    set_avatar = media.client.patch(
+        "/v1/users/me", headers=_auth(token), json={"avatar_media_id": first}
+    )
+    assert set_avatar.status_code == 200, set_avatar.text
+    me = media.client.get("/v1/users/me", headers=_auth(token)).json()
+    assert_matches_contract(me, "Me")
+    assert me["profile"]["avatar"]["id"] == first
+    assert me["profile"]["avatar"]["status"] == "ready"
+
+    post = media.client.post(
+        "/v1/posts",
+        headers={**_auth(token), "Idempotency-Key": str(uuid.uuid4())},
+        json={
+            "kind": "tip",
+            "body": "Bring a jacket",
+            "visibility": "public",
+            "location_precision": "none",
+        },
+    ).json()
+    assert post["author"]["avatar"]["id"] == first
+    viewer, _ = _user(media)
+    profile = media.client.get(f"/v1/users/{user_id}", headers=_auth(viewer)).json()
+    assert_matches_contract(profile, "PublicProfile")
+    assert profile["avatar"]["id"] == first
+
+    second = _upload(media, token, jpeg_with_gps(256, 256, orientation=1), purpose="avatar")
+    _finalize(media, token, second)
+    media.client.patch("/v1/users/me", headers=_auth(token), json={"avatar_media_id": second})
+    _tick(media)
+    storage = media.client.app.state.media_storage  # type: ignore[attr-defined]
+    assert not any(key.startswith(f"m/{user_id}/{first}/") for key in storage.public)
+    assert (
+        db_scalar(
+            media.db_url, "SELECT count(*) FROM media_assets WHERE id = :m", m=uuid.UUID(first)
+        )
+        == 0
+    )
+
+    photo = _upload(media, token, jpeg_with_gps(64, 64))  # post purpose
+    _finalize(media, token, photo)
+    _problem(
+        media.client.patch("/v1/users/me", headers=_auth(token), json={"avatar_media_id": photo}),
+        422,
+        "validation_failed",
+    )
+    cleared = media.client.patch(
+        "/v1/users/me", headers=_auth(token), json={"avatar_media_id": None}
+    )
+    assert cleared.status_code == 200
+    assert (
+        media.client.get("/v1/users/me", headers=_auth(token)).json()["profile"]["avatar"] is None
+    )

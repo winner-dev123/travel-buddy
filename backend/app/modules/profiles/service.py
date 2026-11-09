@@ -21,6 +21,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, ErrorCode, FieldError
 from app.core.i18n import SUPPORTED_LOCALES, negotiate_ui_locale
+from app.modules.media import service as media
+from app.modules.media.schemas import MediaRef
 from app.modules.platform import service as platform_service
 from app.modules.profiles.domain import (
     BIO_MAX,
@@ -141,13 +143,14 @@ async def _rows(
 
 async def get_profile_bundle(session: AsyncSession, user_id: uuid.UUID) -> ProfileBundle:
     profile, preferences, privacy = await _rows(session, user_id)
+    avatar = await _avatar(session, profile.avatar_media_id)
     return ProfileBundle(
         profile=MyProfile(
             id=profile.user_id,
             handle=profile.handle,
             display_name=profile.display_name,
             bio=profile.bio,
-            avatar=None,
+            avatar=avatar,
             home_country_code=profile.home_country_code,
             home_region=profile.home_region,
             travel_styles=list(profile.travel_styles),
@@ -250,11 +253,6 @@ def _profile_values(changes: dict[str, Any]) -> dict[str, Any]:
         values["bio"] = _clean_or_422(
             "bio", clean_optional_text, changes["bio"], max_length=BIO_MAX, multiline=True
         )
-    if "avatar_media_id" in changes:
-        if changes["avatar_media_id"] is not None:
-            # Uploads arrive with the media pipeline (BL-1.08); no media can be referenced yet.
-            raise _invalid("avatar_media_id", "not_found", "Media not found.")
-        values["avatar_media_id"] = None
     if "home_country_code" in changes:
         values["home_country_code"] = changes["home_country_code"]
     if "home_region" in changes:
@@ -292,6 +290,16 @@ async def update_profile(
         if getattr(profile, field) != value:
             setattr(profile, field, value)
             changed.add(field)
+    if "avatar_media_id" in changes and changes["avatar_media_id"] != profile.avatar_media_id:
+        new_avatar = changes["avatar_media_id"]
+        if new_avatar is not None and not await media.usable_ids(
+            session, user_id, [new_avatar], "avatar"
+        ):
+            raise _invalid("avatar_media_id", "not_found", "Media not found.")
+        if profile.avatar_media_id is not None:
+            await media.erase_assets(session, [profile.avatar_media_id])  # replaced photo goes
+        profile.avatar_media_id = new_avatar
+        changed.add("avatar_media_id")
     if not changed:
         return
     try:
@@ -479,6 +487,13 @@ class AuthorInfo:
     account_private: bool
     search_engine_indexing: bool
     ui_locale: str
+    avatar: MediaRef | None = None
+
+
+async def _avatar(session: AsyncSession, media_id: uuid.UUID | None) -> MediaRef | None:
+    if media_id is None:
+        return None
+    return (await media.refs(session, [media_id])).get(media_id)
 
 
 async def authors(
@@ -494,11 +509,14 @@ async def authors(
             UserProfile.account_visibility,
             UserPrivacySettings.search_engine_indexing,
             UserPreferences.ui_locale,
+            UserProfile.avatar_media_id,
         )
         .join(UserPrivacySettings, UserPrivacySettings.user_id == UserProfile.user_id)
         .join(UserPreferences, UserPreferences.user_id == UserProfile.user_id)
         .where(UserProfile.user_id.in_(set(user_ids)))
     )
+    found = list(rows)
+    avatars = await media.refs(session, [r.avatar_media_id for r in found if r.avatar_media_id])
     return {
         row.user_id: AuthorInfo(
             id=row.user_id,
@@ -507,13 +525,16 @@ async def authors(
             account_private=row.account_visibility == "private",
             search_engine_indexing=row.search_engine_indexing,
             ui_locale=row.ui_locale,
+            avatar=avatars.get(row.avatar_media_id) if row.avatar_media_id else None,
         )
-        for row in rows
+        for row in found
     }
 
 
 def user_summary(author: AuthorInfo) -> UserSummary:
-    return UserSummary(id=author.id, handle=author.handle, display_name=author.display_name)
+    return UserSummary(
+        id=author.id, handle=author.handle, display_name=author.display_name, avatar=author.avatar
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -576,6 +597,7 @@ class ProfileCard:
     account_private: bool
     profile_connections_only: bool
     search_engine_indexing: bool
+    avatar: MediaRef | None = None
 
 
 async def profile_card(session: AsyncSession, user_id: uuid.UUID) -> ProfileCard | None:
@@ -595,6 +617,7 @@ async def profile_card(session: AsyncSession, user_id: uuid.UUID) -> ProfileCard
         account_private=profile.account_visibility == "private",
         profile_connections_only=privacy.profile_visibility == "connections",
         search_engine_indexing=privacy.search_engine_indexing,
+        avatar=await _avatar(session, profile.avatar_media_id),
     )
 
 

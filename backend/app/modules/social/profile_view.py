@@ -76,6 +76,7 @@ class PublicProfileService:
             id=user_id,
             handle=card.handle,
             display_name=card.display_name,
+            avatar=card.avatar,
             bio=None if restricted else card.bio,
             home_country_code=None if restricted else card.home_country_code,
             travel_styles=[] if restricted else card.travel_styles,
