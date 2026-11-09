@@ -447,7 +447,7 @@ destination_match = 1.0 exact, 0.8 child (neighborhood within city), 0.5 parent,
 | Q-5 | Free AI quota (generations/month)? | 5 generations, 0 replans (replan is premium) |
 | Q-6 | Group admin grace period length? | 14 days |
 | Q-7 | Age verification beyond self-attestation in specific markets (UK OSA, US state laws)? | Self-attestation + reporting. Legal review before launch |
-| Q-8 | Cloud provider? | **Database decided: Supabase** (ADR-0018, `us-east-1`, Free → Pro). Compute and hosting for the API, workers and realtime are still open (AWS reference layout). Open sub-question: keep `us-east-1` or create an EU project before launch (GDPR transfers) |
+| Q-8 | Cloud provider? | **Database decided: Supabase** (ADR-0018, `us-east-1`, Free → Pro). **Backend hosting decided for staging: Vercel serverless** (ADR-0019, `iad1`, next to Supabase). Render/Docker (`render.yaml`) is ready for long-running roles once a card is on file. Web is on Vercel. Open sub-question: keep `us-east-1` or create an EU project before launch (GDPR transfers) |
 
 ## 9. Risks
 

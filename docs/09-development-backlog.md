@@ -51,6 +51,7 @@ Cross-cutting rule: **identity, privacy, entitlement and authorization foundatio
 | BL-0.18 | Requirement traceability script | S | 0.01 | — | ✅ |
 | BL-0.19 | Terraform module layout (cloud-neutral) | S | 0.02 | — | ✅ Layout documented. No resources until a cloud is chosen (Q-8) |
 | BL-0.21 | Supabase as database: pooler/SSL support, Data API lockdown re-applied after every migration, extensions schema, remote-DB guard for tests (ADR-0018) | S | 0.14 | NFR-006 | ✅ Code done. Migrations applied to the Supabase project once credentials are configured |
+| BL-0.22 | Backend hosting (ADR-0019): Vercel serverless entry point (staging API) plus Render blueprint and `$PORT`-aware image (ready). Optional Redis. Supabase Auth as trusted issuer | S | 0.21 | — | 🟡 Code done. Vercel project setup in progress |
 | BL-0.20 | Move `mobile/` → `apps/mobile` into the npm workspace (ADR-0009). Consume shared `packages/*` (i18n resources, generated API client, domain types). Coordinate with the web workstream so the root lockfile isn't installed concurrently | M | 0.17, web | I18N-001 | ⏳ Planned |
 
 Web-workstream items (Next.js app, BFF, web admin) are tracked by the web workstream in [docs/web](web/01-architecture.md). Backend work they depend on is listed in the phase tables below (BL-1.02, BL-3.01, BL-3.04, BL-3.14).

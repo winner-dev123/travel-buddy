@@ -43,7 +43,7 @@ flowchart TB
 
 | Component | AWS (reference) | GCP | Azure |
 |---|---|---|---|
-| Containers | ECS Fargate (or EKS when > ~15 services) | Cloud Run / GKE | Container Apps / AKS |
+| Containers | **Staging API: Vercel serverless (`iad1`, ADR-0019).** Long-running roles (realtime, workers): Render Docker services (`render.yaml`, ready) or ECS Fargate | Cloud Run / GKE | Container Apps / AKS |
 | Postgres + PostGIS | **Supabase (chosen, ADR-0018)**: project `us-east-1`, Free plan now, Pro + PITR before real user data. Alternatives: RDS for PostgreSQL | Cloud SQL for PostgreSQL | Azure Database for PostgreSQL Flexible |
 | Redis | ElastiCache for Redis | Memorystore | Azure Cache for Redis |
 | Object storage + CDN | S3 + CloudFront | GCS + Cloud CDN | Blob Storage + Front Door |

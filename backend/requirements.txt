@@ -1,0 +1,10 @@
+# Runtime dependencies for serverless deployment (Vercel, ADR-0019), pinned to tested versions.
+# The Docker image (render.yaml / docs/11) installs from pyproject.toml instead.
+fastapi==0.162.2
+pydantic==2.14.3
+pydantic-settings==2.16.2
+SQLAlchemy[asyncio]==2.0.57
+asyncpg==0.32.0
+PyJWT[crypto]==2.15.1
+httpx==0.28.1
+redis==8.1.0
