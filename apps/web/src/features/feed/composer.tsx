@@ -1,10 +1,10 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useFormatter, useNow, useTranslations } from 'next-intl';
 import { ImagePlus, MapPin, X } from 'lucide-react';
-import { isApiError, newIdempotencyKey } from '@travelbuddy/api-client';
+import { isApiError } from '@travelbuddy/api-client';
 import { LOCATED_POST_KINDS, POST_VISIBILITIES, type PostKind } from '@travelbuddy/domain-types';
 import { createPostSchema, LIMITS } from '@travelbuddy/validation';
 import { Alert, Avatar, Button, Dialog, DialogContent, FormField, NativeSelect, Textarea } from '@travelbuddy/ui';
@@ -12,6 +12,7 @@ import { DestinationSearch } from '@/components/destination-search';
 import { useViewer } from '@/features/shell/viewer-context';
 import { browserApi } from '@/lib/api-browser';
 import { qk } from '@/lib/query-keys';
+import { useIdempotencyKey } from '@/lib/use-idempotency-key';
 import { useComposerStore } from './composer-store';
 
 const KINDS = ['experience', 'tip', 'attraction_recommendation', 'restaurant_recommendation'] as const satisfies readonly PostKind[];
@@ -32,9 +33,7 @@ export function Composer({ defaultDestination }: { defaultDestination?: { id: st
   const [error, setError] = useState<string | null>(null);
   const destination = draft.destination === undefined ? (defaultDestination ?? null) : draft.destination;
   const needsLocation = !destination && (LOCATED_POST_KINDS as readonly string[]).includes(draft.kind);
-  // One Idempotency-Key per draft content: retrying after a timeout replays instead of posting twice,
-  // while an edited draft gets a fresh key (the platform answers 409 for a reused key with a new body).
-  const attempt = useRef<{ fingerprint: string; key: string } | null>(null);
+  const idempotency = useIdempotencyKey();
   const format = useFormatter();
   const now = useNow({ updateInterval: 60_000 });
 
@@ -49,12 +48,10 @@ export function Composer({ defaultDestination }: { defaultDestination?: { id: st
       };
       const parsed = createPostSchema.safeParse(body);
       if (!parsed.success) throw new Error('invalid');
-      const fingerprint = JSON.stringify(parsed.data);
-      if (attempt.current?.fingerprint !== fingerprint) attempt.current = { fingerprint, key: newIdempotencyKey() };
-      return browserApi().posts.create(parsed.data, attempt.current.key);
+      return browserApi().posts.create(parsed.data, idempotency.keyFor(parsed.data));
     },
     onSuccess: () => {
-      attempt.current = null;
+      idempotency.done();
       draft.reset();
       setOpen(false);
       void queryClient.invalidateQueries({ queryKey: qk.feedAll() });

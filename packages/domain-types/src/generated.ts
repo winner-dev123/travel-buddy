@@ -4283,6 +4283,9 @@ export interface components {
          * @description `rating` only for `kind = review`. With `location_precision = none`, `destination_id` and `place_id`
          *     must be omitted. With `place`, `place_id` is required and the destination is derived. With
          *     `destination`, `destination_id` is required. `body` may be empty only when media are attached.
+         *     `attraction_recommendation`, `restaurant_recommendation` and `review` need a location
+         *     (`location_precision` other than `none`); `photo`, `video` and `story` need at least one media item;
+         *     `itinerary_summary` needs `trip_id`. Violations fail with `422` and the offending field in `errors[]`.
          */
         CreatePostRequest: {
             kind: components["schemas"]["PostKind"];

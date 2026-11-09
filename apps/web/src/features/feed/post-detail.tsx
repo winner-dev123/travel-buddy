@@ -11,6 +11,7 @@ import { Alert, Avatar, Button, EmptyState, Skeleton, Textarea } from '@travelbu
 import { Link } from '@/i18n/navigation';
 import { browserApi } from '@/lib/api-browser';
 import { qk } from '@/lib/query-keys';
+import { useIdempotencyKey } from '@/lib/use-idempotency-key';
 import { PostCard } from './post-card';
 import { ReportDialog } from './report-dialog';
 
@@ -21,13 +22,18 @@ export function PostDetail({ postId }: { postId: string }) {
   const search = useSearchParams();
   const queryClient = useQueryClient();
   const [body, setBody] = useState('');
+  const idempotency = useIdempotencyKey();
   const [reportOpen, setReportOpen] = useState(search.get('report') === '1');
 
   const post = useQuery({ queryKey: qk.post(postId), queryFn: () => browserApi().posts.get(postId), retry: false });
   const comments = useQuery({ queryKey: qk.comments(postId), queryFn: () => browserApi().posts.comments(postId, { limit: 50 }), enabled: post.isSuccess });
   const add = useMutation({
-    mutationFn: () => browserApi().posts.addComment(postId, { body: body.trim() }),
+    mutationFn: () => {
+      const input = { body: body.trim() };
+      return browserApi().posts.addComment(postId, input, idempotency.keyFor({ postId, ...input }));
+    },
     onSuccess: () => {
+      idempotency.done();
       setBody('');
       void queryClient.invalidateQueries({ queryKey: qk.comments(postId) });
     },

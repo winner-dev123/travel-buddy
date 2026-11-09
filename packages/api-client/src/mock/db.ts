@@ -203,6 +203,7 @@ export class MockDb {
   readonly comments = new Map<string, CommentRecord[]>();
   readonly reactions = new Map<string, Map<string, ReactionType>>();
   readonly bookmarks = new Set<string>();
+  readonly shares = new Map<string, number>();
   readonly follows = new Set<string>();
   readonly blocks = new Set<string>();
   readonly reports: { id: string; reporterId: string; targetType: string; targetId: string; reason: string; createdAt: number }[] = [];
@@ -519,7 +520,7 @@ export class MockDb {
       reactions: byType.like + byType.love + byType.helpful + byType.wow,
       comments: this.visibleComments(post, viewer).length,
       bookmarks,
-      shares: 0,
+      shares: this.shares.get(post.id) ?? 0,
       reactions_by_type: byType,
     };
   }

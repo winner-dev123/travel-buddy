@@ -787,6 +787,15 @@ export function buildRouter(): Router<Handler> {
     return noContent();
   });
 
+  r.add('POST', '/v1/posts/:postId/shares', (ctx) => {
+    const { user } = ctx.auth();
+    const post = visiblePostOr404(ctx, user);
+    // Contract: only publicly listed posts (what a guest could open) get an external share link.
+    if (post.visibility !== 'public' || !ctx.db.canView(null, post)) throw problem(403, 'forbidden', 'Only public posts can be shared externally.');
+    ctx.db.shares.set(post.id, (ctx.db.shares.get(post.id) ?? 0) + 1);
+    return created({ url: `https://travelbuddy.example/stories/${post.id}` });
+  });
+
   r.add('GET', '/v1/posts/:postId/comments', (ctx) => {
     const { user } = ctx.auth();
     const post = visiblePostOr404(ctx, user);

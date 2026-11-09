@@ -15,7 +15,8 @@ import { ReportDialog } from './report-dialog';
 
 /**
  * Feed post card. Reactions and bookmarks are optimistic (idempotent endpoints) with rollback on
- * error. Share is offered only for PUBLIC posts, so private content never gets a shareable link.
+ * error. Share is offered only for publicly listed posts (public + approved), so other content never gets a
+ * shareable link; each share is recorded through the platform's share endpoint.
  */
 export function PostCard({ post, onHidden }: { post: Post; onHidden?: (postId: string) => void }) {
   const t = useTranslations('post');
@@ -68,6 +69,9 @@ export function PostCard({ post, onHidden }: { post: Post; onHidden?: (postId: s
 
   const share = async () => {
     const url = `${window.location.origin}${localizedPath(locale, `/stories/${post.id}`)}`;
+    // Records the share (contract: increments the share count). Not awaited before the share sheet, which
+    // must open within the click's user activation; a failure here never blocks sharing.
+    void browserApi().posts.share(post.id).catch(() => undefined);
     try {
       if (navigator.share) await navigator.share({ url });
       else {
@@ -80,6 +84,9 @@ export function PostCard({ post, onHidden }: { post: Post; onHidden?: (postId: s
     }
   };
 
+  // Only publicly listed posts have a working guest link: public and approved. `moderation_state` is sent
+  // only to the author; for everyone else it is absent and the post is approved by definition.
+  const shareable = post.visibility === 'public' && (post.moderation_state ?? 'approved') === 'approved';
   const published = new Date(post.published_at);
   const destination = post.primary_destination;
 
@@ -165,7 +172,7 @@ export function PostCard({ post, onHidden }: { post: Post; onHidden?: (postId: s
           <MessageCircle className="size-5" aria-hidden="true" />
           {counts.comments}
         </Link>
-        {post.visibility === 'public' ? (
+        {shareable ? (
           <button type="button" onClick={share} className="flex items-center gap-1.5 rounded-pill px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-surface-muted" aria-label={t('share')}>
             <Share2 className="size-5" aria-hidden="true" />
             <span className="text-xs" role="status">

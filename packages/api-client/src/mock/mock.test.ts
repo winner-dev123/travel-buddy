@@ -200,6 +200,17 @@ describe('mock platform — social and privacy', () => {
     await expectApiError(yuki.posts.get(privateNote!.id), 404, 'not_found');
   });
 
+  it('records shares of publicly listed posts and refuses others (403)', async () => {
+    const { api: amelia } = await signIn(platform, 'amelia');
+    const feed = await amelia.feed.get({ tab: 'for_you', limit: 50 });
+    const publicPost = feed.data.find((p) => p.visibility === 'public')!;
+    const link = await amelia.posts.share(publicPost.id);
+    expect(link.url).toMatch(new RegExp(`/stories/${publicPost.id}$`));
+    expect((await amelia.posts.get(publicPost.id)).counts.shares).toBe(publicPost.counts.shares + 1);
+    const privateNote = feed.data.find((p) => p.body.includes('reef-safe'))!;
+    await expectApiError(amelia.posts.share(privateNote.id), 403, 'forbidden');
+  });
+
   it('prioritizes the selected destination and explains why', async () => {
     const { api } = await signIn(platform, 'amelia');
     const rio = await api.feed.get({ tab: 'for_you' });
