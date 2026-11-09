@@ -194,10 +194,11 @@ export function sendConnectionRequest(
   client: ApiClient,
   recipientId: string,
   idempotencyKey: string,
+  context: 'profile' | 'discovery' = 'profile',
 ): Promise<ConnectionRequest> {
   return client.post<ConnectionRequest>('/v1/connections/requests', {
     idempotencyKey,
-    body: { recipient_id: recipientId, context: 'profile' },
+    body: { recipient_id: recipientId, context },
   });
 }
 

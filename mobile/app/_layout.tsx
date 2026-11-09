@@ -63,6 +63,7 @@ export default function RootLayout() {
           <Stack.Screen name="settings/privacy" />
           <Stack.Screen name="settings/blocked" />
           <Stack.Screen name="settings/delete-account" />
+          <Stack.Screen name="discovery/consent" options={{ presentation: 'modal' }} />
           <Stack.Screen name="+not-found" />
         </Stack>
         <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />

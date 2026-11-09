@@ -406,5 +406,42 @@
     "noConnections": "Connectez-vous avec des voyageurs depuis leur profil.",
     "accept": "Accepter",
     "decline": "Refuser"
+  },
+  "discovery": {
+    "consentTitle": "Découverte de voyageurs",
+    "consentIntro": "La découverte permet aux voyageurs de la même ville de voir votre carte de profil et de vous proposer de vous connecter. C'est facultatif et vous pouvez la désactiver à tout moment.",
+    "points": {
+      "shared": "Les autres voient votre nom, photo, bio, centres d'intérêt et la ville (ou le quartier, si vous le choisissez) que vous partagez.",
+      "never": "Votre position exacte, la distance et votre dernière activité ne sont jamais affichées.",
+      "expires": "Le partage d'une ville dure jusqu'à 3 jours, puis s'arrête tout seul.",
+      "control": "Vous pouvez devenir invisible, arrêter le partage ou désactiver la découverte quand vous voulez."
+    },
+    "granularity": "M'afficher au niveau",
+    "granularities": {
+      "city": "Ville",
+      "neighborhood": "Quartier"
+    },
+    "understand": "J'ai lu les conseils de sécurité",
+    "turnOn": "Activer la découverte",
+    "offTitle": "Rencontrez des voyageurs dans votre ville",
+    "offBody": "Activez la découverte pour voir qui d'autre explore la même ville et vous connecter.",
+    "shareTitle": "Partagez votre ville pour voir qui est là.",
+    "shareGps": "Utiliser ma position approximative",
+    "shareCity": "Ou choisissez une ville",
+    "uncovered": "Cette zone n'est pas encore couverte par la découverte. Choisissez une ville.",
+    "visibleIn": "Visible à {{place}} jusqu'à {{time}}",
+    "invisibleIn": "Invisible à {{place}} jusqu'à {{time}}",
+    "goInvisible": "Devenir invisible",
+    "goVisible": "Devenir visible",
+    "stop": "Arrêter le partage",
+    "nobody": "Personne d'autre ne partage cette ville pour le moment. Revenez plus tard.",
+    "invisibleNote": "Tant que vous êtes invisible, vous ne voyez pas non plus les autres voyageurs.",
+    "turnOff": "Désactiver la découverte",
+    "compatibility": {
+      "high": "Beaucoup en commun",
+      "medium": "Quelques points communs",
+      "low": "Centres d'intérêt différents"
+    },
+    "shared": "En commun : {{items}}"
   }
 }

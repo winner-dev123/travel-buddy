@@ -401,5 +401,42 @@
     "noConnections": "Verbinde dich über Profile mit Reisenden.",
     "accept": "Annehmen",
     "decline": "Ablehnen"
+  },
+  "discovery": {
+    "consentTitle": "Reisende entdecken",
+    "consentIntro": "Mit „Entdecken“ sehen Reisende in derselben Stadt deine Profilkarte und können dir eine Kontaktanfrage senden. Es ist freiwillig und jederzeit abschaltbar.",
+    "points": {
+      "shared": "Andere sehen deinen Namen, dein Foto, deine Bio, deine Interessen und die Stadt (oder, wenn du willst, das Viertel), die du teilst.",
+      "never": "Dein genauer Standort, die Entfernung und wann du zuletzt aktiv warst, werden nie angezeigt.",
+      "expires": "Das Teilen einer Stadt dauert höchstens 3 Tage und endet dann von selbst.",
+      "control": "Du kannst jederzeit unsichtbar werden, das Teilen beenden oder „Entdecken“ ausschalten."
+    },
+    "granularity": "Zeige mich auf Ebene",
+    "granularities": {
+      "city": "Stadt",
+      "neighborhood": "Viertel"
+    },
+    "understand": "Ich habe die Sicherheitshinweise gelesen",
+    "turnOn": "„Entdecken“ einschalten",
+    "offTitle": "Reisende in deiner Stadt treffen",
+    "offBody": "Schalte „Entdecken“ ein, um zu sehen, wer noch dieselbe Stadt erkundet, und dich zu verbinden.",
+    "shareTitle": "Teile deine Stadt, um zu sehen, wer da ist.",
+    "shareGps": "Ungefähren Standort verwenden",
+    "shareCity": "Oder wähle eine Stadt",
+    "uncovered": "Diese Gegend unterstützen wir für „Entdecken“ noch nicht. Wähle eine Stadt.",
+    "visibleIn": "Sichtbar in {{place}} bis {{time}}",
+    "invisibleIn": "Unsichtbar in {{place}} bis {{time}}",
+    "goInvisible": "Unsichtbar werden",
+    "goVisible": "Sichtbar werden",
+    "stop": "Teilen beenden",
+    "nobody": "Gerade teilt niemand sonst diese Stadt. Schau später wieder vorbei.",
+    "invisibleNote": "Solange du unsichtbar bist, siehst du auch keine anderen Reisenden.",
+    "turnOff": "„Entdecken“ ausschalten",
+    "compatibility": {
+      "high": "Viele Gemeinsamkeiten",
+      "medium": "Einige Gemeinsamkeiten",
+      "low": "Andere Interessen"
+    },
+    "shared": "Gemeinsam: {{items}}"
   }
 }

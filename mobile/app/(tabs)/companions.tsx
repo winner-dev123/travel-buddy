@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getApiClient } from '@/api';
 import { useSessionStore } from '@/auth/sessionStore';
 import { DiscoverySafetyNotice } from '@/components/DiscoverySafetyNotice';
+import { DiscoverSection } from '@/features/discovery/DiscoverSection';
 import { FeatureGate } from '@/components/FeatureGate';
 import { Button, Notice } from '@/components/Form';
 import {
@@ -127,14 +128,15 @@ function Companions() {
         >
           {t('companions.title')}
         </Text>
-        <View
-          style={[styles.card, { backgroundColor: theme.colors.surface, gap: theme.spacing[3] }]}
-        >
-          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>
-            {t('companions.discoverySoon')}
-          </Text>
-          <DiscoverySafetyNotice />
-        </View>
+        {signedIn ? (
+          <DiscoverSection />
+        ) : (
+          <View
+            style={[styles.card, { backgroundColor: theme.colors.surface, gap: theme.spacing[3] }]}
+          >
+            <DiscoverySafetyNotice />
+          </View>
+        )}
         {!signedIn ? (
           <View style={{ gap: theme.spacing[3] }}>
             <Notice tone="info">{t('companions.signIn')}</Notice>

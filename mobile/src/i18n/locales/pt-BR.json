@@ -406,5 +406,42 @@
     "noConnections": "Conecte-se com viajantes pelos perfis deles.",
     "accept": "Aceitar",
     "decline": "Recusar"
+  },
+  "discovery": {
+    "consentTitle": "Descobrir viajantes",
+    "consentIntro": "Descobrir permite que viajantes na mesma cidade vejam seu cartão de perfil e peçam para se conectar. É opcional e você pode desativar quando quiser.",
+    "points": {
+      "shared": "Outras pessoas veem seu nome, foto, bio, interesses e a cidade (ou bairro, se você escolher) que você compartilha.",
+      "never": "Sua localização exata, a distância e quando você esteve ativo pela última vez nunca são mostradas.",
+      "expires": "Compartilhar uma cidade dura até 3 dias e depois para sozinho.",
+      "control": "Você pode ficar invisível, parar de compartilhar ou desativar o Descobrir quando quiser."
+    },
+    "granularity": "Mostrar minha presença por",
+    "granularities": {
+      "city": "Cidade",
+      "neighborhood": "Bairro"
+    },
+    "understand": "Li as orientações de segurança",
+    "turnOn": "Ativar Descobrir",
+    "offTitle": "Conheça viajantes na sua cidade",
+    "offBody": "Ative o Descobrir para ver quem mais está explorando a mesma cidade e se conectar.",
+    "shareTitle": "Compartilhe sua cidade para ver quem está aqui.",
+    "shareGps": "Usar minha localização aproximada",
+    "shareCity": "Ou escolha uma cidade",
+    "uncovered": "Ainda não cobrimos esta região no Descobrir. Escolha uma cidade.",
+    "visibleIn": "Visível em {{place}} até {{time}}",
+    "invisibleIn": "Invisível em {{place}} até {{time}}",
+    "goInvisible": "Ficar invisível",
+    "goVisible": "Ficar visível",
+    "stop": "Parar de compartilhar",
+    "nobody": "Ninguém mais está compartilhando esta cidade agora. Volte mais tarde.",
+    "invisibleNote": "Enquanto estiver invisível, você também não vê outros viajantes.",
+    "turnOff": "Desativar Descobrir",
+    "compatibility": {
+      "high": "Muito em comum",
+      "medium": "Algumas coisas em comum",
+      "low": "Interesses diferentes"
+    },
+    "shared": "Em comum: {{items}}"
   }
 }

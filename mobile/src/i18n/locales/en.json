@@ -401,5 +401,42 @@
     "noConnections": "Connect with travellers from their profiles.",
     "accept": "Accept",
     "decline": "Decline"
+  },
+  "discovery": {
+    "consentTitle": "Traveler discovery",
+    "consentIntro": "Discovery lets travellers in the same city see your profile card and ask to connect. It's optional and you can turn it off at any time.",
+    "points": {
+      "shared": "Others see your name, photo, bio, interests and the city (or neighbourhood, if you choose) you're sharing.",
+      "never": "Your exact location, distance and when you were last active are never shown.",
+      "expires": "Sharing a city lasts up to 3 days, then stops by itself.",
+      "control": "You can go invisible, stop sharing or turn discovery off whenever you like."
+    },
+    "granularity": "Show me at the level of",
+    "granularities": {
+      "city": "City",
+      "neighborhood": "Neighbourhood"
+    },
+    "understand": "I've read the safety guidance",
+    "turnOn": "Turn on discovery",
+    "offTitle": "Meet travellers in your city",
+    "offBody": "Turn on discovery to see who else is exploring the same city and connect with them.",
+    "shareTitle": "Share your city to see who's here.",
+    "shareGps": "Use my approximate location",
+    "shareCity": "Or choose a city",
+    "uncovered": "We don't cover this area for discovery yet. Choose a city instead.",
+    "visibleIn": "Visible in {{place}} until {{time}}",
+    "invisibleIn": "Invisible in {{place}} until {{time}}",
+    "goInvisible": "Go invisible",
+    "goVisible": "Become visible",
+    "stop": "Stop sharing",
+    "nobody": "No one else is sharing this city right now. Check back later.",
+    "invisibleNote": "While you're invisible, you can't see other travellers either.",
+    "turnOff": "Turn off discovery",
+    "compatibility": {
+      "high": "Lots in common",
+      "medium": "Some things in common",
+      "low": "Different interests"
+    },
+    "shared": "In common: {{items}}"
   }
 }

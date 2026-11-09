@@ -406,5 +406,42 @@
     "noConnections": "Conecta con viajeros desde sus perfiles.",
     "accept": "Aceptar",
     "decline": "Rechazar"
+  },
+  "discovery": {
+    "consentTitle": "Descubrir viajeros",
+    "consentIntro": "Descubrir permite que los viajeros de la misma ciudad vean tu tarjeta de perfil y te pidan conectar. Es opcional y puedes desactivarlo cuando quieras.",
+    "points": {
+      "shared": "Otros ven tu nombre, foto, biografía, intereses y la ciudad (o barrio, si lo eliges) que compartes.",
+      "never": "Nunca se muestran tu ubicación exacta, la distancia ni cuándo estuviste activo por última vez.",
+      "expires": "Compartir una ciudad dura hasta 3 días y luego se detiene solo.",
+      "control": "Puedes volverte invisible, dejar de compartir o desactivar Descubrir cuando quieras."
+    },
+    "granularity": "Mostrarme a nivel de",
+    "granularities": {
+      "city": "Ciudad",
+      "neighborhood": "Barrio"
+    },
+    "understand": "He leído los consejos de seguridad",
+    "turnOn": "Activar Descubrir",
+    "offTitle": "Conoce viajeros en tu ciudad",
+    "offBody": "Activa Descubrir para ver quién más está explorando la misma ciudad y conectar.",
+    "shareTitle": "Comparte tu ciudad para ver quién está aquí.",
+    "shareGps": "Usar mi ubicación aproximada",
+    "shareCity": "O elige una ciudad",
+    "uncovered": "Aún no cubrimos esta zona para Descubrir. Elige una ciudad.",
+    "visibleIn": "Visible en {{place}} hasta {{time}}",
+    "invisibleIn": "Invisible en {{place}} hasta {{time}}",
+    "goInvisible": "Volverme invisible",
+    "goVisible": "Volverme visible",
+    "stop": "Dejar de compartir",
+    "nobody": "Nadie más comparte esta ciudad ahora mismo. Vuelve más tarde.",
+    "invisibleNote": "Mientras seas invisible, tampoco puedes ver a otros viajeros.",
+    "turnOff": "Desactivar Descubrir",
+    "compatibility": {
+      "high": "Mucho en común",
+      "medium": "Algunas cosas en común",
+      "low": "Intereses distintos"
+    },
+    "shared": "En común: {{items}}"
   }
 }
