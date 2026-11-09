@@ -20,7 +20,7 @@
 Vercel functions cannot host the long-running `worker` role, so on staging the job queue (ADR-0004) is advanced by:
 
 1. **After-response tick** (`JOBS_INLINE_AFTER_RESPONSE=true`): a request that recorded outbox events runs a short bounded tick (`JOBS_INLINE_BUDGET_SECONDS`, default 2 s) after its response. This meets the ≤ 10 s web cache purge target in the common case.
-2. **Scheduler tick**: `GET|POST /internal/jobs/tick` with `Authorization: Bearer $CRON_SECRET` picks up retries and anything the inline tick missed. On Vercel Hobby, Cron runs at most daily, so retries can wait until the next request that records events or the next scheduled tick.
+2. **Scheduler tick**: `GET|POST /internal/jobs/tick` with `Authorization: Bearer $CRON_SECRET` picks up retries and anything the inline tick missed. On Vercel Hobby, Cron runs at most daily, so retries can wait until the next request that records events or the next scheduled tick. `backend/vercel.json` schedules it daily at 03:00 UTC; Vercel sends the bearer token once `CRON_SECRET` is set on the project (until then the endpoint answers 404). Each tick also enqueues due periodic tasks (daily retention purges, BL-1.18).
 
 Production runs `python -m app.worker` as its own process (always-on), so neither trigger is needed there. Retries are scheduled with the database clock, so any mix of triggers and workers is safe (`SKIP LOCKED`).
 

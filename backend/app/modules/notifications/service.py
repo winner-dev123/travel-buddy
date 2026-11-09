@@ -274,3 +274,10 @@ class NotificationService:
             condition = and_(condition, Notification.id.in_(set(ids)))
         async with self._sessionmaker() as session, session.begin():
             await session.execute(update(Notification).where(condition).values(read_at=func.now()))
+
+
+async def purge_expired(session: AsyncSession) -> int:
+    """Notifications are kept 90 days (docs/04 §14)."""
+    return await platform.delete_batch(
+        session, Notification, Notification.created_at < platform.ago(days=90)
+    )

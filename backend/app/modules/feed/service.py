@@ -36,6 +36,7 @@ from app.modules.feed.domain import (
 from app.modules.feed.models import FeedbackKind, FeedFeedback, FeedSession
 from app.modules.feed.schemas import FeedContext, FeedFeedbackRequest, FeedResult
 from app.modules.location import service as location
+from app.modules.platform import service as platform
 from app.modules.profiles import service as profiles
 from app.modules.social import service as social
 from app.modules.trust_safety import service as trust_safety
@@ -392,3 +393,12 @@ class FeedService:
                 destination=destination, source=context["source"], radius_km=context["radius_km"]
             ),
         )
+
+
+async def purge_expired(session: AsyncSession) -> int:
+    """Feedback after 180 days (docs/04 §14); feed snapshots an hour past their expiry."""
+    return await platform.delete_batch(
+        session, FeedFeedback, FeedFeedback.created_at < platform.ago(days=180)
+    ) + await platform.delete_batch(
+        session, FeedSession, FeedSession.expires_at < platform.ago(hours=1)
+    )

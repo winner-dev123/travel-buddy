@@ -42,10 +42,12 @@ from app.modules.admin.service import AdminService
 from app.modules.client_config.api import router as client_config_router
 from app.modules.destinations.api import router as destinations_router
 from app.modules.destinations.service import DestinationService
+from app.modules.feed import service as feed_service
 from app.modules.feed.api import router as feed_router
 from app.modules.feed.service import FeedService
 from app.modules.health.api import ReadinessCheck
 from app.modules.health.api import router as health_router
+from app.modules.identity import service as identity_module
 from app.modules.identity.adapters.dev_idp import DevIdentityProvider
 from app.modules.identity.adapters.oidc import HttpJwksKeyProvider, IssuerConfig, OidcVerifier
 from app.modules.identity.api import auth_router, dev_idp_router, me_router
@@ -58,10 +60,14 @@ from app.modules.notifications import service as notifications_service
 from app.modules.notifications.api import router as notifications_router
 from app.modules.platform.api import AfterResponseTickMiddleware, internal_router
 from app.modules.platform.service import (
+    DAILY,
     EventRouter,
     JobHandler,
     JobRunner,
+    Periodic,
     PostgresRateLimitStore,
+    purge_platform,
+    retention_handler,
 )
 from app.modules.profiles import service as profiles_service
 from app.modules.social import service as social_service
@@ -334,7 +340,25 @@ def build_job_runner(
     handlers.update(social_service.make_handlers(database.sessionmaker))
     notifications_service.subscribe(router)
     handlers.update(notifications_service.make_handlers(database.sessionmaker))
-    return JobRunner(sessionmaker=database.sessionmaker, router=router, handlers=handlers)
+    # Daily retention purges, one per module that owns data with a retention rule (BL-1.18).
+    purges = {
+        "platform": purge_platform,
+        "identity": identity_module.purge_expired,
+        "social": social_service.purge_expired,
+        "trust_safety": trust_safety_service.purge_expired,
+        "feed": feed_service.purge_expired,
+        "notifications": notifications_service.purge_expired,
+    }
+    periodic = [Periodic(f"retention.{name}", f"retention.{name}", DAILY) for name in purges]
+    handlers.update(
+        {
+            f"retention.{name}": retention_handler(database.sessionmaker, purge, name=name)
+            for name, purge in purges.items()
+        }
+    )
+    return JobRunner(
+        sessionmaker=database.sessionmaker, router=router, handlers=handlers, periodic=periodic
+    )
 
 
 async def account_restrictions(

@@ -139,3 +139,15 @@ class RateLimitCounter(Base):
     window_start: Mapped[int] = mapped_column(BigInteger)
     hits: Mapped[int] = mapped_column(Integer)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class PeriodicTask(Base):
+    """When each periodic task (retention purges, ...) is next due. A tick claims a due task with
+    one atomic ``UPDATE … WHERE next_run_at <= now() RETURNING``, so any number of workers, cron
+    ticks and serverless invocations enqueue it exactly once per interval (no leader election)."""
+
+    __tablename__ = "periodic_tasks"
+
+    name: Mapped[str] = mapped_column(Text, primary_key=True)
+    next_run_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

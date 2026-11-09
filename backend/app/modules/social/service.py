@@ -14,8 +14,9 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import and_, delete, func, or_, select, update
+from sqlalchemy import and_, delete, exists, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.orm import aliased
 
 from app.core.errors import AppError, ErrorCode, FieldError
 from app.core.pagination import CursorCodec, Page, PageInfo
@@ -747,3 +748,20 @@ async def moderate_content(
         },
     )
     return post.author_id
+
+
+async def purge_expired(session: AsyncSession) -> int:
+    """Hard-delete posts and comments 30 days after their author deleted them (undo window and
+    moderation evidence, docs/04 §14). A deleted comment that still has replies is kept until the
+    replies are gone, because replies cascade from their parent."""
+    replies = aliased(Comment)
+    has_replies = exists().where(replies.parent_comment_id == Comment.id)
+    return await platform.delete_batch(
+        session,
+        PostRow,
+        (PostRow.status == "deleted") & (PostRow.deleted_at < platform.ago(days=30)),
+    ) + await platform.delete_batch(
+        session,
+        Comment,
+        (Comment.deleted_at < platform.ago(days=30)) & ~has_replies,
+    )

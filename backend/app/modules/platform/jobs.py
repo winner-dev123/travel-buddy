@@ -18,7 +18,7 @@ import logging
 import time
 import uuid
 from collections import defaultdict
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
@@ -28,7 +28,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.ids import uuid7
-from app.modules.platform.models import AsyncJob, JobStatus, OutboxEvent
+from app.modules.platform.models import AsyncJob, JobStatus, OutboxEvent, PeriodicTask
 
 logger = logging.getLogger(__name__)
 
@@ -189,6 +189,46 @@ class TickResult:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class Periodic:
+    """A job enqueued every ``interval`` (first run on the first tick after deployment)."""
+
+    name: str
+    kind: str
+    interval: timedelta
+    queue: str = "default"
+
+
+async def schedule_periodic(session: AsyncSession, tasks: Sequence[Periodic]) -> list[str]:
+    """Enqueue every due periodic task once; returns the names enqueued."""
+    if not tasks:
+        return []
+    await session.execute(
+        insert(PeriodicTask)
+        .values([{"name": t.name, "next_run_at": func.now()} for t in tasks])
+        .on_conflict_do_nothing(index_elements=[PeriodicTask.name])
+    )
+    enqueued: list[str] = []
+    for task in tasks:
+        claimed = await session.execute(
+            update(PeriodicTask)
+            .where(PeriodicTask.name == task.name, PeriodicTask.next_run_at <= func.now())
+            .values(next_run_at=func.now() + task.interval, last_run_at=func.now())
+            .returning(PeriodicTask.name)
+        )
+        if claimed.first() is None:
+            continue
+        await enqueue(
+            session,
+            queue=task.queue,
+            kind=task.kind,
+            payload={"task": task.name},
+            dedupe_key=f"periodic:{task.name}",
+        )
+        enqueued.append(task.name)
+    return enqueued
+
+
 class JobRunner:
     def __init__(
         self,
@@ -199,8 +239,10 @@ class JobRunner:
         queues: tuple[str, ...] = ("default",),
         worker_id: str | None = None,
         stale_after: timedelta = timedelta(minutes=5),
+        periodic: Sequence[Periodic] = (),
     ) -> None:
         self._sessionmaker = sessionmaker
+        self._periodic = tuple(periodic)
         self._router = router
         self._handlers = dict(handlers)
         self._queues = queues
@@ -211,6 +253,11 @@ class JobRunner:
         deadline = time.monotonic() + budget_seconds
         result = TickResult()
         result.recovered = await self._recover_stale()
+        if self._periodic:
+            async with self._sessionmaker() as session, session.begin():
+                scheduled = await schedule_periodic(session, self._periodic)
+            if scheduled:
+                logger.info("periodic tasks enqueued", extra={"tasks": scheduled})
         while time.monotonic() < deadline:
             async with self._sessionmaker() as session, session.begin():
                 relayed = await relay_outbox(session, self._router)

@@ -16,7 +16,7 @@ from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.errors import AppError, ErrorCode, FieldError
@@ -65,6 +65,7 @@ from app.modules.identity.schemas import (
     SessionOut,
     SessionTokens,
 )
+from app.modules.platform import service as platform
 from app.modules.profiles import service as profiles_service
 from app.modules.profiles.schemas import (
     Preferences,
@@ -683,3 +684,21 @@ async def set_account_status(
     user.suspended_until = until if status == UserStatus.SUSPENDED else None
     if status != UserStatus.ACTIVE:
         await repo.revoke_sessions(session, user_id=user_id, reason=RevokedReason.ADMIN, now=now)
+
+
+async def purge_expired(session: AsyncSession) -> int:
+    """Sessions 90 days after revocation or expiry (retired refresh tokens cascade); ``last_ip``
+    nulled after 30 days of inactivity (docs/04 §14)."""
+    await session.execute(
+        update(UserSession)
+        .where(UserSession.last_ip.is_not(None), UserSession.last_used_at < platform.ago(days=30))
+        .values(last_ip=None)
+    )
+    return await platform.delete_batch(
+        session,
+        UserSession,
+        or_(
+            UserSession.revoked_at < platform.ago(days=90),
+            UserSession.expires_at < platform.ago(days=90),
+        ),
+    )

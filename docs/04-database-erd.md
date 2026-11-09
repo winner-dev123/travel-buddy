@@ -812,6 +812,8 @@ erDiagram
 
 ## 14. Retention schedule (initial; subject to legal review)
 
+"Scheduler job" rows run as daily per-module purge jobs scheduled through `periodic_tasks` (BL-1.18). Rows for tables that do not exist yet take effect when their module lands.
+
 | Data | Retention | Mechanism |
 |---|---|---|
 | Device GPS coordinates | **Never persisted** | Request-scoped; log redaction |

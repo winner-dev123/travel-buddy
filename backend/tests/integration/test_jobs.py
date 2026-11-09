@@ -322,7 +322,8 @@ def test_indexing_change_reaches_the_web_via_the_cron_tick(webhook_app: WebhookA
     )
     assert tick.status_code == 200, tick.text
     assert_matches_contract(tick.json(), "JobTickResult")
-    assert tick.json()["data"]["succeeded"] == 1
+    # >= 1: the first tick in a fresh database also runs the daily retention purges (BL-1.18).
+    assert tick.json()["data"]["succeeded"] >= 1
 
     [request] = webhook_app.received
     payload = _assert_signed(request)

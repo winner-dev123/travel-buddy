@@ -453,3 +453,20 @@ async def ensure_not_restricted(
     """Raise ``403 account_restricted`` when ``kind`` is active on the account."""
     if any(r.kind == kind for r in await active_restrictions(session, user_id)):
         raise AppError(ErrorCode.ACCOUNT_RESTRICTED, message)
+
+
+async def purge_expired(session: AsyncSession) -> int:
+    """Resolved reports (with their evidence) 12 months after resolution; moderation actions after
+    3 years, except restrictions still in force (docs/04 §14). Legal holds arrive with BL-6.x."""
+    still_in_force = (ModerationAction.action == "restrict") & (
+        ModerationAction.expires_at.is_(None) | (ModerationAction.expires_at > func.now())
+    )
+    return await platform.delete_batch(
+        session,
+        ContentReport,
+        ContentReport.resolved_at < platform.ago(days=365),
+    ) + await platform.delete_batch(
+        session,
+        ModerationAction,
+        (ModerationAction.created_at < platform.ago(days=3 * 365)) & ~still_in_force,
+    )
