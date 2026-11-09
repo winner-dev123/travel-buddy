@@ -44,6 +44,8 @@ from app.modules.connections import service as connections_service
 from app.modules.connections.api import router as connections_router
 from app.modules.destinations.api import router as destinations_router
 from app.modules.destinations.service import DestinationService
+from app.modules.discovery.api import router as discovery_router
+from app.modules.discovery.service import DiscoveryService
 from app.modules.feed import service as feed_service
 from app.modules.feed.api import router as feed_router
 from app.modules.feed.service import FeedService
@@ -235,6 +237,10 @@ def create_app(
         clock=clock,
         relationship=connections_service.relationship_between,
     )
+    app.state.discovery_session_service = location_service.DiscoverySessionService(
+        sessionmaker=database.sessionmaker
+    )
+    app.state.discovery_service = DiscoveryService(sessionmaker=database.sessionmaker, clock=clock)
     app.state.connection_service = connections_service.ConnectionService(
         sessionmaker=database.sessionmaker, cursors=cursor_codec, clock=clock
     )
@@ -318,6 +324,7 @@ def create_app(
     app.include_router(trust_safety_router)
     app.include_router(feed_router)
     app.include_router(connections_router)
+    app.include_router(discovery_router)
     app.include_router(notifications_router)
     app.include_router(media_router)
     app.include_router(admin_router)
@@ -418,6 +425,7 @@ def build_job_runner(
         "notifications": notifications_service.purge_expired,
         "media": media_service.purge_expired,
         "connections": connections_service.purge_expired,
+        "location": location_service.purge_expired,
     }
     periodic = [Periodic(f"retention.{name}", f"retention.{name}", DAILY) for name in purges]
     # Accounts whose 30-day grace ended are erased within the hour (AUTH-010: 30 + 7 days).

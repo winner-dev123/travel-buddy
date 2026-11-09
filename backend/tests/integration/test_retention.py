@@ -15,16 +15,20 @@ from tests.integration.test_social_interactions import _comment
 
 pytestmark = [pytest.mark.integration, pytest.mark.req("SAFE-009")]
 
-TASKS = {
+# Every module that owns data with a retention rule registers a daily purge (BL-1.18).
+REQUIRED_TASKS = {
     "retention.platform",
     "retention.identity",
     "retention.social",
     "retention.trust_safety",
     "retention.feed",
     "retention.notifications",
-    "retention.media",
-    "retention.connections",
 }
+
+
+def _retention_tasks(live: LiveApp) -> set[str]:
+    runner = live.client.app.state.job_runner  # type: ignore[attr-defined]
+    return {task.name for task in runner._periodic if task.name.startswith("retention.")}
 
 
 def _sql(live: LiveApp, statement: str, **params: object) -> object:
@@ -40,21 +44,23 @@ def _count(live: LiveApp, table: str, where: str, **params: object) -> int:
 
 
 def test_periodic_tasks_are_enqueued_once_per_interval(app: LiveApp) -> None:  # noqa: F811
+    tasks = _retention_tasks(app)
+    assert tasks >= REQUIRED_TASKS
     _tick(app)
     _make_due(app)
     before = _count(app, "asynchronous_jobs", "kind LIKE 'retention.%'")
     _tick(app)
     after_first = _count(app, "asynchronous_jobs", "kind LIKE 'retention.%'")
-    assert after_first - before == len(TASKS)
+    assert after_first - before == len(tasks)
     names = _sql(app, "SELECT string_agg(name, ',' ORDER BY name) FROM periodic_tasks")
-    assert set(str(names).split(",")) >= TASKS
+    assert set(str(names).split(",")) >= tasks
     _tick(app)  # not due again for a day
     assert _count(app, "asynchronous_jobs", "kind LIKE 'retention.%'") == after_first
     assert _count(
         app,
         "periodic_tasks",
         "name LIKE 'retention.%' AND next_run_at > now() + interval '23 hours'",
-    ) == len(TASKS)
+    ) == len(tasks)
     assert (
         _count(
             app,

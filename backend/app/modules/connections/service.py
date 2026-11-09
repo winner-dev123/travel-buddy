@@ -98,6 +98,11 @@ async def _expire_stale(session: AsyncSession, a: uuid.UUID, b: uuid.UUID) -> No
 
 
 async def _shared_context(session: AsyncSession, a: uuid.UUID, b: uuid.UUID) -> bool:
+    a_discovery = await location.active_discovery_destination(session, a)
+    if a_discovery is not None and a_discovery == await location.active_discovery_destination(
+        session, b
+    ):
+        return True  # discovering the same city
     a_browse, a_upcoming = await location.selected_destinations(session, a)
     b_browse, b_upcoming = await location.selected_destinations(session, b)
     mine = {d for d in [a_browse, *a_upcoming] if d is not None}
@@ -495,3 +500,15 @@ async def purge_expired(session: AsyncSession) -> int:
         (ConnectionRequest.status != RequestStatus.PENDING)
         & (ConnectionRequest.created_at < platform.ago(days=365)),
     )
+
+
+async def declined_requesters(session: AsyncSession, viewer: uuid.UUID) -> set[uuid.UUID]:
+    """People whose requests the viewer declined in the last 30 days (deprioritized, DISC-008)."""
+    rows = await session.scalars(
+        select(ConnectionRequest.requester_id).where(
+            ConnectionRequest.recipient_id == viewer,
+            ConnectionRequest.status == RequestStatus.DECLINED,
+            ConnectionRequest.responded_at > func.now() - DECLINE_COOLDOWN,
+        )
+    )
+    return set(rows)

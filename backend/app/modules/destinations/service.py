@@ -501,3 +501,11 @@ def coarse_point(near: str) -> tuple[float, float]:
     """``lat,lng`` -> point rounded to ~110 m (LOC-003). Raises ``ValueError`` when malformed."""
     point = parse_near(near)
     return point.lat, point.lng
+
+
+async def kind_of(session: AsyncSession, destination_id: uuid.UUID) -> str | None:
+    """The kind (``city``, ``neighborhood``, …) of an active destination, or ``None``."""
+    kind: str | None = await session.scalar(
+        select(DestinationRow.kind).where(DestinationRow.id == destination_id, _ACTIVE)
+    )
+    return kind

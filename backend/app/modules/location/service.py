@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
+from datetime import date
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
@@ -254,3 +255,57 @@ async def selected_destinations(
     ).all()
     browse = next((d for k, d in rows if k == SelectionKind.BROWSE), None)
     return browse, [d for k, d in rows if k == SelectionKind.UPCOMING]
+
+
+async def shared_upcoming(
+    session: AsyncSession, user_id: uuid.UUID, destination_id: uuid.UUID
+) -> UserSelectedLocation | None:
+    """The user's upcoming trip to a destination that they chose to share for discovery."""
+    found: UserSelectedLocation | None = await session.scalar(
+        select(UserSelectedLocation).where(
+            UserSelectedLocation.user_id == user_id,
+            UserSelectedLocation.kind == SelectionKind.UPCOMING,
+            UserSelectedLocation.destination_id == destination_id,
+            UserSelectedLocation.share_for_discovery.is_(True),
+        )
+    )
+    return found
+
+
+async def shared_upcoming_in(
+    session: AsyncSession,
+    destination_id: uuid.UUID,
+    *,
+    exclude: uuid.UUID,
+    start: date | None,
+    end: date | None,
+) -> Sequence[UserSelectedLocation]:
+    """Other travellers sharing an upcoming trip to the destination, with overlapping dates
+    when both sides have dates ("travelers going to X", LOC-004)."""
+    query = select(UserSelectedLocation).where(
+        UserSelectedLocation.kind == SelectionKind.UPCOMING,
+        UserSelectedLocation.destination_id == destination_id,
+        UserSelectedLocation.share_for_discovery.is_(True),
+        UserSelectedLocation.user_id != exclude,
+    )
+    if start and end:
+        query = query.where(
+            (UserSelectedLocation.start_date.is_(None))
+            | (UserSelectedLocation.end_date.is_(None))
+            | ((UserSelectedLocation.start_date <= end) & (UserSelectedLocation.end_date >= start))
+        )
+    return (await session.scalars(query)).all()
+
+
+# Discovery sessions live in discovery.py; re-exported because other modules may import only
+# ``location.service``.
+from app.modules.location.discovery import (  # noqa: E402
+    DiscoverySessionService as DiscoverySessionService,
+)
+from app.modules.location.discovery import (  # noqa: E402
+    active_discovery_destination as active_discovery_destination,
+)
+from app.modules.location.discovery import active_session as active_session  # noqa: E402
+from app.modules.location.discovery import purge_expired as purge_expired  # noqa: E402
+from app.modules.location.discovery import require_discovery as require_discovery  # noqa: E402
+from app.modules.location.discovery import visible_sessions_in as visible_sessions_in  # noqa: E402

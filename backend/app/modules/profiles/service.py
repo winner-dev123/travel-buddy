@@ -656,3 +656,62 @@ async def connection_policy(session: AsyncSession, user_id: uuid.UUID) -> str:
         )
     )
     return policy or "nobody"
+
+
+@dataclass(frozen=True, slots=True)
+class DiscoverySettings:
+    enabled: bool
+    consented: bool
+    granularity: str  # "city" | "neighborhood"
+
+
+async def discovery_settings(session: AsyncSession, user_id: uuid.UUID) -> DiscoverySettings:
+    privacy = await session.get(UserPrivacySettings, user_id)
+    if privacy is None:
+        return DiscoverySettings(enabled=False, consented=False, granularity="city")
+    return DiscoverySettings(
+        enabled=privacy.discovery_enabled,
+        consented=privacy.discovery_consent_version is not None,
+        granularity=privacy.discovery_granularity,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class DiscoveryProfile:
+    """What a traveller card may show, plus the switches that decide whether it may appear."""
+
+    user_id: uuid.UUID
+    bio: str | None
+    travel_styles: list[str]
+    interests: list[str]
+    languages_spoken: list[str]
+    restricted: bool  # private account or connections-only profile (DISC-007)
+    discoverable: bool  # discovery on and consent recorded (DISC-001)
+    granularity: str
+
+
+async def discovery_profiles(
+    session: AsyncSession, user_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, DiscoveryProfile]:
+    if not user_ids:
+        return {}
+    rows = await session.execute(
+        select(UserProfile, UserPrivacySettings)
+        .join(UserPrivacySettings, UserPrivacySettings.user_id == UserProfile.user_id)
+        .where(UserProfile.user_id.in_(set(user_ids)))
+    )
+    return {
+        profile.user_id: DiscoveryProfile(
+            user_id=profile.user_id,
+            bio=profile.bio,
+            travel_styles=list(profile.travel_styles),
+            interests=[i.lower() for i in profile.interests],
+            languages_spoken=list(profile.languages_spoken),
+            restricted=profile.account_visibility == "private"
+            or privacy.profile_visibility == "connections",
+            discoverable=privacy.discovery_enabled
+            and privacy.discovery_consent_version is not None,
+            granularity=privacy.discovery_granularity,
+        )
+        for profile, privacy in rows.all()
+    }
