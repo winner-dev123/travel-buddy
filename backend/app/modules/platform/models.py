@@ -8,6 +8,7 @@ from enum import StrEnum
 from typing import Any
 
 from sqlalchemy import (
+    BigInteger,
     DateTime,
     ForeignKey,
     Index,
@@ -117,4 +118,24 @@ class IdempotencyKey(Base):
     response_status: Mapped[int | None] = mapped_column(SmallInteger)
     response_body: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class RateLimitCounter(Base):
+    """Fixed-window hit counters for the PostgreSQL rate-limit store (BL-1.15).
+
+    UNLOGGED: counters are disposable (lost on a crash, never replicated), so writes skip the WAL.
+    Rows expire two windows after they start; the store prunes them opportunistically.
+    """
+
+    __tablename__ = "rate_limit_counters"
+    __table_args__ = (
+        PrimaryKeyConstraint("key", "window_start"),
+        Index("ix_rate_limit_counters__expires_at", "expires_at"),
+        {"prefixes": ["UNLOGGED"]},
+    )
+
+    key: Mapped[str] = mapped_column(Text)
+    window_start: Mapped[int] = mapped_column(BigInteger)
+    hits: Mapped[int] = mapped_column(Integer)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

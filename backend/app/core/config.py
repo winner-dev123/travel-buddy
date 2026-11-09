@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -82,6 +83,19 @@ class Settings(BaseSettings):
     jobs_inline_budget_seconds: float = Field(default=2.0, gt=0, le=10)
     jobs_tick_budget_seconds: float = Field(default=8.0, gt=0, le=55)
 
+    # Rate limiting (BL-1.15, docs/05 §5). "auto": off in test, in-memory in development, Redis
+    # when REDIS_URL is set, otherwise PostgreSQL (serverless deployments without Redis).
+    rate_limit_store: Literal["auto", "memory", "redis", "postgres", "disabled"] = "auto"
+    # JSON: bucket → "count/seconds[, count/seconds]", e.g. RATE_LIMITS='{"write": "200/60"}'.
+    rate_limits: dict[str, str] = Field(default_factory=dict)
+    # Use the edge's X-Real-IP / X-Forwarded-For as the client IP. Defaults to true on Vercel, which
+    # sets and overwrites both headers.
+    trust_proxy_headers: bool | None = None
+    running_on_vercel: bool = Field(default=False, validation_alias="VERCEL")
+    # Shared with the web BFF, which forwards the browser's IP in X-TB-Client-IP together with this
+    # secret in X-TB-Forwarding-Secret (otherwise every web user shares the BFF's egress IP).
+    client_ip_forwarding_secret: SecretStr | None = None
+
     # Development-only adapters (never allowed in staging/production).
     dev_idp_enabled: bool = False
     dev_billing_enabled: bool = False
@@ -89,6 +103,22 @@ class Settings(BaseSettings):
     @property
     def is_production_like(self) -> bool:
         return not self.app_env.allows_dev_adapters
+
+    @property
+    def trusts_proxy_headers(self) -> bool:
+        if self.trust_proxy_headers is not None:
+            return self.trust_proxy_headers
+        return self.running_on_vercel
+
+    @property
+    def resolved_rate_limit_store(self) -> str:
+        if self.rate_limit_store != "auto":
+            return self.rate_limit_store
+        if self.app_env is AppEnv.TEST:
+            return "disabled"
+        if self.app_env is AppEnv.DEVELOPMENT:
+            return "memory"
+        return "redis" if self.redis_url else "postgres"
 
     @property
     def expose_api_docs(self) -> bool:
@@ -112,12 +142,28 @@ class Settings(BaseSettings):
             _MIN_SECRET_LENGTH
         ):
             problems.append(f"CRON_SECRET must be >= {_MIN_SECRET_LENGTH} chars when set")
+        if self.resolved_rate_limit_store in ("memory", "disabled"):
+            problems.append(
+                "RATE_LIMIT_STORE must be redis or postgres outside development/test (SAFE-005)"
+            )
+        secret = self.client_ip_forwarding_secret
+        if secret is not None and len(secret.get_secret_value()) < _MIN_SECRET_LENGTH:
+            problems.append(
+                f"CLIENT_IP_FORWARDING_SECRET must be >= {_MIN_SECRET_LENGTH} chars when set"
+            )
         if self.platform_jwt_private_key is None:
             problems.append(
                 "PLATFORM_JWT_PRIVATE_KEY (Ed25519 PEM) is required outside development/test"
             )
         if problems:
             raise ValueError("; ".join(problems))
+        return self
+
+    @model_validator(mode="after")
+    def _validate_rate_limits(self) -> Settings:
+        from app.core.ratelimit.policy import RatePolicy
+
+        RatePolicy.build(self.rate_limits)  # unknown buckets or malformed limits fail at boot
         return self
 
 

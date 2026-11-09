@@ -20,6 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.errors import AppError, ErrorCode, FieldError
+from app.core.ratelimit import RateLimiter
 from app.core.security.access_tokens import AccessTokenService
 from app.core.security.principal import ROLE_PERMISSIONS, Permission, PlatformRole, Principal
 from app.core.time import Clock
@@ -99,8 +100,10 @@ class IdentityService:
         settings: IdentitySettings,
         clock: Clock,
         browse_destination: BrowseDestinationProvider | None = None,
+        limiter: RateLimiter | None = None,
     ) -> None:
         self._sessionmaker = sessionmaker
+        self._limiter = limiter
         self._browse_destination = browse_destination
         self._verifier = verifier
         self._access_tokens = access_tokens
@@ -115,10 +118,16 @@ class IdentityService:
             minimum_age=self._settings.minimum_age,
         )
 
+    async def _limit(self, bucket: str, subject: str) -> None:
+        # On top of the per-IP ``auth`` limit: 20/h per IdP subject, 60/h refreshes per session.
+        if self._limiter is not None:
+            await self._limiter.enforce(bucket, subject)
+
     # ─────────────────────────────── register / login ───────────────────────────────
 
     async def register(self, request: RegisterRequest, *, user_agent: str | None) -> AuthResult:
         identity = await self._verifier.verify(request.id_token, expected_nonce=request.nonce)
+        await self._limit("auth_subject", f"{identity.issuer}|{identity.subject}")
         now = self._clock.now()
         try:
             eligible = is_age_eligible(request.birth_date, now.date(), self._settings.minimum_age)
@@ -202,6 +211,7 @@ class IdentityService:
 
     async def login(self, request: LoginRequest, *, user_agent: str | None) -> AuthResult:
         identity = await self._verifier.verify(request.id_token, expected_nonce=request.nonce)
+        await self._limit("auth_subject", f"{identity.issuer}|{identity.subject}")
         now = self._clock.now()
         async with self._sessionmaker() as session, session.begin():
             link = await repo.find_identity(session, identity.issuer, identity.subject)
@@ -314,6 +324,8 @@ class IdentityService:
                 if record is not None:
                     match = candidate_match
                     break
+            if record is not None:  # raising here rolls back before anything rotates
+                await self._limit("auth_refresh", f"session:{record.id}")
             state = (
                 SessionTokenState(
                     revoked=record.revoked_at is not None,

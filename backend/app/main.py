@@ -9,8 +9,9 @@ from contextlib import asynccontextmanager
 from datetime import timedelta
 
 import httpx
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
@@ -20,6 +21,15 @@ from app.core.feature_flags import FeatureFlags
 from app.core.logging import configure_logging
 from app.core.middleware import RequestContextMiddleware
 from app.core.pagination import CursorCodec
+from app.core.ratelimit import (
+    MemoryRateLimitStore,
+    RateLimiter,
+    RateLimitHeadersMiddleware,
+    RateLimitStore,
+    RatePolicy,
+    RedisRateLimitStore,
+    enforce_rate_limit,
+)
 from app.core.redis import create_redis
 from app.core.security.access_tokens import (
     AccessTokenService,
@@ -44,7 +54,12 @@ from app.modules.identity.service import IdentityService
 from app.modules.location import service as location_service
 from app.modules.location.api import router as location_router
 from app.modules.platform.api import AfterResponseTickMiddleware, internal_router
-from app.modules.platform.service import EventRouter, JobHandler, JobRunner
+from app.modules.platform.service import (
+    EventRouter,
+    JobHandler,
+    JobRunner,
+    PostgresRateLimitStore,
+)
 from app.modules.profiles import service as profiles_service
 from app.modules.social import service as social_service
 from app.modules.social.api import router as social_router
@@ -68,11 +83,13 @@ def create_app(
     readiness_checks: Mapping[str, ReadinessCheck] | None = None,
     clock: Clock | None = None,
     http_transport: httpx.AsyncBaseTransport | None = None,
+    rate_limit_store: RateLimitStore | None = None,
 ) -> FastAPI:
     """Build the API application (composition root).
 
-    ``readiness_checks``, ``clock`` and ``http_transport`` may be injected (tests); by default the
-    database and Redis are checked, the system clock is used and HTTP goes to the network.
+    ``readiness_checks``, ``clock``, ``http_transport`` and ``rate_limit_store`` may be injected
+    (tests); by default the database and Redis are checked, the system clock is used, HTTP goes to
+    the network and the rate-limit store follows ``RATE_LIMIT_STORE``.
     """
     settings = settings or get_settings()
     identity_settings = identity_settings or IdentitySettings()
@@ -127,6 +144,9 @@ def create_app(
         )
         for trusted in identity_settings.oidc_issuers
     ]
+    rate_limiter = build_rate_limiter(
+        settings, database=database, redis=redis, clock=clock, store=rate_limit_store
+    )
     dev_idp = DevIdentityProvider(clock) if settings.dev_idp_enabled else None
     if dev_idp is not None:
         issuers.append(dev_idp.issuer_config())
@@ -137,6 +157,7 @@ def create_app(
         settings=identity_settings,
         clock=clock,
         browse_destination=location_service.browse_destination_summary,
+        limiter=rate_limiter,
     )
 
     job_runner = build_job_runner(
@@ -153,8 +174,11 @@ def create_app(
         openapi_url="/v1/openapi.json" if settings.expose_api_docs else None,
         docs_url="/v1/docs" if settings.expose_api_docs else None,
         redoc_url=None,
+        # Runs before every route's own dependencies, so floods are rejected before any work.
+        dependencies=[Depends(enforce_rate_limit)],
     )
     app.state.settings = settings
+    app.state.rate_limiter = rate_limiter
     app.state.database = database
     app.state.redis = redis
     app.state.feature_flags = FeatureFlags(settings.feature_flags)
@@ -218,6 +242,7 @@ def create_app(
             budget_seconds=settings.jobs_inline_budget_seconds,
         )
 
+    app.add_middleware(RateLimitHeadersMiddleware)
     if settings.cors_allowed_origins:
         app.add_middleware(
             CORSMiddleware,
@@ -257,6 +282,30 @@ def create_app(
     if dev_idp is not None:  # absent → 404 (contract: not available in this environment)
         app.include_router(dev_idp_router)
     return app
+
+
+def build_rate_limiter(
+    settings: Settings,
+    *,
+    database: Database,
+    redis: Redis | None,
+    clock: Clock,
+    store: RateLimitStore | None = None,
+) -> RateLimiter | None:
+    """The limiter for ``RATE_LIMIT_STORE`` (``None`` when disabled, i.e. in tests by default)."""
+    policy = RatePolicy.build(settings.rate_limits)
+    if store is not None:
+        return RateLimiter(store, policy, clock)
+    kind = settings.resolved_rate_limit_store
+    if kind == "disabled":
+        return None
+    if kind == "memory":
+        return RateLimiter(MemoryRateLimitStore(), policy, clock)
+    if kind == "redis":
+        if redis is None:
+            raise RuntimeError("RATE_LIMIT_STORE=redis needs REDIS_URL")
+        return RateLimiter(RedisRateLimitStore(redis), policy, clock)
+    return RateLimiter(PostgresRateLimitStore(database.sessionmaker), policy, clock)
 
 
 def build_job_runner(

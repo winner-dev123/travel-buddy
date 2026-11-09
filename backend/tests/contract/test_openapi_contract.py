@@ -84,6 +84,31 @@ def test_implemented_routes_exist_in_contract(spec: dict[str, Any]) -> None:
     assert not missing, f"implemented but not in contract: {missing}"
 
 
+def test_implemented_routes_use_the_contract_rate_limit_class(spec: dict[str, Any]) -> None:
+    """Each route's effective class (declared or method default) matches x-rate-limit-class."""
+    from app.core.ratelimit import route_rate_class
+    from app.main import create_app
+    from tests.conftest import make_identity_settings, make_settings
+
+    app: FastAPI = create_app(
+        make_settings(dev_idp_enabled=True), identity_settings=make_identity_settings()
+    )
+    mismatched = []
+    for route in app.routes:
+        if not isinstance(route, APIRoute):
+            continue
+        for method in sorted(route.methods - {"HEAD", "OPTIONS"}):
+            operation = spec["paths"].get(route.path, {}).get(method.lower())
+            if operation is None:
+                continue  # reported by test_implemented_routes_exist_in_contract
+            effective, _ = route_rate_class(route, method)
+            if effective.value != operation.get("x-rate-limit-class"):
+                mismatched.append(
+                    f"{method} {route.path}: {effective} != {operation.get('x-rate-limit-class')}"
+                )
+    assert not mismatched, mismatched
+
+
 def _enum(spec: dict[str, Any], name: str) -> set[str]:
     return set(spec["components"]["schemas"][name]["enum"])
 

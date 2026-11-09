@@ -24,6 +24,17 @@ Vercel functions cannot host the long-running `worker` role, so on staging the j
 
 Production runs `python -m app.worker` as its own process (always-on), so neither trigger is needed there. Retries are scheduled with the database clock, so any mix of triggers and workers is safe (`SKIP LOCKED`).
 
+### 1.2 Rate limiting on serverless (ADR-0021)
+
+With no `REDIS_URL`, `RATE_LIMIT_STORE=auto` counts in PostgreSQL (UNLOGGED `rate_limit_counters`). Production should set `REDIS_URL`. Settings:
+
+| Variable | Default | Notes |
+|---|---|---|
+| `RATE_LIMIT_STORE` | `auto` | `redis`, `postgres`, `memory` (development), `disabled` (tests). Staging and production refuse `memory`/`disabled` |
+| `RATE_LIMITS` | `{}` | JSON overrides per bucket, e.g. `{"write": "200/60", "contact": "20/86400,5/60"}`. Unknown buckets fail at boot |
+| `TRUST_PROXY_HEADERS` | on when `VERCEL=1` | Use the edge's `X-Real-IP`/`X-Forwarded-For` as the client IP |
+| `CLIENT_IP_FORWARDING_SECRET` | unset | ≥ 32 chars, same value on the API and the web BFF. Lets the BFF forward the browser IP (`X-TB-Client-IP`); without it, anonymous web traffic shares the BFF's egress IP quota |
+
 ## 2. Runtime topology (production reference)
 
 ```mermaid

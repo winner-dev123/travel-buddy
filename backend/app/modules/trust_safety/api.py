@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 
 from app.core.pagination import Page
+from app.core.ratelimit import rate_limited
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
 from app.modules.profiles.schemas import UserSummary
@@ -60,7 +61,12 @@ def _reports(request: Request) -> ReportService:
     return service
 
 
-@router.post("/v1/reports", response_model=ReportReceipt, status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/v1/reports",
+    response_model=ReportReceipt,
+    status_code=status.HTTP_202_ACCEPTED,
+    openapi_extra=rate_limited("sensitive", bucket="reports"),
+)
 async def create_report(
     body: CreateReportRequest, request: Request, principal: CurrentPrincipal
 ) -> JSONResponse:

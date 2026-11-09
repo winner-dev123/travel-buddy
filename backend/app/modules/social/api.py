@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from app.core.errors import AppError, ErrorCode, FieldError
 from app.core.i18n import parse_accept_language
 from app.core.pagination import Page
+from app.core.ratelimit import rate_limited
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
 from app.modules.social.follows import FollowService
@@ -388,7 +389,7 @@ def _categories(raw: str | None) -> list[str]:
     return list(dict.fromkeys(kinds))
 
 
-@router.get("/v1/public/posts", tags=["feed"])
+@router.get("/v1/public/posts", tags=["feed"], openapi_extra=rate_limited("guest"))
 async def list_public_posts(
     request: Request,
     accept_language: AcceptLanguage = None,
@@ -410,7 +411,7 @@ async def list_public_posts(
     )
 
 
-@router.get("/v1/public/posts/{post_id}", tags=["feed"])
+@router.get("/v1/public/posts/{post_id}", tags=["feed"], openapi_extra=rate_limited("guest"))
 async def get_public_post(
     post_id: uuid.UUID, request: Request, accept_language: AcceptLanguage = None
 ) -> JSONResponse:

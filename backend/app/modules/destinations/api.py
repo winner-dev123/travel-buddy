@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Header, Query, Request
 from app.core.errors import AppError, ErrorCode, FieldError
 from app.core.i18n import parse_accept_language
 from app.core.pagination import Page
+from app.core.ratelimit import rate_limited
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
 from app.modules.destinations.models import Continent, DestinationKind
@@ -79,7 +80,9 @@ async def list_destinations(
     )
 
 
-@router.get("/search", response_model=Page[DestinationSummary])
+@router.get(
+    "/search", response_model=Page[DestinationSummary], openapi_extra=rate_limited("search")
+)
 async def search_destinations(
     request: Request,
     q: Annotated[str, Query(min_length=2, max_length=80)],

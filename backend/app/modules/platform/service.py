@@ -27,6 +27,7 @@ from app.modules.platform.jobs import (
     enqueue,
 )
 from app.modules.platform.models import OutboxEvent
+from app.modules.platform.ratelimit import PostgresRateLimitStore
 
 __all__ = [
     "EventRouter",
@@ -35,6 +36,7 @@ __all__ = [
     "JobRunner",
     "OutboxSignal",
     "PermanentJobError",
+    "PostgresRateLimitStore",
     "TickResult",
     "backoff",
     "enqueue",

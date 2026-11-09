@@ -459,7 +459,7 @@ Safety and moderation permissions are **never** paywalled. Rank rule: an actor c
 
 ## 5. Rate-limit classes (initial values)
 
-Limits are enforced per principal (user, or IP for anonymous) per class with a sliding window in Redis. Every response carries `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset`. Rejections are `429 rate_limited` with `Retry-After`. Values live in configuration and are tuned from production telemetry. Accounts younger than 7 days get **half** the `contact`, `message` and `media_upload` limits (anti-spam).
+Limits are enforced per principal (user, or IP for anonymous) per class with a sliding window (Redis; PostgreSQL where no Redis exists, ADR-0021). The web BFF forwards the browser IP in `X-TB-Client-IP` with the shared `X-TB-Forwarding-Secret`; without the secret the header is ignored. Every response carries `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset`. Rejections are `429 rate_limited` with `Retry-After`. Values live in configuration and are tuned from production telemetry. Accounts younger than 7 days get **half** the `contact`, `message` and `media_upload` limits (anti-spam).
 
 | Class | Limit (initial) | Scope | Fails when Redis is down |
 |---|---|---|---|

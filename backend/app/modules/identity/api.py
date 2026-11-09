@@ -7,6 +7,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, Request, Response, status
 
+from app.core.ratelimit import rate_limited
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
 from app.modules.identity.adapters.dev_idp import DevIdentityProvider
@@ -47,24 +48,33 @@ def _service(request: Request) -> IdentityService:
     return service
 
 
-@auth_router.post("/register", status_code=status.HTTP_201_CREATED, response_model=AuthResult)
+@auth_router.post(
+    "/register",
+    status_code=status.HTTP_201_CREATED,
+    response_model=AuthResult,
+    openapi_extra=rate_limited("auth"),
+)
 async def register(
     body: RegisterRequest,
     request: Request,
     idempotency_key: Annotated[uuid.UUID, Header(alias="Idempotency-Key")],
 ) -> AuthResult:
     # Replays are naturally safe: (issuer, subject) is unique, so a retry yields 409 and the client
-    # logs in. Stored-response idempotency for all creating POSTs lands with BL-1.15.
+    # logs in; no stored response is needed.
     del idempotency_key
     return await _service(request).register(body, user_agent=request.headers.get("user-agent"))
 
 
-@auth_router.post("/login", response_model=AuthResult)
+@auth_router.post("/login", response_model=AuthResult, openapi_extra=rate_limited("auth"))
 async def login(body: LoginRequest, request: Request) -> AuthResult:
     return await _service(request).login(body, user_agent=request.headers.get("user-agent"))
 
 
-@auth_router.post("/refresh", response_model=SessionTokens)
+@auth_router.post(
+    "/refresh",
+    response_model=SessionTokens,
+    openapi_extra=rate_limited("auth", bucket="auth_refresh"),
+)
 async def refresh(body: RefreshRequest, request: Request) -> SessionTokens:
     return await _service(request).refresh(body.refresh_token)
 
@@ -148,7 +158,7 @@ def _dev_idp(request: Request) -> DevIdentityProvider:
     return provider
 
 
-@dev_idp_router.post("/token", response_model=DevIdpToken)
+@dev_idp_router.post("/token", response_model=DevIdpToken, openapi_extra=rate_limited("auth"))
 async def dev_idp_mint_token(body: DevIdpTokenRequest, request: Request) -> DevIdpToken:
     token, expires_at = _dev_idp(request).mint(
         sub=body.sub,

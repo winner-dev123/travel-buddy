@@ -26,5 +26,6 @@ ADRs use the format **Context → Decision → Consequences → Alternatives**. 
 | [0018](0018-supabase-managed-postgres.md) | Supabase as the managed PostgreSQL provider (database only; Data API locked down) | Data / Infra | Accepted |
 | [0019](0019-backend-api-hosting.md) | Backend API hosting: Vercel serverless (staging), Render/Docker ready for long-running roles | Infra | Accepted |
 | [0020](0020-supabase-auth-identity-provider.md) | Supabase Auth as the managed identity provider (publishable key for Auth only; staff MFA via `aal2`) | Identity | Accepted |
+| [0021](0021-rate-limit-stores-and-client-ip.md) | Rate-limit counter stores (Redis, PostgreSQL fallback for serverless) and client IP trust (BFF forwarding secret) | Platform / Security | Accepted |
 
 Template: [`template.md`](template.md).
