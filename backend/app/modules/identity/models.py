@@ -105,6 +105,8 @@ class User(Base):
     primary_locale: Mapped[str] = mapped_column(Text)
     last_active_on: Mapped[date | None] = mapped_column(Date)
     deletion_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Set by a temporary suspension; signing in after it lifts the suspension (ADM-002).
+    suspended_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

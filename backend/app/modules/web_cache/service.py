@@ -28,6 +28,7 @@ _EVENT_TYPES = (
     "post.published",
     "post.updated",
     "post.deleted",
+    "post.moderated",
 )
 _RETRYABLE_CLIENT_ERRORS = frozenset({408, 425, 429})
 

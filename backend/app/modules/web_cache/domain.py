@@ -42,7 +42,11 @@ def _post_revalidation(event_type: str, data: Mapping[str, Any]) -> Revalidation
         reason = "post_published"
     elif event_type == "post.deleted" and data.get("was_public") is True:
         reason = "post_deleted"
-    elif event_type == "post.updated" and data.get("was_public") != data.get("public"):
+    elif event_type == "post.moderated" and data.get("was_public") and not data.get("public"):
+        reason = "post_removed"
+    elif event_type in ("post.updated", "post.moderated") and data.get("was_public") != data.get(
+        "public"
+    ):
         reason = "post_visibility_changed"
     else:
         return None  # private posts are never cached; ordinary edits refresh through ISR

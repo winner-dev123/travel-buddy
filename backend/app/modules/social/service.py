@@ -34,6 +34,7 @@ from app.modules.social.domain import (
 )
 from app.modules.social.models import (
     Bookmark,
+    Comment,
     Follow,
     FollowStatus,
     PostDestination,
@@ -654,3 +655,89 @@ from app.modules.social.candidates import (  # noqa: E402
 from app.modules.social.candidates import (  # noqa: E402
     followed_author_ids as followed_author_ids,
 )
+
+# ─────────────────────────────── moderation hooks (BL-1.14) ───────────────────────────────
+
+
+async def post_evidence(
+    session: AsyncSession, post_id: uuid.UUID, reporter_id: uuid.UUID
+) -> tuple[uuid.UUID, dict[str, Any]] | None:
+    """(author, snapshot) of a post the reporter can see, else None."""
+    post = await session.get(PostRow, post_id)
+    if post is None or not await _visible(session, post, reporter_id):
+        return None
+    tags = list(
+        (await session.scalars(select(PostTag.tag).where(PostTag.post_id == post.id))).all()
+    )
+    return post.author_id, {
+        "kind": post.kind,
+        "body": post.body,
+        "language": post.language,
+        "visibility": post.visibility,
+        "tags": [str(t) for t in tags],
+        "primary_destination_id": str(post.primary_destination_id)
+        if post.primary_destination_id
+        else None,
+        "published_at": post.published_at.isoformat() if post.published_at else None,
+    }
+
+
+async def comment_evidence(
+    session: AsyncSession, comment_id: uuid.UUID, reporter_id: uuid.UUID
+) -> tuple[uuid.UUID, dict[str, Any]] | None:
+    comment = await session.get(Comment, comment_id)
+    if comment is None or comment.deleted_at is not None:
+        return None
+    post = await session.get(PostRow, comment.post_id)
+    if post is None or not await _visible(session, post, reporter_id):
+        return None
+    return comment.author_id, {
+        "body": comment.body,
+        "post_id": str(comment.post_id),
+        "parent_comment_id": str(comment.parent_comment_id) if comment.parent_comment_id else None,
+        "created_at": comment.created_at.isoformat(),
+    }
+
+
+async def moderate_content(
+    session: AsyncSession, target_type: str, target_id: uuid.UUID, state: str
+) -> uuid.UUID:
+    """Set ``moderation_state`` on a post or comment (remove / restore / limit, ADM-002).
+    Returns the content author's ID. Feed visibility and the web cache follow."""
+    if target_type == "comment":
+        comment = await session.get(Comment, target_id, with_for_update=True)
+        if comment is None:
+            raise _not_found()
+        comment.moderation_state = state
+        return comment.author_id
+    post = await session.get(PostRow, target_id, with_for_update=True)
+    if post is None or post.status == "deleted":
+        raise _not_found()
+    author = (await profiles.authors(session, [post.author_id]))[post.author_id]
+    was_public = is_publicly_listed(
+        visibility=post.visibility,
+        moderation_state=post.moderation_state,
+        account_private=author.account_private,
+    )
+    post.moderation_state = state
+    public = is_publicly_listed(
+        visibility=post.visibility, moderation_state=state, account_private=author.account_private
+    )
+    await session.execute(
+        update(PostDestination)
+        .where(PostDestination.post_id == post.id)
+        .values(visibility_public=public)
+    )
+    platform.record_event(
+        session,
+        aggregate_type="post",
+        aggregate_id=post.id,
+        event_type="post.moderated",
+        payload={
+            "post_id": str(post.id),
+            "state": state,
+            "was_public": was_public,
+            "public": public,
+        },
+    )
+    return post.author_id

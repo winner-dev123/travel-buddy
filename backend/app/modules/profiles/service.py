@@ -531,3 +531,16 @@ async def viewer_preferences(session: AsyncSession, user_id: uuid.UUID) -> Viewe
         content_languages=list(preferences.content_languages if preferences else []),
         ui_locale=preferences.ui_locale if preferences else "en",
     )
+
+
+async def user_evidence(session: AsyncSession, user_id: uuid.UUID) -> dict[str, Any] | None:
+    """Public profile snapshot for a report about a user (SAFE-002)."""
+    profile = await session.get(UserProfile, user_id)
+    if profile is None:
+        return None
+    return {
+        "handle": profile.handle,
+        "display_name": profile.display_name,
+        "bio": profile.bio,
+        "account_visibility": profile.account_visibility,
+    }

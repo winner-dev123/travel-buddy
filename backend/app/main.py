@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from datetime import timedelta
@@ -10,6 +11,7 @@ from datetime import timedelta
 import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
 from app.core.db import Database
@@ -25,6 +27,8 @@ from app.core.security.access_tokens import (
     load_ed25519_private_key,
 )
 from app.core.time import Clock, SystemClock
+from app.modules.admin.api import router as admin_router
+from app.modules.admin.service import AdminService
 from app.modules.client_config.api import router as client_config_router
 from app.modules.destinations.api import router as destinations_router
 from app.modules.destinations.service import DestinationService
@@ -41,13 +45,15 @@ from app.modules.location import service as location_service
 from app.modules.location.api import router as location_router
 from app.modules.platform.api import AfterResponseTickMiddleware, internal_router
 from app.modules.platform.service import EventRouter, JobHandler, JobRunner
+from app.modules.profiles import service as profiles_service
 from app.modules.social import service as social_service
 from app.modules.social.api import router as social_router
 from app.modules.social.follows import FollowService
 from app.modules.social.interactions import InteractionService
 from app.modules.social.public import PublicPostService
+from app.modules.trust_safety import service as trust_safety_service
 from app.modules.trust_safety.api import router as trust_safety_router
-from app.modules.trust_safety.service import BlockService
+from app.modules.trust_safety.service import BlockService, ReportService
 from app.modules.web_cache import service as web_cache_service
 from app.modules.web_cache.config import WebCacheSettings
 
@@ -180,10 +186,19 @@ def create_app(
     app.state.feed_service = FeedService(
         sessionmaker=database.sessionmaker, cursors=cursor_codec, clock=clock
     )
-    app.state.block_service = BlockService(
+    block_service = BlockService(
         sessionmaker=database.sessionmaker,
         cursors=cursor_codec,
         on_block=[social_service.remove_follows_between],
+    )
+    app.state.block_service = block_service
+    app.state.report_service = ReportService(
+        sessionmaker=database.sessionmaker,
+        blocks=block_service,
+        providers=evidence_providers(),
+    )
+    app.state.admin_service = AdminService(
+        sessionmaker=database.sessionmaker, cursors=cursor_codec, clock=clock
     )
     app.state.readiness_checks = (
         dict(readiness_checks)
@@ -237,6 +252,7 @@ def create_app(
     app.include_router(social_router)
     app.include_router(trust_safety_router)
     app.include_router(feed_router)
+    app.include_router(admin_router)
     app.include_router(internal_router)
     if dev_idp is not None:  # absent → 404 (contract: not available in this environment)
         app.include_router(dev_idp_router)
@@ -260,3 +276,27 @@ def build_job_runner(
     social_service.subscribe(router)
     handlers.update(social_service.make_handlers(database.sessionmaker))
     return JobRunner(sessionmaker=database.sessionmaker, router=router, handlers=handlers)
+
+
+def evidence_providers() -> dict[str, trust_safety_service.EvidenceProvider]:
+    """Report evidence per target type, supplied by the modules that own the content."""
+
+    async def post(
+        session: AsyncSession, target_id: uuid.UUID, reporter_id: uuid.UUID
+    ) -> trust_safety_service.Evidence | None:
+        found = await social_service.post_evidence(session, target_id, reporter_id)
+        return trust_safety_service.Evidence(*found) if found else None
+
+    async def comment(
+        session: AsyncSession, target_id: uuid.UUID, reporter_id: uuid.UUID
+    ) -> trust_safety_service.Evidence | None:
+        found = await social_service.comment_evidence(session, target_id, reporter_id)
+        return trust_safety_service.Evidence(*found) if found else None
+
+    async def user(
+        session: AsyncSession, target_id: uuid.UUID, reporter_id: uuid.UUID
+    ) -> trust_safety_service.Evidence | None:
+        snapshot = await profiles_service.user_evidence(session, target_id)
+        return trust_safety_service.Evidence(target_id, snapshot) if snapshot else None
+
+    return {"post": post, "comment": comment, "user": user}

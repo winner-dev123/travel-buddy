@@ -14,7 +14,7 @@ import secrets
 import uuid
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -216,6 +216,13 @@ class IdentityService:
                 )
             ):
                 raise AppError(ErrorCode.NOT_FOUND, "No account for this sign-in. Register first.")
+            if (
+                user.status == UserStatus.SUSPENDED
+                and user.suspended_until is not None
+                and user.suspended_until <= now
+            ):
+                user.status = UserStatus.ACTIVE  # a temporary suspension has ended
+                user.suspended_until = None
             if user.status == UserStatus.SUSPENDED:
                 raise AppError(ErrorCode.ACCOUNT_SUSPENDED, "This account is suspended.")
             if user.status == UserStatus.PENDING_DELETION:
@@ -582,3 +589,73 @@ def _field_error(field: str, code: str, message: str) -> AppError:
         message,
         errors=[FieldError(field=field, code=code, message=message)],
     )
+
+
+# ─────────────────────────────── staff & account administration ───────────────────────────────
+
+ADMIN_IDLE_LIMIT = timedelta(minutes=30)  # ADM-008
+ADMIN_ABSOLUTE_LIMIT = timedelta(hours=12)
+
+
+@dataclass(frozen=True, slots=True)
+class AccountAdminView:
+    user_id: uuid.UUID
+    status: str
+    email: str | None
+    roles: list[str]
+    created_at: datetime
+    last_active_on: date | None
+    suspended_until: datetime | None
+
+
+async def check_admin_session(
+    session: AsyncSession, principal: Principal, *, now: datetime
+) -> None:
+    """Staff session limits on admin routes (ADM-008): 30 min idle, 12 h since authentication.
+    Records the activity so the idle clock restarts."""
+    record = await session.get(UserSession, principal.session_id, with_for_update=True)
+    if record is None or record.revoked_at is not None or record.user_id != principal.user_id:
+        raise AppError(ErrorCode.UNAUTHENTICATED, "Sign in to continue.")
+    expired = now - record.auth_time > ADMIN_ABSOLUTE_LIMIT or (
+        record.last_admin_activity_at is not None
+        and now - record.last_admin_activity_at > ADMIN_IDLE_LIMIT
+    )
+    if expired:
+        raise AppError(
+            ErrorCode.REAUTHENTICATION_REQUIRED,
+            "Your staff session timed out. Sign in again with your second factor.",
+        )
+    record.last_admin_activity_at = now
+
+
+async def account_admin_view(session: AsyncSession, user_id: uuid.UUID) -> AccountAdminView | None:
+    user = await repo.get_user(session, user_id)
+    if user is None:
+        return None
+    return AccountAdminView(
+        user_id=user.id,
+        status=user.status,
+        email=user.email,
+        roles=sorted(await repo.active_roles(session, user.id)),
+        created_at=user.created_at,
+        last_active_on=user.last_active_on,
+        suspended_until=user.suspended_until,
+    )
+
+
+async def set_account_status(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    status: str,
+    now: datetime,
+    until: datetime | None = None,
+) -> None:
+    """Suspend, ban (deactivate) or reinstate. Leaving ``active`` revokes every session at once."""
+    user = await repo.get_user(session, user_id)
+    if user is None:
+        raise AppError(ErrorCode.NOT_FOUND, "User not found.")
+    user.status = status
+    user.suspended_until = until if status == UserStatus.SUSPENDED else None
+    if status != UserStatus.ACTIVE:
+        await repo.revoke_sessions(session, user_id=user_id, reason=RevokedReason.ADMIN, now=now)

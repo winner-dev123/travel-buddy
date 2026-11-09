@@ -12,7 +12,8 @@ from app.core.pagination import Page
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
 from app.modules.profiles.schemas import UserSummary
-from app.modules.trust_safety.service import BlockService
+from app.modules.trust_safety.schemas import CreateReportRequest, ReportReceipt
+from app.modules.trust_safety.service import BlockService, ReportService
 
 router = APIRouter(tags=["safety"])
 
@@ -52,3 +53,19 @@ async def unblock_user(
 ) -> Response:
     await _blocks(request).unblock(principal.user_id, user_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def _reports(request: Request) -> ReportService:
+    service: ReportService = request.app.state.report_service
+    return service
+
+
+@router.post("/v1/reports", response_model=ReportReceipt, status_code=status.HTTP_202_ACCEPTED)
+async def create_report(
+    body: CreateReportRequest, request: Request, principal: CurrentPrincipal
+) -> JSONResponse:
+    receipt, created = await _reports(request).create(principal.user_id, body)
+    return JSONResponse(
+        receipt.model_dump(mode="json"),
+        status_code=status.HTTP_202_ACCEPTED if created else status.HTTP_200_OK,
+    )
