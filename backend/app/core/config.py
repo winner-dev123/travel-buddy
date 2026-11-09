@@ -72,6 +72,16 @@ class Settings(BaseSettings):
     # Unknown flag names are rejected at boot by FeatureFlags.
     feature_flags: dict[str, bool] = Field(default_factory=dict)
 
+    # Durable jobs and the outbox relay (BL-1.09, ADR-0004).
+    # Shared secret for /internal/jobs/tick; Vercel Cron sends "Authorization: Bearer
+    # $CRON_SECRET". Unset = endpoint disabled (404).
+    cron_secret: SecretStr | None = None
+    # Serverless deployments have no worker: after a response that recorded outbox events, run a
+    # short bounded tick (best effort; cron ticks and workers are the safety net).
+    jobs_inline_after_response: bool = False
+    jobs_inline_budget_seconds: float = Field(default=2.0, gt=0, le=10)
+    jobs_tick_budget_seconds: float = Field(default=8.0, gt=0, le=55)
+
     # Development-only adapters (never allowed in staging/production).
     dev_idp_enabled: bool = False
     dev_billing_enabled: bool = False
@@ -98,6 +108,10 @@ class Settings(BaseSettings):
             problems.append(
                 f"CURSOR_SIGNING_KEY must be a non-default secret of >= {_MIN_SECRET_LENGTH} chars"
             )
+        if self.cron_secret is not None and len(self.cron_secret.get_secret_value()) < (
+            _MIN_SECRET_LENGTH
+        ):
+            problems.append(f"CRON_SECRET must be >= {_MIN_SECRET_LENGTH} chars when set")
         if self.platform_jwt_private_key is None:
             problems.append(
                 "PLATFORM_JWT_PRIVATE_KEY (Ed25519 PEM) is required outside development/test"

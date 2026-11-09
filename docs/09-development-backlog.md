@@ -68,7 +68,7 @@ Web-workstream items (Next.js app, BFF, web admin) are tracked by the web workst
 | BL-1.06 | Destination search (trigram + unaccent) | S | 1.05 | DEST-001 |
 | BL-1.07 | Point → destination resolution, browse-destination selection | S | 1.05 | LOC-002, LOC-003, LOC-005, LOC-007, LOC-008 |
 | BL-1.08 | Media pipeline: presign, finalize, worker (type sniff, scan port, EXIF strip, variants) | L | 0.14 | POST-004, SAFE-004, T-MED-* |
-| BL-1.09 | Job queue + outbox relay + scheduler (leader lock) | M | 0.14 | — |
+| BL-1.09 | Job queue + outbox relay + scheduler (leader lock) | M | 0.14 | — | ✅ Done: Postgres queue (SKIP LOCKED claiming, DB-clock scheduling, 15 s→15 min backoff, dead-letter, crash recovery, dedupe keys), outbox relay with event subscriptions, `python -m app.worker`, cron-secured `/internal/jobs/tick`, optional after-response tick for serverless. Leader-locked scheduler lands with the first periodic job (BL-1.18) |
 | BL-1.10 | Posts CRUD with destination ancestor fan-out, visibility, tags | L | 1.05, 1.08 | POST-001..003, POST-007..009, POST-011 |
 | BL-1.11 | Reactions, comments, bookmarks, follows (+ requests for private accounts), shares | M | 1.10 | POST-005, POST-006 |
 | BL-1.12 | Blocking (bidirectional effects) | M | 1.11 | SAFE-001 |
@@ -84,7 +84,7 @@ Web-workstream items (Next.js app, BFF, web admin) are tracked by the web workst
 | BL-1.22 | Admin web: minimal moderation console (queue, review, actions) | M | 1.14 | ADM-001..003 |
 | BL-1.23 | Seed editorial content for launch destinations | M | 1.10 | FEED-001 |
 | BL-1.24 | E2E: registration → location-based feed | S | 1.19, 1.20 | PROF-002, FEED-001 |
-| BL-1.25 | Web cache revalidation: outbox consumer + signed `webCacheRevalidation` webhook (retries, secret rotation). Settings `WEB_REVALIDATE_URL`, `WEB_REVALIDATE_SECRET`. The web receiver is already live and verified (accepts `current,previous` secrets) | S | 1.09 | SAFE-012 |
+| BL-1.25 | Web cache revalidation: outbox consumer + signed `webCacheRevalidation` webhook (retries, secret rotation). Settings `WEB_REVALIDATE_URL`, `WEB_REVALIDATE_SECRET`. The web receiver is already live and verified (accepts `current,previous` secrets) | S | 1.09 | SAFE-012 | ✅ Done (code): `profile.updated`/`privacy.updated` → signed webhook (`X-TB-Signature`, event_id = outbox ID, 4xx permanent, 5xx/429 retried). To enable on staging: `WEB_REVALIDATE_URL`/`WEB_REVALIDATE_SECRET` on the API, the same secret in the web's `WEB_REVALIDATE_SECRETS`, and `JOBS_INLINE_AFTER_RESPONSE=true` + `CRON_SECRET` |
 | BL-1.26 | Staff hardening on `/v1/admin/*`: MFA (`amr`) check, idle/absolute session limits, `X-Audit-Justification` dependency → audit log | S | 1.02, 1.14 | ADM-007, ADM-008, ADM-009 | 🟡 Partial: MFA enforced in `authorize_platform` (`403 mfa_required`, Supabase `aal2`; dev IdP `mfa: true`). Session limits and the justification dependency land with the first admin route (BL-1.14) |
 | BL-1.27 | Search-indexing consent: privacy setting, `indexable` on public profile/posts, sitemap filter | S | 1.04, 1.10 | PROF-008 |
 | BL-1.28 | `MyAccount.restrictions` derived from active moderation actions | S | 1.14 | SAFE-013 |

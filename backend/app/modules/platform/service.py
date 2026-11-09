@@ -1,20 +1,64 @@
-"""Public interface of the platform module: the transactional outbox (architecture section 7.1).
+"""Public interface of the platform module: transactional outbox and durable jobs (ADR-0004).
 
 Producers call :func:`record_event` inside the transaction that changes state, so an event exists
-if and only if the change committed. The relay that publishes events (BL-1.09) is separate.
+if and only if the change committed. The relay (``jobs.relay_outbox``) turns events into jobs.
 """
 
 from __future__ import annotations
 
 import uuid
 from collections.abc import Mapping
+from contextvars import ContextVar
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ids import uuid7
 from app.core.request_context import current_request_id
+from app.modules.platform.jobs import (
+    EventRouter,
+    Job,
+    JobHandler,
+    JobRunner,
+    PermanentJobError,
+    TickResult,
+    backoff,
+    enqueue,
+)
 from app.modules.platform.models import OutboxEvent
+
+__all__ = [
+    "EventRouter",
+    "Job",
+    "JobHandler",
+    "JobRunner",
+    "OutboxSignal",
+    "PermanentJobError",
+    "TickResult",
+    "backoff",
+    "enqueue",
+    "record_event",
+    "track_outbox_events",
+]
+
+
+class OutboxSignal:
+    """Set when the current request recorded at least one outbox event."""
+
+    __slots__ = ("recorded",)
+
+    def __init__(self) -> None:
+        self.recorded = False
+
+
+_outbox_signal: ContextVar[OutboxSignal | None] = ContextVar("outbox_signal", default=None)
+
+
+def track_outbox_events() -> OutboxSignal:
+    """Start tracking for the current request (used by the after-response tick middleware)."""
+    signal = OutboxSignal()
+    _outbox_signal.set(signal)
+    return signal
 
 
 def record_event(
@@ -27,7 +71,8 @@ def record_event(
 ) -> uuid.UUID:
     """Add an outbox row to the caller's transaction; returns the event ID (consumers' dedupe key).
 
-    Payloads carry IDs and changed field names, never personal data that consumers can re-read.
+    Payloads carry IDs, changed field names and already-public identifiers (such as handles),
+    never private personal data.
     """
     event = OutboxEvent(
         id=uuid7(),  # assigned now so the caller gets it before flush
@@ -38,4 +83,7 @@ def record_event(
         request_id=current_request_id(),
     )
     session.add(event)
+    signal = _outbox_signal.get()
+    if signal is not None:
+        signal.recorded = True
     return event.id

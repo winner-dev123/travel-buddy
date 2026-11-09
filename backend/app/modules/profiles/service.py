@@ -298,7 +298,12 @@ async def update_profile(
         raise AppError(ErrorCode.CONFLICT, "This handle is already taken.") from exc
     public = sorted(changed & _PUBLIC_PROFILE_FIELDS)
     if public:
-        payload: dict[str, Any] = {"user_id": str(user_id), "changed": public}
+        # Handles are public: consumers (web cache purge) need no read-back.
+        payload: dict[str, Any] = {
+            "user_id": str(user_id),
+            "handle": profile.handle,
+            "changed": public,
+        }
         if "handle" in changed:
             payload["previous_handle"] = old_handle  # public anyway; lets caches purge old URLs
         platform_service.record_event(
@@ -350,7 +355,7 @@ async def update_privacy(
     ``search_indexing`` consent for an indexing change is the caller's job (identity owns the
     consent ledger); the returned ``changed`` set says when.
     """
-    _, _, privacy = await _rows(session, user_id, for_update=True)
+    profile, _, privacy = await _rows(session, user_id, for_update=True)
     changes = request.changes()
     if changes.get("discovery_enabled") is True and privacy.discovery_consent_version is None:
         raise AppError(
@@ -362,7 +367,7 @@ async def update_privacy(
     for field in changed:
         setattr(privacy, field, changes[field])
     await session.flush()
-    _privacy_events(session, user_id, changed, privacy)
+    _privacy_events(session, user_id, profile.handle, changed, privacy)
     settings = (await get_profile_bundle(session, user_id)).privacy
     return PrivacyUpdate(settings=settings, changed=frozenset(changed))
 
@@ -370,6 +375,7 @@ async def update_privacy(
 def _privacy_events(
     session: AsyncSession,
     user_id: uuid.UUID,
+    handle: str,
     changed: set[str],
     privacy: UserPrivacySettings,
 ) -> None:
@@ -389,7 +395,7 @@ def _privacy_events(
             aggregate_type="user",
             aggregate_id=user_id,
             event_type="privacy.updated",
-            payload={"user_id": str(user_id), "changed": visible},
+            payload={"user_id": str(user_id), "handle": handle, "changed": visible},
         )
 
 
@@ -407,7 +413,7 @@ async def apply_consent(
     Withdrawing ``traveler_discovery`` turns discovery off; ``search_indexing`` is the indexing
     switch itself (PROF-008). Other consent types have no settings to mirror.
     """
-    _, _, privacy = await _rows(session, user_id, for_update=True)
+    profile, _, privacy = await _rows(session, user_id, for_update=True)
     changed: set[str] = set()
     if consent_type == "location":
         privacy.location_consent_version = version if granted else None
@@ -422,7 +428,7 @@ async def apply_consent(
         privacy.search_engine_indexing = granted
         changed.add("search_engine_indexing")
     await session.flush()
-    _privacy_events(session, user_id, changed, privacy)
+    _privacy_events(session, user_id, profile.handle, changed, privacy)
 
 
 async def complete_onboarding(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> None:

@@ -33,6 +33,10 @@ from app.modules.identity.adapters.oidc import HttpJwksKeyProvider, IssuerConfig
 from app.modules.identity.api import auth_router, dev_idp_router, me_router
 from app.modules.identity.config import IdentitySettings
 from app.modules.identity.service import IdentityService
+from app.modules.platform.api import AfterResponseTickMiddleware, internal_router
+from app.modules.platform.service import EventRouter, JobHandler, JobRunner
+from app.modules.web_cache import service as web_cache_service
+from app.modules.web_cache.config import WebCacheSettings
 
 logger = logging.getLogger(__name__)
 
@@ -41,16 +45,19 @@ def create_app(
     settings: Settings | None = None,
     *,
     identity_settings: IdentitySettings | None = None,
+    web_cache_settings: WebCacheSettings | None = None,
     readiness_checks: Mapping[str, ReadinessCheck] | None = None,
     clock: Clock | None = None,
+    http_transport: httpx.AsyncBaseTransport | None = None,
 ) -> FastAPI:
     """Build the API application (composition root).
 
-    ``readiness_checks`` and ``clock`` may be injected (tests); by default the database and Redis
-    are checked and the system clock is used.
+    ``readiness_checks``, ``clock`` and ``http_transport`` may be injected (tests); by default the
+    database and Redis are checked, the system clock is used and HTTP goes to the network.
     """
     settings = settings or get_settings()
     identity_settings = identity_settings or IdentitySettings()
+    web_cache_settings = web_cache_settings or WebCacheSettings()
     clock = clock or SystemClock()
     configure_logging(
         level=settings.log_level, json_output=settings.log_json, service_name=settings.service_name
@@ -64,7 +71,7 @@ def create_app(
         transaction_pooler=settings.database_transaction_pooler,
     )
     redis = create_redis(settings.redis_url) if settings.redis_url else None
-    http_client = httpx.AsyncClient(follow_redirects=False)
+    http_client = httpx.AsyncClient(follow_redirects=False, transport=http_transport)
 
     async def _ping_redis() -> object:
         assert redis is not None
@@ -112,6 +119,13 @@ def create_app(
         clock=clock,
     )
 
+    job_runner = build_job_runner(
+        database=database,
+        web_cache_settings=web_cache_settings,
+        http_client=http_client,
+        clock=clock,
+    )
+
     app = FastAPI(
         title="Travel Buddy API",
         version=settings.service_version,
@@ -137,6 +151,14 @@ def create_app(
     app.state.access_tokens = access_tokens
     app.state.identity_service = identity_service
     app.state.dev_idp = dev_idp
+    app.state.job_runner = job_runner
+
+    if settings.jobs_inline_after_response:
+        app.add_middleware(
+            AfterResponseTickMiddleware,
+            runner=job_runner,
+            budget_seconds=settings.jobs_inline_budget_seconds,
+        )
 
     if settings.cors_allowed_origins:
         app.add_middleware(
@@ -167,6 +189,24 @@ def create_app(
     app.include_router(client_config_router)
     app.include_router(auth_router)
     app.include_router(me_router)
+    app.include_router(internal_router)
     if dev_idp is not None:  # absent → 404 (contract: not available in this environment)
         app.include_router(dev_idp_router)
     return app
+
+
+def build_job_runner(
+    *,
+    database: Database,
+    web_cache_settings: WebCacheSettings,
+    http_client: httpx.AsyncClient,
+    clock: Clock,
+) -> JobRunner:
+    """Event subscriptions and job handlers for every module (shared by the API and workers)."""
+    router = EventRouter()
+    handlers: dict[str, JobHandler] = {}
+    web_cache_service.subscribe(router, web_cache_settings)
+    handlers[web_cache_service.JOB_KIND] = web_cache_service.make_handler(
+        web_cache_settings, http_client, clock
+    )
+    return JobRunner(sessionmaker=database.sessionmaker, router=router, handlers=handlers)

@@ -43,6 +43,7 @@ LAYERS: dict[str, int] = {
     "group_chat": 6,
     "challenges": 6,
     "ai_assistant": 6,
+    "web_cache": 6,
     "admin": 7,
     "client_config": 7,
     "health": 7,

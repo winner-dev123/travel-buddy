@@ -32,6 +32,8 @@ security:
 tags:
   - name: health
     description: Liveness and readiness probes (unversioned).
+  - name: internal
+    description: Operator/scheduler endpoints (unversioned). Not for clients.
   - name: config
     description: Client bootstrap configuration and catalogs.
   - name: auth
@@ -104,6 +106,39 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/LivenessStatus' }
               example: { status: ok }
+  /internal/jobs/tick:
+    get:
+      tags: [internal]
+      operationId: runJobsTickGet
+      summary: Run one bounded job tick (scheduler; Vercel Cron uses GET)
+      description: |
+        Recovers jobs abandoned by crashed workers, relays unpublished outbox events into subscriber jobs and
+        runs due jobs within `JOBS_TICK_BUDGET_SECONDS` (ADR-0004, BL-1.09). For serverless deployments without
+        a long-running worker. Authenticated with `Authorization: Bearer <CRON_SECRET>`; returns `404` when
+        `CRON_SECRET` is not configured.
+      security: [{ cronSecret: [] }]
+      x-phase: 1
+      x-internal: true
+      x-requirements: [NFR-006]
+      x-rate-limit-class: none
+      responses:
+        '200': { $ref: '#/components/responses/JobTick' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [internal]
+      operationId: runJobsTick
+      summary: Run one bounded job tick (scheduler)
+      description: Same as the GET form.
+      security: [{ cronSecret: [] }]
+      x-phase: 1
+      x-internal: true
+      x-requirements: [NFR-006]
+      x-rate-limit-class: none
+      responses:
+        '200': { $ref: '#/components/responses/JobTick' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /health/ready:
     get:
       tags: [health]
@@ -5796,6 +5831,10 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Platform access token (EdDSA-signed JWT, 15 min) issued by `/v1/auth/login|register|refresh`. Never an IdP token.
+    cronSecret:
+      type: http
+      scheme: bearer
+      description: Shared scheduler secret (`CRON_SECRET`). Internal endpoints only.
     pubsubOidc:
       type: http
       scheme: bearer
@@ -5930,6 +5969,11 @@ components:
       schema: { type: string }
 
   responses:
+    JobTick:
+      description: Work done by this tick.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/JobTickResult' }
     Problem:
       description: Error (RFC 9457 problem details).
       headers:
@@ -6286,6 +6330,21 @@ components:
       required: [status]
       properties:
         status: { type: string, const: ok }
+    JobTickResult:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [relayed, succeeded, retried, dead, recovered]
+          properties:
+            relayed: { type: integer, minimum: 0, description: Outbox events turned into jobs. }
+            succeeded: { type: integer, minimum: 0 }
+            retried: { type: integer, minimum: 0, description: Failed and rescheduled with backoff. }
+            dead: { type: integer, minimum: 0, description: Failed permanently or out of attempts. }
+            recovered: { type: integer, minimum: 0, description: Abandoned by a crashed worker and re-queued. }
     ReadinessStatus:
       type: object
       required: [status, checks]

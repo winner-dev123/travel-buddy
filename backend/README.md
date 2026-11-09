@@ -15,7 +15,9 @@ It is a modular monolith ([ADR-0001](../docs/adr/0001-modular-monolith.md)): one
 | Health: `/health/live`, `/health/ready` | ✅ |
 | Migrations: `0001` baseline (extensions, outbox, jobs, idempotency, append-only audit log), `0002` identity and profiles, `0003` Supabase access token hook (no-op without Supabase Auth), `0004` handle change tracking | ✅ Verified against models (autogenerate diff); full up/down runs in CI with PostGIS |
 | Other domain endpoints | ⏳ Per backlog. Nothing is mocked or stubbed |
-| Realtime gateway, workers, scheduler | ⏳ Phase 1/3 (documented in docs/02, not yet present) |
+| **Jobs (BL-1.09)**: Postgres job queue, outbox relay, `python -m app.worker [--once]`, `/internal/jobs/tick` (cron secret), after-response tick for serverless | ✅ Implemented and integration-tested |
+| **Web cache webhooks (BL-1.25)**: signed `webCacheRevalidation` on profile visibility, handle and indexing changes | ✅ Implemented; enable with `WEB_REVALIDATE_URL`/`WEB_REVALIDATE_SECRET` (docs/11 §1.1) |
+| Realtime gateway, scheduler (periodic jobs) | ⏳ Phase 1/3 (documented in docs/02, not yet present) |
 
 ### Signing in locally (development IdP)
 
