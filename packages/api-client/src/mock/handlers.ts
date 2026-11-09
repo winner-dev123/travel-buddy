@@ -271,8 +271,10 @@ function oneOf<T extends string>(body: Record<string, unknown>, key: string, all
 export function buildRouter(): Router<Handler> {
   const r = new Router<Handler>();
 
-  r.add('GET', '/v1/client-config', () =>
-    ok({
+  r.add('GET', '/v1/client-config', (ctx) => {
+    if (!['web', 'ios', 'android'].includes(ctx.query('platform') ?? '')) throw validation('platform', 'required', 'platform must be ios, android or web.');
+    if (!/^\d+\.\d+\.\d+$/.test(ctx.query('app_version') ?? '')) throw validation('app_version', 'required', 'app_version must be x.y.z.');
+    return ok({
       min_supported_version: '0.0.0',
       update_required: false,
       supported_locales: [...SUPPORTED_LOCALES],
@@ -287,8 +289,8 @@ export function buildRouter(): Router<Handler> {
         privacy_url: 'https://travelbuddy.example/legal/privacy',
       },
       minimum_age: MINIMUM_AGE,
-    }),
-  );
+    });
+  });
 
   // Dev IdP (development/test only on the real backend).
   r.add('POST', '/v1/dev/idp/token', (ctx) => {

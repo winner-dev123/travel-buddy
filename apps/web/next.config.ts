@@ -38,6 +38,9 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react'],
   },
+  // The production build type-checks app code only. Tests are checked by `npm run typecheck` and
+  // CI, which have the repo-root test tooling; hosts that install only this workspace (Vercel) don't.
+  typescript: { tsconfigPath: 'tsconfig.build.json' },
   async headers() {
     return [
       { source: '/:path*', headers: securityHeaders },

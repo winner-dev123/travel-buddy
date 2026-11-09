@@ -83,7 +83,8 @@ export function createApi(c: ApiClient) {
 
     config: {
       /** Global client configuration: legal versions, feature flags, VAPID key (contract ClientConfig). */
-      get: (cache?: CacheHint) => c.request<ClientConfig>({ method: 'GET', path: '/v1/client-config', cache }),
+      get: (params: { platform: 'web' | 'ios' | 'android'; app_version: string }, cache?: CacheHint) =>
+        c.request<ClientConfig>({ method: 'GET', path: '/v1/client-config', query: { ...params }, cache }),
     },
 
     me: {

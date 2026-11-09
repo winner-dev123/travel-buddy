@@ -62,7 +62,8 @@ describe('mock platform — identity', () => {
 
   it('requires consent to the current legal versions served by client-config', async () => {
     const anon = clientFor(platform);
-    const config = await anon.config.get();
+    await expectApiError(anon.config.get({ platform: 'web', app_version: 'latest' }), 422, 'validation_failed');
+    const config = await anon.config.get({ platform: 'web', app_version: '0.1.0' });
     expect(config.legal.terms_version).toBe('2026-11-01');
     const { id_token } = await anon.auth.devIdpToken({ sub: 'new:old-terms', email: 'old.terms@example.com' });
     const error = await anon.auth.register({ ...REGISTER, id_token, birth_date: '1990-01-01', locale: 'en', accepted_terms_version: '2025-01-01' }).catch((e: unknown) => e);
