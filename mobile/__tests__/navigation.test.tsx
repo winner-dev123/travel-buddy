@@ -53,7 +53,9 @@ describe('app navigation shell', () => {
   it('shows discovery safety guidance on Companions without claiming safety', async () => {
     await renderRouter(routes, { initialUrl: '/companions' });
 
-    expect(screen.getByText('Coming in Phase 2')).toBeTruthy();
+    expect(
+      screen.getByText('Sign in to see your connection requests and connections.'),
+    ).toBeTruthy();
     expect(screen.getByTestId('discovery-safety-notice')).toBeTruthy();
     expect(
       screen.getByText(

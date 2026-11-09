@@ -356,7 +356,12 @@
     "requested": "Solicitado",
     "report": "Denunciar",
     "block": "Bloquear",
-    "actionFailed": "Não deu certo. Tente de novo."
+    "actionFailed": "Não deu certo. Tente de novo.",
+    "connected": "Vocês estão conectados.",
+    "respondToRequest": "Responder ao pedido",
+    "requestSent": "Pedido de conexão enviado",
+    "connect": "Conectar",
+    "connectNotAllowed": "Esta pessoa não está aceitando pedidos de conexão seus."
   },
   "report": {
     "title": "Denunciar",
@@ -388,5 +393,18 @@
       "illegal": "Atividade ilegal",
       "other": "Outro motivo"
     }
+  },
+  "companions": {
+    "title": "Companheiros",
+    "discoverySoon": "Em breve você poderá encontrar viajantes perto de você. Enquanto isso, conecte-se com pessoas pelos perfis delas.",
+    "signIn": "Entre para ver seus pedidos de conexão e conexões.",
+    "incoming": "Pedidos para você",
+    "noIncoming": "Nenhum pedido no momento.",
+    "outgoing": "Pedidos que você enviou",
+    "cancel": "Cancelar",
+    "connections": "Suas conexões",
+    "noConnections": "Conecte-se com viajantes pelos perfis deles.",
+    "accept": "Aceitar",
+    "decline": "Recusar"
   }
 }

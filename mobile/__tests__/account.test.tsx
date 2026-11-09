@@ -9,6 +9,7 @@ import type { Me } from '@/auth/types';
 import { i18n } from '@/i18n';
 
 import Notifications from '../app/notifications';
+import Companions from '../app/(tabs)/companions';
 import Report from '../app/report';
 import Blocked from '../app/settings/blocked';
 import DeleteAccount from '../app/settings/delete-account';
@@ -321,5 +322,94 @@ describe('notifications', () => {
     );
     await fireEvent.press(screen.getByTestId('notification-n1'));
     expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/post/[id]', params: { id: 'p1' } });
+  });
+});
+
+describe('connections', () => {
+  const request = (
+    id: string,
+    requester = bo,
+    recipient = { ...bo, id: 'u9', handle: 'me', display_name: 'Me' },
+  ) => ({
+    id,
+    requester,
+    recipient,
+    status: 'pending',
+    note: 'Met in Lisbon',
+    created_at: '2026-11-09T10:00:00Z',
+  });
+
+  it('accepts, declines and cancels requests from the Companions tab', async () => {
+    useSessionStore.getState().setSignedIn(makeMe());
+    const cy = { id: 'u3', handle: 'cy', display_name: 'Cy', avatar: null };
+    mockApi.get.mockImplementation(
+      async (path: string, options?: { query?: { direction?: string } }) => {
+        if (path === '/v1/connections/requests') {
+          return {
+            data:
+              options?.query?.direction === 'incoming'
+                ? [request('r1'), request('r2', cy)]
+                : [request('r3', makeMe().profile as never, cy)],
+            page: { next_cursor: null, has_more: false },
+          };
+        }
+        return {
+          data: [
+            {
+              user: { id: 'u4', handle: 'di', display_name: 'Di', avatar: null },
+              connected_at: '2026-11-01T10:00:00Z',
+            },
+          ],
+          page: { next_cursor: null, has_more: false },
+        };
+      },
+    );
+    mockApi.post.mockResolvedValue({});
+    await renderScreen(<Companions />);
+    expect(await screen.findByTestId('incoming-r1')).toBeTruthy();
+    expect(screen.getAllByText('“Met in Lisbon”').length).toBeGreaterThan(0);
+    expect(screen.getByTestId('connection-u4')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('accept-r1'));
+    await waitFor(() =>
+      expect(mockApi.post).toHaveBeenCalledWith('/v1/connections/requests/r1/accept'),
+    );
+    await fireEvent.press(screen.getByTestId('decline-r2'));
+    await waitFor(() =>
+      expect(mockApi.post).toHaveBeenCalledWith('/v1/connections/requests/r2/decline'),
+    );
+    await fireEvent.press(screen.getByTestId('cancel-r3'));
+    await waitFor(() =>
+      expect(mockApi.post).toHaveBeenCalledWith('/v1/connections/requests/r3/cancel'),
+    );
+    expect(screen.getByTestId('discovery-safety-notice')).toBeTruthy();
+  });
+
+  it('sends a connection request from a profile', async () => {
+    useSessionStore.getState().setSignedIn(makeMe());
+    mockParams = { id: 'u2' };
+    mockApi.get.mockImplementation(async (path: string) =>
+      path === '/v1/users/u2'
+        ? {
+            ...bo,
+            bio: null,
+            account_visibility: 'public',
+            is_restricted: false,
+            counts: { posts: 0, followers: 0, following: 0 },
+            follow_status: 'none',
+            relationship: 'none',
+            can_request_connection: true,
+          }
+        : { data: [], page: { next_cursor: null, has_more: false } },
+    );
+    mockApi.post.mockResolvedValue(request('r9', makeMe().profile as never, bo));
+    await renderScreen(<UserProfile />);
+    await fireEvent.press(await screen.findByTestId('user-connect'));
+    await waitFor(() =>
+      expect(mockApi.post).toHaveBeenCalledWith('/v1/connections/requests', {
+        idempotencyKey: 'key-1',
+        body: { recipient_id: 'u2', context: 'profile' },
+      }),
+    );
+    expect(await screen.findByTestId('user-request-sent')).toBeTruthy();
   });
 });

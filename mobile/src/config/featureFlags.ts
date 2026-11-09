@@ -80,7 +80,7 @@ export const FEATURES: Readonly<Record<FeatureKey, FeatureDefinition>> = {
   },
   companions: {
     phase: 2,
-    released: false,
+    released: true,
     requiresNetwork: true,
     plannedCapabilities: [
       'features.companions.capabilities.discovery',

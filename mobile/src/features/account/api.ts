@@ -8,6 +8,9 @@ export const accountKeys = {
   notifications: ['me', 'notifications'] as const,
   unread: ['me', 'notifications', 'unread'] as const,
   profile: (id: string) => ['user', id] as const,
+  requests: (direction: 'incoming' | 'outgoing') =>
+    ['me', 'connection-requests', direction] as const,
+  connections: ['me', 'connections'] as const,
   posts: (id: string) => ['user', id, 'posts'] as const,
 };
 
@@ -109,6 +112,9 @@ export interface PublicProfile {
   is_restricted: boolean;
   counts: { posts: number; followers: number; following: number } | null;
   follow_status: 'none' | 'following' | 'requested';
+  relationship:
+    'none' | 'request_pending' | 'request_received' | 'connected' | 'declined' | 'blocked';
+  can_request_connection: boolean;
 }
 
 export function fetchProfile(client: ApiClient, userId: string): Promise<PublicProfile> {
@@ -168,4 +174,50 @@ export function report(
       ...(input.details.trim() ? { details: input.details.trim() } : {}),
     },
   });
+}
+
+export interface ConnectionRequest {
+  id: string;
+  requester: UserSummary;
+  recipient: UserSummary;
+  status: 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired';
+  note: string | null;
+  created_at: string;
+}
+
+export interface Connection {
+  user: UserSummary;
+  connected_at: string;
+}
+
+export function sendConnectionRequest(
+  client: ApiClient,
+  recipientId: string,
+  idempotencyKey: string,
+): Promise<ConnectionRequest> {
+  return client.post<ConnectionRequest>('/v1/connections/requests', {
+    idempotencyKey,
+    body: { recipient_id: recipientId, context: 'profile' },
+  });
+}
+
+export function listConnectionRequests(
+  client: ApiClient,
+  direction: 'incoming' | 'outgoing',
+): Promise<Page<ConnectionRequest>> {
+  return client.get<Page<ConnectionRequest>>('/v1/connections/requests', {
+    query: { direction, status: 'pending', limit: 50 },
+  });
+}
+
+export function respondToRequest(
+  client: ApiClient,
+  requestId: string,
+  action: 'accept' | 'decline' | 'cancel',
+): Promise<unknown> {
+  return client.post(`/v1/connections/requests/${requestId}/${action}`);
+}
+
+export function listConnections(client: ApiClient): Promise<Page<Connection>> {
+  return client.get<Page<Connection>>('/v1/connections', { query: { limit: 100 } });
 }

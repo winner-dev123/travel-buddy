@@ -351,7 +351,12 @@
     "requested": "Angefragt",
     "report": "Melden",
     "block": "Blockieren",
-    "actionFailed": "Das hat nicht geklappt. Versuche es erneut."
+    "actionFailed": "Das hat nicht geklappt. Versuche es erneut.",
+    "connected": "Ihr seid verbunden.",
+    "respondToRequest": "Auf die Anfrage antworten",
+    "requestSent": "Kontaktanfrage gesendet",
+    "connect": "Verbinden",
+    "connectNotAllowed": "Diese Person nimmt keine Kontaktanfragen von dir an."
   },
   "report": {
     "title": "Melden",
@@ -383,5 +388,18 @@
       "illegal": "Illegale Aktivität",
       "other": "Etwas anderes"
     }
+  },
+  "companions": {
+    "title": "Reisepartner",
+    "discoverySoon": "Reisende in deiner Nähe zu finden, kommt bald. Bis dahin kannst du dich über Profile verbinden.",
+    "signIn": "Melde dich an, um deine Kontaktanfragen und Kontakte zu sehen.",
+    "incoming": "Anfragen an dich",
+    "noIncoming": "Gerade keine Anfragen.",
+    "outgoing": "Von dir gesendet",
+    "cancel": "Zurückziehen",
+    "connections": "Deine Kontakte",
+    "noConnections": "Verbinde dich über Profile mit Reisenden.",
+    "accept": "Annehmen",
+    "decline": "Ablehnen"
   }
 }

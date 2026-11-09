@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getApiClient } from '@/api';
+import { ApiProblem, getApiClient } from '@/api';
 import { useSessionStore } from '@/auth/sessionStore';
 import { Button, Notice } from '@/components/Form';
 import {
@@ -12,6 +13,7 @@ import {
   block,
   fetchProfile,
   fetchUserPosts,
+  sendConnectionRequest,
   setFollowing,
 } from '@/features/account/api';
 import { feedKeys } from '@/features/feed/api';
@@ -44,6 +46,16 @@ export default function UserProfileScreen() {
         old ? { ...old, follow_status: status } : old,
       );
       void queryClient.invalidateQueries({ queryKey: accountKeys.profile(id) });
+    },
+  });
+  const connectKey = useRef(getApiClient().newIdempotencyKey());
+  const connect = useMutation({
+    mutationFn: () => sendConnectionRequest(getApiClient(), id, connectKey.current),
+    onSuccess: () => {
+      queryClient.setQueryData(accountKeys.profile(id), (old: typeof profile.data) =>
+        old ? { ...old, relationship: 'request_pending', can_request_connection: false } : old,
+      );
+      void queryClient.invalidateQueries({ queryKey: accountKeys.requests('outgoing') });
     },
   });
   const blockUser = useMutation({
@@ -106,6 +118,41 @@ export default function UserProfileScreen() {
             busy={follow.isPending}
             testID="user-follow"
           />
+          {data.relationship === 'connected' ? (
+            <Notice tone="success" testID="user-connected">
+              {t('user.connected')}
+            </Notice>
+          ) : data.relationship === 'request_received' ? (
+            <Button
+              label={t('user.respondToRequest')}
+              variant="secondary"
+              onPress={() => router.push('/companions')}
+              testID="user-respond"
+            />
+          ) : data.relationship === 'request_pending' ? (
+            <Text
+              style={[theme.typography.label, { color: theme.colors.textSecondary }]}
+              testID="user-request-sent"
+            >
+              {t('user.requestSent')}
+            </Text>
+          ) : data.can_request_connection ? (
+            <Button
+              label={t('user.connect')}
+              variant="secondary"
+              onPress={() => connect.mutate()}
+              busy={connect.isPending}
+              testID="user-connect"
+            />
+          ) : null}
+          {connect.isError ? (
+            <Notice tone="error">
+              {connect.error instanceof ApiProblem &&
+              connect.error.code === 'connection_request_not_allowed'
+                ? t('user.connectNotAllowed')
+                : t('user.actionFailed')}
+            </Notice>
+          ) : null}
           <View style={styles.actions}>
             <View style={styles.fill}>
               <Button
