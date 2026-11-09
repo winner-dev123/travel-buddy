@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Fragment } from 'react';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import {
   ArrowRight,
@@ -13,10 +14,11 @@ import {
   Users,
   UsersRound,
 } from 'lucide-react';
+import type { MediaRef } from '@travelbuddy/domain-types';
 import type { LocaleCode } from '@travelbuddy/i18n';
 import { Badge, Button, Card, Container } from '@travelbuddy/ui';
-import { DestinationArt } from '@/components/destination-art';
 import { DestinationCard } from '@/components/destination-card';
+import { MediaImage, isRenderableImage } from '@/components/media-image';
 import { DestinationSearchNav } from '@/components/destination-search-nav';
 import { JsonLd } from '@/components/json-ld';
 import { StoreButtons } from '@/components/store-buttons';
@@ -90,7 +92,10 @@ export default async function HomePage({ params }: { params: Promise<{ locale: L
               </Button>
             </div>
           </div>
-          <HeroCollage labels={{ nearby: t('hero.chipNearby'), itinerary: t('hero.chipItinerary'), stories: t('hero.chipStories') }} />
+          <HeroCollage
+            photos={data.featured.slice(0, 3).map((d) => d.cover ?? null)}
+            labels={{ nearby: t('hero.chipNearby'), itinerary: t('hero.chipItinerary'), stories: t('hero.chipStories'), photoCredits: t('hero.photoCredits') }}
+          />
         </Container>
       </section>
 
@@ -295,21 +300,58 @@ function FeatureDark({ icon, title, body, children }: { icon: React.ReactNode; t
   );
 }
 
-function HeroCollage({ labels }: { labels: { nearby: string; itinerary: string; stories: string } }) {
+const COLLAGE_TILES = [
+  { seed: 'hero-coast', hints: ['beaches'], className: 'absolute start-0 top-6 h-[62%] w-[58%] -rotate-3 rounded-card shadow-lift' },
+  { seed: 'hero-city', hints: ['culture'], className: 'absolute end-0 top-0 h-[48%] w-[48%] rotate-3 rounded-card shadow-lift' },
+  { seed: 'hero-peaks', hints: ['nature'], className: 'absolute end-6 bottom-0 h-[50%] w-[56%] rotate-2 rounded-card shadow-lift' },
+] as const;
+
+/** Decorative collage of featured destination covers (branded art where a cover is missing). */
+function HeroCollage({
+  photos,
+  labels,
+}: {
+  photos: (MediaRef | null)[];
+  labels: { nearby: string; itinerary: string; stories: string; photoCredits: string };
+}) {
+  const credits = photos.filter(isRenderableImage).flatMap((p) => (p.attribution ? [{ id: p.id, ...p.attribution }] : []));
   return (
-    <div className="relative mx-auto aspect-square w-full max-w-md" aria-hidden="true">
-      <div className="absolute start-0 top-6 h-[62%] w-[58%] -rotate-3 overflow-hidden rounded-card shadow-lift">
-        <DestinationArt seed="hero-coast" categories={['beaches']} />
+    <div className="mx-auto w-full max-w-md">
+      <div className="relative aspect-square w-full" aria-hidden="true">
+        {COLLAGE_TILES.map((tile, i) => (
+          <MediaImage
+            key={tile.seed}
+            media={photos[i]}
+            seed={tile.seed}
+            hints={tile.hints}
+            sizes="(min-width: 1024px) 260px, 60vw"
+            priority={i === 0}
+            credit="none"
+            className={tile.className}
+          />
+        ))}
+        <span className="absolute start-4 bottom-16 rounded-pill bg-surface px-4 py-2 text-sm font-semibold shadow-card">📍 {labels.nearby}</span>
+        <span className="absolute end-2 top-[46%] rounded-pill bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground shadow-card">✨ {labels.itinerary}</span>
+        <span className="absolute start-[38%] top-0 rounded-pill bg-surface px-4 py-2 text-sm font-semibold shadow-card">💬 {labels.stories}</span>
       </div>
-      <div className="absolute end-0 top-0 h-[48%] w-[48%] rotate-3 overflow-hidden rounded-card shadow-lift">
-        <DestinationArt seed="hero-city" categories={['culture']} />
-      </div>
-      <div className="absolute end-6 bottom-0 h-[50%] w-[56%] rotate-2 overflow-hidden rounded-card shadow-lift">
-        <DestinationArt seed="hero-peaks" categories={['nature']} />
-      </div>
-      <span className="absolute start-4 bottom-16 rounded-pill bg-surface px-4 py-2 text-sm font-semibold shadow-card">📍 {labels.nearby}</span>
-      <span className="absolute end-2 top-[46%] rounded-pill bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground shadow-card">✨ {labels.itinerary}</span>
-      <span className="absolute start-[38%] top-0 rounded-pill bg-surface px-4 py-2 text-sm font-semibold shadow-card">💬 {labels.stories}</span>
+      {credits.length > 0 ? (
+        <p className="mt-5 text-center text-xs text-muted-foreground">
+          {labels.photoCredits}:{' '}
+          {credits.map((c, i) => (
+            <Fragment key={c.id}>
+              {i > 0 ? ' · ' : null}
+              {c.url ? (
+                <a href={c.url} rel="noopener noreferrer license" target="_blank" className="underline underline-offset-2 hover:text-foreground">
+                  {c.text}
+                </a>
+              ) : (
+                c.text
+              )}{' '}
+              ({c.license})
+            </Fragment>
+          ))}
+        </p>
+      ) : null}
     </div>
   );
 }

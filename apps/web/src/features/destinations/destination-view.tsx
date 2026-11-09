@@ -6,7 +6,7 @@ import { Badge, Button, Card, Container } from '@travelbuddy/ui';
 import { DestinationCard } from '@/components/destination-card';
 import { JsonLd } from '@/components/json-ld';
 import { Markdown } from '@/components/markdown';
-import { MediaImage } from '@/components/media-image';
+import { MediaCredit, MediaImage, isRenderableImage } from '@/components/media-image';
 import { StoryCard } from '@/components/story-card';
 import { Link } from '@/i18n/navigation';
 import { absoluteUrl, destinationHref } from '@/lib/paths';
@@ -77,6 +77,7 @@ export async function DestinationView({
           seed={destination.id}
           sizes="100vw"
           priority
+          credit="none"
           className="absolute inset-0 -z-10"
         />
         <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/80 via-black/35 to-black/10" aria-hidden="true" />
@@ -114,6 +115,9 @@ export async function DestinationView({
             </Button>
           </div>
         </Container>
+        {isRenderableImage(destination.cover) && destination.cover.attribution ? (
+          <MediaCredit attribution={destination.cover.attribution} className="absolute end-3 top-3 max-w-[min(80%,28rem)]" />
+        ) : null}
       </section>
 
       <Container className="grid gap-12 py-14 lg:grid-cols-[minmax(0,1fr)_22rem]">

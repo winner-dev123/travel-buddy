@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ApiClient } from '../core/client';
 import { ApiError } from '../core/errors';
@@ -141,6 +143,23 @@ describe('mock platform — destinations and guides', () => {
     expect(cities.data.every((d) => d.kind === 'city' && d.continent === 'europe')).toBe(true);
     const paths = cities.data.map((d) => d.path);
     expect([...paths].sort()).toEqual(paths);
+  });
+
+  it('gives every city and country an openly licensed, credited cover photo that the web app ships', async () => {
+    const anon = clientFor(platform);
+    const all = await anon.destinations.list({ kind: ['country', 'city'], sort: 'slug', limit: 100 });
+    expect(all.data.length).toBeGreaterThan(20);
+    for (const d of all.data) {
+      const cover = d.cover;
+      expect(cover, d.path).toBeTruthy();
+      expect(cover).toMatchObject({ kind: 'image', status: 'ready' });
+      expect(cover?.alt_text?.length, d.path).toBeGreaterThan(10);
+      expect(cover?.attribution?.text, d.path).toMatch(/\S \/ Wikimedia Commons$/);
+      expect(cover?.attribution?.license, d.path).toMatch(/^(CC0|CC BY(-SA)? \d\.\d)$/);
+      expect(cover?.attribution?.url, d.path).toMatch(/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/);
+      const file = fileURLToPath(new URL(`../../../../apps/web/public${cover?.url}`, import.meta.url));
+      expect(existsSync(file), `${d.path} → ${cover?.url}`).toBe(true);
+    }
   });
 
   it('serves free guides anonymously, including structured FAQ sections', async () => {

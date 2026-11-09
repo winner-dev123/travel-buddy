@@ -30,7 +30,8 @@ export async function DestinationCard({
         seed={destination.id}
         sizes={size === 'lg' ? '(min-width: 1024px) 40vw, 90vw' : '(min-width: 1024px) 22vw, (min-width: 640px) 45vw, 90vw'}
         priority={priority}
-        showAttribution={false}
+        credit="text"
+        creditClassName="start-3 end-auto top-3 bottom-auto max-w-[70%]"
         className="absolute inset-0 -z-10 transition-transform duration-700 ease-travel group-hover:scale-105 motion-reduce:group-hover:scale-100"
       />
       <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/75 via-black/20 to-transparent" aria-hidden="true" />

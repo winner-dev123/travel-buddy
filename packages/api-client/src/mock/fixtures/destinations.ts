@@ -2,8 +2,9 @@
  * MOCK FIXTURE DATA — development only.
  *
  * Content rules (web 01 §7.1 rule 6, brief §6): general, long-established descriptions only.
- * No prices, opening hours, entry rules, safety advisories or other live information, and no
- * third-party photography (hero images are null so the UI renders branded placeholders).
+ * No prices, opening hours, entry rules, safety advisories or other live information. Cover
+ * photos are openly licensed and credited (see ./media.ts); anything without one renders the
+ * branded placeholder.
  */
 import type {
   Continent,

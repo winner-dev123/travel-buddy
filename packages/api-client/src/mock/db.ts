@@ -8,6 +8,7 @@ import type {
   GuideSummary,
   LocaleCode,
   Me,
+  MediaRef,
   PlaceSummary,
   PlatformPermission,
   PlatformRole,
@@ -23,6 +24,7 @@ import type {
   UserSummary,
 } from '@travelbuddy/domain-types';
 import { DESTINATIONS, PLACES, type DestinationFixture, type Loc, type PlaceFixture } from './fixtures/destinations';
+import { COUNTRY_COVER_FROM, COVER_BASE_PATH, DESTINATION_COVERS } from './fixtures/media';
 import { FOLLOWS, PERSONAS, POSTS } from './fixtures/social';
 import { fixtureId } from './ids';
 
@@ -380,7 +382,25 @@ export class MockDb {
       country_name: rec.f.kind === 'country' || !country ? null : this.loc(country.f.name, locale),
       continent: rec.f.continent,
       tagline: this.loc(rec.f.tagline, locale),
-      cover: null,
+      cover: this.coverFor(rec),
+    };
+  }
+
+  /** Openly licensed cover photo with its attribution, or null (the UI shows a placeholder). */
+  private coverFor(rec: DestinationRecord): MediaRef | null {
+    const key = rec.f.kind === 'country' ? COUNTRY_COVER_FROM[rec.path] : rec.path;
+    const c = key ? DESTINATION_COVERS[key] : undefined;
+    if (!key || !c) return null;
+    return {
+      id: fixtureId(`media:cover:${key}`),
+      kind: 'image',
+      status: 'ready',
+      url: `${COVER_BASE_PATH}${c.file}`,
+      url_expires_at: null,
+      width: c.width,
+      height: c.height,
+      alt_text: c.alt,
+      attribution: { text: `${c.author} / Wikimedia Commons`, license: c.license, url: c.source },
     };
   }
 

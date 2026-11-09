@@ -153,7 +153,7 @@ The platform backend does not exist yet. Until each backend module ships, the we
 3. Every mocked response carries `X-TB-Mock: 1`, and the UI shows a persistent **"Mock data"** environment banner.
 4. It implements the documented `/v1` contract (paths, envelopes, error codes, authorization outcomes such as `404` for hidden resources). It is a contract simulator, not a UI shortcut.
 5. It does **not** simulate payments, AI generations, live location or chat delivery as if they were real. Those endpoints return `503 service_unavailable` with `code: "feature_not_available_in_mock"` until a real provider is wired, and the UI shows an honest unavailable state.
-6. Seed content (destinations, stories) is fixture data in `src/mock/fixtures`. It contains general, well-established descriptions only, no live facts (prices, opening hours, restrictions), and no third-party photographs.
+6. Seed content (destinations, stories) is fixture data in `src/mock/fixtures`. It contains general, well-established descriptions only, no live facts (prices, opening hours, restrictions). Photography is limited to openly licensed images (CC0, CC BY or CC BY-SA, checked against the source's licence metadata) served from `apps/web/public/media`, each credited through `MediaRef.attribution` wherever it appears (`fixtures/media.ts`, `CREDITS.md`).
 
 ## 8. Realtime on the web (summary of ADR-0013)
 
