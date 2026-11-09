@@ -75,6 +75,7 @@ from app.modules.social import service as social_service
 from app.modules.social.api import router as social_router
 from app.modules.social.follows import FollowService
 from app.modules.social.interactions import InteractionService
+from app.modules.social.profile_view import PublicProfileService
 from app.modules.social.public import PublicPostService
 from app.modules.trust_safety import service as trust_safety_service
 from app.modules.trust_safety.api import router as trust_safety_router
@@ -219,6 +220,7 @@ def create_app(
     app.state.public_post_service = PublicPostService(
         sessionmaker=database.sessionmaker, cursors=cursor_codec
     )
+    app.state.public_profile_service = PublicProfileService(sessionmaker=database.sessionmaker)
     app.state.feed_service = FeedService(
         sessionmaker=database.sessionmaker, cursors=cursor_codec, clock=clock
     )

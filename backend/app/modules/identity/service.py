@@ -886,3 +886,9 @@ def make_handlers(
         await deleter.delete(issuer, subject)  # raising retries with backoff
 
     return {ACCOUNT_DELETIONS_JOB: account_deletions, IDP_ACCOUNT_DELETION_JOB: idp_account}
+
+
+async def is_active(session: AsyncSession, user_id: uuid.UUID) -> bool:
+    """Whether others may see this account (suspended, pending-deletion or deactivated: no)."""
+    status = await session.scalar(select(User.status).where(User.id == user_id))
+    return status == UserStatus.ACTIVE

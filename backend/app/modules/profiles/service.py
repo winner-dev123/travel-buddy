@@ -559,3 +559,48 @@ async def wants_notification(
 async def ui_locale(session: AsyncSession, user_id: uuid.UUID) -> str:
     preferences = await session.get(UserPreferences, user_id)
     return preferences.ui_locale if preferences else "en"
+
+
+@dataclass(frozen=True, slots=True)
+class ProfileCard:
+    """A user's own profile fields plus the privacy settings that govern who sees them."""
+
+    user_id: uuid.UUID
+    handle: str
+    display_name: str
+    bio: str | None
+    home_country_code: str | None
+    travel_styles: list[str]
+    interests: list[str]
+    languages_spoken: list[str]
+    account_private: bool
+    profile_connections_only: bool
+    search_engine_indexing: bool
+
+
+async def profile_card(session: AsyncSession, user_id: uuid.UUID) -> ProfileCard | None:
+    profile = await session.get(UserProfile, user_id)
+    privacy = await session.get(UserPrivacySettings, user_id)
+    if profile is None or privacy is None:
+        return None
+    return ProfileCard(
+        user_id=user_id,
+        handle=profile.handle,
+        display_name=profile.display_name,
+        bio=profile.bio,
+        home_country_code=profile.home_country_code,
+        travel_styles=list(profile.travel_styles),
+        interests=list(profile.interests),
+        languages_spoken=list(profile.languages_spoken),
+        account_private=profile.account_visibility == "private",
+        profile_connections_only=privacy.profile_visibility == "connections",
+        search_engine_indexing=privacy.search_engine_indexing,
+    )
+
+
+async def user_id_for_handle(session: AsyncSession, handle: str) -> uuid.UUID | None:
+    """Current handle (case-insensitive) → user."""
+    found: uuid.UUID | None = await session.scalar(
+        select(UserProfile.user_id).where(UserProfile.handle == handle)
+    )
+    return found

@@ -194,5 +194,36 @@ class ShareLink(_Response):
     url: str
 
 
+class ProfileCounts(_Response):
+    posts: int
+    followers: int
+    following: int
+
+
+class PublicProfile(_Response):
+    """Contract ``PublicProfile``: another user's profile as the viewer may see it."""
+
+    id: uuid.UUID
+    handle: str
+    display_name: str
+    avatar: None = None  # MediaRef once media lands (BL-1.08)
+    bio: str | None
+    home_country_code: str | None
+    travel_styles: list[str]
+    interests: list[str]
+    languages_spoken: list[str]
+    account_visibility: Literal["public", "private"]
+    is_restricted: bool
+    indexable: bool
+    counts: ProfileCounts | None
+    badges: list[dict[str, object]] = Field(default_factory=list)
+    relationship: Literal[
+        "none", "request_pending", "request_received", "connected", "declined", "blocked"
+    ] = "none"
+    follow_status: Literal["none", "following", "requested"]
+    can_request_connection: bool = False  # connections arrive in Phase 2
+    can_message: bool = False  # messaging arrives in Phase 2
+
+
 class FollowState(_Response):
     status: Literal["following", "requested"]

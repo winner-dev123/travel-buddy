@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
+from fastapi import APIRouter, Depends, Header, Path, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 
 from app.core.errors import AppError, ErrorCode, FieldError
@@ -17,6 +17,7 @@ from app.core.security.principal import Principal
 from app.modules.social.follows import FollowService
 from app.modules.social.interactions import InteractionService
 from app.modules.social.models import PostKind
+from app.modules.social.profile_view import PublicProfileService
 from app.modules.social.public import CACHE_CONTROL, PublicPostService
 from app.modules.social.schemas import (
     CommentOut,
@@ -24,6 +25,7 @@ from app.modules.social.schemas import (
     CreatePostRequest,
     FollowState,
     Post,
+    PublicProfile,
     ReactionOut,
     ReactionRequest,
     ReactionResult,
@@ -99,6 +101,24 @@ async def delete_post(
 ) -> Response:
     await _service(request).delete(principal, post_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/v1/users/by-handle/{handle}", response_model=PublicProfile, tags=["profiles"])
+async def get_profile_by_handle(
+    request: Request,
+    principal: CurrentPrincipal,
+    handle: Annotated[str, Path(min_length=3, max_length=30, pattern=r"^[A-Za-z0-9_.]+$")],
+) -> PublicProfile:
+    service: PublicProfileService = request.app.state.public_profile_service
+    return await service.by_handle(principal.user_id, handle)
+
+
+@router.get("/v1/users/{user_id}", response_model=PublicProfile, tags=["profiles"])
+async def get_profile(
+    user_id: uuid.UUID, request: Request, principal: CurrentPrincipal
+) -> PublicProfile:
+    service: PublicProfileService = request.app.state.public_profile_service
+    return await service.by_id(principal.user_id, user_id)
 
 
 @router.get("/v1/users/{user_id}/posts", response_model=Page[Post], tags=["profiles"])
