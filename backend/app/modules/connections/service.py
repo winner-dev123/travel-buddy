@@ -512,3 +512,17 @@ async def declined_requesters(session: AsyncSession, viewer: uuid.UUID) -> set[u
         )
     )
     return set(rows)
+
+
+async def request_stats_since(
+    session: AsyncSession, *, hours: int, at_least: int
+) -> dict[uuid.UUID, tuple[int, int]]:
+    """Requesters with ``at_least`` requests in the window: (sent, declined)."""
+    declined = func.count().filter(ConnectionRequest.status == RequestStatus.DECLINED)
+    rows = await session.execute(
+        select(ConnectionRequest.requester_id, func.count(), declined)
+        .where(ConnectionRequest.created_at > func.now() - timedelta(hours=hours))
+        .group_by(ConnectionRequest.requester_id)
+        .having(func.count() >= at_least)
+    )
+    return {requester: (sent, refused) for requester, sent, refused in rows.all()}

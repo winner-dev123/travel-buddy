@@ -230,6 +230,20 @@ class DiscoverySessionService:
             )
 
 
+async def session_hops_since(
+    session: AsyncSession, *, hours: int, at_least_cities: int
+) -> dict[uuid.UUID, tuple[int, int]]:
+    """Users who started discovery in ``at_least_cities`` cities in the window: (starts, cities)."""
+    cities = func.count(func.distinct(TravelerDiscoverySession.destination_id))
+    rows = await session.execute(
+        select(TravelerDiscoverySession.user_id, func.count(), cities)
+        .where(TravelerDiscoverySession.started_at > func.now() - timedelta(hours=hours))
+        .group_by(TravelerDiscoverySession.user_id)
+        .having(cities >= at_least_cities)
+    )
+    return {user: (starts, distinct) for user, starts, distinct in rows.all()}
+
+
 async def purge_expired(session: AsyncSession) -> int:
     """Sessions are purged 30 days after they ended or expired (docs/04 §14)."""
     cutoff = platform.ago(days=30)

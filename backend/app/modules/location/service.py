@@ -308,4 +308,5 @@ from app.modules.location.discovery import (  # noqa: E402
 from app.modules.location.discovery import active_session as active_session  # noqa: E402
 from app.modules.location.discovery import purge_expired as purge_expired  # noqa: E402
 from app.modules.location.discovery import require_discovery as require_discovery  # noqa: E402
+from app.modules.location.discovery import session_hops_since as session_hops_since  # noqa: E402
 from app.modules.location.discovery import visible_sessions_in as visible_sessions_in  # noqa: E402

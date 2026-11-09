@@ -11,7 +11,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Literal
 
 from sqlalchemy import and_, delete, func, or_, select
@@ -470,3 +470,52 @@ async def purge_expired(session: AsyncSession) -> int:
         ModerationAction,
         (ModerationAction.created_at < platform.ago(days=3 * 365)) & ~still_in_force,
     )
+
+
+async def reports_filed_since(
+    session: AsyncSession, *, hours: int, at_least: int
+) -> dict[uuid.UUID, int]:
+    """Reporters who filed ``at_least`` reports in the last ``hours`` (mass reporting)."""
+    rows = await session.execute(
+        select(ContentReport.reporter_id, func.count())
+        .where(
+            ContentReport.reporter_id.is_not(None),
+            ContentReport.created_at > func.now() - timedelta(hours=hours),
+        )
+        .group_by(ContentReport.reporter_id)
+        .having(func.count() >= at_least)
+    )
+    return {reporter: count for reporter, count in rows.all() if reporter is not None}
+
+
+async def file_system_report(
+    session: AsyncSession, *, user_id: uuid.UUID, reason: str, signal: str, evidence: dict[str, Any]
+) -> bool:
+    """Queue an automated report about an account (no reporter), once per open signal."""
+    already = await session.scalar(
+        select(func.count())
+        .select_from(ContentReport)
+        .where(
+            ContentReport.reporter_id.is_(None),
+            ContentReport.target_type == "user",
+            ContentReport.target_id == user_id,
+            ContentReport.status.in_(_OPEN),
+            ContentReport.evidence["signal"].astext == signal,
+        )
+    )
+    if already:
+        return False
+    session.add(
+        ContentReport(
+            reporter_id=None,
+            target_type="user",
+            target_id=user_id,
+            target_author_id=user_id,
+            reason=reason,
+            details=f"Automated abuse signal: {signal}",
+            priority=PRIORITY[reason],
+            evidence={"signal": signal, **evidence},
+        )
+    )
+    await session.flush()
+    return True

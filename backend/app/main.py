@@ -44,6 +44,7 @@ from app.modules.connections import service as connections_service
 from app.modules.connections.api import router as connections_router
 from app.modules.destinations.api import router as destinations_router
 from app.modules.destinations.service import DestinationService
+from app.modules.discovery import signals as abuse_signals
 from app.modules.discovery.api import router as discovery_router
 from app.modules.discovery.service import DiscoveryService
 from app.modules.feed import service as feed_service
@@ -410,6 +411,7 @@ def build_job_runner(
             database.sessionmaker, build_idp_deleter(identity_settings, http_client)
         )
     )
+    handlers.update(abuse_signals.make_handlers(database.sessionmaker))
     handlers.update(
         media_service.make_handlers(
             database.sessionmaker, media_storage, media_service.NoopScanner()
@@ -428,6 +430,7 @@ def build_job_runner(
         "location": location_service.purge_expired,
     }
     periodic = [Periodic(f"retention.{name}", f"retention.{name}", DAILY) for name in purges]
+    periodic.append(Periodic(abuse_signals.JOB_KIND, abuse_signals.JOB_KIND, timedelta(hours=1)))
     # Accounts whose 30-day grace ended are erased within the hour (AUTH-010: 30 + 7 days).
     periodic.append(
         Periodic(
