@@ -635,3 +635,22 @@ async def remove_follows_between(session: AsyncSession, a: uuid.UUID, b: uuid.UU
             )
         )
     )
+
+
+# Feed-facing queries live in candidates.py (they need the helpers above); re-exported here because
+# other modules may import only ``social.service``.
+from app.modules.social.candidates import (  # noqa: E402
+    Candidate as Candidate,
+)
+from app.modules.social.candidates import (  # noqa: E402
+    CandidateQuery as CandidateQuery,
+)
+from app.modules.social.candidates import (  # noqa: E402
+    assemble_visible as assemble_visible,
+)
+from app.modules.social.candidates import (  # noqa: E402
+    candidates as candidates,
+)
+from app.modules.social.candidates import (  # noqa: E402
+    followed_author_ids as followed_author_ids,
+)

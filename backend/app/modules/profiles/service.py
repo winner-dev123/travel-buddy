@@ -514,3 +514,20 @@ async def authors(
 
 def user_summary(author: AuthorInfo) -> UserSummary:
     return UserSummary(id=author.id, handle=author.handle, display_name=author.display_name)
+
+
+@dataclass(frozen=True, slots=True)
+class ViewerPreferences:
+    interests: list[str]
+    content_languages: list[str]
+    ui_locale: str
+
+
+async def viewer_preferences(session: AsyncSession, user_id: uuid.UUID) -> ViewerPreferences:
+    profile = await session.get(UserProfile, user_id)
+    preferences = await session.get(UserPreferences, user_id)
+    return ViewerPreferences(
+        interests=[i.lower() for i in (profile.interests if profile else [])],
+        content_languages=list(preferences.content_languages if preferences else []),
+        ui_locale=preferences.ui_locale if preferences else "en",
+    )

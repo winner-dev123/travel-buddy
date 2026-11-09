@@ -13,13 +13,14 @@ It is a modular monolith ([ADR-0001](../docs/adr/0001-modular-monolith.md)): one
 | **Identity (Phase 1)**: `POST /v1/auth/register`, `/login`, `/refresh`, `/logout`, `GET /v1/users/me`, `GET`/`DELETE /v1/users/me/sessions`, development IdP (`/v1/dev/idp/*`) | ✅ Implemented. Integration-tested against PostgreSQL, responses validated against the contract |
 | **Profiles (Phase 1, BL-1.04)**: `PATCH /v1/users/me`, `POST /v1/users/me/onboarding/complete`, `GET`/`PATCH /v1/users/me/preferences`, `GET`/`PATCH /v1/users/me/privacy`, `GET`/`POST /v1/users/me/consents` | ✅ Implemented. Integration-tested, contract-validated |
 | Health: `/health/live`, `/health/ready` | ✅ |
-| Migrations: `0001` baseline (extensions, outbox, jobs, idempotency, append-only audit log), `0002` identity and profiles, `0003` Supabase access token hook (no-op without Supabase Auth), `0004` handle change tracking, `0005` destinations, `0006` user-selected locations, `0007` posts, `0008` social interactions, `0009` user blocks | ✅ Verified against models (autogenerate diff); full up/down runs in CI with PostGIS |
+| Migrations: `0001` baseline (extensions, outbox, jobs, idempotency, append-only audit log), `0002` identity and profiles, `0003` Supabase access token hook (no-op without Supabase Auth), `0004` handle change tracking, `0005` destinations, `0006` user-selected locations, `0007` posts, `0008` social interactions, `0009` user blocks, `0010` feed | ✅ Verified against models (autogenerate diff); full up/down runs in CI with PostGIS |
 | Other domain endpoints | ⏳ Per backlog. Nothing is mocked or stubbed |
 | **Destinations (BL-1.05/1.06)**: directory, search, featured, lookup by path, children, point resolution (PostGIS); `python -m app.modules.destinations.seeding` loads the launch catalog | ✅ Implemented; resolution tests run in CI (PostGIS) |
 | **Location (BL-1.07)**: browse destination (GET/PUT/DELETE, shown in `Me`), upcoming destinations | ✅ Implemented and integration-tested |
 | **Posts (BL-1.10)**: create (idempotent), get, edit, delete, user post list; destination fan-out; visibility rules | ✅ Implemented (text kinds; media kinds need BL-1.08) |
 | **Social (BL-1.11)**: reactions, comments, bookmarks, shares, follows and follow requests; guest-mode public posts | ✅ Implemented and integration-tested |
 | **Blocks (BL-1.12)**: immediate, bidirectional, silent; removes follows | ✅ Implemented and integration-tested |
+| **Feed (BL-1.13)**: `GET /v1/feed` (fallback chain, tabs, filters, v1 ranker, diversity, snapshots), `POST /v1/feed/feedback` | ✅ Implemented; Nearby tests run in CI (PostGIS) |
 | **Jobs (BL-1.09)**: Postgres job queue, outbox relay, `python -m app.worker [--once]`, `/internal/jobs/tick` (cron secret), after-response tick for serverless | ✅ Implemented and integration-tested |
 | **Web cache webhooks (BL-1.25)**: signed `webCacheRevalidation` on profile visibility, handle and indexing changes | ✅ Implemented; enable with `WEB_REVALIDATE_URL`/`WEB_REVALIDATE_SECRET` (docs/11 §1.1) |
 | Realtime gateway, scheduler (periodic jobs) | ⏳ Phase 1/3 (documented in docs/02, not yet present) |

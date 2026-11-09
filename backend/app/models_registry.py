@@ -6,6 +6,7 @@ this module.
 
 from app.core.db import Base
 from app.modules.destinations import models as destinations_models
+from app.modules.feed import models as feed_models
 from app.modules.identity import models as identity_models
 from app.modules.location import models as location_models
 from app.modules.observability import models as observability_models
@@ -17,6 +18,7 @@ from app.modules.trust_safety import models as trust_safety_models
 __all__ = [
     "Base",
     "destinations_models",
+    "feed_models",
     "identity_models",
     "location_models",
     "observability_models",

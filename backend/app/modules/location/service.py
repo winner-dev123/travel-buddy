@@ -234,3 +234,23 @@ def _upcoming(row: UserSelectedLocation, summary: DestinationSummary) -> Upcomin
         share_for_discovery=row.share_for_discovery,
         created_at=row.created_at,
     )
+
+
+async def selected_destinations(
+    session: AsyncSession, user_id: uuid.UUID
+) -> tuple[uuid.UUID | None, list[uuid.UUID]]:
+    """(browse destination, upcoming destinations soonest first) for feed context (FEED-001)."""
+    rows = (
+        await session.execute(
+            select(UserSelectedLocation.kind, UserSelectedLocation.destination_id)
+            .where(
+                UserSelectedLocation.user_id == user_id,
+                UserSelectedLocation.kind.in_((SelectionKind.BROWSE, SelectionKind.UPCOMING)),
+            )
+            .order_by(
+                UserSelectedLocation.start_date.asc().nulls_last(), UserSelectedLocation.created_at
+            )
+        )
+    ).all()
+    browse = next((d for k, d in rows if k == SelectionKind.BROWSE), None)
+    return browse, [d for k, d in rows if k == SelectionKind.UPCOMING]

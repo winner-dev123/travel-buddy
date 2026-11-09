@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import Select, and_, exists, or_, select, text
+from sqlalchemy import Select, and_, exists, func, or_, select, text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -415,3 +415,70 @@ async def ancestry(session: AsyncSession, destination_id: uuid.UUID) -> list[uui
         select(DestinationRow.path).where(DestinationRow.id == destination_id, _ACTIVE)
     )
     return list(path) if path is not None else None
+
+
+async def country_destination_id(session: AsyncSession, country_code: str) -> uuid.UUID | None:
+    found: uuid.UUID | None = await session.scalar(
+        select(DestinationRow.id).where(
+            DestinationRow.kind == "country", DestinationRow.country_code == country_code, _ACTIVE
+        )
+    )
+    return found
+
+
+async def resolve_point(session: AsyncSession, lat: float, lng: float) -> uuid.UUID | None:
+    """Most specific active destination covering a point, or None (also without PostGIS).
+    The point must already be coarsened by the caller (LOC-003)."""
+    statement = text(
+        """
+        SELECT d.id
+          FROM destination_boundaries AS b
+          JOIN destinations AS d ON d.id = b.destination_id
+         WHERE d.status = 'active'
+           AND ST_Covers(b.boundary,
+                         CAST(ST_SetSRID(ST_MakePoint(:lng, :lat), 4326) AS geography))
+         ORDER BY d.depth DESC LIMIT 1
+        """
+    )
+    try:
+        async with session.begin_nested():
+            found: uuid.UUID | None = await session.scalar(statement, {"lat": lat, "lng": lng})
+            return found
+    except DBAPIError:
+        return None
+
+
+async def city_of(session: AsyncSession, destination_id: uuid.UUID) -> uuid.UUID:
+    """The city-level ancestor (or self) used as the "Nearby" area; else the destination."""
+    rows = (
+        await session.execute(
+            select(DestinationRow.id, DestinationRow.kind, DestinationRow.depth).where(
+                DestinationRow.id.in_(
+                    select(func.unnest(DestinationRow.path)).where(
+                        DestinationRow.id == destination_id
+                    )
+                )
+            )
+        )
+    ).all()
+    cities = sorted((r for r in rows if r.kind == "city"), key=lambda r: r.depth, reverse=True)
+    return cities[0].id if cities else destination_id
+
+
+async def centroids(
+    session: AsyncSession, ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, tuple[float, float]]:
+    if not ids:
+        return {}
+    rows = await session.execute(
+        select(DestinationRow.id, DestinationRow.centroid_lat, DestinationRow.centroid_lng).where(
+            DestinationRow.id.in_(list(ids))
+        )
+    )
+    return {row.id: (row.centroid_lat, row.centroid_lng) for row in rows}
+
+
+def coarse_point(near: str) -> tuple[float, float]:
+    """``lat,lng`` -> point rounded to ~110 m (LOC-003). Raises ``ValueError`` when malformed."""
+    point = parse_near(near)
+    return point.lat, point.lng
