@@ -344,11 +344,13 @@ async def record_action(
     actor_id: uuid.UUID,
     report_id: uuid.UUID | None,
     expires_at: datetime | None,
+    restriction_kind: str | None = None,
 ) -> ModerationAction:
     row = ModerationAction(
         target_type=target_type,
         target_id=target_id,
         action=action,
+        restriction_kind=restriction_kind,
         reason_code=reason_code,
         notes=notes,
         actor_id=actor_id,
@@ -402,3 +404,52 @@ async def user_moderation_counts(session: AsyncSession, user_id: uuid.UUID) -> t
         .where(ModerationAction.target_type == "user", ModerationAction.target_id == user_id)
     )
     return int(open_reports or 0), int(actions or 0)
+
+
+@dataclass(frozen=True, slots=True)
+class ActiveRestriction:
+    kind: str
+    reason_code: str
+    until: datetime | None
+
+
+async def active_restrictions(
+    session: AsyncSession, user_id: uuid.UUID, *, now: datetime | None = None
+) -> list[ActiveRestriction]:
+    """``restrict`` actions on the account that have not expired and were not lifted by a later
+    ``reinstate`` (SAFE-013). One entry per kind: the one lasting longest."""
+    lifted_at = await session.scalar(
+        select(func.max(ModerationAction.created_at)).where(
+            ModerationAction.target_type == "user",
+            ModerationAction.target_id == user_id,
+            ModerationAction.action == "reinstate",
+        )
+    )
+    query = select(ModerationAction).where(
+        ModerationAction.target_type == "user",
+        ModerationAction.target_id == user_id,
+        ModerationAction.action == "restrict",
+        or_(
+            ModerationAction.expires_at.is_(None),
+            ModerationAction.expires_at > (func.now() if now is None else now),
+        ),
+    )
+    if lifted_at is not None:
+        query = query.where(ModerationAction.created_at > lifted_at)
+    best: dict[str, ActiveRestriction] = {}
+    for row in (await session.scalars(query.order_by(ModerationAction.created_at))).all():
+        kind = str(row.restriction_kind)
+        current = best.get(kind)
+        if current is None or (
+            current.until is not None and (row.expires_at is None or row.expires_at > current.until)
+        ):
+            best[kind] = ActiveRestriction(kind, row.reason_code, row.expires_at)
+    return [best[k] for k in sorted(best)]
+
+
+async def ensure_not_restricted(
+    session: AsyncSession, user_id: uuid.UUID, kind: str, *, message: str
+) -> None:
+    """Raise ``403 account_restricted`` when ``kind`` is active on the account."""
+    if any(r.kind == kind for r in await active_restrictions(session, user_id)):
+        raise AppError(ErrorCode.ACCOUNT_RESTRICTED, message)

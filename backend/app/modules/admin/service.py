@@ -261,6 +261,12 @@ class AdminService:
         action, target = request.action, request.target_type
         # The user the action affects (content author or the account), told via a notification.
         affected: uuid.UUID | None = request.target_id if target == "user" else None
+        if (action == "restrict") != (request.restriction_kind is not None):
+            raise _invalid(
+                "/restriction_kind", "restriction_kind is required for (and only for) 'restrict'."
+            )
+        if action == "restrict" and target != "user":
+            raise _invalid("/target_type", "'restrict' applies to users.")
         if action in _CONTENT_STATES:
             if target not in ("post", "comment") or (
                 action == "limit_visibility" and target != "post"
@@ -283,7 +289,7 @@ class AdminService:
             )
         elif action == "remove_member":
             raise _invalid("/action", "Group moderation arrives with groups (Phase 5).")
-        # warn / restrict are recorded and notified; restrictions take effect with BL-1.28.
+        # warn is recorded and notified; restrict takes effect through active_restrictions.
         row = await trust_safety.record_action(
             session,
             target_type=target,
@@ -294,6 +300,7 @@ class AdminService:
             actor_id=staff.principal.user_id,
             report_id=request.report_id,
             expires_at=request.expires_at,
+            restriction_kind=request.restriction_kind,
         )
         _audit(
             session, staff, f"moderation.{action}", target, request.target_id, action_id=str(row.id)
@@ -309,6 +316,7 @@ class AdminService:
                 "target_type": target,
                 "target_id": str(request.target_id),
                 "reason_code": request.reason_code,
+                "restriction_kind": request.restriction_kind,
                 "user_id": str(affected) if affected else None,
             },
         )
@@ -424,6 +432,7 @@ class AdminService:
                     "target_type": r.target_type,
                     "target_id": r.target_id,
                     "action": r.action,
+                    "restriction_kind": r.restriction_kind,
                     "reason_code": r.reason_code,
                     "notes": r.notes,
                     "actor": profiles.user_summary(actors[r.actor_id])

@@ -64,6 +64,22 @@ class SessionTokens(_Response):
     session_id: uuid.UUID
 
 
+class AccountRestriction(_Response):
+    """Contract ``AccountRestriction``: an active moderation restriction on my account."""
+
+    kind: Literal[
+        "posting_limited",
+        "commenting_limited",
+        "messaging_limited",
+        "connection_requests_limited",
+        "discovery_disabled",
+        "media_upload_limited",
+    ]
+    reason_code: str
+    until: datetime | None
+    appealable: bool
+
+
 class MyAccount(_Response):
     id: uuid.UUID
     email: str | None
@@ -73,7 +89,7 @@ class MyAccount(_Response):
     age_assured: bool
     deletion_scheduled_for: datetime | None
     created_at: datetime
-    restrictions: list[dict[str, object]] = Field(default_factory=list)
+    restrictions: list[AccountRestriction] = Field(default_factory=list)
 
 
 class Me(_Response):

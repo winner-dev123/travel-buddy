@@ -503,6 +503,7 @@ All errors use `application/problem+json`. Clients must branch on `code`, never 
 | `refresh_token_reused` | 401 | A rotated refresh token was reused outside the 30 s leeway. The family is revoked. Sign in again. |
 | `session_revoked` | 401 | Session revoked (logout elsewhere, admin action). Sign in again. |
 | `account_suspended` | 403 | Account suspended. Show the suspension notice. |
+| `account_restricted` | 403 | A moderation restriction blocks this action (e.g. `posting_limited`). Explain it with `Me.account.restrictions` (SAFE-013). |
 | `forbidden` | 403 | Authenticated but not permitted (non-entitlement reason). |
 | `entitlement_required` | 403 | Premium needed (for groups, the owner's premium). Show an upsell when appropriate. |
 | `feature_disabled` | 403 | Feature flag off for this user, region or app version. |

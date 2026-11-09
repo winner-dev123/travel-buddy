@@ -131,6 +131,17 @@ class ModerationActionType(StrEnum):
     REMOVE_MEMBER = "remove_member"
 
 
+class RestrictionKind(StrEnum):
+    """What a ``restrict`` action limits (SAFE-013)."""
+
+    POSTING_LIMITED = "posting_limited"
+    COMMENTING_LIMITED = "commenting_limited"
+    MESSAGING_LIMITED = "messaging_limited"
+    CONNECTION_REQUESTS_LIMITED = "connection_requests_limited"
+    DISCOVERY_DISABLED = "discovery_disabled"
+    MEDIA_UPLOAD_LIMITED = "media_upload_limited"
+
+
 class ModerationAction(Base):
     """Every enforcement decision, platform- or group-scoped (ADM-002)."""
 
@@ -139,6 +150,11 @@ class ModerationAction(Base):
         enum_check("action", ModerationActionType, "action_enum"),
         enum_check("target_type", ReportTargetType, "target_type_enum"),
         CheckConstraint("scope IN ('platform', 'group')", name="scope_enum"),
+        enum_check("restriction_kind", RestrictionKind, "restriction_kind_enum"),
+        CheckConstraint(
+            "(action = 'restrict') = (restriction_kind IS NOT NULL)",
+            name="restriction_kind_required",
+        ),
         Index("ix_moderation_actions__target", "target_type", "target_id", text("created_at DESC")),
     )
 
@@ -148,6 +164,7 @@ class ModerationAction(Base):
     target_type: Mapped[str] = mapped_column(Text)
     target_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     action: Mapped[str] = mapped_column(Text)
+    restriction_kind: Mapped[str | None] = mapped_column(Text)
     reason_code: Mapped[str] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
     actor_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))

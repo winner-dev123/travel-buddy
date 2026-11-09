@@ -320,6 +320,12 @@ class InteractionService:
             )
             if replay is not None:
                 return CommentOut.model_validate(replay.body), True
+            await trust_safety.ensure_not_restricted(
+                session,
+                principal.user_id,
+                "commenting_limited",
+                message="Commenting is limited on your account right now.",
+            )
             post = await visible_post(session, post_id, principal.user_id)
             if post.moderation_state == "removed":
                 raise AppError(ErrorCode.FORBIDDEN, "Comments are closed on this post.")

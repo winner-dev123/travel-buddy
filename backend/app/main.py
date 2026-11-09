@@ -6,7 +6,7 @@ import logging
 import uuid
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import httpx
 from fastapi import Depends, FastAPI
@@ -50,6 +50,7 @@ from app.modules.identity.adapters.dev_idp import DevIdentityProvider
 from app.modules.identity.adapters.oidc import HttpJwksKeyProvider, IssuerConfig, OidcVerifier
 from app.modules.identity.api import auth_router, dev_idp_router, me_router
 from app.modules.identity.config import IdentitySettings
+from app.modules.identity.schemas import AccountRestriction
 from app.modules.identity.service import IdentityService
 from app.modules.location import service as location_service
 from app.modules.location.api import router as location_router
@@ -160,6 +161,7 @@ def create_app(
         clock=clock,
         browse_destination=location_service.browse_destination_summary,
         limiter=rate_limiter,
+        restrictions=account_restrictions,
     )
 
     job_runner = build_job_runner(
@@ -333,6 +335,19 @@ def build_job_runner(
     notifications_service.subscribe(router)
     handlers.update(notifications_service.make_handlers(database.sessionmaker))
     return JobRunner(sessionmaker=database.sessionmaker, router=router, handlers=handlers)
+
+
+async def account_restrictions(
+    session: AsyncSession, user_id: uuid.UUID, now: datetime
+) -> list[AccountRestriction]:
+    """Active restrictions for ``Me`` (trust_safety → identity, same layer; SAFE-013). Every
+    platform restriction can be appealed through support until in-app appeals exist."""
+    return [
+        AccountRestriction.model_validate(
+            {"kind": r.kind, "reason_code": r.reason_code, "until": r.until, "appealable": True}
+        )
+        for r in await trust_safety_service.active_restrictions(session, user_id, now=now)
+    ]
 
 
 def evidence_providers() -> dict[str, trust_safety_service.EvidenceProvider]:

@@ -53,6 +53,7 @@ class ErrorCode(StrEnum):
     AGE_RESTRICTED = "age_restricted"
     EMAIL_UNVERIFIED = "email_unverified"
     ACCOUNT_SUSPENDED = "account_suspended"
+    ACCOUNT_RESTRICTED = "account_restricted"
     BLOCKED_RELATIONSHIP = "blocked_relationship"
     CONNECTION_REQUIRED = "connection_required"
     CONNECTION_REQUEST_COOLDOWN = "connection_request_cooldown"
@@ -95,6 +96,7 @@ _DEFAULT_STATUS: Mapping[ErrorCode, HTTPStatus] = {
     ErrorCode.AGE_RESTRICTED: HTTPStatus.FORBIDDEN,
     ErrorCode.EMAIL_UNVERIFIED: HTTPStatus.FORBIDDEN,
     ErrorCode.ACCOUNT_SUSPENDED: HTTPStatus.FORBIDDEN,
+    ErrorCode.ACCOUNT_RESTRICTED: HTTPStatus.FORBIDDEN,
     ErrorCode.BLOCKED_RELATIONSHIP: HTTPStatus.FORBIDDEN,
     ErrorCode.CONNECTION_REQUIRED: HTTPStatus.FORBIDDEN,
     ErrorCode.CONNECTION_REQUEST_COOLDOWN: HTTPStatus.CONFLICT,

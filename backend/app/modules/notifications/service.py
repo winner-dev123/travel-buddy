@@ -135,6 +135,11 @@ async def notify_from_event(
                 "action": data.get("action"),
                 "target_type": target_type,
                 "target_id": str(target) if target else None,
+                **(
+                    {"restriction_kind": data["restriction_kind"]}
+                    if data.get("restriction_kind")
+                    else {}
+                ),
             },
             dedupe_key=f"moderation:{data.get('action_id') or event_id}",
         )

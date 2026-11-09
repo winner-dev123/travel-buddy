@@ -366,3 +366,92 @@ def test_suspension_revokes_sessions_and_reinstatement_restores_access(app: Live
     )
     assert reinstated.json()["status"] == "active"
     assert login().status_code == 200
+
+
+# ─────────────────────────────── restrictions (BL-1.28) ───────────────────────────────
+
+
+def _act(live: LiveApp, staff_token: str, **body: Any) -> Any:
+    return live.client.post(
+        "/v1/admin/moderation-actions",
+        headers=_admin(staff_token, **{"Idempotency-Key": str(uuid.uuid4())}),
+        json=body,
+    )
+
+
+@pytest.mark.req("SAFE-013", "ADM-002")
+def test_restrictions_are_shown_enforced_and_lifted(app: LiveApp) -> None:  # noqa: F811
+    offender, offender_id = _user(app)
+    moderator, _ = _staff(app)
+    base = {"target_type": "user", "target_id": offender_id, "reason_code": "spam"}
+    _problem(_act(app, moderator, **base, action="restrict"), 422, "validation_failed")
+    _problem(
+        _act(app, moderator, **base, action="warn", restriction_kind="posting_limited"),
+        422,
+        "validation_failed",
+    )
+    restricted = _act(app, moderator, **base, action="restrict", restriction_kind="posting_limited")
+    assert restricted.status_code == 201, restricted.text
+    assert_matches_contract(restricted.json(), "ModerationAction")
+    assert restricted.json()["restriction_kind"] == "posting_limited"
+
+    me = app.client.get("/v1/users/me", headers=_auth(offender)).json()
+    assert_matches_contract(me, "Me")
+    assert me["account"]["restrictions"] == [
+        {"kind": "posting_limited", "reason_code": "spam", "until": None, "appealable": True}
+    ]
+    _problem(_create(app, offender), 403, "account_restricted")
+    author, _ = _user(app)
+    post = _create(app, author).json()
+    comment = app.client.post(
+        f"/v1/posts/{post['id']}/comments",
+        headers={**_auth(offender), "Idempotency-Key": str(uuid.uuid4())},
+        json={"body": "Commenting is still allowed"},
+    )
+    assert comment.status_code == 201, comment.text
+
+    _tick(app)
+    notices = app.client.get(
+        "/v1/notifications", headers={**_auth(offender), "Accept-Language": "en"}
+    ).json()["data"]
+    assert [(n["type"], n["data"].get("restriction_kind")) for n in notices] == [
+        ("moderation_notice", "posting_limited")
+    ]
+
+    lifted = _act(app, moderator, **base, action="reinstate")
+    assert lifted.status_code == 201, lifted.text
+    me = app.client.get("/v1/users/me", headers=_auth(offender)).json()
+    assert me["account"]["restrictions"] == []
+    assert _create(app, offender).status_code == 201
+
+
+@pytest.mark.req("SAFE-013")
+def test_expired_restrictions_no_longer_apply(app: LiveApp) -> None:  # noqa: F811
+    offender, offender_id = _user(app)
+    moderator, _ = _staff(app)
+    restricted = _act(
+        app,
+        moderator,
+        target_type="user",
+        target_id=offender_id,
+        reason_code="harassment",
+        action="restrict",
+        restriction_kind="commenting_limited",
+    )
+    assert restricted.status_code == 201
+    db_scalar(
+        app.db_url,
+        "UPDATE moderation_actions SET expires_at = now() - interval '1 minute' "
+        "WHERE id = :i RETURNING 1",
+        i=uuid.UUID(restricted.json()["id"]),
+    )
+    me = app.client.get("/v1/users/me", headers=_auth(offender)).json()
+    assert me["account"]["restrictions"] == []
+    author, _ = _user(app)
+    post = _create(app, author).json()
+    comment = app.client.post(
+        f"/v1/posts/{post['id']}/comments",
+        headers={**_auth(offender), "Idempotency-Key": str(uuid.uuid4())},
+        json={"body": "Back to normal"},
+    )
+    assert comment.status_code == 201, comment.text

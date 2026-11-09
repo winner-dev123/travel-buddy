@@ -51,6 +51,7 @@ from app.modules.identity.models import (
     UserStatus,
 )
 from app.modules.identity.schemas import (
+    AccountRestriction,
     AuthResult,
     ConsentList,
     ConsentRecordOut,
@@ -79,6 +80,10 @@ DELETION_GRACE = timedelta(days=30)
 BrowseDestinationProvider = Callable[
     [AsyncSession, uuid.UUID, Sequence[str]], Awaitable[DestinationSummary | None]
 ]
+# Supplied by the composition root (trust_safety, same layer): active restrictions (SAFE-013).
+RestrictionsProvider = Callable[
+    [AsyncSession, uuid.UUID, datetime], Awaitable[list[AccountRestriction]]
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,9 +106,11 @@ class IdentityService:
         clock: Clock,
         browse_destination: BrowseDestinationProvider | None = None,
         limiter: RateLimiter | None = None,
+        restrictions: RestrictionsProvider | None = None,
     ) -> None:
         self._sessionmaker = sessionmaker
         self._limiter = limiter
+        self._restrictions = restrictions
         self._browse_destination = browse_destination
         self._verifier = verifier
         self._access_tokens = access_tokens
@@ -463,6 +470,11 @@ class IdentityService:
                     else None
                 ),
                 created_at=user.created_at,
+                restrictions=(
+                    await self._restrictions(session, user.id, now)
+                    if self._restrictions is not None
+                    else []
+                ),
             ),
             profile=bundle.profile,
             preferences=bundle.preferences,

@@ -6193,6 +6193,7 @@ components:
         - age_restricted
         - consent_required
         - account_suspended
+        - account_restricted
         - blocked_relationship
         - connection_required
         - connection_request_cooldown
@@ -6571,14 +6572,16 @@ components:
             account holder. A fully suspended account cannot obtain a session, so `suspended` appears only
             on the sign-in error and not here.
           items: { $ref: '#/components/schemas/AccountRestriction' }
+    RestrictionKind:
+      type: string
+      description: What a `restrict` moderation action limits (SAFE-013, docs/04 `moderation_actions.restriction_kind`).
+      enum: [posting_limited, commenting_limited, messaging_limited, connection_requests_limited, discovery_disabled, media_upload_limited]
     AccountRestriction:
       type: object
       additionalProperties: false
       required: [kind, reason_code, until, appealable]
       properties:
-        kind:
-          type: string
-          enum: [posting_limited, commenting_limited, messaging_limited, connection_requests_limited, discovery_disabled, media_upload_limited]
+        kind: { $ref: '#/components/schemas/RestrictionKind' }
         reason_code:
           type: string
           description: Moderation reason code (e.g. `spam`, `harassment`), localized for display by the client.
@@ -8979,9 +8982,19 @@ components:
         target_id: { $ref: '#/components/schemas/Uuid' }
         action: { $ref: '#/components/schemas/ModerationActionType' }
         reason_code: { type: string, maxLength: 40 }
+        restriction_kind:
+          $ref: '#/components/schemas/RestrictionKind'
+          description: Required when `action` is `restrict` (applies to users); not allowed otherwise.
         notes: { type: string, maxLength: 2000 }
         report_id: { $ref: '#/components/schemas/Uuid' }
         expires_at: { $ref: '#/components/schemas/Timestamp' }
+      if:
+        required: [action]
+        properties: { action: { const: restrict } }
+      then:
+        required: [restriction_kind]
+      else:
+        not: { required: [restriction_kind] }
     AdminResolveReportRequest:
       type: object
       additionalProperties: false
@@ -8992,7 +9005,7 @@ components:
         action: { $ref: '#/components/schemas/ModerationActionRequest' }
     ModerationAction:
       type: object
-      required: [id, scope, group_id, target_type, target_id, action, reason_code, notes, actor, report_id, expires_at, created_at]
+      required: [id, scope, group_id, target_type, target_id, action, restriction_kind, reason_code, notes, actor, report_id, expires_at, created_at]
       properties:
         id: { $ref: '#/components/schemas/Uuid' }
         scope: { type: string, enum: [platform, group] }
@@ -9000,6 +9013,10 @@ components:
         target_type: { $ref: '#/components/schemas/ReportTargetType' }
         target_id: { $ref: '#/components/schemas/Uuid' }
         action: { $ref: '#/components/schemas/ModerationActionType' }
+        restriction_kind:
+          anyOf:
+            - { $ref: '#/components/schemas/RestrictionKind' }
+            - { type: 'null' }
         reason_code: { type: string }
         notes: { type: [string, 'null'] }
         actor:

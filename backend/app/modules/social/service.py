@@ -149,6 +149,12 @@ class PostService:
             )
             if replay is not None:
                 return Post.model_validate(replay.body), True
+            await trust_safety.ensure_not_restricted(
+                session,
+                principal.user_id,
+                "posting_limited",
+                message="Posting is limited on your account right now.",
+            )
             ancestry = await _ancestry_or_422(session, request.destination_id)
             author = (await profiles.authors(session, [principal.user_id]))[principal.user_id]
             now = await session.scalar(select(func.now()))

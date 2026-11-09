@@ -11,6 +11,14 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.modules.profiles.schemas import UserSummary
 
 TargetType = Literal["post", "comment", "user", "message", "group", "challenge", "media"]
+RestrictionKind = Literal[
+    "posting_limited",
+    "commenting_limited",
+    "messaging_limited",
+    "connection_requests_limited",
+    "discovery_disabled",
+    "media_upload_limited",
+]
 ActionType = Literal[
     "remove_content",
     "restore_content",
@@ -58,6 +66,7 @@ class ModerationActionRequest(_Request):
     target_id: uuid.UUID
     action: ActionType
     reason_code: str = Field(max_length=40)
+    restriction_kind: RestrictionKind | None = None  # required for (and only for) ``restrict``
     notes: str | None = Field(default=None, max_length=2000)
     report_id: uuid.UUID | None = None
     expires_at: datetime | None = None
@@ -76,6 +85,7 @@ class ModerationActionOut(_Response):
     target_type: TargetType
     target_id: uuid.UUID
     action: ActionType
+    restriction_kind: RestrictionKind | None
     reason_code: str
     notes: str | None
     actor: UserSummary | None
