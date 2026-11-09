@@ -1,13 +1,14 @@
-# gitleaks configuration: default rules plus narrow allowlists for values that are
-# deliberately non-secret (labelled development-only defaults, test fixtures, and documented
-# example identifiers). Keep these specific; never allowlist whole source directories.
+# gitleaks configuration: default rules plus a narrow allowlist for values that are
+# deliberately non-secret (labelled development-only defaults, test fixtures and documented
+# example identifiers). Keep this list small and specific; never allowlist whole source
+# directories. (gitleaks v8.24 reads this legacy single-table form.)
 title = "Travel Buddy secret scanning"
 
 [extend]
 useDefault = true
 
-[[allowlists]]
-description = "Labelled development-only defaults and test fixtures"
+[allowlist]
+description = "Labelled development-only defaults, test fixtures and documented examples"
 paths = [
   '''^backend/tests/''',
   '''\.test\.tsx?$''',
@@ -17,18 +18,7 @@ regexes = [
   '''^dev-only-[a-z-]+$''',                 # e.g. backend CURSOR_SIGNING_KEY dev default
   '''^[a-z-]*development-only[a-z-]*$''',   # web dev session / mock token keys
   '''^travelbuddy-dev-secret$''',           # local MinIO password in docker-compose
+  # Exact example values flagged by generic-api-key (not credentials):
+  '''^5b8c7d0e-2f1a-4c39-9a51-0d6c2e7f8a90$''',  # Idempotency-Key example, docs/05
+  '''^lisbon-walk-28$''',                         # web mock post key, social.ts fixture
 ]
-
-[[allowlists]]
-description = "Request identifiers in documentation examples (UUIDs, not credentials)"
-regexTarget = "line"
-regexes = [
-  '''(?i)\b(Idempotency-Key|X-Request-ID)\s*:\s*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\s*$''',
-]
-
-[[allowlists]]
-description = "Web mock fixture record keys (kebab-case slugs such as 'lisbon-walk-28')"
-regexTarget = "line"
-condition = "AND"   # both the path and the line shape must match
-paths = ['''^packages/api-client/src/mock/fixtures/''']
-regexes = ['''^\s*\{ key: '[a-z0-9]+(?:-[a-z0-9]+)*', ''']
