@@ -386,3 +386,24 @@ async def _detail(
             "has_guides": row.has_guides,
         }
     )
+
+
+# ─────────────────────────────── for other modules ───────────────────────────────
+
+
+async def is_active(session: AsyncSession, destination_id: uuid.UUID) -> bool:
+    return bool(
+        await session.scalar(select(exists().where(DestinationRow.id == destination_id, _ACTIVE)))
+    )
+
+
+async def summaries_by_id(
+    session: AsyncSession, ids: Sequence[uuid.UUID], preferences: Sequence[str]
+) -> dict[uuid.UUID, DestinationSummary]:
+    """Localized summaries of the ACTIVE destinations among ``ids`` (hidden ones are omitted)."""
+    if not ids:
+        return {}
+    rows = (
+        await session.scalars(select(DestinationRow).where(DestinationRow.id.in_(ids), _ACTIVE))
+    ).all()
+    return {summary.id: summary for summary in await _summaries(session, rows, preferences)}

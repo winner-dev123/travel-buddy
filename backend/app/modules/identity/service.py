@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import secrets
 import uuid
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from datetime import timedelta
 
@@ -23,6 +24,7 @@ from app.core.security.access_tokens import AccessTokenService
 from app.core.security.principal import ROLE_PERMISSIONS, Permission, PlatformRole, Principal
 from app.core.time import Clock
 from app.modules.billing import service as billing_service
+from app.modules.destinations.schemas import DestinationSummary
 from app.modules.identity import repository as repo
 from app.modules.identity.adapters.oidc import OidcVerifier, VerifiedIdentity
 from app.modules.identity.config import IdentitySettings
@@ -72,6 +74,11 @@ from app.modules.profiles.schemas import (
 
 DELETION_GRACE = timedelta(days=30)
 
+# Supplied by the composition root (location module, same layer): the user's browse destination.
+BrowseDestinationProvider = Callable[
+    [AsyncSession, uuid.UUID, Sequence[str]], Awaitable[DestinationSummary | None]
+]
+
 
 @dataclass(frozen=True, slots=True)
 class LegalRequirements:
@@ -91,8 +98,10 @@ class IdentityService:
         access_tokens: AccessTokenService,
         settings: IdentitySettings,
         clock: Clock,
+        browse_destination: BrowseDestinationProvider | None = None,
     ) -> None:
         self._sessionmaker = sessionmaker
+        self._browse_destination = browse_destination
         self._verifier = verifier
         self._access_tokens = access_tokens
         self._settings = settings
@@ -414,6 +423,11 @@ class IdentityService:
             permissions |= ROLE_PERMISSIONS[role]
         bundle = await profiles_service.get_profile_bundle(session, user.id)
         entitlements = await billing_service.get_entitlements(session, user.id, at=now)
+        browse = (
+            await self._browse_destination(session, user.id, [bundle.preferences.ui_locale])
+            if self._browse_destination is not None
+            else None
+        )
         return Me(
             account=MyAccount(
                 id=user.id,
@@ -437,7 +451,7 @@ class IdentityService:
             roles=roles,
             permissions=sorted(permissions),
             onboarding_completed=bundle.onboarding_completed,
-            browse_destination=None,
+            browse_destination=browse,
             entitlements=entitlements,
         )
 

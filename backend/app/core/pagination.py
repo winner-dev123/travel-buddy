@@ -28,10 +28,17 @@ _CLOCK_SKEW_SECONDS = 60
 
 
 class PageInfo(BaseModel):
+    """Contract ``PageInfo``: cursor lists (destinations, comments, ...)."""
+
     model_config = ConfigDict(frozen=True)
 
     next_cursor: str | None = None
     has_more: bool = False
+
+
+class FeedPageInfo(PageInfo):
+    """Contract ``FeedPageInfo``: ranked lists whose snapshot can expire."""
+
     reset: bool = Field(
         default=False,
         description="True when the server discarded an expired snapshot and restarted the list.",

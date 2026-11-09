@@ -8,6 +8,7 @@ from app.core.pagination import (
     MAX_CURSOR_LENGTH,
     MAX_LIMIT,
     CursorCodec,
+    FeedPageInfo,
     Page,
     PageInfo,
     clamp_limit,
@@ -98,7 +99,13 @@ def test_clamp_limit() -> None:
 
 def test_page_envelope_shape() -> None:
     page = Page[int](data=[1, 2], page=PageInfo(next_cursor="c", has_more=True))
-    assert page.model_dump() == {
-        "data": [1, 2],
-        "page": {"next_cursor": "c", "has_more": True, "reset": False},
+    # Contract PageInfo has no `reset`; that field belongs to FeedPageInfo only.
+    assert page.model_dump() == {"data": [1, 2], "page": {"next_cursor": "c", "has_more": True}}
+
+
+def test_feed_page_info_adds_reset() -> None:
+    assert FeedPageInfo(next_cursor=None, has_more=False, reset=True).model_dump() == {
+        "next_cursor": None,
+        "has_more": False,
+        "reset": True,
     }

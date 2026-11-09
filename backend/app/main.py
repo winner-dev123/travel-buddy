@@ -35,6 +35,8 @@ from app.modules.identity.adapters.oidc import HttpJwksKeyProvider, IssuerConfig
 from app.modules.identity.api import auth_router, dev_idp_router, me_router
 from app.modules.identity.config import IdentitySettings
 from app.modules.identity.service import IdentityService
+from app.modules.location import service as location_service
+from app.modules.location.api import router as location_router
 from app.modules.platform.api import AfterResponseTickMiddleware, internal_router
 from app.modules.platform.service import EventRouter, JobHandler, JobRunner
 from app.modules.web_cache import service as web_cache_service
@@ -119,6 +121,7 @@ def create_app(
         access_tokens=access_tokens,
         settings=identity_settings,
         clock=clock,
+        browse_destination=location_service.browse_destination_summary,
     )
 
     job_runner = build_job_runner(
@@ -147,6 +150,9 @@ def create_app(
     app.state.cursor_codec = cursor_codec
     app.state.destination_service = DestinationService(
         sessionmaker=database.sessionmaker, cursors=cursor_codec
+    )
+    app.state.location_service = location_service.LocationService(
+        sessionmaker=database.sessionmaker
     )
     app.state.readiness_checks = (
         dict(readiness_checks)
@@ -196,6 +202,7 @@ def create_app(
     app.include_router(auth_router)
     app.include_router(me_router)
     app.include_router(destinations_router)
+    app.include_router(location_router)
     app.include_router(internal_router)
     if dev_idp is not None:  # absent → 404 (contract: not available in this environment)
         app.include_router(dev_idp_router)

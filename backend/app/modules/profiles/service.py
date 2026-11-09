@@ -458,3 +458,9 @@ async def complete_onboarding(session: AsyncSession, user_id: uuid.UUID, *, now:
             event_type="user.onboarding_completed",
             payload={"user_id": str(user_id)},
         )
+
+
+async def has_discovery_consent(session: AsyncSession, user_id: uuid.UUID) -> bool:
+    """A current ``traveler_discovery`` consent (mirrored from the identity consent ledger)."""
+    privacy = await session.get(UserPrivacySettings, user_id)
+    return privacy is not None and privacy.discovery_consent_version is not None

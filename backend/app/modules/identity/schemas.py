@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, StringConstraints
 
 from app.core.security.principal import Permission, PlatformRole
 from app.modules.billing.schemas import Entitlements
+from app.modules.destinations.schemas import DestinationSummary
 from app.modules.profiles.schemas import MyProfile, Preferences, PrivacySettings
 
 ClientPlatform = Literal["ios", "android", "web"]
@@ -83,7 +84,7 @@ class Me(_Response):
     roles: list[PlatformRole]
     permissions: list[Permission]
     onboarding_completed: bool
-    browse_destination: None  # DestinationSummary once destinations land (BL-1.05/1.07)
+    browse_destination: DestinationSummary | None
     entitlements: Entitlements
 
 
