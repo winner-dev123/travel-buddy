@@ -124,5 +124,68 @@
   "notFound": {
     "title": "Page not found",
     "goHome": "Go to Home"
+  },
+  "auth": {
+    "signInTitle": "Sign in",
+    "createAccountTitle": "Create your account",
+    "email": "Email",
+    "password": "Password",
+    "passwordHint": "At least 8 characters.",
+    "signIn": "Sign in",
+    "createAccount": "Create account",
+    "switchToSignUp": "New here? Create an account",
+    "switchToSignIn": "Already have an account? Sign in",
+    "confirmationSent": "Check your inbox and open the confirmation link, then sign in here.",
+    "devPersonaTitle": "Development sign-in",
+    "devPersonaHint": "Uses the backend's development identity provider. Not available in release builds.",
+    "name": "Name",
+    "continueDev": "Continue",
+    "errors": {
+      "invalid_credentials": "The email or password is incorrect.",
+      "email_not_confirmed": "Confirm your email first. We sent you a link.",
+      "weak_password": "Choose a stronger password.",
+      "rate_limited": "Too many attempts. Wait a minute and try again.",
+      "signup_disabled": "New accounts cannot be created right now.",
+      "network": "No connection. Check your internet and try again.",
+      "unknown": "Something went wrong. Please try again.",
+      "missingFields": "Enter your email and password.",
+      "notConfigured": "Sign-in is not configured in this build."
+    }
+  },
+  "registration": {
+    "title": "Almost there",
+    "intro": "Travel Buddy is for adults. We only keep your birth year.",
+    "birthDate": "Date of birth (YYYY-MM-DD)",
+    "acceptTerms": "I accept the Terms of Service",
+    "acceptPrivacy": "I accept the Privacy Policy",
+    "submit": "Create my account",
+    "errors": {
+      "birthDateFormat": "Use the format YYYY-MM-DD, for example 1995-05-17.",
+      "consentsRequired": "Accept the terms and the privacy policy to continue.",
+      "age_restricted": "You must be at least 18 to use Travel Buddy.",
+      "consent_required": "The terms changed. Review and accept the current version.",
+      "conflict": "This email already has an account. Sign in instead.",
+      "expired": "Your sign-in expired. Sign in again."
+    },
+    "readTerms": "Read the Terms of Service",
+    "readPrivacy": "Read the Privacy Policy"
+  },
+  "account": {
+    "signedOutTitle": "Your profile",
+    "signedOutBody": "Sign in to see your profile and settings.",
+    "goToSignIn": "Sign in",
+    "displayName": "Display name",
+    "handle": "Handle",
+    "email": "Email",
+    "verified": "Verified",
+    "notVerified": "Not verified",
+    "save": "Save",
+    "saved": "Saved",
+    "signOut": "Sign out",
+    "privacyHeading": "Privacy",
+    "discoveryOff": "Traveler discovery is off",
+    "discoveryOn": "Traveler discovery is on",
+    "indexingOff": "Search engines cannot index your profile",
+    "indexingOn": "Search engines may index your public profile"
   }
 }

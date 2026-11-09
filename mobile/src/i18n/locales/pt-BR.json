@@ -125,5 +125,68 @@
   "notFound": {
     "title": "Página não encontrada",
     "goHome": "Ir para o Início"
+  },
+  "auth": {
+    "signInTitle": "Entrar",
+    "createAccountTitle": "Crie sua conta",
+    "email": "E-mail",
+    "password": "Senha",
+    "passwordHint": "Pelo menos 8 caracteres.",
+    "signIn": "Entrar",
+    "createAccount": "Criar conta",
+    "switchToSignUp": "Novo por aqui? Crie uma conta",
+    "switchToSignIn": "Já tem conta? Entre",
+    "confirmationSent": "Confira sua caixa de entrada e abra o link de confirmação; depois entre aqui.",
+    "devPersonaTitle": "Login de desenvolvimento",
+    "devPersonaHint": "Usa o provedor de identidade de desenvolvimento do backend. Indisponível em versões publicadas.",
+    "name": "Nome",
+    "continueDev": "Continuar",
+    "errors": {
+      "invalid_credentials": "E-mail ou senha incorretos.",
+      "email_not_confirmed": "Confirme seu e-mail primeiro. Enviamos um link.",
+      "weak_password": "Escolha uma senha mais forte.",
+      "rate_limited": "Muitas tentativas. Aguarde um minuto e tente de novo.",
+      "signup_disabled": "Não é possível criar contas novas agora.",
+      "network": "Sem conexão. Verifique sua internet e tente de novo.",
+      "unknown": "Algo deu errado. Tente de novo.",
+      "missingFields": "Informe seu e-mail e sua senha.",
+      "notConfigured": "O login não está configurado nesta versão."
+    }
+  },
+  "registration": {
+    "title": "Quase lá",
+    "intro": "O Travel Buddy é para adultos. Guardamos apenas o seu ano de nascimento.",
+    "birthDate": "Data de nascimento (AAAA-MM-DD)",
+    "acceptTerms": "Aceito os Termos de Serviço",
+    "acceptPrivacy": "Aceito a Política de Privacidade",
+    "submit": "Criar minha conta",
+    "errors": {
+      "birthDateFormat": "Use o formato AAAA-MM-DD, por exemplo 1995-05-17.",
+      "consentsRequired": "Aceite os termos e a política de privacidade para continuar.",
+      "age_restricted": "Você precisa ter pelo menos 18 anos para usar o Travel Buddy.",
+      "consent_required": "Os termos mudaram. Revise e aceite a versão atual.",
+      "conflict": "Este e-mail já tem uma conta. Entre com ela.",
+      "expired": "Seu login expirou. Entre novamente."
+    },
+    "readTerms": "Ler os Termos de Serviço",
+    "readPrivacy": "Ler a Política de Privacidade"
+  },
+  "account": {
+    "signedOutTitle": "Seu perfil",
+    "signedOutBody": "Entre para ver seu perfil e suas configurações.",
+    "goToSignIn": "Entrar",
+    "displayName": "Nome de exibição",
+    "handle": "Usuário",
+    "email": "E-mail",
+    "verified": "Verificado",
+    "notVerified": "Não verificado",
+    "save": "Salvar",
+    "saved": "Salvo",
+    "signOut": "Sair",
+    "privacyHeading": "Privacidade",
+    "discoveryOff": "A descoberta de viajantes está desativada",
+    "discoveryOn": "A descoberta de viajantes está ativada",
+    "indexingOff": "Buscadores não podem indexar seu perfil",
+    "indexingOn": "Buscadores podem indexar seu perfil público"
   }
 }

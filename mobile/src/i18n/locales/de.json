@@ -124,5 +124,68 @@
   "notFound": {
     "title": "Seite nicht gefunden",
     "goHome": "Zur Startseite"
+  },
+  "auth": {
+    "signInTitle": "Anmelden",
+    "createAccountTitle": "Konto erstellen",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "passwordHint": "Mindestens 8 Zeichen.",
+    "signIn": "Anmelden",
+    "createAccount": "Konto erstellen",
+    "switchToSignUp": "Neu hier? Konto erstellen",
+    "switchToSignIn": "Schon ein Konto? Anmelden",
+    "confirmationSent": "Öffne den Bestätigungslink in deinem Postfach und melde dich dann hier an.",
+    "devPersonaTitle": "Entwicklungs-Anmeldung",
+    "devPersonaHint": "Nutzt den Entwicklungs-Identitätsanbieter des Backends. In veröffentlichten Versionen nicht verfügbar.",
+    "name": "Name",
+    "continueDev": "Weiter",
+    "errors": {
+      "invalid_credentials": "E-Mail oder Passwort ist falsch.",
+      "email_not_confirmed": "Bestätige zuerst deine E-Mail. Wir haben dir einen Link geschickt.",
+      "weak_password": "Wähle ein stärkeres Passwort.",
+      "rate_limited": "Zu viele Versuche. Warte eine Minute und versuche es erneut.",
+      "signup_disabled": "Neue Konten können gerade nicht erstellt werden.",
+      "network": "Keine Verbindung. Prüfe deine Internetverbindung und versuche es erneut.",
+      "unknown": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
+      "missingFields": "Gib deine E-Mail und dein Passwort ein.",
+      "notConfigured": "Die Anmeldung ist in diesem Build nicht konfiguriert."
+    }
+  },
+  "registration": {
+    "title": "Fast geschafft",
+    "intro": "Travel Buddy ist für Erwachsene. Wir speichern nur dein Geburtsjahr.",
+    "birthDate": "Geburtsdatum (JJJJ-MM-TT)",
+    "acceptTerms": "Ich akzeptiere die Nutzungsbedingungen",
+    "acceptPrivacy": "Ich akzeptiere die Datenschutzerklärung",
+    "submit": "Mein Konto erstellen",
+    "errors": {
+      "birthDateFormat": "Nutze das Format JJJJ-MM-TT, zum Beispiel 1995-05-17.",
+      "consentsRequired": "Akzeptiere die Nutzungsbedingungen und die Datenschutzerklärung, um fortzufahren.",
+      "age_restricted": "Du musst mindestens 18 Jahre alt sein, um Travel Buddy zu nutzen.",
+      "consent_required": "Die Bedingungen haben sich geändert. Prüfe und akzeptiere die aktuelle Version.",
+      "conflict": "Für diese E-Mail gibt es bereits ein Konto. Melde dich an.",
+      "expired": "Deine Anmeldung ist abgelaufen. Melde dich erneut an."
+    },
+    "readTerms": "Nutzungsbedingungen lesen",
+    "readPrivacy": "Datenschutzerklärung lesen"
+  },
+  "account": {
+    "signedOutTitle": "Dein Profil",
+    "signedOutBody": "Melde dich an, um dein Profil und deine Einstellungen zu sehen.",
+    "goToSignIn": "Anmelden",
+    "displayName": "Anzeigename",
+    "handle": "Benutzername",
+    "email": "E-Mail",
+    "verified": "Bestätigt",
+    "notVerified": "Nicht bestätigt",
+    "save": "Speichern",
+    "saved": "Gespeichert",
+    "signOut": "Abmelden",
+    "privacyHeading": "Privatsphäre",
+    "discoveryOff": "Reisenden-Entdeckung ist aus",
+    "discoveryOn": "Reisenden-Entdeckung ist an",
+    "indexingOff": "Suchmaschinen dürfen dein Profil nicht indexieren",
+    "indexingOn": "Suchmaschinen dürfen dein öffentliches Profil indexieren"
   }
 }

@@ -63,9 +63,10 @@ describe('app navigation shell', () => {
     ).toBeTruthy();
   });
 
-  it('routes to the auth and onboarding placeholders', async () => {
+  it('routes to sign-in (explicit error without Supabase settings) and onboarding', async () => {
     await renderRouter(routes, { initialUrl: '/sign-in' });
-    expect(screen.getByTestId('phase-placeholder-auth')).toBeTruthy();
+    expect(screen.getByTestId('sign-in-screen')).toBeTruthy();
+    expect(screen.getByTestId('sign-in-misconfigured')).toBeTruthy();
 
     await renderRouter(routes, { initialUrl: '/onboarding' });
     expect(screen.getByTestId('phase-placeholder-onboarding')).toBeTruthy();

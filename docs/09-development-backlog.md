@@ -78,7 +78,7 @@ Web-workstream items (Next.js app, BFF, web admin) are tracked by the web workst
 | BL-1.16 | In-app notifications (center only) | S | 1.09 | NOTIF-001 |
 | BL-1.17 | Account deletion saga (grace period) | M | 1.03 | AUTH-010 |
 | BL-1.18 | Retention jobs (sessions, notifications, idempotency, outbox, jobs) | S | 1.09 | SAFE-009 |
-| BL-1.19 | Mobile: auth + onboarding flow | L | 1.03, 0.17 | PROF-001, PROF-002 |
+| BL-1.19 | Mobile: auth + onboarding flow | L | 1.03, 0.17 | PROF-001, PROF-002 | 🟡 Partial: Supabase email/password sign-in and sign-up (publishable key only, ADR-0020), dev-IdP sign-in for local builds, token exchange, age gate + consents registration, session restore from secure storage, profile display-name edit, sign-out. Verified on an Android emulator against the local backend and staging. Pending: Google/Apple (needs credentials), onboarding steps, transparent access-token refresh |
 | BL-1.20 | Mobile: feed tabs, filters, post detail, composer with location precision | L | 1.13 | FEED-002/003, POST-002 |
 | BL-1.21 | Mobile: profile, settings, privacy center, block/report flows | M | 1.04, 1.12, 1.14 | PROF-007, SAFE-001/002 |
 | BL-1.22 | Admin web: minimal moderation console (queue, review, actions) | M | 1.14 | ADM-001..003 |
