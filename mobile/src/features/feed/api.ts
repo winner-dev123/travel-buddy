@@ -13,14 +13,35 @@ import type {
 
 export const feedKeys = {
   all: ['feed'] as const,
-  list: (tab: FeedTab | 'guest') => ['feed', tab] as const,
+  list: (tab: FeedTab | 'guest', ...rest: (string | null | undefined)[]) =>
+    ['feed', tab, ...rest] as const,
   post: (id: string) => ['post', id] as const,
   comments: (id: string) => ['post', id, 'comments'] as const,
 };
 
+export interface FeedOptions {
+  /** Coarse device position (`lat,lng`) for the Nearby tab. */
+  near?: string;
+  radiusKm?: number;
+  categories?: PostKind[];
+}
+
 /** `GET /v1/feed` (signed in) — the server explains its fallback choice in `context`. */
-export function fetchFeed(client: ApiClient, tab: FeedTab, cursor?: string): Promise<FeedPage> {
-  return client.get<FeedPage>('/v1/feed', { query: { tab, cursor, limit: 20 } });
+export function fetchFeed(
+  client: ApiClient,
+  tab: FeedTab,
+  cursor?: string,
+  options: FeedOptions = {},
+): Promise<FeedPage> {
+  return client.get<FeedPage>('/v1/feed', {
+    query: {
+      tab,
+      cursor,
+      limit: 20,
+      ...(options.near ? { near: options.near, radius_km: options.radiusKm ?? 10 } : {}),
+      ...(options.categories?.length ? { category: options.categories } : {}),
+    },
+  });
 }
 
 /** `GET /v1/public/posts` — guest mode (public stories only, capped at three pages). */

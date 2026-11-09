@@ -254,7 +254,8 @@
     "title": "Historias de viaje",
     "tabs": {
       "for_you": "Para ti",
-      "following": "Siguiendo"
+      "following": "Siguiendo",
+      "nearby": "Cerca"
     },
     "source": {
       "gps": "Historias cerca de ti en {{place}}",
@@ -267,7 +268,17 @@
     "guestNotice": "Estás viendo historias públicas. Inicia sesión para reaccionar, comentar y compartir las tuyas.",
     "empty": "Aún no hay historias. Sé el primero en compartir un consejo.",
     "emptyFollowing": "Sigue a otros viajeros para ver sus historias aquí.",
-    "error": "No pudimos cargar las historias. Desliza hacia abajo para reintentar."
+    "error": "No pudimos cargar las historias. Desliza hacia abajo para reintentar.",
+    "filters": {
+      "all": "Todo"
+    },
+    "nearby": {
+      "locating": "Buscando tu ciudad…",
+      "denied": "Permite el acceso a la ubicación para ver historias de la ciudad en la que estás. Puedes seguir viendo Para ti.",
+      "unavailable": "No pudimos obtener tu ubicación ahora. Inténtalo en un momento.",
+      "uncovered": "Aún no tenemos historias de esta zona. Prueba Para ti.",
+      "privacy": "Tu ubicación aproximada solo se usa para elegir tu ciudad. No se guarda ni se muestra a nadie."
+    }
   },
   "post": {
     "title": "Historia",

@@ -252,7 +252,8 @@
     "title": "Travel stories",
     "tabs": {
       "for_you": "For you",
-      "following": "Following"
+      "following": "Following",
+      "nearby": "Nearby"
     },
     "source": {
       "gps": "Stories near you in {{place}}",
@@ -265,7 +266,17 @@
     "guestNotice": "You're browsing public stories. Sign in to react, comment and share your own.",
     "empty": "No stories yet. Be the first to share a tip.",
     "emptyFollowing": "Follow travellers to see their stories here.",
-    "error": "We couldn't load stories. Pull down to try again."
+    "error": "We couldn't load stories. Pull down to try again.",
+    "filters": {
+      "all": "All"
+    },
+    "nearby": {
+      "locating": "Finding your city…",
+      "denied": "Allow location access to see stories from the city you're in. You can still browse For you.",
+      "unavailable": "We couldn't get your location right now. Try again in a moment.",
+      "uncovered": "We don't have stories for this area yet. Try For you.",
+      "privacy": "Your approximate location is used only to pick your city. It isn't stored or shown to anyone."
+    }
   },
   "post": {
     "title": "Story",

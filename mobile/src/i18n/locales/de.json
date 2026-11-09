@@ -252,7 +252,8 @@
     "title": "Reisegeschichten",
     "tabs": {
       "for_you": "Für dich",
-      "following": "Gefolgt"
+      "following": "Gefolgt",
+      "nearby": "In der Nähe"
     },
     "source": {
       "gps": "Geschichten in deiner Nähe in {{place}}",
@@ -265,7 +266,17 @@
     "guestNotice": "Du siehst öffentliche Geschichten. Melde dich an, um zu reagieren, zu kommentieren und eigene zu teilen.",
     "empty": "Noch keine Geschichten. Teile als Erste:r einen Tipp.",
     "emptyFollowing": "Folge Reisenden, um ihre Geschichten hier zu sehen.",
-    "error": "Geschichten konnten nicht geladen werden. Zum Aktualisieren nach unten ziehen."
+    "error": "Geschichten konnten nicht geladen werden. Zum Aktualisieren nach unten ziehen.",
+    "filters": {
+      "all": "Alle"
+    },
+    "nearby": {
+      "locating": "Deine Stadt wird ermittelt …",
+      "denied": "Erlaube den Standortzugriff, um Geschichten aus deiner Stadt zu sehen. Unter „Für dich“ kannst du weiterstöbern.",
+      "unavailable": "Dein Standort ist gerade nicht verfügbar. Versuche es gleich noch einmal.",
+      "uncovered": "Für diese Gegend gibt es noch keine Geschichten. Versuche „Für dich“.",
+      "privacy": "Dein ungefährer Standort dient nur dazu, deine Stadt zu bestimmen. Er wird weder gespeichert noch anderen gezeigt."
+    }
   },
   "post": {
     "title": "Geschichte",

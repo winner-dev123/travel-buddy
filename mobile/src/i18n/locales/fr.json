@@ -254,7 +254,8 @@
     "title": "Récits de voyage",
     "tabs": {
       "for_you": "Pour vous",
-      "following": "Abonnements"
+      "following": "Abonnements",
+      "nearby": "À proximité"
     },
     "source": {
       "gps": "Récits près de vous à {{place}}",
@@ -267,7 +268,17 @@
     "guestNotice": "Vous consultez des récits publics. Connectez-vous pour réagir, commenter et partager les vôtres.",
     "empty": "Aucun récit pour l'instant. Soyez le premier à partager une astuce.",
     "emptyFollowing": "Suivez des voyageurs pour voir leurs récits ici.",
-    "error": "Impossible de charger les récits. Tirez vers le bas pour réessayer."
+    "error": "Impossible de charger les récits. Tirez vers le bas pour réessayer.",
+    "filters": {
+      "all": "Tout"
+    },
+    "nearby": {
+      "locating": "Recherche de votre ville…",
+      "denied": "Autorisez l'accès à la localisation pour voir les récits de la ville où vous êtes. Vous pouvez toujours parcourir Pour vous.",
+      "unavailable": "Impossible d'obtenir votre position pour le moment. Réessayez dans un instant.",
+      "uncovered": "Nous n'avons pas encore de récits pour cette zone. Essayez Pour vous.",
+      "privacy": "Votre position approximative sert uniquement à choisir votre ville. Elle n'est ni enregistrée ni montrée à qui que ce soit."
+    }
   },
   "post": {
     "title": "Récit",

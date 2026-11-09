@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useSessionStore } from '@/auth/sessionStore';
 import type { Me } from '@/auth/types';
 import type { FeedPage, Post } from '@/features/feed/types';
+import { ApiProblem } from '@/api';
 import { i18n } from '@/i18n';
 
 import Compose from '../app/compose';
@@ -21,7 +22,16 @@ const mockApi = {
 };
 const mockRouter = { push: jest.fn(), back: jest.fn() };
 
+let mockPermission = 'granted';
 jest.mock('@/api', () => ({ ...jest.requireActual('@/api'), getApiClient: () => mockApi }));
+jest.mock('expo-location', () => ({
+  requestForegroundPermissionsAsync: jest.fn(async () => ({ status: mockPermission })),
+  getLastKnownPositionAsync: jest.fn(async () => ({
+    coords: { latitude: 38.72231, longitude: -9.13934 },
+  })),
+  getCurrentPositionAsync: jest.fn(),
+  Accuracy: { Low: 2 },
+}));
 jest.mock('expo-router', () => ({
   useRouter: () => mockRouter,
   useLocalSearchParams: () => ({ id: 'p1' }),
@@ -159,6 +169,65 @@ describe('home feed (signed in)', () => {
     await fireEvent.press(screen.getByTestId('post-like-p1'));
     await waitFor(() => expect(mockApi.post).toHaveBeenCalled());
     await waitFor(() => expect(screen.getByTestId('post-likes-p1')).toHaveTextContent('2'));
+  });
+});
+
+describe('nearby and filters', () => {
+  beforeEach(() => {
+    mockPermission = 'granted';
+    useSessionStore.getState().setSignedIn(me);
+    mockApi.get.mockImplementation(async () => page([post('n1')]));
+  });
+
+  it('sends only a coarse position for the Nearby tab', async () => {
+    await renderScreen(<Home />);
+    await screen.findByText('Story n1');
+    await fireEvent.press(screen.getByTestId('feed-tab-nearby'));
+    await waitFor(() =>
+      expect(mockApi.get).toHaveBeenCalledWith('/v1/feed', {
+        query: { tab: 'nearby', cursor: undefined, limit: 20, near: '38.72,-9.14', radius_km: 10 },
+      }),
+    );
+  });
+
+  it('explains a denied permission without calling the feed', async () => {
+    mockPermission = 'denied';
+    await renderScreen(<Home />);
+    await screen.findByText('Story n1');
+    await fireEvent.press(screen.getByTestId('feed-tab-nearby'));
+    expect(await screen.findByTestId('feed-nearby-denied')).toBeTruthy();
+    expect(mockApi.get).not.toHaveBeenCalledWith(
+      '/v1/feed',
+      expect.objectContaining({ query: expect.objectContaining({ tab: 'nearby' }) }),
+    );
+  });
+
+  it('tells the user when the area is not covered yet', async () => {
+    mockApi.get.mockImplementation(async (_path: string, options: { query: { tab: string } }) => {
+      if (options.query.tab === 'nearby') {
+        throw new ApiProblem(
+          { type: 'x', title: 'No', status: 422, code: 'location_unresolvable' },
+          'req-1',
+        );
+      }
+      return page([post('n1')]);
+    });
+    await renderScreen(<Home />);
+    await screen.findByText('Story n1');
+    await fireEvent.press(screen.getByTestId('feed-tab-nearby'));
+    expect(await screen.findByTestId('feed-nearby-uncovered')).toBeTruthy();
+    expect(screen.queryByTestId('feed-error')).toBeNull();
+  });
+
+  it('filters by story type', async () => {
+    await renderScreen(<Home />);
+    await screen.findByText('Story n1');
+    await fireEvent.press(screen.getByTestId('feed-filter-tip'));
+    await waitFor(() =>
+      expect(mockApi.get).toHaveBeenCalledWith('/v1/feed', {
+        query: { tab: 'for_you', cursor: undefined, limit: 20, category: ['tip'] },
+      }),
+    );
   });
 });
 

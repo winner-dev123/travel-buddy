@@ -8,20 +8,22 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getApiClient } from '@/api';
+import { ApiProblem, getApiClient } from '@/api';
 import { useSessionStore } from '@/auth/sessionStore';
 import { FeatureGate } from '@/components/FeatureGate';
 import { Button, Notice } from '@/components/Form';
 import { accountKeys, unreadCount } from '@/features/account/api';
 import { feedKeys, fetchFeed, fetchPublicPosts } from '@/features/feed/api';
 import { PostCard } from '@/features/feed/PostCard';
-import type { FeedPage, Post } from '@/features/feed/types';
+import { getCoarsePosition } from '@/features/feed/location';
+import type { FeedPage, Post, PostKind } from '@/features/feed/types';
 import { useAppTheme } from '@/theme/useAppTheme';
 
 /** SCR-020 Home: destination-based travel feed (Phase 1). */
@@ -33,7 +35,14 @@ export default function HomeScreen() {
   );
 }
 
-const TABS = ['for_you', 'following'] as const;
+const TABS = ['for_you', 'nearby', 'following'] as const;
+const FILTERS: (PostKind | null)[] = [
+  null,
+  'tip',
+  'experience',
+  'attraction_recommendation',
+  'restaurant_recommendation',
+];
 type HomeTab = (typeof TABS)[number];
 
 function HomeFeed() {
@@ -43,18 +52,34 @@ function HomeFeed() {
   const status = useSessionStore((state) => state.status);
   const signedIn = status === 'signed_in';
   const [tab, setTab] = useState<HomeTab>('for_you');
+  const [category, setCategory] = useState<PostKind | null>(null);
+  const nearby = signedIn && tab === 'nearby';
+
+  // Asked only when the user opens Nearby (LOC-001): no location prompt at launch.
+  const position = useQuery({
+    queryKey: ['device', 'coarse-position'],
+    queryFn: getCoarsePosition,
+    enabled: nearby,
+    staleTime: 5 * 60_000,
+  });
+  const near = position.data?.status === 'granted' ? position.data.near : undefined;
 
   const query = useInfiniteQuery({
-    queryKey: feedKeys.list(signedIn ? tab : 'guest'),
+    queryKey: feedKeys.list(signedIn ? tab : 'guest', near, category),
     queryFn: ({ pageParam }) =>
       signedIn
-        ? fetchFeed(getApiClient(), tab, pageParam)
+        ? fetchFeed(getApiClient(), tab, pageParam, {
+            near: nearby ? near : undefined,
+            categories: category ? [category] : undefined,
+          })
         : fetchPublicPosts(getApiClient(), pageParam),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last: FeedPage) =>
       last.page.has_more ? (last.page.next_cursor ?? undefined) : undefined,
-    enabled: status !== 'restoring',
+    enabled: status !== 'restoring' && (!nearby || near !== undefined),
   });
+  const uncovered =
+    query.error instanceof ApiProblem && query.error.code === 'location_unresolvable';
 
   // A snapshot reset means the ranking was recomputed: start over instead of appending.
   const pages = query.data?.pages ?? [];
@@ -143,6 +168,61 @@ function HomeFeed() {
           {t('feed.guestNotice')}
         </Notice>
       )}
+      {signedIn ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chips}
+          testID="feed-filters"
+        >
+          {FILTERS.map((value) => {
+            const selected = value === category;
+            return (
+              <Pressable
+                key={value ?? 'all'}
+                onPress={() => setCategory(value)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+                style={[
+                  styles.filter,
+                  {
+                    backgroundColor: selected ? theme.colors.infoSurface : theme.colors.background,
+                    borderColor: selected ? theme.colors.primary : theme.colors.divider,
+                  },
+                ]}
+                testID={`feed-filter-${value ?? 'all'}`}
+              >
+                <Text style={[theme.typography.caption, { color: theme.colors.textPrimary }]}>
+                  {value ? t(`post.kinds.${value}`) : t('feed.filters.all')}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      ) : null}
+      {nearby ? (
+        position.isPending ? (
+          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+            {t('feed.nearby.locating')}
+          </Text>
+        ) : position.data?.status === 'denied' ? (
+          <Notice tone="info" testID="feed-nearby-denied">
+            {t('feed.nearby.denied')}
+          </Notice>
+        ) : position.data?.status === 'unavailable' ? (
+          <Notice tone="info" testID="feed-nearby-unavailable">
+            {t('feed.nearby.unavailable')}
+          </Notice>
+        ) : uncovered ? (
+          <Notice tone="info" testID="feed-nearby-uncovered">
+            {t('feed.nearby.uncovered')}
+          </Notice>
+        ) : (
+          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+            {t('feed.nearby.privacy')}
+          </Text>
+        )
+      ) : null}
       {context ? (
         <Text
           style={[theme.typography.caption, { color: theme.colors.textSecondary }]}
@@ -194,9 +274,10 @@ function HomeFeed() {
           />
         }
         ListEmptyComponent={
-          query.isPending ? (
+          query.isLoading || (nearby && position.isPending) ? (
             <ActivityIndicator color={theme.colors.primary} testID="feed-loading" />
-          ) : query.isError ? (
+          ) : nearby &&
+            (uncovered || position.data?.status !== 'granted') ? undefined : query.isError ? (
             <Notice tone="error" testID="feed-error">
               {t('feed.error')}
             </Notice>
@@ -232,6 +313,7 @@ function HomeFeed() {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   chips: { flexDirection: 'row', gap: 8 },
+  filter: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   flex: { flex: 1 },
   badge: {
