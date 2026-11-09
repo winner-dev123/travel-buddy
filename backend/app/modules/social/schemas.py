@@ -18,6 +18,7 @@ from pydantic import (
 
 from app.core.i18n import LOCALE_TAG_PATTERN
 from app.modules.destinations.schemas import DestinationSummary
+from app.modules.media.schemas import MediaRef
 from app.modules.profiles.schemas import UserSummary as UserSummary  # re-export
 
 PostKindName = Literal[
@@ -123,7 +124,7 @@ class Post(_Response):
     rating: int | None
     trip_id: uuid.UUID | None
     tags: list[str]
-    media: list[Any] = Field(default_factory=list)  # MediaRef with BL-1.08
+    media: list[MediaRef] = Field(default_factory=list)
     published_at: datetime
     edited_at: datetime | None
     counts: PostCounts

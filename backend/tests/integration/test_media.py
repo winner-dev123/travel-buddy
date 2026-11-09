@@ -244,3 +244,95 @@ def test_account_erasure_deletes_stored_media(media: LiveApp) -> None:
     _tick(media)
     _tick(media)
     assert not [key for key in storage.public if key.startswith(f"m/{user_id}/")]
+
+
+# ─────────────────────────────── photos on posts ───────────────────────────────
+
+
+def _photo_post(live: LiveApp, token: str, media_ids: list[str], **body: Any) -> Any:
+    payload = {
+        "kind": "photo",
+        "body": "Golden hour at the viewpoint",
+        "visibility": "public",
+        "location_precision": "none",
+        "media_ids": media_ids,
+        **body,
+    }
+    return live.client.post(
+        "/v1/posts",
+        headers={**_auth(token), "Idempotency-Key": str(uuid.uuid4())},
+        json=payload,
+    )
+
+
+@pytest.mark.req("POST-001", "POST-004")
+def test_photo_posts_show_a_placeholder_until_media_is_ready(media: LiveApp) -> None:
+    token, _ = _user(media)
+    first = _upload(media, token, jpeg_with_gps(600, 400))
+    second = _upload(media, token, jpeg_with_gps(500, 500, orientation=1))
+    for media_id in (first, second):
+        _finalize(media, token, media_id)
+    created = _photo_post(media, token, [second, first])
+    assert created.status_code == 201, created.text
+    post = created.json()
+    assert_matches_contract(post, "Post")
+    assert [m["id"] for m in post["media"]] == [second, first]  # caller's order
+    assert {m["status"] for m in post["media"]} == {"processing"}
+    _tick(media)
+    shown = media.client.get(f"/v1/posts/{post['id']}", headers=_auth(token)).json()
+    assert [(m["status"], m["url"] is not None) for m in shown["media"]] == [
+        ("ready", True),
+        ("ready", True),
+    ]
+    public = media.client.get(f"/v1/public/posts/{post['id']}")
+    assert public.status_code == 200
+    assert len(public.json()["media"]) == 2
+
+
+@pytest.mark.security
+def test_only_your_own_uploaded_post_media_can_be_attached(media: LiveApp) -> None:
+    owner, _ = _user(media)
+    other, _ = _user(media)
+    theirs = _upload(media, other, jpeg_with_gps(64, 64))
+    _finalize(media, other, theirs)
+    _problem(_photo_post(media, owner, [theirs]), 422, "validation_failed")
+    unfinished = _upload(media, owner, jpeg_with_gps(64, 64))  # never finalized
+    _problem(_photo_post(media, owner, [unfinished]), 422, "validation_failed")
+    _problem(_photo_post(media, owner, [str(uuid.uuid4())]), 422, "validation_failed")
+    mine = _upload(media, owner, jpeg_with_gps(64, 64))
+    _finalize(media, owner, mine)
+    _problem(_photo_post(media, owner, [mine, mine]), 422, "validation_failed")
+    avatar = _upload(media, owner, jpeg_with_gps(64, 64), purpose="avatar")
+    _finalize(media, owner, avatar)
+    _problem(_photo_post(media, owner, [avatar]), 422, "validation_failed")
+    _problem(_photo_post(media, owner, []), 422, "validation_failed")  # photo kind needs media
+
+
+@pytest.mark.req("POST-004", "SAFE-009")
+def test_hard_deleting_a_post_removes_its_stored_photos(media: LiveApp) -> None:
+    token, user_id = _user(media)
+    media_id = _upload(media, token, jpeg_with_gps(300, 200))
+    _finalize(media, token, media_id)
+    _tick(media)
+    post = _photo_post(media, token, [media_id]).json()
+    storage = media.client.app.state.media_storage  # type: ignore[attr-defined]
+    assert any(key.startswith(f"m/{user_id}/{media_id}/") for key in storage.public)
+    media.client.delete(f"/v1/posts/{post['id']}", headers=_auth(token))
+    db_scalar(
+        media.db_url,
+        "UPDATE posts SET deleted_at = now() - interval '31 days' WHERE id = :p RETURNING 1",
+        p=uuid.UUID(post["id"]),
+    )
+    db_scalar(
+        media.db_url,
+        "UPDATE periodic_tasks SET next_run_at = now() - interval '1 second' RETURNING 1",
+    )
+    _tick(media)
+    _tick(media)
+    assert not any(key.startswith(f"m/{user_id}/{media_id}/") for key in storage.public)
+    assert (
+        db_scalar(
+            media.db_url, "SELECT count(*) FROM media_assets WHERE id = :m", m=uuid.UUID(media_id)
+        )
+        == 0
+    )

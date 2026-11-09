@@ -19,7 +19,7 @@ from collections.abc import Mapping, Sequence
 from datetime import timedelta
 from typing import Protocol
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.errors import AppError, ErrorCode
@@ -72,9 +72,9 @@ class NoopScanner:
         return True
 
 
-def _ref(asset: MediaAsset, storage: ObjectStorage | None) -> MediaRef:
+def _ref(asset: MediaAsset) -> MediaRef:
     variants = asset.variants or []
-    ready = asset.status == MediaStatus.READY and bool(variants) and storage is not None
+    ready = asset.status == MediaStatus.READY and bool(variants)
     largest = variants[0] if variants else None
     return MediaRef(
         id=asset.id,
@@ -84,14 +84,14 @@ def _ref(asset: MediaAsset, storage: ObjectStorage | None) -> MediaRef:
         else "processing"
         if asset.status in (MediaStatus.PENDING_UPLOAD, MediaStatus.SCANNING)
         else "unavailable",
-        url=storage.public_url(str(largest["key"])) if ready and largest and storage else None,
+        url=str(largest["url"]) if ready and largest else None,
         width=int(largest["width"]) if ready and largest else None,
         height=int(largest["height"]) if ready and largest else None,
         alt_text=asset.alt_text,
     )
 
 
-def _out(asset: MediaAsset, storage: ObjectStorage | None) -> MediaAssetOut:
+def _out(asset: MediaAsset) -> MediaAssetOut:
     return MediaAssetOut.model_validate(
         {
             "id": asset.id,
@@ -103,7 +103,7 @@ def _out(asset: MediaAsset, storage: ObjectStorage | None) -> MediaAssetOut:
             "height": asset.height,
             "duration_ms": asset.duration_ms,
             "rejection_reason": asset.rejection_reason,
-            "ref": _ref(asset, storage) if asset.status != MediaStatus.DELETED else None,
+            "ref": _ref(asset) if asset.status != MediaStatus.DELETED else None,
             "created_at": asset.created_at,
         }
     )
@@ -213,7 +213,7 @@ class MediaService:
             asset = await session.get(MediaAsset, media_id)
             if asset is None or asset.owner_id != owner_id:
                 raise AppError(ErrorCode.NOT_FOUND, "Media not found.")
-            return _out(asset, self._storage)
+            return _out(asset)
 
     async def finalize(self, owner_id: uuid.UUID, media_id: uuid.UUID) -> MediaAssetOut:
         storage = self._store()
@@ -222,7 +222,7 @@ class MediaService:
             if asset is None or asset.owner_id != owner_id:
                 raise AppError(ErrorCode.NOT_FOUND, "Media not found.")
             if asset.status in (MediaStatus.SCANNING, MediaStatus.READY):
-                return _out(asset, storage)  # finalizing again is harmless
+                return _out(asset)  # finalizing again is harmless
             if asset.status != MediaStatus.PENDING_UPLOAD:
                 raise AppError(ErrorCode.CONFLICT, f"This media is {asset.status}.")
             if await storage.quarantine_size(asset.quarantine_key) is None:
@@ -238,7 +238,7 @@ class MediaService:
             )
             await session.flush()
             await session.refresh(asset)
-            return _out(asset, storage)
+            return _out(asset)
 
 
 async def process(
@@ -274,7 +274,14 @@ async def process(
         for variant in processed.variants:
             public_key = f"m/{owner}/{media_id}/{variant.width}.webp"
             await storage.write_public(public_key, variant.data, "image/webp")
-            variants.append({"width": variant.width, "height": variant.height, "key": public_key})
+            variants.append(
+                {
+                    "width": variant.width,
+                    "height": variant.height,
+                    "key": public_key,
+                    "url": storage.public_url(public_key),
+                }
+            )
     except ObjectTooLargeError:
         reason = RejectionReason.TOO_LARGE
     except RejectedMediaError as rejected:
@@ -355,13 +362,31 @@ async def schedule_owner_erasure(session: AsyncSession, owner_id: uuid.UUID) -> 
 # ─────────────────────────────── for other modules ───────────────────────────────
 
 
-async def refs(
-    session: AsyncSession, storage: ObjectStorage | None, media_ids: Sequence[uuid.UUID]
-) -> dict[uuid.UUID, MediaRef]:
+async def refs(session: AsyncSession, media_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, MediaRef]:
     if not media_ids:
         return {}
     rows = await session.scalars(select(MediaAsset).where(MediaAsset.id.in_(set(media_ids))))
-    return {row.id: _ref(row, storage) for row in rows}
+    return {row.id: _ref(row) for row in rows}
+
+
+async def erase_assets(session: AsyncSession, media_ids: Sequence[uuid.UUID]) -> None:
+    """Delete assets and queue deletion of their stored objects (content hard-deleted by its
+    owning module)."""
+    if not media_ids:
+        return
+    assets = (
+        await session.scalars(select(MediaAsset).where(MediaAsset.id.in_(set(media_ids))))
+    ).all()
+    public = [str(v["key"]) for a in assets for v in (a.variants or [])]
+    quarantine = [a.quarantine_key for a in assets if a.status != MediaStatus.READY]
+    if public or quarantine:
+        await platform.enqueue(
+            session,
+            queue="default",
+            kind=DELETE_OBJECTS_JOB,
+            payload={"public_keys": public, "quarantine_keys": quarantine},
+        )
+    await session.execute(delete(MediaAsset).where(MediaAsset.id.in_(set(media_ids))))
 
 
 async def usable_ids(

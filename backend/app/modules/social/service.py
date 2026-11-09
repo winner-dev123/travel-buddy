@@ -22,6 +22,7 @@ from app.core.errors import AppError, ErrorCode, FieldError
 from app.core.pagination import CursorCodec, Page, PageInfo
 from app.core.security.principal import Principal
 from app.modules.destinations import service as destinations
+from app.modules.media import service as media
 from app.modules.platform import service as platform
 from app.modules.profiles import service as profiles
 from app.modules.social.domain import (
@@ -39,6 +40,7 @@ from app.modules.social.models import (
     Follow,
     FollowStatus,
     PostDestination,
+    PostMedia,
     PostTag,
     Reaction,
 )
@@ -176,6 +178,16 @@ class PostService:
             session.add(post)
             await session.flush()
             session.add_all(PostTag(post_id=post.id, tag=tag) for tag in tags)
+            if request.media_ids:
+                usable = await media.usable_ids(
+                    session, principal.user_id, request.media_ids, "post"
+                )
+                if usable != set(request.media_ids):
+                    raise _invalid("/media_ids", "not_found", "Media not found.")
+                session.add_all(
+                    PostMedia(post_id=post.id, media_id=media_id, position=index)
+                    for index, media_id in enumerate(request.media_ids)
+                )
             public = is_publicly_listed(
                 visibility=post.visibility,
                 moderation_state=post.moderation_state,
@@ -440,9 +452,10 @@ async def refresh_author_visibility(session: AsyncSession, author_id: uuid.UUID)
 def _check_references(
     media_ids: Sequence[uuid.UUID], trip_id: uuid.UUID | None, place_id: uuid.UUID | None
 ) -> None:
-    # These modules are not built yet (media BL-1.08, trips, places Phase 4): nothing can match.
-    if media_ids:
-        raise _invalid("/media_ids", "not_found", "Media not found.")
+    # Trips and places arrive in Phase 4: nothing can match yet. Media is checked in the
+    # transaction (ownership and state).
+    if len(set(media_ids)) != len(media_ids):
+        raise _invalid("/media_ids", "duplicate", "Each photo can be attached once.")
     if trip_id is not None:
         raise _invalid("/trip_id", "not_found", "Trip not found.")
     if place_id is not None:
@@ -549,6 +562,16 @@ async def _assemble(
             )
         ).all()
     )
+    attached: dict[uuid.UUID, list[uuid.UUID]] = {i: [] for i in ids}
+    for post_id, media_id in (
+        await session.execute(
+            select(PostMedia.post_id, PostMedia.media_id)
+            .where(PostMedia.post_id.in_(ids))
+            .order_by(PostMedia.post_id, PostMedia.position)
+        )
+    ).all():
+        attached[post_id].append(media_id)
+    media_refs = await media.refs(session, [m for ms in attached.values() for m in ms])
     tags: dict[uuid.UUID, list[str]] = {i: [] for i in ids}
     for post_id, tag in (
         await session.execute(
@@ -579,6 +602,7 @@ async def _assemble(
             "rating": post.rating,
             "trip_id": post.trip_id,
             "tags": tags[post.id],
+            "media": [media_refs[m] for m in attached[post.id] if m in media_refs],
             "published_at": post.published_at,
             "edited_at": post.edited_at,
             "counts": PostCounts.model_validate(
@@ -756,11 +780,22 @@ async def purge_expired(session: AsyncSession) -> int:
     replies are gone, because replies cascade from their parent."""
     replies = aliased(Comment)
     has_replies = exists().where(replies.parent_comment_id == Comment.id)
-    return await platform.delete_batch(
-        session,
-        PostRow,
-        (PostRow.status == "deleted") & (PostRow.deleted_at < platform.ago(days=30)),
-    ) + await platform.delete_batch(
+    expired = list(
+        (
+            await session.scalars(
+                select(PostRow.id)
+                .where(PostRow.status == "deleted", PostRow.deleted_at < platform.ago(days=30))
+                .limit(1000)
+            )
+        ).all()
+    )
+    if expired:
+        attached = (
+            await session.scalars(select(PostMedia.media_id).where(PostMedia.post_id.in_(expired)))
+        ).all()
+        await media.erase_assets(session, list(attached))  # stored photos go with the post
+        await session.execute(delete(PostRow).where(PostRow.id.in_(expired)))
+    return len(expired) + await platform.delete_batch(
         session,
         Comment,
         (Comment.deleted_at < platform.ago(days=30)) & ~has_replies,

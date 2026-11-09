@@ -17,6 +17,7 @@ from sqlalchemy import (
     Integer,
     SmallInteger,
     Text,
+    UniqueConstraint,
     Uuid,
     func,
     text,
@@ -166,6 +167,25 @@ class PostTag(Base):
         ForeignKey("posts.id", ondelete="CASCADE"), primary_key=True
     )
     tag: Mapped[str] = mapped_column(CITEXT, primary_key=True)
+
+
+class PostMedia(Base):
+    """Media attached to a post, in display order (docs/04 ``post_media``)."""
+
+    __tablename__ = "post_media"
+    __table_args__ = (
+        UniqueConstraint("post_id", "position"),
+        Index("ix_post_media__media_id", "media_id"),
+    )
+
+    post_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("posts.id", ondelete="CASCADE"), primary_key=True
+    )
+    # DB-level FK to media_assets only (added by migration 0018); no import of the media models.
+    media_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("media_assets.id", ondelete="CASCADE"), primary_key=True
+    )
+    position: Mapped[int] = mapped_column(SmallInteger)
 
 
 class ReactionType(StrEnum):
