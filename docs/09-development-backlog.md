@@ -104,7 +104,7 @@ Web-workstream items (Next.js app, BFF, web admin) are tracked by the web workst
 | BL-2.08 | Mobile: Companions tab (discover, requests inbox, profile preview, safety guidance) | L | 2.03, 2.04 | DISC-*, SAFE-008 | ✅ Done: Companions tab with discovery (opt-in via the consent screen, share a city by coarse location or search, visible/invisible, stop sharing, turn off; traveller cards with compatibility, things in common and Connect), requests inbox (accept/decline with note, cancel), connections list, Connect on profiles, safety guidance throughout |
 | BL-2.09 | Security tests: location enumeration, trilateration impossibility, block leakage | M | 2.03 | T-LOC-01..04 | 🟡 Partial: integration tests assert no coordinate columns or keys anywhere in discovery responses, GPS values never echoed, blocked/invisible/opted-out users absent, cross-city browsing refused; formal security review pending |
 | BL-2.10 | DPIA for discovery (EU) | M | 2.03 | SAFE-010 |
-| BL-2.11 | E2E: discovery → accepted connection | S | 2.08 | CONN-002 |
+| BL-2.11 | E2E: discovery → accepted connection | S | 2.08 | CONN-002 | ✅ Done (API level): `test_e2e_journey.py::test_discovery_to_accepted_connection` — two travellers opt in with consent, share Lisbon, one finds the other with shared interests, sends a discovery-context request with a note, the other accepts, both are connected and discovery shows the relationship |
 
 ## 5. Phase 3 — Messaging, billing, groups
 

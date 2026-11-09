@@ -119,3 +119,83 @@ def test_newcomer_reaches_a_destination_feed(app: LiveApp) -> None:  # noqa: F81
             )
     finally:
         db_scalar(app.db_url, f"DELETE FROM users WHERE id = '{EDITORS}' RETURNING 1")  # noqa: S608
+
+
+@pytest.mark.req("DISC-001", "DISC-003", "CONN-002", "CONN-003")
+def test_discovery_to_accepted_connection(app: LiveApp) -> None:  # noqa: F811
+    """BL-2.11: two travellers opt in, share Lisbon, find each other and connect."""
+    client = app.client
+    db_scalar(
+        app.db_url,
+        "WITH closed AS (UPDATE traveler_discovery_sessions SET ended_at = now() "
+        "WHERE ended_at IS NULL RETURNING 1) SELECT count(*) FROM closed",
+    )
+    lisbon = _ok(client.get("/v1/destinations/lookup", params={"path": "portugal/lisbon"}))["id"]
+
+    def traveller(name: str, interests: list[str]) -> tuple[dict[str, str], str]:
+        body = _ok(
+            client.post(
+                "/v1/auth/register",
+                headers={"Idempotency-Key": str(uuid.uuid4())},
+                json={
+                    "id_token": _id_token(app, name=name),
+                    "client": "android",
+                    "birth_date": "1990-01-01",
+                    "accepted_terms_version": TERMS,
+                    "accepted_privacy_version": TERMS,
+                    "locale": "en",
+                },
+            ),
+            201,
+        )
+        headers = _auth(body["tokens"]["access_token"])
+        _ok(client.patch("/v1/users/me", headers=headers, json={"interests": interests}))
+        _ok(
+            client.post(
+                "/v1/users/me/consents",
+                headers=headers,
+                json={
+                    "consent_type": "traveler_discovery",
+                    "version": "2026-11-01",
+                    "granted": True,
+                    "source": "prompt",
+                },
+            ),
+            201,
+        )
+        _ok(client.patch("/v1/users/me/privacy", headers=headers, json={"discovery_enabled": True}))
+        _ok(
+            client.put(
+                "/v1/users/me/discovery-location",
+                headers=headers,
+                json={"mode": "destination", "destination_id": lisbon},
+            )
+        )
+        return headers, str(body["user"]["account"]["id"])
+
+    ana, ana_id = traveller("Ana", ["food", "museums"])
+    bo, bo_id = traveller("Bo", ["food", "hiking"])
+
+    found = _ok(client.get("/v1/travelers/discover", headers=ana))
+    [card] = [c for c in found["data"] if c["user"]["id"] == bo_id]
+    assert card["shared"]["interests"] == ["food"]
+    assert card["can_request_connection"] is True
+    request = _ok(
+        client.post(
+            "/v1/connections/requests",
+            headers={**ana, "Idempotency-Key": str(uuid.uuid4())},
+            json={"recipient_id": bo_id, "context": "discovery", "note": "Fellow foodie!"},
+        ),
+        201,
+    )
+    inbox = _ok(client.get("/v1/connections/requests", headers=bo))["data"]
+    assert [(r["id"], r["context"], r["note"]) for r in inbox] == [
+        (request["id"], "discovery", "Fellow foodie!")
+    ]
+    _ok(client.post(f"/v1/connections/requests/{request['id']}/accept", headers=bo))
+    assert [c["user"]["id"] for c in _ok(client.get("/v1/connections", headers=ana))["data"]] == [
+        bo_id
+    ]
+    again = _ok(client.get("/v1/travelers/discover", headers=bo))
+    [back] = [c for c in again["data"] if c["user"]["id"] == ana_id]
+    assert (back["relationship"], back["can_request_connection"]) == ("connected", False)
