@@ -683,6 +683,11 @@
     "moreActions": "Plus d’actions",
     "report": "Signaler la publication",
     "block": "Bloquer {name}",
+    "moderation": {
+      "pending": "En attente de vérification. Un modérateur va examiner cette publication.",
+      "limited": "Limitée par la modération. Cette publication n’apparaît plus dans les fils ni sur les pages de destinations.",
+      "removed": "Retirée par la modération. Les autres personnes ne peuvent plus voir cette publication."
+    },
     "hide": "Masquer la publication",
     "notInterested": "Pas intéressé",
     "seeLess": "Voir moins de {name}",

@@ -683,6 +683,11 @@
     "moreActions": "Weitere Aktionen",
     "report": "Beitrag melden",
     "block": "{name} blockieren",
+    "moderation": {
+      "pending": "Wird geprüft. Ein Moderator sieht sich diesen Beitrag an.",
+      "limited": "Von der Moderation eingeschränkt. Dieser Beitrag erscheint nicht mehr in Feeds oder auf Reisezielseiten.",
+      "removed": "Von der Moderation entfernt. Andere können diesen Beitrag nicht mehr sehen."
+    },
     "hide": "Beitrag ausblenden",
     "notInterested": "Kein Interesse",
     "seeLess": "Weniger von {name} anzeigen",

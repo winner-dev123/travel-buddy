@@ -683,6 +683,11 @@
     "moreActions": "More actions",
     "report": "Report post",
     "block": "Block {name}",
+    "moderation": {
+      "pending": "Pending review. A moderator will look at this post.",
+      "limited": "Limited by moderators. This post no longer appears in feeds or on destination pages.",
+      "removed": "Removed by moderators. Other people can no longer see this post."
+    },
     "hide": "Hide post",
     "notInterested": "Not interested",
     "seeLess": "See less from {name}",

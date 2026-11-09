@@ -191,6 +191,15 @@ describe('mock platform — social and privacy', () => {
     expect(page.data.every((p) => p.visibility === 'public' && !('viewer' in p))).toBe(true);
   });
 
+  it('sends moderation_state only to the author (absent, not null, for others)', async () => {
+    const { api: amelia } = await signIn(platform, 'amelia');
+    const { api: noah } = await signIn(platform, 'noah');
+    const own = (await amelia.feed.get({ tab: 'for_you', limit: 50 })).data.find((p) => p.viewer.is_author && p.visibility === 'public')!;
+    expect(own.moderation_state).toBe('approved');
+    const seenByOther = await noah.posts.get(own.id);
+    expect('moderation_state' in seenByOther).toBe(false);
+  });
+
   it('hides non-visible posts with 404 rather than 403', async () => {
     const { api: amelia } = await signIn(platform, 'amelia');
     const { api: yuki } = await signIn(platform, 'yuki');

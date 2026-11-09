@@ -683,6 +683,11 @@
     "moreActions": "Más acciones",
     "report": "Denunciar publicación",
     "block": "Bloquear a {name}",
+    "moderation": {
+      "pending": "Pendiente de revisión. Un moderador revisará esta publicación.",
+      "limited": "Limitada por la moderación. Esta publicación ya no aparece en los feeds ni en las páginas de destinos.",
+      "removed": "Retirada por la moderación. Otras personas ya no pueden ver esta publicación."
+    },
     "hide": "Ocultar publicación",
     "notInterested": "No me interesa",
     "seeLess": "Ver menos de {name}",

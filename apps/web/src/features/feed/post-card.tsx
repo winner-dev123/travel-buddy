@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useFormatter, useLocale, useNow, useTranslations } from 'next-intl';
-import { Bookmark, EyeOff, Flag, Heart, MapPin, MessageCircle, MoreHorizontal, Share2, ShieldBan, ThumbsDown, UserMinus } from 'lucide-react';
+import { Bookmark, EyeOff, Flag, Heart, MapPin, MessageCircle, MoreHorizontal, Share2, ShieldAlert, ShieldBan, ThumbsDown, UserMinus } from 'lucide-react';
 import type { FeedFeedbackKind } from '@travelbuddy/api-client';
 import type { Post, PostCounts, ReactionType } from '@travelbuddy/domain-types';
 import { Avatar, Badge, cn } from '@travelbuddy/ui';
@@ -159,6 +159,13 @@ export function PostCard({ post, onHidden }: { post: Post; onHidden?: (postId: s
           </div>
         </details>
       </header>
+      {/* SAFE-013: authors see moderation outcomes on their own posts (moderation_state is sent only to them). */}
+      {post.moderation_state && post.moderation_state !== 'approved' ? (
+        <p role="status" className="mx-4 mt-3 flex items-start gap-2 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-foreground">
+          <ShieldAlert className="mt-px size-4 shrink-0 text-warning" aria-hidden="true" />
+          {t(`moderation.${post.moderation_state}`)}
+        </p>
+      ) : null}
       {feedback.isError ? (
         <p role="alert" className="px-4 pt-2 text-xs text-danger">
           {t('feedbackError')}

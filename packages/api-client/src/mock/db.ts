@@ -564,7 +564,8 @@ export class MockDb {
         can_delete: own,
         can_comment: true,
       },
-      moderation_state: post.moderation,
+      // Contract: present only when the viewer is the author (absent, not null, for everyone else).
+      ...(own ? { moderation_state: post.moderation } : {}),
     };
   }
 
