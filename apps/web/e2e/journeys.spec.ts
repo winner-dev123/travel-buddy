@@ -7,7 +7,7 @@ test('registration → onboarding → personalized feed', async ({ page }) => {
   const unique = Date.now();
   await open(page, '/register');
   await page.getByLabel('Display name').fill('Robin Traveler');
-  await page.getByLabel('Email').fill(`robin.${unique}@example.test`);
+  await page.getByLabel('Email').fill(`robin.${unique}@example.com`);
   await page.getByLabel('Date of birth').fill('1994-05-17');
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: 'Create account' }).click();
@@ -38,7 +38,7 @@ test('registration → onboarding → personalized feed', async ({ page }) => {
 test('underage registration is rejected before an account is created', async ({ page }) => {
   await open(page, '/register');
   await page.getByLabel('Display name').fill('Young Person');
-  await page.getByLabel('Email').fill(`young.${Date.now()}@example.test`);
+  await page.getByLabel('Email').fill(`young.${Date.now()}@example.com`);
   await page.getByLabel('Date of birth').fill('2012-01-01');
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: 'Create account' }).click();

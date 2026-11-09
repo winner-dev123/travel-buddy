@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { isApiError } from '@travelbuddy/api-client';
 import { registerSchema } from '@travelbuddy/validation';
 import { env } from '@/server/env';
+import { getLegalVersions } from '@/server/legal';
 import { serverApi } from '@/server/platform';
 import { verifyCsrf, writeLoginCookies } from '@/server/auth';
 import { safeNextPath } from '@/server/safe-redirect';
@@ -10,9 +11,8 @@ import { localizedPath } from '@/lib/paths';
 
 export const dynamic = 'force-dynamic';
 
-/** Current legal document versions accepted at registration (to be served by the platform). */
-const TERMS_VERSION = '2026-11';
-const PRIVACY_VERSION = '2026-11';
+/** Birth date used only when a development persona must be registered in a platform dev database. */
+const DEV_PERSONA_BIRTH_DATE = '1990-01-01';
 
 const loginBody = z.object({
   mode: z.literal('login'),
@@ -55,24 +55,39 @@ export async function POST(request: NextRequest) {
     );
   }
   const input = parsed.data;
-  const api = await serverApi({ locale: input.locale });
+  // The platform derives the session's device name from the User-Agent when `device` is omitted.
+  const userAgent = request.headers.get('user-agent')?.slice(0, 512);
+  const api = await serverApi({ locale: input.locale, headers: userAgent ? { 'User-Agent': userAgent } : undefined });
+  const locale = (['en', 'es', 'pt-BR', 'fr', 'de'] as const).find((l) => l === input.locale) ?? 'en';
+  const legal = await getLegalVersions(locale);
+  const register = (id_token: string, birth_date: string) =>
+    api.auth.register({
+      id_token,
+      client: 'web',
+      birth_date,
+      accepted_terms_version: legal.terms,
+      accepted_privacy_version: legal.privacy,
+      locale,
+    });
 
   try {
     let result;
     if (input.mode === 'login') {
-      const { id_token } = await api.auth.devIdpToken({ sub: input.sub, email: input.email, name: input.name });
-      result = await api.auth.login({ id_token, client: 'web' });
+      const identity = { sub: input.sub, email: input.email, name: input.name };
+      const { id_token } = await api.auth.devIdpToken(identity);
+      try {
+        result = await api.auth.login({ id_token, client: 'web' });
+      } catch (error) {
+        // Contract: unknown identity → 404, call register. Seeded personas exist in the mock but not
+        // yet in a fresh platform dev database, so dev tooling registers them (adult test identities).
+        if (!isApiError(error) || error.status !== 404) throw error;
+        const fresh = await api.auth.devIdpToken(identity);
+        result = await register(fresh.id_token, DEV_PERSONA_BIRTH_DATE);
+      }
     } else {
       const sub = `dev:${input.email}`;
       const { id_token } = await api.auth.devIdpToken({ sub, email: input.email, name: input.display_name });
-      result = await api.auth.register({
-        id_token,
-        client: 'web',
-        birth_date: input.birth_date,
-        accepted_terms_version: TERMS_VERSION,
-        accepted_privacy_version: PRIVACY_VERSION,
-        locale: (['en', 'es', 'pt-BR', 'fr', 'de'] as const).find((l) => l === input.locale) ?? 'en',
-      });
+      result = await register(id_token, input.birth_date);
     }
     const target = result.user.onboarding_completed
       ? safeNextPath(input.next)

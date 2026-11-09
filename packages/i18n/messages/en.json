@@ -432,7 +432,8 @@
       "errors": {
         "ageRestricted": "You must be at least 18 years old to use Travel Buddy.",
         "exists": "An account with this email already exists. Try logging in instead.",
-        "generic": "We couldn’t create your account. Please try again."
+        "generic": "We couldn’t create your account. Please try again.",
+        "consentChanged": "Our terms or privacy policy were just updated. Please review them and submit again."
       }
     },
     "forgot": {

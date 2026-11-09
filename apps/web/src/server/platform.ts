@@ -26,6 +26,8 @@ export interface ServerApiOptions {
   accessToken?: string | null;
   locale?: string;
   requestId?: string;
+  /** Extra headers, e.g. the browser's User-Agent on login/register (session device names). */
+  headers?: Record<string, string>;
 }
 
 export async function serverApi(options: ServerApiOptions = {}): Promise<Api> {
@@ -36,6 +38,7 @@ export async function serverApi(options: ServerApiOptions = {}): Promise<Api> {
         ...(options.locale ? { 'Accept-Language': options.locale } : {}),
         ...(options.accessToken ? { Authorization: `Bearer ${options.accessToken}` } : {}),
         ...(options.requestId ? { 'X-Request-ID': options.requestId } : {}),
+        ...options.headers,
       }),
     }),
   );

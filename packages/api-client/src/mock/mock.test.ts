@@ -30,7 +30,7 @@ async function expectApiError(promise: Promise<unknown>, status: number, code: s
   expect((error as ApiError).code).toBe(code);
 }
 
-const REGISTER = { client: 'web' as const, accepted_terms_version: '2026-11', accepted_privacy_version: '2026-11' };
+const REGISTER = { client: 'web' as const, accepted_terms_version: '2026-11-01', accepted_privacy_version: '2026-11-01' };
 
 describe('mock platform — identity', () => {
   let platform: MockPlatform;
@@ -50,7 +50,7 @@ describe('mock platform — identity', () => {
 
   it('registers a new adult with onboarding pending and privacy-preserving defaults; rejects minors', async () => {
     const anon = clientFor(platform);
-    const { id_token } = await anon.auth.devIdpToken({ sub: 'new:1', email: 'new.person@example.test', name: 'New Person' });
+    const { id_token } = await anon.auth.devIdpToken({ sub: 'new:1', email: 'new.person@example.com', name: 'New Person' });
     await expectApiError(anon.auth.register({ ...REGISTER, id_token, birth_date: '2012-01-01', locale: 'en' }), 403, 'age_restricted');
     const result = await anon.auth.register({ ...REGISTER, id_token, birth_date: '1995-06-01', locale: 'pt-BR' });
     expect(result.is_new_user).toBe(true);
@@ -58,6 +58,17 @@ describe('mock platform — identity', () => {
     expect(result.user.preferences.ui_locale).toBe('pt-BR');
     expect(result.user.privacy.discovery_enabled).toBe(false);
     expect(result.user.privacy.location_consent).toBeNull();
+  });
+
+  it('requires consent to the current legal versions served by client-config', async () => {
+    const anon = clientFor(platform);
+    const config = await anon.config.get();
+    expect(config.legal.terms_version).toBe('2026-11-01');
+    const { id_token } = await anon.auth.devIdpToken({ sub: 'new:old-terms', email: 'old.terms@example.com' });
+    const error = await anon.auth.register({ ...REGISTER, id_token, birth_date: '1990-01-01', locale: 'en', accepted_terms_version: '2025-01-01' }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).code).toBe('consent_required');
+    expect((error as ApiError).problem.terms_version).toBe('2026-11-01');
   });
 
   it('rejects missing tokens and expires access tokens after 15 minutes', async () => {
@@ -92,7 +103,7 @@ describe('mock platform — identity', () => {
 
     // A registered (non-seeded) user is rebuilt from the token's minimal identity.
     const anon = clientFor(instanceA);
-    const { id_token } = await anon.auth.devIdpToken({ sub: 'new:x', email: 'x.traveler@example.test', name: 'X Traveler' });
+    const { id_token } = await anon.auth.devIdpToken({ sub: 'new:x', email: 'x.traveler@example.com', name: 'X Traveler' });
     const reg = await anon.auth.register({ ...REGISTER, id_token, birth_date: '1990-01-01', locale: 'fr' });
     const meOnB = await clientFor(instanceB, reg.tokens.access_token).me.get();
     expect(meOnB.profile.display_name).toBe('X Traveler');

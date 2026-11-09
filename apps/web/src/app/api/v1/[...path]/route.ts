@@ -97,6 +97,7 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
     headers: {
       'Accept-Language': request.headers.get('accept-language') ?? 'en',
       'X-Request-ID': requestId,
+      ...(request.headers.get('user-agent') ? { 'User-Agent': (request.headers.get('user-agent') as string).slice(0, 512) } : {}),
       ...(request.headers.get('if-match') ? { 'If-Match': request.headers.get('if-match') as string } : {}),
       ...(justification ? { 'X-Audit-Justification': justification } : {}),
       ...(session ? { Authorization: `Bearer ${session.at}` } : {}),

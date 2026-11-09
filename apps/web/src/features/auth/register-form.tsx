@@ -32,7 +32,15 @@ export function RegisterForm({ next }: { next: string }) {
       return;
     }
     const code = res.data.code;
-    setServerError(code === 'age_restricted' ? t('errors.ageRestricted') : code === 'conflict' ? t('errors.exists') : t('errors.generic'));
+    setServerError(
+      code === 'age_restricted'
+        ? t('errors.ageRestricted')
+        : code === 'conflict'
+          ? t('errors.exists')
+          : code === 'consent_required'
+            ? t('errors.consentChanged')
+            : t('errors.generic'),
+    );
   });
 
   return (

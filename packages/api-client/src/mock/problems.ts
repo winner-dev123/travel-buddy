@@ -7,6 +7,8 @@ export interface MockProblem {
   code: ErrorCode;
   detail?: string;
   errors?: FieldError[];
+  /** RFC 9457 extension members (e.g. terms_version on consent_required). */
+  [extension: string]: unknown;
 }
 
 /** Thrown by mock handlers; converted to an `application/problem+json` response. */

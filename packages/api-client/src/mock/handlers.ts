@@ -59,6 +59,9 @@ export interface MockResult {
 
 type Handler = (ctx: MockContext) => MockResult;
 
+/** Current legal document versions (the platform serves them via client-config; doc 05). */
+export const LEGAL_VERSION = '2026-11-01';
+
 const ok = (body: unknown): MockResult => ({ status: 200, body });
 const created = (body: unknown): MockResult => ({ status: 201, body });
 const noContent = (): MockResult => ({ status: 204 });
@@ -268,6 +271,25 @@ function oneOf<T extends string>(body: Record<string, unknown>, key: string, all
 export function buildRouter(): Router<Handler> {
   const r = new Router<Handler>();
 
+  r.add('GET', '/v1/client-config', () =>
+    ok({
+      min_supported_version: '0.0.0',
+      update_required: false,
+      supported_locales: [...SUPPORTED_LOCALES],
+      default_locale: 'en',
+      // Features that are not built yet are off; values are global and UI-only.
+      feature_flags: { traveler_discovery: false, travel_groups: false, ai_itineraries: false, post_translation: false },
+      web_push_vapid_public_key: null,
+      legal: {
+        terms_version: LEGAL_VERSION,
+        privacy_version: LEGAL_VERSION,
+        terms_url: 'https://travelbuddy.example/legal/terms',
+        privacy_url: 'https://travelbuddy.example/legal/privacy',
+      },
+      minimum_age: MINIMUM_AGE,
+    }),
+  );
+
   // Dev IdP (development/test only on the real backend).
   r.add('POST', '/v1/dev/idp/token', (ctx) => {
     const sub = str(ctx.body, 'sub');
@@ -298,8 +320,19 @@ export function buildRouter(): Router<Handler> {
     const age = birth ? ageOn(birth, new Date(ctx.now)) : null;
     if (age === null) throw validation('birth_date', 'invalid', 'birth_date must be YYYY-MM-DD.');
     if (age < MINIMUM_AGE) throw problem(403, 'age_restricted', `You must be at least ${MINIMUM_AGE} to use Travel Buddy.`);
-    if (!str(ctx.body, 'accepted_terms_version')) throw validation('accepted_terms_version', 'required', 'Terms must be accepted.');
-    if (!str(ctx.body, 'accepted_privacy_version')) throw validation('accepted_privacy_version', 'required', 'The privacy policy must be accepted.');
+    // Like the platform: consent must be to the CURRENT legal versions, otherwise 403 consent_required
+    // with the versions the client should show the user again.
+    if (str(ctx.body, 'accepted_terms_version') !== LEGAL_VERSION || str(ctx.body, 'accepted_privacy_version') !== LEGAL_VERSION) {
+      throw new MockHttpError({
+        type: 'https://errors.travelbuddy.app/consent_required',
+        title: 'Consent to the current terms is required',
+        status: 403,
+        code: 'consent_required',
+        detail: 'Accept the current terms of service and privacy policy.',
+        terms_version: LEGAL_VERSION,
+        privacy_version: LEGAL_VERSION,
+      });
+    }
     const requested = str(ctx.body, 'locale');
     const locale: LocaleCode = (SUPPORTED_LOCALES as readonly string[]).includes(requested ?? '') ? (requested as LocaleCode) : 'en';
     const user: UserRecord = {

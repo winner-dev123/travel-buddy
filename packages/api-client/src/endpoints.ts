@@ -1,6 +1,7 @@
 import type {
   AuthResult,
   BrowseDestination,
+  ClientConfig,
   Comment,
   CreateCommentRequest,
   CreatePostRequest,
@@ -78,6 +79,11 @@ export function createApi(c: ApiClient) {
       /** Development/test environments only (404 elsewhere). */
       devIdpToken: (body: DevIdpTokenRequest) =>
         c.request<DevIdpToken>({ method: 'POST', path: '/v1/dev/idp/token', body, cache: 'no-store' }),
+    },
+
+    config: {
+      /** Global client configuration: legal versions, feature flags, VAPID key (contract ClientConfig). */
+      get: (cache?: CacheHint) => c.request<ClientConfig>({ method: 'GET', path: '/v1/client-config', cache }),
     },
 
     me: {
