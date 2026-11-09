@@ -187,5 +187,79 @@
     "discoveryOn": "Traveler discovery is on",
     "indexingOff": "Search engines cannot index your profile",
     "indexingOn": "Search engines may index your public profile"
+  },
+  "feed": {
+    "title": "Travel stories",
+    "tabs": {
+      "for_you": "For you",
+      "following": "Following"
+    },
+    "source": {
+      "gps": "Stories near you in {{place}}",
+      "selected": "Stories from {{place}}",
+      "upcoming_trip": "Stories for your trip to {{place}}",
+      "interests": "Stories picked for your interests",
+      "global": "Popular stories from travellers everywhere",
+      "following": "Stories from people you follow"
+    },
+    "guestNotice": "You're browsing public stories. Sign in to react, comment and share your own.",
+    "empty": "No stories yet. Be the first to share a tip.",
+    "emptyFollowing": "Follow travellers to see their stories here.",
+    "error": "We couldn't load stories. Pull down to try again."
+  },
+  "post": {
+    "title": "Story",
+    "photo": "Photo",
+    "photoProcessing": "Photo is processing…",
+    "photoUnavailable": "Photo unavailable",
+    "like": "Like",
+    "unlike": "Remove like",
+    "openA11y": "Open story by {{name}}",
+    "comments": "Comments",
+    "noComments": "No comments yet.",
+    "addComment": "Add a comment",
+    "send": "Send",
+    "commentFailed": "Your comment wasn't sent. Try again.",
+    "commentDeleted": "Comment deleted",
+    "deletedUser": "Deleted user",
+    "signInToComment": "Sign in to read and write comments.",
+    "notFound": "This story is not available.",
+    "kinds": {
+      "text": "Note",
+      "photo": "Photo",
+      "video": "Video",
+      "story": "Story",
+      "attraction_recommendation": "Place to see",
+      "restaurant_recommendation": "Food spot",
+      "review": "Review",
+      "tip": "Tip",
+      "itinerary_summary": "Itinerary",
+      "experience": "Experience"
+    },
+    "commentsCount_one": "{{count}} comment",
+    "commentsCount_other": "{{count}} comments"
+  },
+  "compose": {
+    "open": "Share a story",
+    "title": "New story",
+    "kind": "What are you sharing?",
+    "body": "Your story",
+    "place": "Place",
+    "searchPlace": "Search a city or neighbourhood",
+    "placeOptional": "Optional: helps travellers there find your story.",
+    "placeRequired": "Choose a place for this kind of story.",
+    "changePlace": "Change",
+    "audience": "Who can see it",
+    "visibility": {
+      "public": "Everyone",
+      "followers": "Followers",
+      "private": "Only me"
+    },
+    "publish": "Publish",
+    "failed": "Your story wasn't published. Try again.",
+    "verifyEmail": "Verify your email address before posting.",
+    "restricted": "Posting is limited on your account right now.",
+    "bodyHint_one": "{{count}} character left",
+    "bodyHint_other": "{{count}} characters left"
   }
 }

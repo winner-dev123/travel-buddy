@@ -188,5 +188,81 @@
     "discoveryOn": "La découverte de voyageurs est activée",
     "indexingOff": "Les moteurs de recherche ne peuvent pas indexer votre profil",
     "indexingOn": "Les moteurs de recherche peuvent indexer votre profil public"
+  },
+  "feed": {
+    "title": "Récits de voyage",
+    "tabs": {
+      "for_you": "Pour vous",
+      "following": "Abonnements"
+    },
+    "source": {
+      "gps": "Récits près de vous à {{place}}",
+      "selected": "Récits de {{place}}",
+      "upcoming_trip": "Récits pour votre voyage à {{place}}",
+      "interests": "Récits choisis selon vos centres d'intérêt",
+      "global": "Récits populaires de voyageurs du monde entier",
+      "following": "Récits des personnes que vous suivez"
+    },
+    "guestNotice": "Vous consultez des récits publics. Connectez-vous pour réagir, commenter et partager les vôtres.",
+    "empty": "Aucun récit pour l'instant. Soyez le premier à partager une astuce.",
+    "emptyFollowing": "Suivez des voyageurs pour voir leurs récits ici.",
+    "error": "Impossible de charger les récits. Tirez vers le bas pour réessayer."
+  },
+  "post": {
+    "title": "Récit",
+    "photo": "Photo",
+    "photoProcessing": "Photo en cours de traitement…",
+    "photoUnavailable": "Photo indisponible",
+    "like": "J'aime",
+    "unlike": "Retirer le j'aime",
+    "openA11y": "Ouvrir le récit de {{name}}",
+    "comments": "Commentaires",
+    "noComments": "Aucun commentaire pour l'instant.",
+    "addComment": "Ajouter un commentaire",
+    "send": "Envoyer",
+    "commentFailed": "Votre commentaire n'a pas été envoyé. Réessayez.",
+    "commentDeleted": "Commentaire supprimé",
+    "deletedUser": "Utilisateur supprimé",
+    "signInToComment": "Connectez-vous pour lire et écrire des commentaires.",
+    "notFound": "Ce récit n'est pas disponible.",
+    "kinds": {
+      "text": "Note",
+      "photo": "Photo",
+      "video": "Vidéo",
+      "story": "Story",
+      "attraction_recommendation": "Lieu à voir",
+      "restaurant_recommendation": "Bonne adresse",
+      "review": "Avis",
+      "tip": "Astuce",
+      "itinerary_summary": "Itinéraire",
+      "experience": "Expérience"
+    },
+    "commentsCount_one": "{{count}} commentaire",
+    "commentsCount_many": "{{count}} de commentaires",
+    "commentsCount_other": "{{count}} commentaires"
+  },
+  "compose": {
+    "open": "Partager un récit",
+    "title": "Nouveau récit",
+    "kind": "Que voulez-vous partager ?",
+    "body": "Votre récit",
+    "place": "Lieu",
+    "searchPlace": "Cherchez une ville ou un quartier",
+    "placeOptional": "Facultatif : aide les voyageurs sur place à trouver votre récit.",
+    "placeRequired": "Choisissez un lieu pour ce type de récit.",
+    "changePlace": "Modifier",
+    "audience": "Qui peut le voir",
+    "visibility": {
+      "public": "Tout le monde",
+      "followers": "Abonnés",
+      "private": "Moi uniquement"
+    },
+    "publish": "Publier",
+    "failed": "Votre récit n'a pas été publié. Réessayez.",
+    "verifyEmail": "Vérifiez votre adresse e-mail avant de publier.",
+    "restricted": "La publication est limitée sur votre compte pour le moment.",
+    "bodyHint_one": "{{count}} caractère restant",
+    "bodyHint_many": "{{count}} de caractères restants",
+    "bodyHint_other": "{{count}} caractères restants"
   }
 }

@@ -54,6 +54,8 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="(auth)" options={{ presentation: 'modal' }} />
           <Stack.Screen name="(onboarding)" />
+          <Stack.Screen name="post/[id]" />
+          <Stack.Screen name="compose" options={{ presentation: 'modal' }} />
           <Stack.Screen name="+not-found" />
         </Stack>
         <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />

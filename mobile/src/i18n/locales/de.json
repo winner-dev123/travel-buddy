@@ -187,5 +187,79 @@
     "discoveryOn": "Reisenden-Entdeckung ist an",
     "indexingOff": "Suchmaschinen dürfen dein Profil nicht indexieren",
     "indexingOn": "Suchmaschinen dürfen dein öffentliches Profil indexieren"
+  },
+  "feed": {
+    "title": "Reisegeschichten",
+    "tabs": {
+      "for_you": "Für dich",
+      "following": "Gefolgt"
+    },
+    "source": {
+      "gps": "Geschichten in deiner Nähe in {{place}}",
+      "selected": "Geschichten aus {{place}}",
+      "upcoming_trip": "Geschichten für deine Reise nach {{place}}",
+      "interests": "Geschichten passend zu deinen Interessen",
+      "global": "Beliebte Geschichten von Reisenden weltweit",
+      "following": "Geschichten von Leuten, denen du folgst"
+    },
+    "guestNotice": "Du siehst öffentliche Geschichten. Melde dich an, um zu reagieren, zu kommentieren und eigene zu teilen.",
+    "empty": "Noch keine Geschichten. Teile als Erste:r einen Tipp.",
+    "emptyFollowing": "Folge Reisenden, um ihre Geschichten hier zu sehen.",
+    "error": "Geschichten konnten nicht geladen werden. Zum Aktualisieren nach unten ziehen."
+  },
+  "post": {
+    "title": "Geschichte",
+    "photo": "Foto",
+    "photoProcessing": "Foto wird verarbeitet …",
+    "photoUnavailable": "Foto nicht verfügbar",
+    "like": "Gefällt mir",
+    "unlike": "Gefällt mir entfernen",
+    "openA11y": "Geschichte von {{name}} öffnen",
+    "comments": "Kommentare",
+    "noComments": "Noch keine Kommentare.",
+    "addComment": "Kommentar schreiben",
+    "send": "Senden",
+    "commentFailed": "Dein Kommentar wurde nicht gesendet. Versuche es erneut.",
+    "commentDeleted": "Kommentar gelöscht",
+    "deletedUser": "Gelöschtes Konto",
+    "signInToComment": "Melde dich an, um Kommentare zu lesen und zu schreiben.",
+    "notFound": "Diese Geschichte ist nicht verfügbar.",
+    "kinds": {
+      "text": "Notiz",
+      "photo": "Foto",
+      "video": "Video",
+      "story": "Story",
+      "attraction_recommendation": "Sehenswürdigkeit",
+      "restaurant_recommendation": "Essenstipp",
+      "review": "Bewertung",
+      "tip": "Tipp",
+      "itinerary_summary": "Reiseroute",
+      "experience": "Erlebnis"
+    },
+    "commentsCount_one": "{{count}} Kommentar",
+    "commentsCount_other": "{{count}} Kommentare"
+  },
+  "compose": {
+    "open": "Geschichte teilen",
+    "title": "Neue Geschichte",
+    "kind": "Was möchtest du teilen?",
+    "body": "Deine Geschichte",
+    "place": "Ort",
+    "searchPlace": "Stadt oder Viertel suchen",
+    "placeOptional": "Optional: So finden Reisende vor Ort deine Geschichte.",
+    "placeRequired": "Wähle für diese Art von Geschichte einen Ort.",
+    "changePlace": "Ändern",
+    "audience": "Wer kann sie sehen",
+    "visibility": {
+      "public": "Alle",
+      "followers": "Follower",
+      "private": "Nur ich"
+    },
+    "publish": "Veröffentlichen",
+    "failed": "Deine Geschichte wurde nicht veröffentlicht. Versuche es erneut.",
+    "verifyEmail": "Bestätige deine E-Mail-Adresse, bevor du etwas veröffentlichst.",
+    "restricted": "Veröffentlichen ist für dein Konto derzeit eingeschränkt.",
+    "bodyHint_one": "Noch {{count}} Zeichen",
+    "bodyHint_other": "Noch {{count}} Zeichen"
   }
 }

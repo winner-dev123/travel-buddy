@@ -188,5 +188,81 @@
     "discoveryOn": "El descubrimiento de viajeros está activado",
     "indexingOff": "Los buscadores no pueden indexar tu perfil",
     "indexingOn": "Los buscadores pueden indexar tu perfil público"
+  },
+  "feed": {
+    "title": "Historias de viaje",
+    "tabs": {
+      "for_you": "Para ti",
+      "following": "Siguiendo"
+    },
+    "source": {
+      "gps": "Historias cerca de ti en {{place}}",
+      "selected": "Historias de {{place}}",
+      "upcoming_trip": "Historias para tu viaje a {{place}}",
+      "interests": "Historias elegidas según tus intereses",
+      "global": "Historias populares de viajeros de todo el mundo",
+      "following": "Historias de las personas que sigues"
+    },
+    "guestNotice": "Estás viendo historias públicas. Inicia sesión para reaccionar, comentar y compartir las tuyas.",
+    "empty": "Aún no hay historias. Sé el primero en compartir un consejo.",
+    "emptyFollowing": "Sigue a otros viajeros para ver sus historias aquí.",
+    "error": "No pudimos cargar las historias. Desliza hacia abajo para reintentar."
+  },
+  "post": {
+    "title": "Historia",
+    "photo": "Foto",
+    "photoProcessing": "Procesando la foto…",
+    "photoUnavailable": "Foto no disponible",
+    "like": "Me gusta",
+    "unlike": "Quitar me gusta",
+    "openA11y": "Abrir la historia de {{name}}",
+    "comments": "Comentarios",
+    "noComments": "Aún no hay comentarios.",
+    "addComment": "Añade un comentario",
+    "send": "Enviar",
+    "commentFailed": "Tu comentario no se envió. Inténtalo de nuevo.",
+    "commentDeleted": "Comentario eliminado",
+    "deletedUser": "Usuario eliminado",
+    "signInToComment": "Inicia sesión para leer y escribir comentarios.",
+    "notFound": "Esta historia no está disponible.",
+    "kinds": {
+      "text": "Nota",
+      "photo": "Foto",
+      "video": "Vídeo",
+      "story": "Historia",
+      "attraction_recommendation": "Lugar para visitar",
+      "restaurant_recommendation": "Dónde comer",
+      "review": "Reseña",
+      "tip": "Consejo",
+      "itinerary_summary": "Itinerario",
+      "experience": "Experiencia"
+    },
+    "commentsCount_one": "{{count}} comentario",
+    "commentsCount_many": "{{count}} de comentarios",
+    "commentsCount_other": "{{count}} comentarios"
+  },
+  "compose": {
+    "open": "Compartir una historia",
+    "title": "Nueva historia",
+    "kind": "¿Qué quieres compartir?",
+    "body": "Tu historia",
+    "place": "Lugar",
+    "searchPlace": "Busca una ciudad o un barrio",
+    "placeOptional": "Opcional: ayuda a los viajeros de ese lugar a encontrar tu historia.",
+    "placeRequired": "Elige un lugar para este tipo de historia.",
+    "changePlace": "Cambiar",
+    "audience": "Quién puede verla",
+    "visibility": {
+      "public": "Todos",
+      "followers": "Seguidores",
+      "private": "Solo yo"
+    },
+    "publish": "Publicar",
+    "failed": "Tu historia no se publicó. Inténtalo de nuevo.",
+    "verifyEmail": "Verifica tu correo electrónico antes de publicar.",
+    "restricted": "La publicación está limitada en tu cuenta en este momento.",
+    "bodyHint_one": "Queda {{count}} carácter",
+    "bodyHint_many": "Quedan {{count}} de caracteres",
+    "bodyHint_other": "Quedan {{count}} caracteres"
   }
 }

@@ -38,17 +38,16 @@ beforeEach(async () => {
 });
 
 describe('app navigation shell', () => {
-  it('opens on Home with the five primary tabs', async () => {
+  it('opens on Home with the five primary tabs and the public feed', async () => {
     await renderRouter(routes, { initialUrl: '/' });
 
     expect(screen).toHavePathname('/');
     for (const label of ['Home', 'Explore', 'Companions', 'Messages', 'Profile']) {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     }
-    expect(screen.getByTestId('phase-placeholder-feed')).toBeTruthy();
-    expect(screen.getByText('Coming in Phase 1')).toBeTruthy();
-    expect(screen.getByText('3 planned capabilities')).toBeTruthy();
-    expect(screen.getByText('Online only')).toBeTruthy();
+    // The feed is released: signed-out visitors browse public stories (guest mode).
+    expect(screen.getByTestId('feed-list')).toBeTruthy();
+    expect(await screen.findByTestId('feed-guest-notice')).toBeTruthy();
   });
 
   it('shows discovery safety guidance on Companions without claiming safety', async () => {

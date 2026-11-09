@@ -12,15 +12,15 @@ beforeEach(async () => {
 });
 
 describe('feature flags', () => {
-  it('releases nothing in Phase 0', () => {
+  it('releases only the features that are built (the Phase 1 feed)', () => {
     for (const key of Object.keys(FEATURES) as FeatureKey[]) {
-      expect(isFeatureEnabled(key, [])).toBe(false);
+      expect(isFeatureEnabled(key, [])).toBe(key === 'feed');
     }
   });
 
   it('honours development overrides', () => {
-    expect(isFeatureEnabled('feed', ['feed'])).toBe(true);
-    expect(isFeatureEnabled('messaging', ['feed'])).toBe(false);
+    expect(isFeatureEnabled('messaging', ['messaging'])).toBe(true);
+    expect(isFeatureEnabled('explore', ['messaging'])).toBe(false);
   });
 
   it('every planned capability key resolves to a translation', () => {

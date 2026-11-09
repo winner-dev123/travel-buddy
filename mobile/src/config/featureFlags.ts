@@ -60,7 +60,7 @@ export const FEATURES: Readonly<Record<FeatureKey, FeatureDefinition>> = {
   },
   feed: {
     phase: 1,
-    released: false,
+    released: true,
     requiresNetwork: true,
     plannedCapabilities: [
       'features.feed.capabilities.localFeed',
