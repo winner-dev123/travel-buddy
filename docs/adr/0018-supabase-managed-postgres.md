@@ -5,6 +5,7 @@
 - **Deciders:** Product owner (instruction: "use Supabase as the database"), backend
 - **Requirements:** NFR-003, NFR-004, NFR-006, SAFE-010
 - **Partially resolves:** PRD Q-8 (cloud provider, for the database tier)
+- **Amended by:** [ADR-0020](0020-supabase-auth-identity-provider.md) (Supabase Auth is the IdP; the publishable key may be used for Auth endpoints only)
 
 ## Context
 
@@ -23,7 +24,7 @@ Supabase is managed PostgreSQL plus optional products (Auth, Data API/PostgREST,
   * Row Level Security is enabled with **no policies** on every table we own in `public`. That denies all non-owners; the backend connects as the owner, which bypasses RLS.
   * `anon` and `authenticated` lose all table, sequence and function privileges, including default privileges for future objects.
   * EXECUTE on our own functions is revoked from PUBLIC, because PostgREST exposes functions as RPC.
-  * Operational complement: in the Supabase dashboard, **disable the Data API** (or remove `public` from the exposed schemas). Never distribute the `service_role` key. Our clients do not use the anon key.
+  * Operational complement: in the Supabase dashboard, **disable the Data API** (or remove `public` from the exposed schemas). Never distribute the `service_role` key. Our clients do not use the anon key. *(Amended by ADR-0020: clients may use the publishable key for Supabase Auth endpoints only, with Realtime public channels and Storage closed.)*
 * **Extensions** are installed into Supabase's `extensions` schema when it exists, otherwise into `public` (CI/local). `f_unaccent` resolves the schema dynamically.
 * **Tests never touch Supabase.** Integration tests truncate and downgrade schemas. The fixtures refuse non-local hosts unless `TEST_DATABASE_ALLOW_REMOTE=1` is set for a disposable database.
 * **Local development and CI** keep plain PostGIS (docker-compose and the CI service container). The Supabase CLI local stack is an optional alternative.

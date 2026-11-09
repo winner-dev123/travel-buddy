@@ -115,6 +115,8 @@ class DevIdpTokenRequest(_Request):
     email_verified: bool = True
     name: str | None = Field(default=None, max_length=100)
     nonce: str | None = Field(default=None, max_length=128)
+    # Simulates a completed second factor (adds RFC 8176 "mfa" to amr) for staff flows (ADM-007).
+    mfa: bool = False
 
 
 class DevIdpToken(_Response):

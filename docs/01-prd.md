@@ -13,6 +13,7 @@
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 2026-11-09 | Initial PRD derived from Master Development Prompt v1.0. Requirement IDs established. |
+| 1.4 | 2026-11-09 | Q-1 resolved: Supabase Auth is the identity provider (ADR-0020). No requirement changes. |
 | 1.3 | 2026-11-09 | Q-8 partially resolved: Supabase chosen as the managed PostgreSQL provider (ADR-0018). No requirement changes. |
 | 1.2 | 2026-11-09 | Added PROF-008 (opt-in search-engine indexing), NOTIF-005 (Web Push), ADM-007..009 (staff MFA, staff session timeouts, audit justification), SAFE-012 (web cache purge on visibility loss) and SAFE-013 (own-account restrictions shown to the user). Requested by the web workstream. All additive. |
 | 1.1 | 2026-11-09 | Added DEST-006 (public destination directory and sitemap enumeration), DEST-007 (editorial media attribution and verified rights) and GUIDE-006 (anonymous free guides, structured FAQ). Requested by the web workstream for the public SEO site. All additive. |
@@ -440,7 +441,7 @@ destination_match = 1.0 exact, 0.8 child (neighborhood within city), 0.5 parent,
 
 | # | Question | Default until decided |
 |---|---|---|
-| Q-1 | IdP vendor (Auth0 / Cognito / Firebase / Ory / Keycloak)? | Abstracted. Dev adapter only |
+| Q-1 | ~~IdP vendor (Auth0 / Cognito / Firebase / Ory / Keycloak)?~~ | **Resolved (v1.4):** Supabase Auth ([ADR-0020](adr/0020-supabase-auth-identity-provider.md)). Dev adapter kept for development and tests |
 | Q-2 | Billing via direct store APIs or RevenueCat? | Direct, behind the `BillingProvider` port |
 | Q-3 | Map tile provider permitting offline packs (MapTiler, Stadia, Protomaps self-hosted)? | MapLibre + PMTiles, provider TBD |
 | Q-4 | Should the requester see "declined", or only "pending until expiry"? | Requester sees `declined` (honest UX); cooldown enforced |

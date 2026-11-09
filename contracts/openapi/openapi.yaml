@@ -320,7 +320,8 @@ paths:
         **Exists only when `APP_ENV ∈ {development, test}`. Returns `404` in staging and production**, and the
         process refuses to boot with the dev IdP enabled there. The token is an EdDSA (Ed25519) JWT with
         `kid = dev-1`, `iss = urn:travelbuddy:dev-idp`, `aud = travelbuddy-api`, claims
-        `sub`, `email`, `email_verified`, `name`, `iat`, `exp` (10 min), optional `nonce`, and `amr = ["dev"]`.
+        `sub`, `email`, `email_verified`, `name`, `iat`, `exp` (10 min), optional `nonce`, and `amr = ["dev"]`
+        (`["dev", "mfa"]` when `mfa: true`).
         It is consumed by `/v1/auth/register` and `/v1/auth/login` through the **same** OIDC verifier as
         production tokens (the verifier is chosen by the token's `iss`).
       security: []
@@ -6428,6 +6429,7 @@ components:
         email_verified: { type: boolean, default: true }
         name: { type: string, maxLength: 100 }
         nonce: { type: string, maxLength: 128, description: 'Copied into the `nonce` claim when supplied.' }
+        mfa: { type: boolean, default: false, description: 'Simulates a completed second factor: `amr` becomes `["dev", "mfa"]`. Staff permissions require it (ADM-007).' }
     DevIdpToken:
       type: object
       required: [id_token, expires_at]

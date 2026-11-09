@@ -12,7 +12,7 @@ It is a modular monolith ([ADR-0001](../docs/adr/0001-modular-monolith.md)): one
 | Entitlement evaluator and group premium status ([docs/07](../docs/07-subscription-entitlement-policy.md)) | ✅ Pure logic, tested. Every user is on the free plan until billing lands (Phase 3) |
 | **Identity (Phase 1)**: `POST /v1/auth/register`, `/login`, `/refresh`, `/logout`, `GET /v1/users/me`, `GET`/`DELETE /v1/users/me/sessions`, development IdP (`/v1/dev/idp/*`) | ✅ Implemented. Integration-tested against PostgreSQL, responses validated against the contract |
 | Health: `/health/live`, `/health/ready` | ✅ |
-| Migrations: `0001` baseline (extensions, outbox, jobs, idempotency, append-only audit log), `0002` identity and profiles | ✅ Verified against models (autogenerate diff); full up/down runs in CI with PostGIS |
+| Migrations: `0001` baseline (extensions, outbox, jobs, idempotency, append-only audit log), `0002` identity and profiles, `0003` Supabase access token hook (no-op without Supabase Auth) | ✅ Verified against models (autogenerate diff); full up/down runs in CI with PostGIS |
 | Other domain endpoints | ⏳ Per backlog. Nothing is mocked or stubbed |
 | Realtime gateway, workers, scheduler | ⏳ Phase 1/3 (documented in docs/02, not yet present) |
 
@@ -71,7 +71,8 @@ uvicorn app.main:create_app --factory --reload
 | Environment | URL | Notes |
 |---|---|---|
 | Staging API | https://travel-buddy-api-jet.vercel.app | Vercel serverless (`iad1`), `APP_ENV=staging`, Supabase via the transaction pooler, Supabase Auth as trusted issuer ([ADR-0019](../docs/adr/0019-backend-api-hosting.md)) |
-| Database | Supabase project `dmvhbgxxxilcniadoqvb` (`us-east-1`) | Migrations `0001`–`0002` applied. RLS lockdown verified. Data API disabled ([ADR-0018](../docs/adr/0018-supabase-managed-postgres.md)) |
+| Database | Supabase project `dmvhbgxxxilcniadoqvb` (`us-east-1`) | Migrations `0001`–`0003` applied. RLS lockdown verified. Data API disabled ([ADR-0018](../docs/adr/0018-supabase-managed-postgres.md)) |
+| Identity | Supabase Auth, same project | Trusted issuer in staging ([ADR-0020](../docs/adr/0020-supabase-auth-identity-provider.md)). Dashboard checklist below |
 
 ## Supabase (production database)
 
@@ -83,6 +84,26 @@ The database is Supabase-managed PostgreSQL ([ADR-0018](../docs/adr/0018-supabas
 4. Recommended: disable the Data API in the dashboard (**Project Settings → Data API**). The backend does not use it.
 
 Never point `TEST_DATABASE_URL` at Supabase. Integration tests truncate tables, and the fixtures refuse non-local hosts.
+
+## Supabase Auth (identity provider)
+
+Supabase Auth issues the ID tokens that `POST /v1/auth/login|register` exchanges for platform sessions ([ADR-0020](../docs/adr/0020-supabase-auth-identity-provider.md)). The backend only needs `OIDC_ISSUERS` (issuer `https://<ref>.supabase.co/auth/v1`, audience `authenticated`, `ES256`, the project's JWKS URL).
+
+Dashboard checklist (Authentication unless noted):
+
+| Setting | Required value | State (2026-11-09) |
+|---|---|---|
+| Sign In / Providers → anonymous sign-ins | Off (the verifier also rejects `is_anonymous`) | ✅ |
+| Sign In / Providers → Confirm email | On | ✅ |
+| Multi-Factor → TOTP | Enabled (staff need `aal2`, ADM-007) | ✅ |
+| URL Configuration → Site URL | Public web origin | ✅ `https://travel-buddy-six-rho.vercel.app` |
+| URL Configuration → Redirect URLs | Exact URLs only: `<web>/api/auth/callback`, `http://localhost:3000/api/auth/callback`, `travelbuddy://auth/callback`. Never wildcard hosts | ⏳ To add |
+| Auth Hooks → Customize Access Token (JWT) Claims | Postgres function `auth_hooks.custom_access_token` (migration `0003`). Without it, every email counts as unverified | ⏳ To enable |
+| Realtime → Settings → Allow public access to channels | Off (we do not use Supabase Realtime) | ⏳ Currently on |
+| Sign In / Providers → Google, Apple | On, with client credentials from Google Cloud / Apple Developer | ⏳ Needs credentials |
+| Attack Protection → CAPTCHA; leaked passwords; custom SMTP | Before public launch (T-AUTH-11) | ⏳ BL-6.09 |
+
+Never trust `user_metadata` for security decisions: users can write it with `auth.updateUser`.
 
 ## Quality gates (same as CI)
 

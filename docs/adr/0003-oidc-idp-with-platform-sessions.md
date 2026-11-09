@@ -1,9 +1,9 @@
 # ADR-0003: Managed OIDC identity provider + platform-issued sessions
 
-- **Status:** Accepted (IdP vendor selection: Proposed, see PRD Q-1)
+- **Status:** Accepted (IdP vendor: Supabase Auth, see ADR-0020)
 - **Date:** 2026-11-09
 - **Requirements:** AUTH-001..007
-- **Amended by:** [ADR-0011](0011-web-bff-cookie-sessions.md) (web BFF sessions, refresh reuse leeway)
+- **Amended by:** [ADR-0011](0011-web-bff-cookie-sessions.md) (web BFF sessions, refresh reuse leeway), [ADR-0020](0020-supabase-auth-identity-provider.md) (vendor: Supabase Auth)
 
 ## Context
 We need email/password, Sign in with Apple, Google Sign-In, verification, password reset and multi-device sessions. Building credential storage ourselves is high-risk. We also need full control of sessions (revocation, WebSocket auth, device list) and portability between IdP vendors.

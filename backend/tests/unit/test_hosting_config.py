@@ -72,16 +72,47 @@ def _supabase_token(key: ec.EllipticCurvePrivateKey, **extra: object) -> str:
 
 async def test_supabase_auth_token_claims_are_mapped() -> None:
     key, verifier = _supabase_verifier()
-    identity = await verifier.verify(_supabase_token(key), expected_nonce=None)
+    # ``email_verified`` at the top level is added by the custom access token hook (migration 0003).
+    token = _supabase_token(
+        key, email_verified=True, user_metadata={"full_name": "Ana Souza", "email_verified": True}
+    )
+    identity = await verifier.verify(token, expected_nonce=None)
     assert identity.amr == frozenset({"password"})
     assert identity.email_verified is True
     assert identity.email == "ana@example.com"
+    assert identity.name == "Ana Souza"
 
 
-async def test_unverified_supabase_email_is_not_trusted() -> None:
+@pytest.mark.security
+async def test_user_metadata_email_verified_is_not_trusted() -> None:
+    """``user_metadata`` is user-writable in Supabase (``auth.updateUser``); never trust it."""
     key, verifier = _supabase_verifier()
-    token = _supabase_token(key, user_metadata={"email_verified": False})
+    token = _supabase_token(key, user_metadata={"email_verified": True})
     assert (await verifier.verify(token, expected_nonce=None)).email_verified is False
+
+
+@pytest.mark.req("ADM-007")
+async def test_supabase_aal2_is_recorded_as_mfa() -> None:
+    key, verifier = _supabase_verifier()
+    now = int(datetime.now(tz=UTC).timestamp())
+    token = _supabase_token(
+        key,
+        aal="aal2",
+        amr=[
+            {"method": "totp", "timestamp": now - 5},
+            {"method": "password", "timestamp": now - 60},
+        ],
+    )
+    identity = await verifier.verify(token, expected_nonce=None)
+    assert identity.amr == frozenset({"totp", "password", "mfa"})
+    # Supabase has no auth_time; the latest amr timestamp is used instead of iat.
+    assert int(identity.auth_time.timestamp()) == now - 5
+
+
+async def test_aal1_is_not_mfa() -> None:
+    key, verifier = _supabase_verifier()
+    identity = await verifier.verify(_supabase_token(key, aal="aal1"), expected_nonce=None)
+    assert "mfa" not in identity.amr
 
 
 @pytest.mark.security

@@ -8,6 +8,7 @@ from app.core.errors import AppError, ErrorCode
 from app.core.ids import uuid7
 from app.core.security.policy import ALLOW, Deny, authorize_platform, enforce
 from app.core.security.principal import (
+    MFA_METHOD,
     ROLE_PERMISSIONS,
     AccountStatus,
     Permission,
@@ -16,9 +17,17 @@ from app.core.security.principal import (
 )
 
 
-def _principal(*roles: PlatformRole, status: AccountStatus = AccountStatus.ACTIVE) -> Principal:
+def _principal(
+    *roles: PlatformRole,
+    status: AccountStatus = AccountStatus.ACTIVE,
+    amr: frozenset[str] = frozenset({"password", MFA_METHOD}),
+) -> Principal:
     return Principal(
-        user_id=uuid7(), session_id=uuid7(), account_status=status, roles=frozenset(roles)
+        user_id=uuid7(),
+        session_id=uuid7(),
+        account_status=status,
+        roles=frozenset(roles),
+        amr=amr,
     )
 
 
@@ -65,3 +74,23 @@ def test_enforce_raises_for_deny_only() -> None:
         enforce(Deny(ErrorCode.CONNECTION_REQUIRED, "Connect first."))
     assert excinfo.value.code is ErrorCode.CONNECTION_REQUIRED
     assert excinfo.value.status == 403
+
+
+@pytest.mark.req("ADM-007")
+@pytest.mark.security
+@pytest.mark.parametrize("role", list(PlatformRole))
+def test_staff_without_mfa_are_denied_with_mfa_required(role: PlatformRole) -> None:
+    staff = _principal(role, amr=frozenset({"password"}))
+    permission = next(iter(ROLE_PERMISSIONS[role]))
+    decision = authorize_platform(staff, permission)
+    assert isinstance(decision, Deny)
+    assert decision.code is ErrorCode.MFA_REQUIRED
+    assert _principal(role).mfa_satisfied
+    assert authorize_platform(_principal(role), permission) == ALLOW
+
+
+@pytest.mark.req("ADM-007")
+def test_non_staff_get_forbidden_not_an_mfa_hint() -> None:
+    decision = authorize_platform(_principal(amr=frozenset()), Permission.USERS_READ)
+    assert isinstance(decision, Deny)
+    assert decision.code is ErrorCode.FORBIDDEN

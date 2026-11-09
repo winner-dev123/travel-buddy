@@ -103,6 +103,9 @@ Verification column: **U** = unit test, **I** = integration test, **S** = securi
 | T-AUTH-06 | Session fixation or stale sessions after password change | Password-change event (IdP webhook or `auth_time` check) revokes sessions | I |
 | T-AUTH-07 | Underage users | Age gate. Report category `minor_safety` with top priority. Account review | R, O |
 | T-AUTH-08 | Dev IdP enabled in prod | Process refuses to boot if a dev adapter is configured with `APP_ENV=production` | U |
+| T-AUTH-09 | Staff account taken over with a password alone | Staff permissions require `mfa` in the session `amr` (Supabase `aal2` after TOTP) or `403 mfa_required` (ADM-007). Admin routes enforce 30 min idle / 12 h absolute limits (ADM-008) | U, I |
+| T-AUTH-10 | Auth codes or tokens redirected to an attacker-controlled site | Exact redirect-URL allow-list in Supabase Auth (no wildcard hosts). PKCE on web and mobile. The web callback validates `state` and the `next` path (same-origin only) | S, I |
+| T-AUTH-11 | Sign-up spam or credential stuffing against the public Supabase Auth endpoints | Supabase Auth rate limits now. Before launch: CAPTCHA (Turnstile/hCaptcha), leaked-password protection, custom SMTP (ADR-0020) | O |
 
 ### 4.3 Authorization and data isolation (A2, A8)
 
@@ -201,7 +204,7 @@ Verification column: **U** = unit test, **I** = integration test, **S** = securi
 | T-OPS-04 | Audit log tampering | Append-only grants. Partitions exported to WORM storage | R |
 | T-OPS-06 | Removed or non-public content lingers in web caches, or a forged revalidation request is used to thrash the cache | Signed, timestamped `webCacheRevalidation` webhook (HMAC, 300 s skew, idempotent `event_id`). Propagation target ≤ 10 s with ISR ≤ 60 s fallback (SAFE-012) | I, S |
 | T-OPS-07 | Search engines index people who never agreed to it | Indexing is opt-in (PROF-008). `indexable: false` → `noindex` and sitemap exclusion. Withdrawal triggers revalidation | S |
-| T-OPS-08 | Direct table access through Supabase's auto-generated Data API using the public anon key, bypassing the backend's authorization | RLS deny-all on every table, `anon`/`authenticated` privileges and default privileges revoked, function EXECUTE revoked from PUBLIC, all re-applied after every migration. Data API disabled in the dashboard. `service_role` key never distributed (ADR-0018) | I, S |
+| T-OPS-08 | Direct table access through Supabase's auto-generated Data API using the public anon key, bypassing the backend's authorization | RLS deny-all on every table, `anon`/`authenticated` privileges and default privileges revoked, function EXECUTE revoked from PUBLIC, all re-applied after every migration. Data API disabled in the dashboard. `service_role` key never distributed (ADR-0018). The publishable key is used for Supabase Auth endpoints only: Realtime public channels disabled, no Storage buckets or policies, no Edge Functions (ADR-0020) | I, S |
 | T-OPS-05 | Backup exposure | Encrypted backups. Restricted restore role. Restore drills | O |
 
 ## 5. Privacy design (LINDDUN summary)

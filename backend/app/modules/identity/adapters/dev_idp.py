@@ -43,6 +43,7 @@ class DevIdentityProvider:
         email_verified: bool = True,
         name: str | None = None,
         nonce: str | None = None,
+        mfa: bool = False,
     ) -> tuple[str, datetime]:
         now = self._clock.now()
         expires_at = now + DEV_TOKEN_TTL
@@ -55,7 +56,7 @@ class DevIdentityProvider:
             "iat": int(now.timestamp()),
             "auth_time": int(now.timestamp()),
             "exp": int(expires_at.timestamp()),
-            "amr": ["dev"],
+            "amr": ["dev", "mfa"] if mfa else ["dev"],
         }
         if name:
             claims["name"] = name

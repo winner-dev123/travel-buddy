@@ -12,6 +12,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 
+MFA_METHOD = "mfa"
+"""RFC 8176 ``amr`` value for multiple-factor authentication. The identity verifier normalizes
+vendor-specific signals (Supabase ``aal: aal2``) to it (ADR-0020)."""
+
 
 class PlatformRole(StrEnum):
     SUPPORT = "support"
@@ -94,6 +98,11 @@ class Principal:
     @property
     def is_active(self) -> bool:
         return self.account_status is AccountStatus.ACTIVE
+
+    @property
+    def mfa_satisfied(self) -> bool:
+        """The IdP sign-in used a second factor (RFC 8176 ``mfa``; Supabase ``aal2``)."""
+        return MFA_METHOD in self.amr
 
     @property
     def permissions(self) -> frozenset[Permission]:

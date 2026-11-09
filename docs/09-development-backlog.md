@@ -60,7 +60,7 @@ Web-workstream items (Next.js app, BFF, web admin) are tracked by the web workst
 
 | ID | Item | Size | Depends | Req | Status |
 |---|---|---|---|---|---|
-| BL-1.01 | IdP port + OIDC verifier (JWKS cache, alg pinning) + DevIdentityProvider | M | 0.11 | AUTH-001..003, T-AUTH-01/08 | ✅ Done (production IdP vendor still to configure, Q-1) |
+| BL-1.01 | IdP port + OIDC verifier (JWKS cache, alg pinning) + DevIdentityProvider | M | 0.11 | AUTH-001..003, T-AUTH-01/08 | ✅ Done. Production IdP: Supabase Auth (ADR-0020), trusted in staging. `aal2` → `mfa`; `email_verified` only from the access token hook (migration 0003) |
 | BL-1.02 | Platform sessions: access JWT, refresh rotation, reuse detection (30 s leeway, ADR-0011), `client` ∈ ios/android/web, session list/revoke | M | 1.01 | AUTH-006, AUTH-007 | ✅ Done |
 | BL-1.03 | Registration with age gate, consent records, email-verified gate | M | 1.02 | AUTH-004, AUTH-008, AUTH-009 | ✅ Done, except the email-verified gate, which lands with the first gated mutation (posts, BL-1.10) |
 | BL-1.04 | Profiles, preferences, privacy settings (defaults per ERD) | M | 1.03 | PROF-001..007 | 🟡 Partial: tables, privacy-protective defaults and `GET /v1/users/me` done. PATCH endpoints, onboarding completion and handle change pending |
@@ -85,7 +85,7 @@ Web-workstream items (Next.js app, BFF, web admin) are tracked by the web workst
 | BL-1.23 | Seed editorial content for launch destinations | M | 1.10 | FEED-001 |
 | BL-1.24 | E2E: registration → location-based feed | S | 1.19, 1.20 | PROF-002, FEED-001 |
 | BL-1.25 | Web cache revalidation: outbox consumer + signed `webCacheRevalidation` webhook (retries, secret rotation). Settings `WEB_REVALIDATE_URL`, `WEB_REVALIDATE_SECRET`. The web receiver is already live and verified (accepts `current,previous` secrets) | S | 1.09 | SAFE-012 |
-| BL-1.26 | Staff hardening on `/v1/admin/*`: MFA (`amr`) check, idle/absolute session limits, `X-Audit-Justification` dependency → audit log | S | 1.02, 1.14 | ADM-007, ADM-008, ADM-009 |
+| BL-1.26 | Staff hardening on `/v1/admin/*`: MFA (`amr`) check, idle/absolute session limits, `X-Audit-Justification` dependency → audit log | S | 1.02, 1.14 | ADM-007, ADM-008, ADM-009 | 🟡 Partial: MFA enforced in `authorize_platform` (`403 mfa_required`, Supabase `aal2`; dev IdP `mfa: true`). Session limits and the justification dependency land with the first admin route (BL-1.14) |
 | BL-1.27 | Search-indexing consent: privacy setting, `indexable` on public profile/posts, sitemap filter | S | 1.04, 1.10 | PROF-008 |
 | BL-1.28 | `MyAccount.restrictions` derived from active moderation actions | S | 1.14 | SAFE-013 |
 
@@ -167,7 +167,7 @@ Web-workstream items (Next.js app, BFF, web admin) are tracked by the web workst
 | BL-6.05 | Privacy review, DPIA sign-off, records of processing, policies | M | SAFE-010 |
 | BL-6.06 | App Store / Play readiness (UGC policies, account deletion in-app, privacy labels, data safety form) | M | — |
 | BL-6.07 | Penetration test + remediation | M | NFR-006 |
-| BL-6.09 | Supabase production readiness: upgrade to Pro, PITR add-on (NFR-004), decide region (EU project if needed), connection headroom (compute/IPv4 add-on), disable Data API, rotate DB password into the secret manager (ADR-0018) | S | NFR-003/004, SAFE-010 |
+| BL-6.09 | Supabase production readiness: upgrade to Pro, PITR add-on (NFR-004), decide region (EU project if needed), connection headroom (compute/IPv4 add-on), disable Data API, rotate DB password into the secret manager (ADR-0018). Auth (ADR-0020): CAPTCHA, leaked-password protection, custom SMTP, Auth Admin API deletion in the BL-1.17 saga | S | NFR-003/004, SAFE-010, T-AUTH-11 |
 | BL-6.08 | Destination launch operations playbook | S | — |
 
 ## 9. Phase 7 — Global expansion (themes)
@@ -176,6 +176,6 @@ More destinations and languages · additional audio tours · ML ranking behind A
 
 ## 10. Immediate next steps (Phase 1 kickoff, needs approval)
 
-1. Decide Q-1 (IdP vendor) so BL-1.01 can integrate a real adapter beyond the dev adapter.
+1. ~~Decide Q-1 (IdP vendor)~~: Supabase Auth (ADR-0020). Remaining dashboard steps are listed in the backend README.
 2. Choose the boundary data source for the launch destinations (BL-1.05).
 3. Start BL-1.01, BL-1.05 and BL-1.09 in parallel. They share no dependencies.

@@ -19,6 +19,7 @@ import httpx
 import jwt
 
 from app.core.errors import AppError, ErrorCode
+from app.core.security.principal import MFA_METHOD
 
 _CLOCK_SKEW_SECONDS = 60
 
@@ -107,25 +108,63 @@ def _invalid(detail: str = "The identity token is invalid.") -> AppError:
     return AppError(ErrorCode.TOKEN_INVALID, detail)
 
 
-def _parse_amr(value: Any) -> frozenset[str]:
-    """RFC 8176 ``amr`` is a list of strings; Supabase Auth uses ``[{"method": ..., ...}]``."""
-    if not isinstance(value, list):
-        return frozenset()
+def _parse_amr(claims: Mapping[str, Any]) -> frozenset[str]:
+    """Authentication methods, normalized for platform policies (ADM-007, ADR-0020).
+
+    RFC 8176 ``amr`` is a list of strings; Supabase Auth uses ``[{"method": ..., ...}]``.
+    Supabase signals a completed second factor with ``aal: "aal2"``; that is recorded as the
+    RFC 8176 ``mfa`` method so policies need not know the vendor.
+    """
+    value = claims.get("amr")
     methods: set[str] = set()
-    for item in value:
-        if isinstance(item, str):
-            methods.add(item)
-        elif isinstance(item, dict) and isinstance(item.get("method"), str):
-            methods.add(item["method"])
+    if isinstance(value, list):
+        for item in value:
+            if isinstance(item, str):
+                methods.add(item)
+            elif isinstance(item, dict) and isinstance(item.get("method"), str):
+                methods.add(item["method"])
+    if claims.get("aal") == "aal2":
+        methods.add(MFA_METHOD)
     return frozenset(methods)
 
 
 def _email_verified(claims: Mapping[str, Any]) -> bool:
-    """Standard ``email_verified``; falls back to Supabase's ``user_metadata.email_verified``."""
-    if "email_verified" in claims:
-        return claims["email_verified"] is True
+    """Only a top-level, IdP-asserted ``email_verified: true`` counts.
+
+    Supabase's ``user_metadata`` is writable by the user (``auth.updateUser({data})``), so
+    ``user_metadata.email_verified`` is NOT trusted. For Supabase the top-level claim is added by
+    the ``auth_hooks.custom_access_token`` hook from ``auth.users.email_confirmed_at``
+    (migration 0003, ADR-0020); without the hook every email counts as unverified.
+    """
+    return claims.get("email_verified") is True
+
+
+def _auth_time(claims: Mapping[str, Any]) -> int:
+    """``auth_time`` if present; Supabase omits it but timestamps each ``amr`` entry instead.
+
+    A refreshed Supabase token has a new ``iat`` while the user authenticated earlier, so the most
+    recent ``amr`` timestamp is the better signal. ``iat`` is the last resort.
+    """
+    if isinstance(claims.get("auth_time"), int | float):
+        return int(claims["auth_time"])
+    stamps = [
+        int(item["timestamp"])
+        for item in claims.get("amr") or []
+        if isinstance(item, dict) and isinstance(item.get("timestamp"), int | float)
+    ]
+    return max(stamps) if stamps else int(claims["iat"])
+
+
+def _display_name(claims: Mapping[str, Any]) -> str | None:
+    """Prefill for the profile display name (user-editable anyway, so metadata is fine here)."""
+    candidates: list[Any] = [claims.get("name")]
     metadata = claims.get("user_metadata")
-    return isinstance(metadata, dict) and metadata.get("email_verified") is True
+    if isinstance(metadata, dict):
+        candidates += [metadata.get("full_name"), metadata.get("name")]
+    for candidate in candidates:
+        if isinstance(candidate, str) and candidate.strip():
+            return candidate.strip()[:100]
+    return None
 
 
 class OidcVerifier:
@@ -174,14 +213,14 @@ class OidcVerifier:
             # Supabase anonymous sign-ins are not accounts; never let them register or log in.
             raise _invalid("Anonymous sessions cannot be used to sign in.")
         email = claims.get("email")
-        amr = _parse_amr(claims.get("amr"))
-        auth_time = datetime.fromtimestamp(int(claims.get("auth_time", claims["iat"])), tz=UTC)
+        amr = _parse_amr(claims)
+        auth_time = datetime.fromtimestamp(_auth_time(claims), tz=UTC)
         return VerifiedIdentity(
             issuer=config.issuer,
             subject=str(claims["sub"]),
             email=str(email).strip().lower() if email else None,
             email_verified=_email_verified(claims),
-            name=str(claims["name"]) if claims.get("name") else None,
+            name=_display_name(claims),
             amr=amr,
             auth_time=auth_time,
             method=config.method,
