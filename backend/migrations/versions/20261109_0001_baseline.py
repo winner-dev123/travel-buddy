@@ -20,16 +20,46 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    for extension in ("postgis", "citext", "pg_trgm", "unaccent"):
-        op.execute(f"CREATE EXTENSION IF NOT EXISTS {extension}")
-
-    # unaccent() is STABLE; an IMMUTABLE wrapper is required for expression indexes used by
-    # accent-insensitive destination search (DEST-001).
+    # Extensions go into the `extensions` schema where it exists (Supabase convention, keeps them
+    # out of the Data-API-exposed `public` schema), otherwise into `public` (plain PostgreSQL).
     op.execute(
         """
-        CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text
-        LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT
-        AS $$ SELECT public.unaccent('public.unaccent'::regdictionary, $1) $$
+        DO $ext$
+        DECLARE
+            target text := CASE
+                WHEN EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'extensions')
+                THEN 'extensions' ELSE 'public' END;
+            ext text;
+        BEGIN
+            FOREACH ext IN ARRAY ARRAY['postgis', 'citext', 'pg_trgm', 'unaccent'] LOOP
+                EXECUTE format('CREATE EXTENSION IF NOT EXISTS %I WITH SCHEMA %I', ext, target);
+            END LOOP;
+        END
+        $ext$
+        """
+    )
+
+    # unaccent() is STABLE; an IMMUTABLE wrapper is required for expression indexes used by
+    # accent-insensitive destination search (DEST-001). It references unaccent in whichever
+    # schema the extension lives in.
+    op.execute(
+        """
+        DO $fn$
+        DECLARE
+            s text := (
+                SELECT n.nspname FROM pg_extension e
+                JOIN pg_namespace n ON n.oid = e.extnamespace
+                WHERE e.extname = 'unaccent'
+            );
+        BEGIN
+            EXECUTE format(
+                $f$CREATE OR REPLACE FUNCTION public.f_unaccent(text) RETURNS text
+                   LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT
+                   AS $body$ SELECT %1$I.unaccent(%2$L::regdictionary, $1) $body$$f$,
+                s, s || '.unaccent'
+            );
+        END
+        $fn$
         """
     )
 

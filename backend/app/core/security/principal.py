@@ -9,6 +9,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import StrEnum
 
 
@@ -86,6 +87,9 @@ class Principal:
     roles: frozenset[PlatformRole] = field(default_factory=frozenset)
     email_verified: bool = False
     age_assured: bool = False
+    # IdP authentication methods and time, for staff MFA/session policies (ADM-007/008).
+    amr: frozenset[str] = field(default_factory=frozenset)
+    auth_time: datetime | None = None
 
     @property
     def is_active(self) -> bool:

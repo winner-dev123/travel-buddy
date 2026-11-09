@@ -44,7 +44,7 @@ flowchart TB
 | Component | AWS (reference) | GCP | Azure |
 |---|---|---|---|
 | Containers | ECS Fargate (or EKS when > ~15 services) | Cloud Run / GKE | Container Apps / AKS |
-| Postgres + PostGIS | RDS for PostgreSQL 16 (PostGIS supported) | Cloud SQL for PostgreSQL | Azure Database for PostgreSQL Flexible |
+| Postgres + PostGIS | **Supabase (chosen, ADR-0018)**: project `us-east-1`, Free plan now, Pro + PITR before real user data. Alternatives: RDS for PostgreSQL | Cloud SQL for PostgreSQL | Azure Database for PostgreSQL Flexible |
 | Redis | ElastiCache for Redis | Memorystore | Azure Cache for Redis |
 | Object storage + CDN | S3 + CloudFront | GCS + Cloud CDN | Blob Storage + Front Door |
 | Secrets | Secrets Manager + KMS | Secret Manager + KMS | Key Vault |
@@ -115,7 +115,7 @@ Mobile: EAS Build for store binaries (`development`, `preview`, `production` pro
 
 | Control | Setting |
 |---|---|
-| Postgres backups | Automated daily snapshots + PITR (RPO ≤ 5 min). 35-day retention |
+| Postgres backups | Supabase: **none on the Free plan**. Pro gives daily backups (7 days). The PITR add-on gives RPO ≤ 5 min. Upgrade before any real user data (ADR-0018) |
 | Restore drill | Quarterly, documented time-to-restore (RTO target ≤ 1 h) |
 | Encryption | At rest (KMS) for DB, Redis, buckets. TLS 1.2+ in transit, including DB connections |
 | Object storage | Versioning on public/private. Replication to a second region (Phase 6) |

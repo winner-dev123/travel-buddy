@@ -1,7 +1,7 @@
 """Module boundary rules (ADR-0001, architecture section 4).
 
 1. ``app.core`` never imports ``app.modules``.
-2. A module imports another module only through its public ``service`` or ``events``.
+2. A module imports another module only through its public ``service``, ``events`` or ``schemas``.
 3. Module dependencies follow the layer DAG (strictly downward).
 4. Pure domain files perform no I/O (no framework, ORM or client imports).
 """
@@ -18,17 +18,17 @@ import app
 APP_ROOT = Path(app.__file__).resolve().parent
 MODULES_ROOT = APP_ROOT / "modules"
 
-PUBLIC_SUBMODULES = frozenset({"service", "events"})
+PUBLIC_SUBMODULES = frozenset({"service", "events", "schemas"})
 
 # Architecture section 4.3. Every module directory must be registered here.
 LAYERS: dict[str, int] = {
     "platform": 1,
     "observability": 1,
     "media": 1,
-    "identity": 2,
     "destinations": 2,
     "billing": 2,
-    "profiles": 3,
+    "profiles": 2,
+    "identity": 3,
     "trust_safety": 3,
     "location": 3,
     "connections": 4,
@@ -44,6 +44,7 @@ LAYERS: dict[str, int] = {
     "challenges": 6,
     "ai_assistant": 6,
     "admin": 7,
+    "client_config": 7,
     "health": 7,
 }
 

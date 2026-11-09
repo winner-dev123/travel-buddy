@@ -112,7 +112,7 @@ backend/app/
 **Dependency rules.** An AST-based architecture test ([`backend/tests/unit/test_architecture_boundaries.py`](../backend/tests/unit/test_architecture_boundaries.py)) checks these in CI. It is used instead of import-linter because import-linter cannot express "only another module's `service`/`events` may be imported".
 
 1. `core` imports no module.
-2. A module may import another module **only** through `modules.<other>.service` or `modules.<other>.events`. Importing another module's `models`, `repository` or `domain` is forbidden.
+2. A module may import another module **only** through `modules.<other>.service`, `modules.<other>.events` or `modules.<other>.schemas` (its public response models). Importing another module's `models`, `repository` or `domain` is forbidden.
 3. Modules form a DAG. Lower layers never import higher ones (layer order is in §4.3).
 4. `domain.py` is pure: no I/O, no SQLAlchemy, no FastAPI. That keeps state machines and policies unit-testable.
 
@@ -150,15 +150,15 @@ Cross-module reactions use **domain events** through the transactional outbox (�
 ```
 Layer 0  core
 Layer 1  platform, observability, media
-Layer 2  identity, destinations, billing
-Layer 3  profiles, trust_safety, location
+Layer 2  profiles, destinations, billing
+Layer 3  identity, trust_safety, location
 Layer 4  connections, social, trips, guides
 Layer 5  messaging, groups, feed, discovery, notifications(consumer)
 Layer 6  group_chat, challenges, ai_assistant
 Layer 7  admin, health
 ```
 
-`trust_safety.is_blocked` sits at layer 3 because almost every social path consults it. `notifications` consumes events from every layer but only imports `identity` and `profiles` services, so it creates no cycle.
+`identity` sits above `profiles` and `billing` because registration creates the default profile in the same transaction and `GET /v1/users/me` composes all three. Request *authentication* (platform token verification) lives in the kernel (`app/core/security`), so other modules never import `identity`. `trust_safety.is_blocked` sits at layer 3 because almost every social path consults it. `notifications` consumes events from every layer but only imports `identity` and `profiles` services, so it creates no cycle.
 
 ## 5. Platform-wide API conventions
 
@@ -260,7 +260,7 @@ The web app caches public pages (ISR, ≤ 60 s). Privacy-relevant changes must n
 * A managed **OIDC identity provider** owns credentials: email + password, email verification, password reset, Sign in with Apple, and Google Sign-In. The vendor is selected by configuration (issuer, audience, JWKS URL). Candidates are Auth0, AWS Cognito, Firebase Authentication, Ory Network and Keycloak; all satisfy the audited-provider requirement.
 * The mobile app signs in through the IdP SDK and receives an **IdP ID token**. It calls `POST /v1/auth/register` (first time: age attestation and terms consent) or `POST /v1/auth/login`. The backend verifies the ID token signature, issuer, audience, expiry and nonce against the JWKS, maps `(issuer, subject)` to a user, and issues a **platform session**:
   * access token: JWT, 15 min, `EdDSA`-signed, claims `sub`, `sid`, `roles`, `ver`;
-  * refresh token: opaque 256-bit random value, stored as a SHA-256 hash in `user_sessions`, rotated on every use, with **reuse detection** (presenting a rotated token revokes the whole token family).
+  * refresh token: opaque 256-bit random value, stored only as a SHA-256 hash in `user_sessions`, rotated on every use, with **reuse detection** (presenting a rotated token revokes the whole token family). Each successor is `HMAC-SHA256(REFRESH_TOKEN_DERIVATION_KEY, previous token)`, so within the 30 s leeway the server can recompute and return the *same* successor without storing raw tokens. Hashes of all rotated tokens are kept in `retired_refresh_tokens`, so reuse of *any* ancestor is detected.
 * Multi-device session management means listing and revoking sessions (`GET/DELETE /v1/users/me/sessions`). Revocation takes effect at the next refresh, and immediately for WebSockets through a `session.revoked` event.
 * **Clients.** `POST /v1/auth/login|register` carry `client ∈ {ios, android, web}`, which is recorded on `user_sessions.platform`. The web app never exposes platform tokens to browser JavaScript: its Next.js server acts as a BFF and keeps them in a sealed HTTP-only cookie ([ADR-0011](adr/0011-web-bff-cookie-sessions.md)).
 * **Refresh reuse leeway.** Presenting the *immediately previous* refresh token within **30 s** of its rotation returns the same successor pair, so parallel refreshes from one client don't log the user out. Any other reuse revokes the whole family (`401 refresh_token_reused`, audited).
@@ -357,7 +357,7 @@ Redis holds **no source-of-truth data**. Losing it degrades performance and pres
 | Mobile | React Native + TypeScript (strict) on **Expo** (dev builds / prebuild), Expo Router, TanStack Query, Zustand, expo-sqlite (offline data), expo-secure-store (tokens), i18next, MapLibre RN (Phase 4) |
 | Web app + admin | Next.js (App Router) as a BFF, in an npm-workspaces monorepo (`apps/web`, `packages/*`). Owned by the web workstream. See [docs/web](web/01-architecture.md) and ADR-0009…0014 |
 | Backend | Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2 (async, asyncpg), Alembic, GeoAlchemy2 |
-| Data | PostgreSQL 16 + PostGIS 3.4, extensions `postgis`, `citext`, `pg_trgm`, `unaccent` |
+| Data | **Supabase** managed PostgreSQL ([ADR-0018](adr/0018-supabase-managed-postgres.md)) + PostGIS, extensions `postgis`, `citext`, `pg_trgm`, `unaccent` (in the `extensions` schema). Database only: the Supabase Data API is locked down (RLS deny-all, API roles revoked) and the backend is the sole data path. CI and local dev use plain PostGIS |
 | Cache / ephemeral | Redis 7 |
 | Media | S3-compatible storage (MinIO locally), CDN |
 | Quality | ruff, mypy (strict), pytest (incl. architecture-boundary tests); ESLint, TypeScript `strict`, Jest + React Native Testing Library, Maestro (E2E) |

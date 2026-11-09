@@ -13,6 +13,7 @@
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 2026-11-09 | Initial PRD derived from Master Development Prompt v1.0. Requirement IDs established. |
+| 1.3 | 2026-11-09 | Q-8 partially resolved: Supabase chosen as the managed PostgreSQL provider (ADR-0018). No requirement changes. |
 | 1.2 | 2026-11-09 | Added PROF-008 (opt-in search-engine indexing), NOTIF-005 (Web Push), ADM-007..009 (staff MFA, staff session timeouts, audit justification), SAFE-012 (web cache purge on visibility loss) and SAFE-013 (own-account restrictions shown to the user). Requested by the web workstream. All additive. |
 | 1.1 | 2026-11-09 | Added DEST-006 (public destination directory and sitemap enumeration), DEST-007 (editorial media attribution and verified rights) and GUIDE-006 (anonymous free guides, structured FAQ). Requested by the web workstream for the public SEO site. All additive. |
 
@@ -446,7 +447,7 @@ destination_match = 1.0 exact, 0.8 child (neighborhood within city), 0.5 parent,
 | Q-5 | Free AI quota (generations/month)? | 5 generations, 0 replans (replan is premium) |
 | Q-6 | Group admin grace period length? | 14 days |
 | Q-7 | Age verification beyond self-attestation in specific markets (UK OSA, US state laws)? | Self-attestation + reporting. Legal review before launch |
-| Q-8 | Cloud provider? | AWS reference architecture in the Terraform layout, vendor-neutral modules |
+| Q-8 | Cloud provider? | **Database decided: Supabase** (ADR-0018, `us-east-1`, Free → Pro). Compute and hosting for the API, workers and realtime are still open (AWS reference layout). Open sub-question: keep `us-east-1` or create an EU project before launch (GDPR transfers) |
 
 ## 9. Risks
 

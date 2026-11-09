@@ -33,6 +33,10 @@ class ErrorCode(StrEnum):
     REAUTHENTICATION_REQUIRED = "reauthentication_required"
     JUSTIFICATION_REQUIRED = "justification_required"
     TOKEN_EXPIRED = "token_expired"  # noqa: S105 - error code, not a secret
+    TOKEN_INVALID = "token_invalid"  # noqa: S105 - error code, not a secret
+    REFRESH_TOKEN_REUSED = "refresh_token_reused"  # noqa: S105 - error code, not a secret
+    SESSION_REVOKED = "session_revoked"
+    CONSENT_REQUIRED = "consent_required"
     FORBIDDEN = "forbidden"
     NOT_FOUND = "not_found"
     METHOD_NOT_ALLOWED = "method_not_allowed"
@@ -55,6 +59,7 @@ class ErrorCode(StrEnum):
     INVITATION_INVALID = "invitation_invalid"
     CHALLENGE_NOT_ACTIVE = "challenge_not_active"
     ATTEMPTS_EXHAUSTED = "attempts_exhausted"
+    UPSTREAM_UNAVAILABLE = "upstream_unavailable"
     SERVICE_UNAVAILABLE = "service_unavailable"
     INTERNAL_ERROR = "internal_error"
 
@@ -67,6 +72,10 @@ _DEFAULT_STATUS: Mapping[ErrorCode, HTTPStatus] = {
     ErrorCode.REAUTHENTICATION_REQUIRED: HTTPStatus.UNAUTHORIZED,
     ErrorCode.JUSTIFICATION_REQUIRED: HTTPStatus.BAD_REQUEST,
     ErrorCode.TOKEN_EXPIRED: HTTPStatus.UNAUTHORIZED,
+    ErrorCode.TOKEN_INVALID: HTTPStatus.UNAUTHORIZED,
+    ErrorCode.REFRESH_TOKEN_REUSED: HTTPStatus.UNAUTHORIZED,
+    ErrorCode.SESSION_REVOKED: HTTPStatus.UNAUTHORIZED,
+    ErrorCode.CONSENT_REQUIRED: HTTPStatus.FORBIDDEN,
     ErrorCode.FORBIDDEN: HTTPStatus.FORBIDDEN,
     ErrorCode.NOT_FOUND: HTTPStatus.NOT_FOUND,
     ErrorCode.METHOD_NOT_ALLOWED: HTTPStatus.METHOD_NOT_ALLOWED,
@@ -89,6 +98,7 @@ _DEFAULT_STATUS: Mapping[ErrorCode, HTTPStatus] = {
     ErrorCode.INVITATION_INVALID: HTTPStatus.GONE,
     ErrorCode.CHALLENGE_NOT_ACTIVE: HTTPStatus.CONFLICT,
     ErrorCode.ATTEMPTS_EXHAUSTED: HTTPStatus.TOO_MANY_REQUESTS,
+    ErrorCode.UPSTREAM_UNAVAILABLE: HTTPStatus.SERVICE_UNAVAILABLE,
     ErrorCode.SERVICE_UNAVAILABLE: HTTPStatus.SERVICE_UNAVAILABLE,
     ErrorCode.INTERNAL_ERROR: HTTPStatus.INTERNAL_SERVER_ERROR,
 }

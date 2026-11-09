@@ -50,18 +50,19 @@ Cross-cutting rule: **identity, privacy, entitlement and authorization foundatio
 | BL-0.17 | Mobile foundation: Expo + TS strict, router tabs, i18n (5 locales), theme tokens, API client, secure token store | M | 0.03 | I18N-001, OFF-003 | ✅ |
 | BL-0.18 | Requirement traceability script | S | 0.01 | — | ✅ |
 | BL-0.19 | Terraform module layout (cloud-neutral) | S | 0.02 | — | ✅ Layout documented. No resources until a cloud is chosen (Q-8) |
+| BL-0.21 | Supabase as database: pooler/SSL support, Data API lockdown re-applied after every migration, extensions schema, remote-DB guard for tests (ADR-0018) | S | 0.14 | NFR-006 | ✅ Code done. Migrations applied to the Supabase project once credentials are configured |
 | BL-0.20 | Move `mobile/` → `apps/mobile` into the npm workspace (ADR-0009). Consume shared `packages/*` (i18n resources, generated API client, domain types). Coordinate with the web workstream so the root lockfile isn't installed concurrently | M | 0.17, web | I18N-001 | ⏳ Planned |
 
 Web-workstream items (Next.js app, BFF, web admin) are tracked by the web workstream in [docs/web](web/01-architecture.md). Backend work they depend on is listed in the phase tables below (BL-1.02, BL-3.01, BL-3.04, BL-3.14).
 
 ## 3. Phase 1 — Identity and local social feed
 
-| ID | Item | Size | Depends | Req |
-|---|---|---|---|---|
-| BL-1.01 | IdP port + OIDC verifier (JWKS cache, alg pinning) + DevIdentityProvider | M | 0.11 | AUTH-001..003, T-AUTH-01/08 |
-| BL-1.02 | Platform sessions: access JWT, refresh rotation, reuse detection (30 s leeway, ADR-0011), `client` ∈ ios/android/web, session list/revoke | M | 1.01 | AUTH-006, AUTH-007 |
-| BL-1.03 | Registration with age gate, consent records, email-verified gate | M | 1.02 | AUTH-004, AUTH-008, AUTH-009 |
-| BL-1.04 | Profiles, preferences, privacy settings (defaults per ERD) | M | 1.03 | PROF-001..007 |
+| ID | Item | Size | Depends | Req | Status |
+|---|---|---|---|---|---|
+| BL-1.01 | IdP port + OIDC verifier (JWKS cache, alg pinning) + DevIdentityProvider | M | 0.11 | AUTH-001..003, T-AUTH-01/08 | ✅ Done (production IdP vendor still to configure, Q-1) |
+| BL-1.02 | Platform sessions: access JWT, refresh rotation, reuse detection (30 s leeway, ADR-0011), `client` ∈ ios/android/web, session list/revoke | M | 1.01 | AUTH-006, AUTH-007 | ✅ Done |
+| BL-1.03 | Registration with age gate, consent records, email-verified gate | M | 1.02 | AUTH-004, AUTH-008, AUTH-009 | ✅ Done, except the email-verified gate, which lands with the first gated mutation (posts, BL-1.10) |
+| BL-1.04 | Profiles, preferences, privacy settings (defaults per ERD) | M | 1.03 | PROF-001..007 | 🟡 Partial: tables, privacy-protective defaults and `GET /v1/users/me` done. PATCH endpoints, onboarding completion and handle change pending |
 | BL-1.05 | Destinations: schema, hierarchy, localization, seed loader (10 launch cities with boundaries) | L | 0.14 | DEST-001, DEST-002, DEST-005, LOC-006 |
 | BL-1.06 | Destination search (trigram + unaccent) | S | 1.05 | DEST-001 |
 | BL-1.07 | Point → destination resolution, browse-destination selection | S | 1.05 | LOC-002, LOC-003, LOC-005, LOC-007, LOC-008 |
@@ -165,6 +166,7 @@ Web-workstream items (Next.js app, BFF, web admin) are tracked by the web workst
 | BL-6.05 | Privacy review, DPIA sign-off, records of processing, policies | M | SAFE-010 |
 | BL-6.06 | App Store / Play readiness (UGC policies, account deletion in-app, privacy labels, data safety form) | M | — |
 | BL-6.07 | Penetration test + remediation | M | NFR-006 |
+| BL-6.09 | Supabase production readiness: upgrade to Pro, PITR add-on (NFR-004), decide region (EU project if needed), connection headroom (compute/IPv4 add-on), disable Data API, rotate DB password into the secret manager (ADR-0018) | S | NFR-003/004, SAFE-010 |
 | BL-6.08 | Destination launch operations playbook | S | — |
 
 ## 9. Phase 7 — Global expansion (themes)

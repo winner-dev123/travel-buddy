@@ -26,23 +26,23 @@ are git-ignored and generated).
 
 ## Scripts
 
-| Script | What it does |
-|---|---|
-| `npm start` | Expo dev server (`android` / `ios` / `web` variants) |
-| `npm run typecheck` | `tsc --noEmit` (strict, `noUncheckedIndexedAccess`) |
-| `npm run lint` | ESLint (`eslint-config-expo` + Prettier), zero warnings allowed |
-| `npm run lint:fix` / `npm run format` | Auto-fix lint and formatting |
-| `npm test` | Jest (`jest-expo` preset) + React Native Testing Library |
-| `npm run test:ci` | Jest in CI mode with coverage |
+| Script                                | What it does                                                    |
+| ------------------------------------- | --------------------------------------------------------------- |
+| `npm start`                           | Expo dev server (`android` / `ios` / `web` variants)            |
+| `npm run typecheck`                   | `tsc --noEmit` (strict, `noUncheckedIndexedAccess`)             |
+| `npm run lint`                        | ESLint (`eslint-config-expo` + Prettier), zero warnings allowed |
+| `npm run lint:fix` / `npm run format` | Auto-fix lint and formatting                                    |
+| `npm test`                            | Jest (`jest-expo` preset) + React Native Testing Library        |
+| `npm run test:ci`                     | Jest in CI mode with coverage                                   |
 
 ## Environment variables
 
 `EXPO_PUBLIC_*` values are **inlined into the JS bundle**, so never put secrets in them.
 
-| Variable | Required | Purpose |
-|---|---|---|
-| `EXPO_PUBLIC_API_BASE_URL` | yes (at first API call) | REST API origin, no trailing slash and no `/v1` |
-| `EXPO_PUBLIC_FEATURE_FLAGS` | no | Development builds only: comma-separated feature keys to force-enable. Ignored when `__DEV__` is false |
+| Variable                    | Required                | Purpose                                                                                                |
+| --------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------ |
+| `EXPO_PUBLIC_API_BASE_URL`  | yes (at first API call) | REST API origin, no trailing slash and no `/v1`                                                        |
+| `EXPO_PUBLIC_FEATURE_FLAGS` | no                      | Development builds only: comma-separated feature keys to force-enable. Ignored when `__DEV__` is false |
 
 ## Structure
 
@@ -73,21 +73,21 @@ Path alias: `@/…` → `src/…` (configured in `tsconfig.json` and the Jest `m
 
 ## Implemented vs placeholder
 
-| Area | State |
-|---|---|
-| Navigation shell (5 tabs, auth/onboarding groups, 404) | **Implemented** |
-| Feature flags and "Coming in Phase N" placeholders | **Implemented** |
-| i18n (5 locales, CLDR plurals, device locale and user override) | **Implemented**. Override is not persisted yet |
-| Design tokens, light/dark, contrast tests | **Implemented** |
-| API client: `X-Request-ID`, `Accept-Language`, `Authorization`, `Idempotency-Key`, `If-Match`, timeouts, problem+json parsing | **Implemented** (no endpoints are called yet) |
-| Token storage (secure store and memory) | **Implemented** |
-| Connectivity detection and "Online only" badge | **Implemented** |
-| Sign-in, onboarding, feed, discovery, messaging, groups, trips, guides, billing | **Placeholder**. Scheduled per `docs/09-development-backlog.md` |
-| Access-token refresh on `401 token_expired` | Not implemented (Phase 1) |
-| Settings persistence (expo-sqlite kv-store) and server sync | Not implemented (Phase 1) |
-| Generated API types from OpenAPI | Not implemented. See `src/api/generated/README.md` |
-| Expo Router typed routes (`experiments.typedRoutes`) | Off, so CI type-checks without running the dev server |
-| E2E (Maestro) | Not set up yet (Phase 1) |
+| Area                                                                                                                          | State                                                           |
+| ----------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Navigation shell (5 tabs, auth/onboarding groups, 404)                                                                        | **Implemented**                                                 |
+| Feature flags and "Coming in Phase N" placeholders                                                                            | **Implemented**                                                 |
+| i18n (5 locales, CLDR plurals, device locale and user override)                                                               | **Implemented**. Override is not persisted yet                  |
+| Design tokens, light/dark, contrast tests                                                                                     | **Implemented**                                                 |
+| API client: `X-Request-ID`, `Accept-Language`, `Authorization`, `Idempotency-Key`, `If-Match`, timeouts, problem+json parsing | **Implemented** (no endpoints are called yet)                   |
+| Token storage (secure store and memory)                                                                                       | **Implemented**                                                 |
+| Connectivity detection and "Online only" badge                                                                                | **Implemented**                                                 |
+| Sign-in, onboarding, feed, discovery, messaging, groups, trips, guides, billing                                               | **Placeholder**. Scheduled per `docs/09-development-backlog.md` |
+| Access-token refresh on `401 token_expired`                                                                                   | Not implemented (Phase 1)                                       |
+| Settings persistence (expo-sqlite kv-store) and server sync                                                                   | Not implemented (Phase 1)                                       |
+| Generated API types from OpenAPI                                                                                              | Not implemented. See `src/api/generated/README.md`              |
+| Expo Router typed routes (`experiments.typedRoutes`)                                                                          | Off, so CI type-checks without running the dev server           |
+| E2E (Maestro)                                                                                                                 | Not set up yet (Phase 1)                                        |
 
 ## Conventions
 

@@ -53,6 +53,10 @@ def _run(url: str, statements: list[str]) -> list[Any]:
 
 @pytest.fixture
 def migrated(test_database_url: str) -> str:
+    from tests.integration.conftest import postgis_available
+
+    if not postgis_available(test_database_url):
+        pytest.skip("PostGIS not installed on this PostgreSQL (migration tests run in CI)")
     config = _alembic_config(test_database_url)
     command.upgrade(config, "head")
     return test_database_url

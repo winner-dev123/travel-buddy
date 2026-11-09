@@ -19,4 +19,11 @@ jobs:
       - name: gitleaks
         run: |
           docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.24.3 \
-            git /repo --redact --exit-code 1 --log-opts="--all"
+            git /repo --config /repo/.gitleaks.toml --redact --verbose --exit-code 1 \
+            --report-format json --report-path /repo/gitleaks-report.json --log-opts="--all"
+      - name: Upload redacted findings
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: gitleaks-report.json

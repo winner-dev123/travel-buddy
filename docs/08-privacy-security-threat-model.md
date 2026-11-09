@@ -201,6 +201,7 @@ Verification column: **U** = unit test, **I** = integration test, **S** = securi
 | T-OPS-04 | Audit log tampering | Append-only grants. Partitions exported to WORM storage | R |
 | T-OPS-06 | Removed or non-public content lingers in web caches, or a forged revalidation request is used to thrash the cache | Signed, timestamped `webCacheRevalidation` webhook (HMAC, 300 s skew, idempotent `event_id`). Propagation target ≤ 10 s with ISR ≤ 60 s fallback (SAFE-012) | I, S |
 | T-OPS-07 | Search engines index people who never agreed to it | Indexing is opt-in (PROF-008). `indexable: false` → `noindex` and sitemap exclusion. Withdrawal triggers revalidation | S |
+| T-OPS-08 | Direct table access through Supabase's auto-generated Data API using the public anon key, bypassing the backend's authorization | RLS deny-all on every table, `anon`/`authenticated` privileges and default privileges revoked, function EXECUTE revoked from PUBLIC, all re-applied after every migration. Data API disabled in the dashboard. `service_role` key never distributed (ADR-0018) | I, S |
 | T-OPS-05 | Backup exposure | Encrypted backups. Restricted restore role. Restore drills | O |
 
 ## 5. Privacy design (LINDDUN summary)

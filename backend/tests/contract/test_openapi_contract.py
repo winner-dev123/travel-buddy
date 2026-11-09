@@ -65,7 +65,14 @@ def test_contract_is_valid_openapi_31(spec: dict[str, Any]) -> None:
     validate(spec)
 
 
-def test_implemented_routes_exist_in_contract(app: FastAPI, spec: dict[str, Any]) -> None:
+def test_implemented_routes_exist_in_contract(spec: dict[str, Any]) -> None:
+    from app.main import create_app
+    from tests.conftest import make_identity_settings, make_settings
+
+    # Development-only routes included, so they are checked too.
+    app: FastAPI = create_app(
+        make_settings(dev_idp_enabled=True), identity_settings=make_identity_settings()
+    )
     contract_paths: dict[str, dict[str, Any]] = spec["paths"]
     missing = [
         f"{method} {route.path}"

@@ -23,5 +23,6 @@ ADRs use the format **Context → Decision → Consequences → Alternatives**. 
 | [0015](0015-expo-react-native.md) | Expo (dev builds) for the React Native app | Mobile | Accepted |
 | [0016](0016-no-e2ee-in-v1.md) | No end-to-end encryption for messages in v1 | Messaging | Accepted |
 | [0017](0017-billing-direct-store-integration.md) | Direct App Store / Play integration behind a billing port | Billing | Proposed |
+| [0018](0018-supabase-managed-postgres.md) | Supabase as the managed PostgreSQL provider (database only; Data API locked down) | Data / Infra | Accepted |
 
 Template: [`template.md`](template.md).

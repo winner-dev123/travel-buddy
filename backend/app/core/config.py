@@ -38,6 +38,12 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://travelbuddy:travelbuddy@localhost:5432/travelbuddy"
     database_pool_size: int = Field(default=10, ge=1, le=200)
+    database_max_overflow: int = Field(default=10, ge=0, le=200)
+    database_pool_recycle_seconds: int = Field(default=600, ge=30, le=86400)
+    # True when DATABASE_URL points at a transaction-mode pooler (Supabase Supavisor :6543,
+    # PgBouncer transaction mode): disables asyncpg prepared-statement caching (ADR-0018).
+    database_transaction_pooler: bool = False
+    # Empty = Redis not configured (no feature depends on it yet); readiness then skips it.
     redis_url: str = "redis://localhost:6379/0"
     readiness_timeout_seconds: float = Field(default=1.0, gt=0, le=10)
 
@@ -49,6 +55,18 @@ class Settings(BaseSettings):
 
     cursor_signing_key: SecretStr = SecretStr(_DEV_CURSOR_KEY)
     cursor_ttl_seconds: int = Field(default=3600, ge=60, le=86400)
+
+    # Platform access tokens (architecture section 8). Ed25519 private key in PEM (PKCS#8).
+    # Outside development/test it is required; in development/test a deterministic,
+    # clearly-labelled development key is derived when it is absent.
+    platform_jwt_private_key: SecretStr | None = None
+    platform_jwt_key_id: str = Field(default="platform-1", min_length=1, max_length=64)
+    access_token_ttl_seconds: int = Field(default=900, ge=60, le=3600)
+
+    # Client bootstrap (GET /v1/client-config).
+    public_site_url: str = Field(default="http://localhost:3000", pattern=r"^https?://[^\s/]+")
+    min_supported_app_version: str = Field(default="0.1.0", pattern=r"^\d+\.\d+\.\d+$")
+    latest_app_version: str = Field(default="0.1.0", pattern=r"^\d+\.\d+\.\d+$")
 
     # JSON object in env, e.g. FEATURE_FLAGS='{"traveler_discovery": true}'.
     # Unknown flag names are rejected at boot by FeatureFlags.
@@ -79,6 +97,10 @@ class Settings(BaseSettings):
         if key == _DEV_CURSOR_KEY or len(key) < _MIN_SECRET_LENGTH:
             problems.append(
                 f"CURSOR_SIGNING_KEY must be a non-default secret of >= {_MIN_SECRET_LENGTH} chars"
+            )
+        if self.platform_jwt_private_key is None:
+            problems.append(
+                "PLATFORM_JWT_PRIVATE_KEY (Ed25519 PEM) is required outside development/test"
             )
         if problems:
             raise ValueError("; ".join(problems))

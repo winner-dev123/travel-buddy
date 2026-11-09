@@ -10,6 +10,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.core.config import get_settings
+from app.core.db import SECURE_PUBLIC_SCHEMA_SQL, engine_options
 from app.models_registry import Base
 
 config = context.config
@@ -44,6 +45,7 @@ def run_migrations_offline() -> None:
     )
     with context.begin_transaction():
         context.run_migrations()
+        context.execute(SECURE_PUBLIC_SCHEMA_SQL)
 
 
 def _do_run_migrations(connection: Connection) -> None:
@@ -55,10 +57,16 @@ def _do_run_migrations(connection: Connection) -> None:
     )
     with context.begin_transaction():
         context.run_migrations()
+        # Every run ends by (re)applying RLS and Supabase API-role revocations (ADR-0018), so a
+        # newly created table can never be left exposed through the Supabase Data API.
+        context.execute(SECURE_PUBLIC_SCHEMA_SQL)
 
 
 async def run_migrations_online() -> None:
-    engine = create_async_engine(_database_url())
+    url, connect_args = engine_options(
+        _database_url(), transaction_pooler=get_settings().database_transaction_pooler
+    )
+    engine = create_async_engine(url, connect_args=connect_args)
     async with engine.connect() as connection:
         await connection.run_sync(_do_run_migrations)
     await engine.dispose()

@@ -66,3 +66,6 @@ reports/
 
 # Generated vendor assets (apps/web/scripts/copy-vendor.mjs)
 apps/web/public/vendor/
+
+# Secret-scan report (CI artifact)
+gitleaks-report.json

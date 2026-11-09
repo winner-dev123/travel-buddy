@@ -23,4 +23,6 @@ COPY migrations ./migrations
 USER 10001:10001
 EXPOSE 8000
 # Migrations run as a separate one-off task: `alembic upgrade head` (docs/11 section 3).
-CMD ["uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--no-server-header"]
+# PORT is injected by the platform (Render sets it); proxy headers are trusted because the
+# container is only reachable through the platform's load balancer.
+CMD ["sh", "-c", "exec uvicorn app.main:create_app --factory --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*' --no-server-header"]

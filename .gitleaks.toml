@@ -1,0 +1,20 @@
+# gitleaks configuration: default rules plus a narrow allowlist for values that are
+# deliberately non-secret (labelled development-only defaults and test fixtures).
+# Keep this list small and specific; never allowlist whole source directories.
+title = "Travel Buddy secret scanning"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Labelled development-only defaults and test fixtures"
+paths = [
+  '''^backend/tests/''',
+  '''\.test\.tsx?$''',
+  '''^contracts/tools/validate_realtime\.py$''',  # sample frames with fake tokens
+]
+regexes = [
+  '''^dev-only-[a-z-]+$''',                 # e.g. backend CURSOR_SIGNING_KEY dev default
+  '''^[a-z-]*development-only[a-z-]*$''',   # web dev session / mock token keys
+  '''^travelbuddy-dev-secret$''',           # local MinIO password in docker-compose
+]

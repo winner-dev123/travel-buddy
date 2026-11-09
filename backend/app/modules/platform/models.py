@@ -9,6 +9,7 @@ from typing import Any
 
 from sqlalchemy import (
     DateTime,
+    ForeignKey,
     Index,
     Integer,
     LargeBinary,
@@ -107,8 +108,8 @@ class IdempotencyKey(Base):
         Index("ix_idempotency_keys__expires_at", "expires_at"),
     )
 
-    # FK to users is added by the Phase 1 identity migration (the users table does not exist yet).
-    user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    # DB-level FK only (added by migration 0002); no Python import of the identity module.
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id", ondelete="CASCADE"))
     key: Mapped[uuid.UUID] = mapped_column(Uuid)
     route: Mapped[str] = mapped_column(Text)
     request_hash: Mapped[bytes] = mapped_column(LargeBinary)

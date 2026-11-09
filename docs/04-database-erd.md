@@ -20,6 +20,7 @@
 | Counters | Denormalized counters (`reaction_count` …) are updated in the same transaction as the source row, and a nightly job reconciles drift. |
 | Money | Not stored in v1 (prices come from the stores). If added later: `amount_micros bigint` plus `currency char(3)`. |
 | Text search | `pg_trgm` GIN indexes on `unaccent(lower(name))` for destination and place search. OpenSearch becomes justified when multilingual full-text ranking needs exceed this. |
+| Supabase hardening | Every table in `public` has Row Level Security enabled with no policies, and Supabase's `anon`/`authenticated` roles have no privileges. This is applied automatically after every migration run (`SECURE_PUBLIC_SCHEMA_SQL`, ADR-0018). Extensions live in the `extensions` schema on Supabase |
 | Naming | snake_case, plural table names. Indexes are `ix_<table>__<cols>`, uniques `uq_<table>__<cols>`, checks `ck_<table>__<rule>`. |
 
 ## 2. Domain overview
@@ -83,7 +84,7 @@ erDiagram
 | user_id | uuid FK→users CASCADE | |
 | issuer | text | OIDC `iss` |
 | subject | text | OIDC `sub` |
-| method | text | `email_password`, `apple`, `google` |
+| method | text | `email_password`, `apple`, `google`, `oidc` (generic federated), `dev` (development IdP only) |
 | email_at_link | citext NULL | |
 | created_at, last_used_at | timestamptz | |
 
@@ -103,7 +104,8 @@ erDiagram
 | interests | text[] | Interest catalog codes |
 | languages_spoken | text[] | BCP 47 |
 | account_visibility | text | `public`, `private` |
-| updated_at | timestamptz | |
+| onboarding_completed_at | timestamptz NULL | Drives `Me.onboarding_completed` |
+| created_at, updated_at | timestamptz | |
 
 GIN on `travel_styles`, `interests` for matching. Trigram index on `handle`, `display_name` (user search, Phase 2).
 
@@ -131,8 +133,10 @@ GIN on `travel_styles`, `interests` for matching. Trigram index on `handle`, `di
 |---|---|---|
 | id | uuid PK | `sid` claim |
 | user_id | uuid FK CASCADE | |
-| token_family_id | uuid | Rotation family. Reuse detection revokes the whole family |
-| refresh_token_hash | bytea | SHA-256. `uq` |
+| refresh_token_hash | bytea | SHA-256 of the current refresh token. `uq`. The session itself is the token family |
+| previous_refresh_token_hash | bytea NULL | Immediately previous token, for the 30 s replay leeway (partial index) |
+| rotated_at | timestamptz NULL | Last rotation time |
+| refresh_generation | int | Rotation counter |
 | device_id | text | App-generated install ID |
 | device_name, platform, app_version | text | `platform` ∈ `ios`, `android`, `web` |
 | amr | text[] | IdP authentication methods at token exchange. Admin routes require an MFA method (ADM-007) |
@@ -144,6 +148,9 @@ GIN on `travel_styles`, `interests` for matching. Trigram index on `handle`, `di
 | last_ip | inet NULL | Nulled after 30 days (security investigations) |
 
 `ix__user_id WHERE revoked_at IS NULL`.
+
+### retired_refresh_tokens
+`token_hash bytea PK` (SHA-256 of a rotated refresh token), `session_id FK→user_sessions CASCADE`, `retired_at`. `ix (session_id)`. Presenting any retired token revokes the session (reuse detection, AUTH-007). Rows can be purged once older than the refresh TTL, because such tokens are expired anyway.
 
 ### device_push_tokens
 `id`, `user_id FK CASCADE`, `session_id FK→user_sessions CASCADE`, `provider` (`expo`, `fcm`, `apns`, `webpush`), `token_ciphertext bytea` (native token or Web Push endpoint URL, envelope-encrypted: endpoints are capability URLs), `token_hash bytea uq` (SHA-256 for dedupe and lookup), `webpush_p256dh`, `webpush_auth` (encrypted, `webpush` only), `device_id`, `created_at`, `last_seen_at`, `disabled_at` (set when the provider reports the token gone, e.g. HTTP 404/410 for Web Push). Revoking a session deletes its tokens. Never logged or returned.

@@ -4,9 +4,19 @@ import pytest
 from pydantic import SecretStr, ValidationError
 
 from app.core.config import AppEnv
-from tests.conftest import make_settings
+from tests.conftest import ed25519_test_pem, make_identity_settings, make_settings
 
 STRONG_KEY = SecretStr("s" * 48)
+
+
+def _production(**overrides: object) -> object:
+    values: dict[str, object] = {
+        "app_env": AppEnv.PRODUCTION,
+        "cursor_signing_key": STRONG_KEY,
+        "platform_jwt_private_key": SecretStr(ed25519_test_pem()),
+    }
+    values.update(overrides)
+    return make_settings(**values)
 
 
 @pytest.mark.parametrize("env", [AppEnv.STAGING, AppEnv.PRODUCTION])
@@ -27,9 +37,32 @@ def test_default_cursor_key_refused_in_production() -> None:
 
 
 def test_valid_production_settings() -> None:
-    settings = make_settings(app_env=AppEnv.PRODUCTION, cursor_signing_key=STRONG_KEY)
-    assert settings.is_production_like
-    assert not settings.expose_api_docs
+    settings = _production()
+    assert settings.is_production_like  # type: ignore[attr-defined]
+    assert not settings.expose_api_docs  # type: ignore[attr-defined]
+
+
+@pytest.mark.req("AUTH-007")
+def test_platform_signing_key_required_in_production() -> None:
+    with pytest.raises(ValidationError, match="PLATFORM_JWT_PRIVATE_KEY"):
+        _production(platform_jwt_private_key=None)
+
+
+@pytest.mark.parametrize("env", [AppEnv.STAGING, AppEnv.PRODUCTION])
+def test_identity_production_guard(env: AppEnv) -> None:
+    issuer = {
+        "issuer": "https://idp.example.com/",
+        "audiences": ["travelbuddy"],
+        "jwks_uri": "https://idp.example.com/.well-known/jwks.json",
+    }
+    with pytest.raises(ValidationError, match="REFRESH_TOKEN_DERIVATION_KEY"):
+        make_identity_settings(app_env=env, oidc_issuers=[issuer])
+    with pytest.raises(ValidationError, match="OIDC_ISSUERS"):
+        make_identity_settings(app_env=env, refresh_token_derivation_key=STRONG_KEY)
+    ok = make_identity_settings(
+        app_env=env, refresh_token_derivation_key=STRONG_KEY, oidc_issuers=[issuer]
+    )
+    assert ok.oidc_issuers[0].method == "oidc"
 
 
 def test_development_allows_dev_adapters() -> None:
@@ -49,9 +82,12 @@ def test_api_docs_hidden_in_production(client: object) -> None:
         return True
 
     app = create_app(
-        make_settings(app_env=AppEnv.PRODUCTION, cursor_signing_key=STRONG_KEY),
+        _production(),  # type: ignore[arg-type]
+        identity_settings=make_identity_settings(),
         readiness_checks={"db": ok},
     )
     with TestClient(app) as prod_client:
         assert prod_client.get("/v1/openapi.json").status_code == 404
         assert prod_client.get("/v1/docs").status_code == 404
+        # The development-only IdP is not mounted outside development/test.
+        assert prod_client.get("/v1/dev/idp/jwks.json").status_code == 404
