@@ -44,6 +44,8 @@ from app.modules.social.api import router as social_router
 from app.modules.social.follows import FollowService
 from app.modules.social.interactions import InteractionService
 from app.modules.social.public import PublicPostService
+from app.modules.trust_safety.api import router as trust_safety_router
+from app.modules.trust_safety.service import BlockService
 from app.modules.web_cache import service as web_cache_service
 from app.modules.web_cache.config import WebCacheSettings
 
@@ -173,6 +175,11 @@ def create_app(
     app.state.public_post_service = PublicPostService(
         sessionmaker=database.sessionmaker, cursors=cursor_codec
     )
+    app.state.block_service = BlockService(
+        sessionmaker=database.sessionmaker,
+        cursors=cursor_codec,
+        on_block=[social_service.remove_follows_between],
+    )
     app.state.readiness_checks = (
         dict(readiness_checks)
         if readiness_checks is not None
@@ -223,6 +230,7 @@ def create_app(
     app.include_router(destinations_router)
     app.include_router(location_router)
     app.include_router(social_router)
+    app.include_router(trust_safety_router)
     app.include_router(internal_router)
     if dev_idp is not None:  # absent → 404 (contract: not available in this environment)
         app.include_router(dev_idp_router)

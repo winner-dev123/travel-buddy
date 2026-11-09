@@ -21,6 +21,7 @@ from app.modules.platform import service as platform
 from app.modules.profiles import service as profiles
 from app.modules.social.models import Follow, FollowStatus
 from app.modules.social.schemas import FollowState, UserSummary
+from app.modules.trust_safety import service as trust_safety
 
 
 def _user_not_found() -> AppError:
@@ -45,8 +46,8 @@ class FollowService:
             )
         async with self._sessionmaker() as session, session.begin():
             target = (await profiles.authors(session, [followee_id])).get(followee_id)
-            if target is None:
-                raise _user_not_found()
+            if target is None or await trust_safety.is_blocked(session, follower_id, followee_id):
+                raise _user_not_found()  # a blocked user learns nothing (SAFE-001)
             status = FollowStatus.PENDING if target.account_private else FollowStatus.ACTIVE
             inserted = await session.execute(
                 insert(Follow)
@@ -154,7 +155,7 @@ class FollowService:
     async def _check_list_access(self, viewer_id: uuid.UUID, user_id: uuid.UUID) -> None:
         async with self._sessionmaker() as session:
             target = (await profiles.authors(session, [user_id])).get(user_id)
-            if target is None:
+            if target is None or await trust_safety.is_blocked(session, viewer_id, user_id):
                 raise _user_not_found()
             if target.account_private and viewer_id != user_id:
                 follows = await session.scalar(

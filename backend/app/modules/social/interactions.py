@@ -35,6 +35,7 @@ from app.modules.social.schemas import (
     UserSummary,
 )
 from app.modules.social.service import _assemble, _require_verified_email, visible_post
+from app.modules.trust_safety import service as trust_safety
 
 COMMENT_ROUTE = "POST /v1/posts/{postId}/comments"
 
@@ -138,7 +139,10 @@ class InteractionService:
         scope = f"reactions.{post_id}"
         async with self._sessionmaker() as session:
             await visible_post(session, post_id, viewer_id)
+            hidden = await trust_safety.blocked_ids(session, viewer_id)
             query = select(Reaction).where(Reaction.post_id == post_id)
+            if hidden:
+                query = query.where(Reaction.user_id.notin_(hidden))
             if cursor:
                 at, user = _position(self._cursors.decode(cursor, scope=scope))
                 query = query.where(
@@ -389,6 +393,7 @@ class InteractionService:
         scope = f"comments.{post_id}.{parent_id}"
         async with self._sessionmaker() as session:
             post = await visible_post(session, post_id, viewer_id)
+            hidden = await trust_safety.blocked_ids(session, viewer_id)
             query = select(Comment).where(
                 Comment.post_id == post_id,
                 Comment.parent_comment_id.is_(None)
@@ -396,6 +401,8 @@ class InteractionService:
                 else Comment.parent_comment_id == parent_id,
                 Comment.moderation_state != "removed",
             )
+            if hidden:
+                query = query.where(Comment.author_id.notin_(hidden))
             if cursor:
                 at, comment_id = _position(self._cursors.decode(cursor, scope=scope))
                 query = query.where(

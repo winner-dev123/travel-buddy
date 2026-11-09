@@ -173,3 +173,12 @@ class ProfileBundle(_Model):
     preferences: Preferences
     privacy: PrivacySettings
     onboarding_completed: bool
+
+
+class UserSummary(_Model):
+    """Contract ``UserSummary``: minimal public identity of another user."""
+
+    id: uuid.UUID
+    handle: str
+    display_name: str
+    avatar: None = None  # MediaRef once media lands (BL-1.08)

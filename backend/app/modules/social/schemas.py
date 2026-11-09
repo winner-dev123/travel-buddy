@@ -18,6 +18,7 @@ from pydantic import (
 
 from app.core.i18n import LOCALE_TAG_PATTERN
 from app.modules.destinations.schemas import DestinationSummary
+from app.modules.profiles.schemas import UserSummary as UserSummary  # re-export
 
 PostKindName = Literal[
     "text",
@@ -89,13 +90,6 @@ class UpdatePostRequest(_Request):
 
     def changes(self) -> dict[str, Any]:
         return self.model_dump(exclude_unset=True)
-
-
-class UserSummary(_Response):
-    id: uuid.UUID
-    handle: str
-    display_name: str
-    avatar: None = None  # MediaRef once media lands (BL-1.08)
 
 
 class PostCounts(_Response):

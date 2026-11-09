@@ -12,6 +12,7 @@ from app.modules.observability import models as observability_models
 from app.modules.platform import models as platform_models
 from app.modules.profiles import models as profiles_models
 from app.modules.social import models as social_models
+from app.modules.trust_safety import models as trust_safety_models
 
 __all__ = [
     "Base",
@@ -22,4 +23,5 @@ __all__ = [
     "platform_models",
     "profiles_models",
     "social_models",
+    "trust_safety_models",
 ]

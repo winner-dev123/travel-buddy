@@ -48,6 +48,7 @@ from app.modules.profiles.schemas import (
     UpdateMyProfileRequest,
     UpdatePreferencesRequest,
     UpdatePrivacySettingsRequest,
+    UserSummary,
 )
 
 _HANDLE_ATTEMPTS = 8
@@ -509,3 +510,7 @@ async def authors(
         )
         for row in rows
     }
+
+
+def user_summary(author: AuthorInfo) -> UserSummary:
+    return UserSummary(id=author.id, handle=author.handle, display_name=author.display_name)

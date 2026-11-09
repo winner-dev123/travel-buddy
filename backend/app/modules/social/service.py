@@ -49,6 +49,7 @@ from app.modules.social.schemas import (
     UpdatePostRequest,
     UserSummary,
 )
+from app.modules.trust_safety import service as trust_safety
 
 CREATE_ROUTE = "POST /v1/posts"
 REFRESH_AUTHOR_VISIBILITY_JOB = "social.refresh_author_visibility"
@@ -219,7 +220,7 @@ class PostService:
         scope = f"posts.author.{author_id}"
         async with self._sessionmaker() as session:
             author = (await profiles.authors(session, [author_id])).get(author_id)
-            if author is None:
+            if author is None or await trust_safety.is_blocked(session, viewer_id, author_id):
                 raise AppError(ErrorCode.NOT_FOUND, "User not found.")
             relation = await _relation(session, viewer_id, author_id)
             query = select(PostRow).where(
@@ -486,6 +487,10 @@ async def _visible(session: AsyncSession, post: PostRow, viewer_id: uuid.UUID) -
     author = (await profiles.authors(session, [post.author_id])).get(post.author_id)
     if author is None:
         return False
+    if viewer_id != post.author_id and await trust_safety.is_blocked(
+        session, viewer_id, post.author_id
+    ):
+        return False  # blocks hide content in both directions (SAFE-001)
     return can_view(
         visibility=post.visibility,
         status=post.status,
@@ -618,3 +623,15 @@ def make_handlers(
             await refresh_author_visibility(session, uuid.UUID(str(data["user_id"])))
 
     return {REFRESH_AUTHOR_VISIBILITY_JOB: refresh}
+
+
+async def remove_follows_between(session: AsyncSession, a: uuid.UUID, b: uuid.UUID) -> None:
+    """Block hook: follows and follow requests end in both directions (SAFE-001)."""
+    await session.execute(
+        delete(Follow).where(
+            or_(
+                and_(Follow.follower_id == a, Follow.followee_id == b),
+                and_(Follow.follower_id == b, Follow.followee_id == a),
+            )
+        )
+    )
