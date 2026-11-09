@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.identity.models import (
     AdminRoleAssignment,
     AuthenticationIdentity,
+    ConsentRecord,
     RetiredRefreshToken,
     User,
     UserSession,
@@ -101,3 +102,18 @@ async def revoke_sessions(
         )
     )
     return int(getattr(result, "rowcount", 0) or 0)
+
+
+async def latest_consents(session: AsyncSession, user_id: uuid.UUID) -> list[ConsentRecord]:
+    """The most recent record per consent type (the ledger itself is append-only)."""
+    rows = await session.scalars(
+        select(ConsentRecord)
+        .where(ConsentRecord.user_id == user_id)
+        .order_by(
+            ConsentRecord.consent_type,
+            ConsentRecord.recorded_at.desc(),
+            ConsentRecord.id.desc(),
+        )
+        .distinct(ConsentRecord.consent_type)
+    )
+    return list(rows)

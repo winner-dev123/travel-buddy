@@ -1,27 +1,73 @@
-"""Public interface of the profiles module."""
+"""Public interface of the profiles module.
+
+Every function runs inside the caller's session/transaction. Identity (layer above) composes
+these into the ``/v1/users/me`` endpoints and owns the consent ledger.
+"""
 
 from __future__ import annotations
 
 import secrets
 import uuid
+import zoneinfo
+from datetime import datetime
+from functools import cache
+from typing import Any
 
 from sqlalchemy import exists, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.profiles.domain import default_display_name, handle_base, handle_with_suffix
+from app.core.errors import AppError, ErrorCode, FieldError
+from app.core.i18n import SUPPORTED_LOCALES, negotiate_ui_locale
+from app.modules.platform import service as platform_service
+from app.modules.profiles.domain import (
+    BIO_MAX,
+    HOME_REGION_MAX,
+    INTEREST_MAX,
+    clean_display_name,
+    clean_optional_text,
+    clean_tags,
+    dedupe,
+    default_display_name,
+    handle_base,
+    handle_with_suffix,
+    is_reserved_handle,
+    next_handle_change_at,
+)
 from app.modules.profiles.models import UserPreferences, UserPrivacySettings, UserProfile
 from app.modules.profiles.schemas import (
     ConsentState,
     MyProfile,
-    NotificationChannelSettings,
     Preferences,
     PrivacySettings,
+    PrivacyUpdate,
     ProfileBundle,
     ProfileCounts,
+    UpdateMyProfileRequest,
+    UpdatePreferencesRequest,
+    UpdatePrivacySettingsRequest,
 )
 
 _HANDLE_ATTEMPTS = 8
+
+# Public-facing fields: a change must reach caches and indexes (SAFE-012, BL-1.25).
+_PUBLIC_PROFILE_FIELDS = frozenset(
+    {
+        "handle",
+        "display_name",
+        "bio",
+        "avatar_media_id",
+        "home_country_code",
+        "home_region",
+        "travel_styles",
+        "interests",
+        "languages_spoken",
+        "account_visibility",
+    }
+)
+_PUBLIC_PRIVACY_FIELDS = frozenset(
+    {"profile_visibility", "search_engine_indexing", "show_trips_on_profile"}
+)
 
 
 async def _handle_taken(session: AsyncSession, handle: str) -> bool:
@@ -42,7 +88,7 @@ async def create_default_profile(
         handle_with_suffix(base, secrets.randbelow(9000) + 1000) for _ in range(_HANDLE_ATTEMPTS)
     ]
     for handle in candidates:
-        if await _handle_taken(session, handle):
+        if is_reserved_handle(handle) or await _handle_taken(session, handle):
             continue
         try:
             async with session.begin_nested():
@@ -60,7 +106,7 @@ async def create_default_profile(
     else:  # pragma: no cover - 9 random 4-digit suffixes all colliding is practically impossible
         raise RuntimeError("could not allocate a unique handle")
 
-    session.add(UserPreferences(user_id=user_id, ui_locale=locale))
+    session.add(UserPreferences(user_id=user_id, ui_locale=negotiate_ui_locale(locale)))
     session.add(UserPrivacySettings(user_id=user_id))
     await session.flush()
 
@@ -71,12 +117,27 @@ def _consent(version: str | None, at: object) -> ConsentState | None:
     return ConsentState.model_validate({"version": version, "granted_at": at})
 
 
-async def get_profile_bundle(session: AsyncSession, user_id: uuid.UUID) -> ProfileBundle:
-    profile = await session.get(UserProfile, user_id)
-    preferences = await session.get(UserPreferences, user_id)
-    privacy = await session.get(UserPrivacySettings, user_id)
+def _notification_matrix(stored: dict[str, Any] | None) -> dict[str, dict[str, bool]]:
+    return {
+        kind: {channel: value for channel, value in channels.items() if isinstance(value, bool)}
+        for kind, channels in (stored or {}).items()
+        if isinstance(channels, dict)
+    }
+
+
+async def _rows(
+    session: AsyncSession, user_id: uuid.UUID, *, for_update: bool = False
+) -> tuple[UserProfile, UserPreferences, UserPrivacySettings]:
+    profile = await session.get(UserProfile, user_id, with_for_update=for_update)
+    preferences = await session.get(UserPreferences, user_id, with_for_update=for_update)
+    privacy = await session.get(UserPrivacySettings, user_id, with_for_update=for_update)
     if profile is None or preferences is None or privacy is None:
         raise LookupError(f"profile rows missing for user {user_id}")
+    return profile, preferences, privacy
+
+
+async def get_profile_bundle(session: AsyncSession, user_id: uuid.UUID) -> ProfileBundle:
+    profile, preferences, privacy = await _rows(session, user_id)
     return ProfileBundle(
         profile=MyProfile(
             id=profile.user_id,
@@ -101,10 +162,7 @@ async def get_profile_bundle(session: AsyncSession, user_id: uuid.UUID) -> Profi
             currency_code=preferences.currency_code,
             distance_unit="mi" if preferences.distance_unit == "mi" else "km",
             auto_translate=preferences.auto_translate,
-            notification_settings={
-                k: NotificationChannelSettings.model_validate(v)
-                for k, v in (preferences.notification_settings or {}).items()
-            },
+            notification_settings=_notification_matrix(preferences.notification_settings),
         ),
         privacy=PrivacySettings.model_validate(
             {
@@ -126,3 +184,271 @@ async def get_profile_bundle(session: AsyncSession, user_id: uuid.UUID) -> Profi
         ),
         onboarding_completed=profile.onboarding_completed_at is not None,
     )
+
+
+# ─────────────────────────────── edits (BL-1.04) ───────────────────────────────
+
+
+def _invalid(field: str, code: str, message: str) -> AppError:
+    return AppError(
+        ErrorCode.VALIDATION_FAILED,
+        message,
+        errors=[FieldError(field=f"/{field}", code=code, message=message)],
+    )
+
+
+def _clean_or_422(field: str, clean: Any, *args: Any, **kwargs: Any) -> Any:
+    try:
+        return clean(*args, **kwargs)
+    except ValueError as exc:
+        raise _invalid(field, "invalid", str(exc)) from exc
+
+
+def _handle_change_error(allowed_from: datetime) -> AppError:
+    return AppError(
+        ErrorCode.VALIDATION_FAILED,
+        "You can change your handle once every 30 days.",
+        errors=[
+            FieldError(
+                field="/handle",
+                code="change_too_soon",
+                message=f"Next change allowed after {allowed_from.isoformat()}.",
+            )
+        ],
+        extensions={"next_change_at": allowed_from.isoformat()},
+    )
+
+
+async def _apply_handle(
+    session: AsyncSession, profile: UserProfile, handle: str, *, now: datetime
+) -> bool:
+    if handle == profile.handle.lower():
+        return False
+    if is_reserved_handle(handle):
+        raise _invalid("handle", "reserved", "This handle is reserved. Choose another one.")
+    allowed_from = next_handle_change_at(profile.handle_changed_at)
+    if allowed_from is not None and now < allowed_from:
+        raise _handle_change_error(allowed_from)
+    if await _handle_taken(session, handle):
+        raise AppError(ErrorCode.CONFLICT, "This handle is already taken.")
+    profile.handle = handle
+    profile.handle_changed_at = now
+    return True
+
+
+def _profile_values(changes: dict[str, Any]) -> dict[str, Any]:
+    """Normalize the non-handle PATCH fields (raises 422 for unusable values)."""
+    values: dict[str, Any] = {}
+    if "display_name" in changes:
+        values["display_name"] = _clean_or_422(
+            "display_name", clean_display_name, changes["display_name"]
+        )
+    if "bio" in changes:
+        values["bio"] = _clean_or_422(
+            "bio", clean_optional_text, changes["bio"], max_length=BIO_MAX, multiline=True
+        )
+    if "avatar_media_id" in changes:
+        if changes["avatar_media_id"] is not None:
+            # Uploads arrive with the media pipeline (BL-1.08); no media can be referenced yet.
+            raise _invalid("avatar_media_id", "not_found", "Media not found.")
+        values["avatar_media_id"] = None
+    if "home_country_code" in changes:
+        values["home_country_code"] = changes["home_country_code"]
+    if "home_region" in changes:
+        values["home_region"] = _clean_or_422(
+            "home_region",
+            clean_optional_text,
+            changes["home_region"],
+            max_length=HOME_REGION_MAX,
+            multiline=False,
+        )
+    if "travel_styles" in changes:
+        values["travel_styles"] = dedupe(changes["travel_styles"])
+    if "interests" in changes:
+        values["interests"] = _clean_or_422(
+            "interests", clean_tags, changes["interests"], max_length=INTEREST_MAX
+        )
+    if "languages_spoken" in changes:
+        values["languages_spoken"] = dedupe(changes["languages_spoken"])
+    if "account_visibility" in changes:
+        values["account_visibility"] = changes["account_visibility"]
+    return values
+
+
+async def update_profile(
+    session: AsyncSession, user_id: uuid.UUID, request: UpdateMyProfileRequest, *, now: datetime
+) -> None:
+    """Apply a profile PATCH (PROF-001/003/004). Emits ``profile.updated`` for public fields."""
+    profile, _, _ = await _rows(session, user_id, for_update=True)
+    changes = request.changes()
+    old_handle = profile.handle
+    changed: set[str] = set()
+    if "handle" in changes and await _apply_handle(session, profile, changes["handle"], now=now):
+        changed.add("handle")
+    for field, value in _profile_values(changes).items():
+        if getattr(profile, field) != value:
+            setattr(profile, field, value)
+            changed.add(field)
+    if not changed:
+        return
+    try:
+        async with session.begin_nested():
+            await session.flush()
+    except IntegrityError as exc:  # lost a race for the handle
+        raise AppError(ErrorCode.CONFLICT, "This handle is already taken.") from exc
+    public = sorted(changed & _PUBLIC_PROFILE_FIELDS)
+    if public:
+        payload: dict[str, Any] = {"user_id": str(user_id), "changed": public}
+        if "handle" in changed:
+            payload["previous_handle"] = old_handle  # public anyway; lets caches purge old URLs
+        platform_service.record_event(
+            session,
+            aggregate_type="user",
+            aggregate_id=user_id,
+            event_type="profile.updated",
+            payload=payload,
+        )
+
+
+@cache
+def _time_zones() -> frozenset[str]:
+    return frozenset(zoneinfo.available_timezones())
+
+
+async def update_preferences(
+    session: AsyncSession, user_id: uuid.UUID, request: UpdatePreferencesRequest
+) -> Preferences:
+    """Apply a preferences PATCH (PROF-006, I18N-002). Notification settings are merged."""
+    _, preferences, _ = await _rows(session, user_id, for_update=True)
+    changes = request.changes()
+    if "ui_locale" in changes and changes["ui_locale"] not in SUPPORTED_LOCALES:
+        raise _invalid(
+            "ui_locale", "unsupported", f"Supported UI languages: {', '.join(SUPPORTED_LOCALES)}."
+        )
+    if "time_zone" in changes and changes["time_zone"] not in _time_zones():
+        raise _invalid("time_zone", "unknown", "Use an IANA time zone such as Europe/Lisbon.")
+    for field in ("ui_locale", "time_zone", "currency_code", "distance_unit", "auto_translate"):
+        if field in changes:
+            setattr(preferences, field, changes[field])
+    if "content_languages" in changes:
+        preferences.content_languages = dedupe(changes["content_languages"])
+    if "notification_settings" in changes:
+        merged = _notification_matrix(preferences.notification_settings)
+        for kind, channels in changes["notification_settings"].items():
+            merged[kind] = {**merged.get(kind, {}), **channels}
+        preferences.notification_settings = merged
+    await session.flush()
+    return (await get_profile_bundle(session, user_id)).preferences
+
+
+async def update_privacy(
+    session: AsyncSession, user_id: uuid.UUID, request: UpdatePrivacySettingsRequest
+) -> PrivacyUpdate:
+    """Apply a privacy PATCH (PROF-007/008, DISC-001/002).
+
+    Enabling discovery needs a current ``traveler_discovery`` consent. Recording the
+    ``search_indexing`` consent for an indexing change is the caller's job (identity owns the
+    consent ledger); the returned ``changed`` set says when.
+    """
+    _, _, privacy = await _rows(session, user_id, for_update=True)
+    changes = request.changes()
+    if changes.get("discovery_enabled") is True and privacy.discovery_consent_version is None:
+        raise AppError(
+            ErrorCode.CONSENT_REQUIRED,
+            "Turning on traveler discovery needs your consent first.",
+            extensions={"consent_type": "traveler_discovery"},
+        )
+    changed = {field for field, value in changes.items() if getattr(privacy, field) != value}
+    for field in changed:
+        setattr(privacy, field, changes[field])
+    await session.flush()
+    _privacy_events(session, user_id, changed, privacy)
+    settings = (await get_profile_bundle(session, user_id)).privacy
+    return PrivacyUpdate(settings=settings, changed=frozenset(changed))
+
+
+def _privacy_events(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    changed: set[str],
+    privacy: UserPrivacySettings,
+) -> None:
+    if "discovery_enabled" in changed and not privacy.discovery_enabled:
+        # The discovery module (Phase 2) ends active discovery sessions on this event (DISC-002).
+        platform_service.record_event(
+            session,
+            aggregate_type="user",
+            aggregate_id=user_id,
+            event_type="discovery.disabled",
+            payload={"user_id": str(user_id)},
+        )
+    visible = sorted(changed & _PUBLIC_PRIVACY_FIELDS)
+    if visible:
+        platform_service.record_event(
+            session,
+            aggregate_type="user",
+            aggregate_id=user_id,
+            event_type="privacy.updated",
+            payload={"user_id": str(user_id), "changed": visible},
+        )
+
+
+async def apply_consent(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    consent_type: str,
+    granted: bool,
+    version: str,
+    at: datetime,
+) -> None:
+    """Mirror a recorded consent into privacy settings (the ledger lives in identity).
+
+    Withdrawing ``traveler_discovery`` turns discovery off; ``search_indexing`` is the indexing
+    switch itself (PROF-008). Other consent types have no settings to mirror.
+    """
+    _, _, privacy = await _rows(session, user_id, for_update=True)
+    changed: set[str] = set()
+    if consent_type == "location":
+        privacy.location_consent_version = version if granted else None
+        privacy.location_consent_at = at if granted else None
+    elif consent_type == "traveler_discovery":
+        privacy.discovery_consent_version = version if granted else None
+        privacy.discovery_consent_at = at if granted else None
+        if not granted and privacy.discovery_enabled:
+            privacy.discovery_enabled = False
+            changed.add("discovery_enabled")
+    elif consent_type == "search_indexing" and privacy.search_engine_indexing != granted:
+        privacy.search_engine_indexing = granted
+        changed.add("search_engine_indexing")
+    await session.flush()
+    _privacy_events(session, user_id, changed, privacy)
+
+
+async def complete_onboarding(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> None:
+    """Mark onboarding done (idempotent). Only display name and language are mandatory
+    (PROF-001); the handle always exists because registration generates one."""
+    profile, preferences, _ = await _rows(session, user_id, for_update=True)
+    missing = [
+        FieldError(field=f"/{name}", code="required", message=f"{name} is required.")
+        for name, value in (
+            ("handle", profile.handle),
+            ("display_name", profile.display_name),
+            ("ui_locale", preferences.ui_locale),
+        )
+        if not value
+    ]
+    if missing:
+        raise AppError(
+            ErrorCode.VALIDATION_FAILED, "Complete the required steps first.", errors=missing
+        )
+    if profile.onboarding_completed_at is None:
+        profile.onboarding_completed_at = now
+        await session.flush()
+        platform_service.record_event(
+            session,
+            aggregate_type="user",
+            aggregate_id=user_id,
+            event_type="user.onboarding_completed",
+            payload={"user_id": str(user_id)},
+        )

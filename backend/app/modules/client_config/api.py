@@ -13,12 +13,11 @@ from pydantic import BaseModel, ConfigDict
 
 from app.core.config import Settings
 from app.core.feature_flags import FeatureFlags
+from app.core.i18n import DEFAULT_LOCALE, SUPPORTED_LOCALES
 from app.modules.identity.service import IdentityService
 
 router = APIRouter(prefix="/v1", tags=["config"])
 
-SUPPORTED_LOCALES = ["en", "es", "pt-BR", "fr", "de"]
-DEFAULT_LOCALE = "en"
 _SEMVER = r"^\d+\.\d+\.\d+$"
 
 
@@ -70,7 +69,7 @@ async def get_client_config(
         min_supported_version=settings.min_supported_app_version,
         latest_version=settings.latest_app_version,
         update_required=outdated,
-        supported_locales=SUPPORTED_LOCALES,
+        supported_locales=list(SUPPORTED_LOCALES),
         default_locale=DEFAULT_LOCALE,
         feature_flags=flags.snapshot(),
         legal=LegalDocuments(

@@ -72,6 +72,8 @@ class UserProfile(Base):
         Uuid, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
     handle: Mapped[str] = mapped_column(CITEXT)
+    # NULL = still the generated handle; changes are limited to one per 30 days (PROF-003).
+    handle_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     display_name: Mapped[str] = mapped_column(Text)
     bio: Mapped[str | None] = mapped_column(Text)
     # FK to media_assets is added with the media module (Phase 1, BL-1.08).

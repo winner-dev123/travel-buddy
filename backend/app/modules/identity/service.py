@@ -49,6 +49,9 @@ from app.modules.identity.models import (
 )
 from app.modules.identity.schemas import (
     AuthResult,
+    ConsentList,
+    ConsentRecordOut,
+    ConsentRequest,
     DeviceInfo,
     LoginRequest,
     Me,
@@ -59,6 +62,13 @@ from app.modules.identity.schemas import (
     SessionTokens,
 )
 from app.modules.profiles import service as profiles_service
+from app.modules.profiles.schemas import (
+    Preferences,
+    PrivacySettings,
+    UpdateMyProfileRequest,
+    UpdatePreferencesRequest,
+    UpdatePrivacySettingsRequest,
+)
 
 DELETION_GRACE = timedelta(days=30)
 
@@ -430,3 +440,131 @@ class IdentityService:
             browse_destination=None,
             entitlements=entitlements,
         )
+
+    # ─────────────────── me: profile, preferences, privacy, consents (BL-1.04) ───────────────────
+
+    async def _active_user(self, session: AsyncSession, principal: Principal) -> User:
+        user = await repo.get_user(session, principal.user_id)
+        if user is None or user.status not in (UserStatus.ACTIVE, UserStatus.PENDING_DELETION):
+            raise AppError(ErrorCode.UNAUTHENTICATED, "Sign in to continue.")
+        return user
+
+    async def update_me(self, principal: Principal, request: UpdateMyProfileRequest) -> Me:
+        async with self._sessionmaker() as session, session.begin():
+            user = await self._active_user(session, principal)
+            await profiles_service.update_profile(session, user.id, request, now=self._clock.now())
+            return await self._compose_me(session, user)
+
+    async def complete_onboarding(self, principal: Principal) -> Me:
+        async with self._sessionmaker() as session, session.begin():
+            user = await self._active_user(session, principal)
+            await profiles_service.complete_onboarding(session, user.id, now=self._clock.now())
+            return await self._compose_me(session, user)
+
+    async def get_preferences(self, principal: Principal) -> Preferences:
+        async with self._sessionmaker() as session:
+            user = await self._active_user(session, principal)
+            return (await profiles_service.get_profile_bundle(session, user.id)).preferences
+
+    async def update_preferences(
+        self, principal: Principal, request: UpdatePreferencesRequest
+    ) -> Preferences:
+        async with self._sessionmaker() as session, session.begin():
+            user = await self._active_user(session, principal)
+            return await profiles_service.update_preferences(session, user.id, request)
+
+    async def get_privacy(self, principal: Principal) -> PrivacySettings:
+        async with self._sessionmaker() as session:
+            user = await self._active_user(session, principal)
+            return (await profiles_service.get_profile_bundle(session, user.id)).privacy
+
+    async def update_privacy(
+        self, principal: Principal, request: UpdatePrivacySettingsRequest
+    ) -> PrivacySettings:
+        """Toggling search-engine indexing is itself a consent, recorded in the ledger."""
+        async with self._sessionmaker() as session, session.begin():
+            user = await self._active_user(session, principal)
+            result = await profiles_service.update_privacy(session, user.id, request)
+            if "search_engine_indexing" in result.changed:
+                session.add(
+                    ConsentRecord(
+                        user_id=user.id,
+                        consent_type=ConsentType.SEARCH_INDEXING,
+                        version=self._settings.privacy_version,
+                        granted=result.settings.search_engine_indexing,
+                        source=ConsentSource.SETTINGS,
+                        recorded_at=self._clock.now(),
+                    )
+                )
+            return result.settings
+
+    async def list_consents(self, principal: Principal) -> ConsentList:
+        async with self._sessionmaker() as session:
+            user = await self._active_user(session, principal)
+            records = await repo.latest_consents(session, user.id)
+            return ConsentList(data=[_consent_out(r) for r in records])
+
+    async def record_consent(
+        self, principal: Principal, request: ConsentRequest
+    ) -> ConsentRecordOut:
+        """Append to the consent ledger and mirror into privacy settings (AUTH-009, DISC-001).
+
+        Terms and privacy policy cannot be withdrawn here (that is account deletion) and can only
+        be accepted in their current version.
+        """
+        legal = {
+            ConsentType.TERMS: self._settings.terms_version,
+            ConsentType.PRIVACY_POLICY: self._settings.privacy_version,
+        }
+        if request.consent_type in legal:
+            if not request.granted:
+                raise _field_error(
+                    "/granted",
+                    "cannot_withdraw",
+                    "To stop accepting the terms or privacy policy, delete your account.",
+                )
+            if request.version != legal[ConsentType(request.consent_type)]:
+                raise _field_error(
+                    "/version", "outdated_version", "Accept the current version of this document."
+                )
+        now = self._clock.now()
+        async with self._sessionmaker() as session, session.begin():
+            user = await self._active_user(session, principal)
+            record = ConsentRecord(
+                user_id=user.id,
+                consent_type=request.consent_type,
+                version=request.version,
+                granted=request.granted,
+                source=request.source,
+                recorded_at=now,
+            )
+            session.add(record)
+            await profiles_service.apply_consent(
+                session,
+                user.id,
+                consent_type=request.consent_type,
+                granted=request.granted,
+                version=request.version,
+                at=now,
+            )
+            return _consent_out(record)
+
+
+def _consent_out(record: ConsentRecord) -> ConsentRecordOut:
+    return ConsentRecordOut.model_validate(
+        {
+            "consent_type": record.consent_type,
+            "version": record.version,
+            "granted": record.granted,
+            "source": record.source,
+            "recorded_at": record.recorded_at,
+        }
+    )
+
+
+def _field_error(field: str, code: str, message: str) -> AppError:
+    return AppError(
+        ErrorCode.VALIDATION_FAILED,
+        message,
+        errors=[FieldError(field=field, code=code, message=message)],
+    )

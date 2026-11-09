@@ -64,6 +64,9 @@ def _create_all(url: str) -> None:
             async with engine.begin() as conn:
                 for extension in ("citext", "pg_trgm", "unaccent"):
                     await conn.execute(text(f"CREATE EXTENSION IF NOT EXISTS {extension}"))
+                # Rebuild so the schema always matches the current models (create_all never
+                # alters existing tables). Only ever runs against a local test database.
+                await conn.run_sync(Base.metadata.drop_all)
                 await conn.run_sync(Base.metadata.create_all)
                 # Same hardening the migration environment applies after every run.
                 await conn.execute(text(SECURE_PUBLIC_SCHEMA_SQL))

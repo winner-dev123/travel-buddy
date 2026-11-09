@@ -12,6 +12,9 @@ from app.core.security.principal import Principal
 from app.modules.identity.adapters.dev_idp import DevIdentityProvider
 from app.modules.identity.schemas import (
     AuthResult,
+    ConsentList,
+    ConsentRecordOut,
+    ConsentRequest,
     DevIdpToken,
     DevIdpTokenRequest,
     Jwks,
@@ -24,6 +27,13 @@ from app.modules.identity.schemas import (
     SessionTokens,
 )
 from app.modules.identity.service import IdentityService
+from app.modules.profiles.schemas import (
+    Preferences,
+    PrivacySettings,
+    UpdateMyProfileRequest,
+    UpdatePreferencesRequest,
+    UpdatePrivacySettingsRequest,
+)
 
 auth_router = APIRouter(prefix="/v1/auth", tags=["auth"])
 me_router = APIRouter(prefix="/v1/users/me", tags=["me"])
@@ -70,6 +80,54 @@ async def logout(
 @me_router.get("", response_model=Me)
 async def get_me(request: Request, principal: CurrentPrincipal) -> Me:
     return await _service(request).get_me(principal)
+
+
+@me_router.patch("", response_model=Me)
+async def update_me(
+    body: UpdateMyProfileRequest, request: Request, principal: CurrentPrincipal
+) -> Me:
+    return await _service(request).update_me(principal, body)
+
+
+@me_router.post("/onboarding/complete", response_model=Me)
+async def complete_onboarding(request: Request, principal: CurrentPrincipal) -> Me:
+    return await _service(request).complete_onboarding(principal)
+
+
+@me_router.get("/preferences", response_model=Preferences)
+async def get_my_preferences(request: Request, principal: CurrentPrincipal) -> Preferences:
+    return await _service(request).get_preferences(principal)
+
+
+@me_router.patch("/preferences", response_model=Preferences)
+async def update_my_preferences(
+    body: UpdatePreferencesRequest, request: Request, principal: CurrentPrincipal
+) -> Preferences:
+    return await _service(request).update_preferences(principal, body)
+
+
+@me_router.get("/privacy", response_model=PrivacySettings)
+async def get_my_privacy(request: Request, principal: CurrentPrincipal) -> PrivacySettings:
+    return await _service(request).get_privacy(principal)
+
+
+@me_router.patch("/privacy", response_model=PrivacySettings)
+async def update_my_privacy(
+    body: UpdatePrivacySettingsRequest, request: Request, principal: CurrentPrincipal
+) -> PrivacySettings:
+    return await _service(request).update_privacy(principal, body)
+
+
+@me_router.get("/consents", response_model=ConsentList)
+async def list_my_consents(request: Request, principal: CurrentPrincipal) -> ConsentList:
+    return await _service(request).list_consents(principal)
+
+
+@me_router.post("/consents", status_code=status.HTTP_201_CREATED, response_model=ConsentRecordOut)
+async def record_my_consent(
+    body: ConsentRequest, request: Request, principal: CurrentPrincipal
+) -> ConsentRecordOut:
+    return await _service(request).record_consent(principal, body)
 
 
 @me_router.get("/sessions", response_model=SessionList)

@@ -395,6 +395,14 @@ paths:
       tags: [me]
       operationId: updateMe
       summary: Update my profile
+      description: |
+        Partial update: omitted fields are unchanged; `null` clears the nullable fields (`bio`, `avatar_media_id`,
+        `home_country_code`, `home_region`). Text is normalized (whitespace collapsed, invisible/bidi control
+        characters removed); list fields are de-duplicated case-insensitively.
+        **Handle** (PROF-003): case-insensitively unique (`409 conflict`). Reserved names are rejected with
+        `422` and `errors[].code = reserved`. The handle generated at registration can be replaced at once;
+        after that, one change per 30 days (`422`, `errors[].code = change_too_soon`, top-level `next_change_at`).
+        `avatar_media_id` must reference a finalized upload of the caller (`errors[].code = not_found` otherwise).
       x-phase: 1
       x-requirements: [PROF-001, PROF-002, PROF-004]
       x-rate-limit-class: write
@@ -491,6 +499,11 @@ paths:
       tags: [me]
       operationId: updateMyPreferences
       summary: Update my preferences
+      description: |
+        `ui_locale` must be one of `client-config.supported_locales` (`errors[].code = unsupported`). `time_zone` must
+        be an IANA zone (`errors[].code = unknown`). `notification_settings` is **merged** per notification type and
+        channel: only the channels sent change. The response returns explicit choices only; clients apply their
+        defaults to missing entries.
       x-phase: 1
       x-requirements: [PROF-005, I18N-002]
       x-rate-limit-class: write
@@ -528,7 +541,7 @@ paths:
       tags: [me]
       operationId: updateMyPrivacySettings
       summary: Update my privacy settings
-      description: Enabling `discovery_enabled` requires a current `traveler_discovery` consent record (`consent_required` otherwise). Disabling discovery immediately ends any active discovery session.
+      description: Enabling `discovery_enabled` requires a current `traveler_discovery` consent record (`403 consent_required` with top-level `consent_type`, otherwise). Disabling discovery immediately ends any active discovery session. Changing `search_engine_indexing` appends a `search_indexing` consent record.
       x-phase: 1
       x-requirements: [PROF-006, DISC-001, DISC-002, PROF-008, SAFE-012]
       x-rate-limit-class: write
@@ -577,7 +590,7 @@ paths:
       tags: [me]
       operationId: recordMyConsent
       summary: Grant or withdraw a consent (append-only record)
-      description: Withdrawing `traveler_discovery` disables discovery and ends active sessions. Withdrawing `location` stops server use of device location for "Nearby".
+      description: Withdrawing `traveler_discovery` disables discovery and ends active sessions. Withdrawing `location` stops server use of device location for "Nearby". `search_indexing` is the same switch as `PrivacySettings.search_engine_indexing`. `terms` and `privacy_policy` cannot be withdrawn here (`errors[].code = cannot_withdraw`; that is account deletion) and only their current version can be accepted (`outdated_version`).
       x-phase: 1
       x-requirements: [AUTH-009, DISC-001]
       x-rate-limit-class: write

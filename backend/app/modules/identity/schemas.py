@@ -6,7 +6,7 @@ import uuid
 from datetime import date, datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StringConstraints
 
 from app.core.security.principal import Permission, PlatformRole
 from app.modules.billing.schemas import Entitlements
@@ -135,3 +135,35 @@ class Jwk(_Response):
 
 class Jwks(_Response):
     keys: list[Jwk]
+
+
+ConsentTypeName = Literal[
+    "terms",
+    "privacy_policy",
+    "location",
+    "traveler_discovery",
+    "marketing",
+    "ai_personalization",
+    "post_translation",
+    "search_indexing",
+]
+ConsentSourceName = Literal["onboarding", "settings", "prompt"]
+
+
+class ConsentRequest(_Request):
+    consent_type: ConsentTypeName
+    version: str = Field(min_length=1, max_length=32)
+    granted: StrictBool
+    source: ConsentSourceName
+
+
+class ConsentRecordOut(_Response):
+    consent_type: ConsentTypeName
+    version: str
+    granted: bool
+    source: ConsentSourceName
+    recorded_at: datetime
+
+
+class ConsentList(_Response):
+    data: list[ConsentRecordOut]
