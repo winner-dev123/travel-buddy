@@ -147,3 +147,58 @@ class Post(_Response):
     def as_json(self) -> dict[str, Any]:
         data: dict[str, Any] = self.model_dump(mode="json")
         return data
+
+
+class ReactionRequest(_Request):
+    reaction: ReactionName
+
+
+class ReactionResult(_Response):
+    reaction: ReactionName
+    counts: PostCounts
+
+
+class ReactionOut(_Response):
+    user: UserSummary
+    reaction: ReactionName
+    created_at: datetime
+
+
+class CreateCommentRequest(_Request):
+    body: str = Field(min_length=1, max_length=2000)
+    parent_comment_id: uuid.UUID | None = None
+
+
+class UpdateCommentRequest(_Request):
+    body: str = Field(min_length=1, max_length=2000)
+
+
+class CommentViewer(_Response):
+    can_edit: bool
+    can_delete: bool
+
+
+class CommentOut(_Response):
+    id: uuid.UUID
+    post_id: uuid.UUID
+    parent_comment_id: uuid.UUID | None
+    author: UserSummary | None  # null for tombstones
+    body: str | None
+    language: str
+    reply_count: int
+    deleted: bool
+    created_at: datetime
+    edited_at: datetime | None
+    viewer: CommentViewer
+
+
+class ShareRequest(_Request):
+    channel: Literal["system_share_sheet", "copy_link", "message"] | None = None
+
+
+class ShareLink(_Response):
+    url: str
+
+
+class FollowState(_Response):
+    status: Literal["following", "requested"]

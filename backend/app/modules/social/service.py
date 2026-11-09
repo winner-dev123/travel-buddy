@@ -32,8 +32,15 @@ from app.modules.social.domain import (
     is_publicly_listed,
     kind_violations,
 )
+from app.modules.social.models import (
+    Bookmark,
+    Follow,
+    FollowStatus,
+    PostDestination,
+    PostTag,
+    Reaction,
+)
 from app.modules.social.models import Post as PostRow
-from app.modules.social.models import PostDestination, PostTag
 from app.modules.social.schemas import (
     CreatePostRequest,
     Post,
@@ -67,8 +74,25 @@ def _require_verified_email(principal: Principal) -> None:
 async def _relation(
     session: AsyncSession, viewer_id: uuid.UUID, author_id: uuid.UUID
 ) -> ViewerRelation:
-    # Follows (BL-1.11) and connections (Phase 2) extend this; until then only authorship counts.
-    return ViewerRelation(is_author=viewer_id == author_id)
+    # Connections (Phase 2) will extend this.
+    if viewer_id == author_id:
+        return ViewerRelation(is_author=True)
+    following = await session.scalar(
+        select(Follow.status).where(
+            Follow.follower_id == viewer_id,
+            Follow.followee_id == author_id,
+            Follow.status == FollowStatus.ACTIVE,
+        )
+    )
+    return ViewerRelation(is_author=False, is_follower=following is not None)
+
+
+async def visible_post(session: AsyncSession, post_id: uuid.UUID, viewer_id: uuid.UUID) -> PostRow:
+    """The post if the viewer may see it, else 404 (no existence leak)."""
+    post = await session.get(PostRow, post_id)
+    if post is None or not await _visible(session, post, viewer_id):
+        raise _not_found()
+    return post
 
 
 class PostService:
@@ -371,10 +395,17 @@ class PostService:
 
 
 async def refresh_author_visibility(session: AsyncSession, author_id: uuid.UUID) -> int:
-    """Recompute feed visibility after an account turns private/public (PROF-004)."""
+    """Recompute feed visibility after an account turns private/public (PROF-004). Going public
+    also approves pending follow requests, which no longer need approval."""
     author = (await profiles.authors(session, [author_id])).get(author_id)
     if author is None:
         return 0
+    if not author.account_private:
+        await session.execute(
+            update(Follow)
+            .where(Follow.followee_id == author_id, Follow.status == FollowStatus.PENDING)
+            .values(status=FollowStatus.ACTIVE)
+        )
     posts = (
         await session.scalars(
             select(PostRow).where(PostRow.author_id == author_id, PostRow.status == "published")
@@ -477,6 +508,34 @@ async def _assemble(
     summaries = await destinations.summaries_by_id(
         session, [p.primary_destination_id for p in posts if p.primary_destination_id], preferences
     )
+    reactions_by_type: dict[uuid.UUID, dict[str, int]] = {i: {} for i in ids}
+    for post_id, reaction, count in (
+        await session.execute(
+            select(Reaction.post_id, Reaction.reaction, func.count())
+            .where(Reaction.post_id.in_(ids))
+            .group_by(Reaction.post_id, Reaction.reaction)
+        )
+    ).all():
+        reactions_by_type[post_id][reaction] = count
+    mine: dict[uuid.UUID, str] = {
+        row.post_id: row.reaction
+        for row in (
+            await session.execute(
+                select(Reaction.post_id, Reaction.reaction).where(
+                    Reaction.post_id.in_(ids), Reaction.user_id == viewer_id
+                )
+            )
+        ).all()
+    }
+    bookmarked = set(
+        (
+            await session.scalars(
+                select(Bookmark.post_id).where(
+                    Bookmark.post_id.in_(ids), Bookmark.user_id == viewer_id
+                )
+            )
+        ).all()
+    )
     tags: dict[uuid.UUID, list[str]] = {i: [] for i in ids}
     for post_id, tag in (
         await session.execute(
@@ -509,12 +568,14 @@ async def _assemble(
             "tags": tags[post.id],
             "published_at": post.published_at,
             "edited_at": post.edited_at,
-            "counts": PostCounts(
-                reactions=post.reaction_count,
-                comments=post.comment_count,
-                bookmarks=post.bookmark_count,
-                shares=post.share_count,
-                reactions_by_type={},
+            "counts": PostCounts.model_validate(
+                {
+                    "reactions": post.reaction_count,
+                    "comments": post.comment_count,
+                    "bookmarks": post.bookmark_count,
+                    "shares": post.share_count,
+                    "reactions_by_type": reactions_by_type[post.id],
+                }
             ),
             "indexable": is_indexable(
                 visibility=post.visibility,
@@ -522,13 +583,15 @@ async def _assemble(
                 account_private=author.account_private,
                 author_opted_in=author.search_engine_indexing,
             ),
-            "viewer": PostViewerState(
-                reaction=None,
-                bookmarked=False,
-                is_author=is_author,
-                can_edit=is_author and post.moderation_state != "removed",
-                can_delete=is_author,
-                can_comment=post.moderation_state != "removed",
+            "viewer": PostViewerState.model_validate(
+                {
+                    "reaction": mine.get(post.id),
+                    "bookmarked": post.id in bookmarked,
+                    "is_author": is_author,
+                    "can_edit": is_author and post.moderation_state != "removed",
+                    "can_delete": is_author,
+                    "can_comment": post.moderation_state != "removed",
+                }
             ),
             "moderation_state": post.moderation_state if is_author else None,
         }

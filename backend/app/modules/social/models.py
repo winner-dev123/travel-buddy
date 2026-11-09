@@ -166,3 +166,93 @@ class PostTag(Base):
         ForeignKey("posts.id", ondelete="CASCADE"), primary_key=True
     )
     tag: Mapped[str] = mapped_column(CITEXT, primary_key=True)
+
+
+class ReactionType(StrEnum):
+    LIKE = "like"
+    LOVE = "love"
+    HELPFUL = "helpful"
+    WOW = "wow"
+
+
+class Reaction(Base):
+    """One reaction per user per post, changeable (POST-005)."""
+
+    __tablename__ = "reactions"
+    __table_args__ = (
+        enum_check("reaction", ReactionType, "reaction_enum"),
+        Index("ix_reactions__user_created", "user_id", text("created_at DESC")),
+    )
+
+    post_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("posts.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    reaction: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Comment(Base):
+    """One level of replies (enforced in code); deletion leaves a tombstone."""
+
+    __tablename__ = "comments"
+    __table_args__ = (
+        enum_check("moderation_state", ModerationState, "moderation_state_enum"),
+        CheckConstraint("char_length(body) <= 2000", name="body_length"),
+        Index("ix_comments__post_created", "post_id", "created_at"),
+        Index("ix_comments__parent_created", "parent_comment_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
+    post_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("posts.id", ondelete="CASCADE"))
+    author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    parent_comment_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("comments.id", ondelete="CASCADE")
+    )
+    body: Mapped[str] = mapped_column(Text)
+    language: Mapped[str] = mapped_column(Text)
+    moderation_state: Mapped[str] = mapped_column(Text, server_default=text("'approved'"))
+    reply_count: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Bookmark(Base):
+    __tablename__ = "bookmarks"
+    __table_args__ = (Index("ix_bookmarks__user_created", "user_id", text("created_at DESC")),)
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    post_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("posts.id", ondelete="CASCADE"), primary_key=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class FollowStatus(StrEnum):
+    ACTIVE = "active"
+    PENDING = "pending"
+
+
+class Follow(Base):
+    """``pending`` = request to a private account awaiting approval (POST-006)."""
+
+    __tablename__ = "follows"
+    __table_args__ = (
+        enum_check("status", FollowStatus, "status_enum"),
+        CheckConstraint("follower_id <> followee_id", name="not_self"),
+        Index("ix_follows__followee_status", "followee_id", "status"),
+    )
+
+    follower_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    followee_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    status: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

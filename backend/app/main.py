@@ -41,6 +41,9 @@ from app.modules.platform.api import AfterResponseTickMiddleware, internal_route
 from app.modules.platform.service import EventRouter, JobHandler, JobRunner
 from app.modules.social import service as social_service
 from app.modules.social.api import router as social_router
+from app.modules.social.follows import FollowService
+from app.modules.social.interactions import InteractionService
+from app.modules.social.public import PublicPostService
 from app.modules.web_cache import service as web_cache_service
 from app.modules.web_cache.config import WebCacheSettings
 
@@ -157,6 +160,17 @@ def create_app(
         sessionmaker=database.sessionmaker
     )
     app.state.post_service = social_service.PostService(
+        sessionmaker=database.sessionmaker, cursors=cursor_codec
+    )
+    app.state.interaction_service = InteractionService(
+        sessionmaker=database.sessionmaker,
+        cursors=cursor_codec,
+        public_site_url=settings.public_site_url,
+    )
+    app.state.follow_service = FollowService(
+        sessionmaker=database.sessionmaker, cursors=cursor_codec
+    )
+    app.state.public_post_service = PublicPostService(
         sessionmaker=database.sessionmaker, cursors=cursor_codec
     )
     app.state.readiness_checks = (
