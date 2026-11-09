@@ -119,6 +119,32 @@
       "destination": "Current or upcoming destination",
       "location": "Location permission (optional)",
       "discovery": "Traveler discovery (off by default)"
+    },
+    "signInFirst": "Sign in to set up your profile.",
+    "progress": "Step {{current}} of {{total}}",
+    "profileTitle": "Welcome!",
+    "profileHint": "How should other travellers see your name?",
+    "languageTitle": "Choose your language",
+    "languageHint": "You can change it later in your settings.",
+    "interestsTitle": "What do you love about travelling?",
+    "interestsHint": "Pick a few so we can show you stories you'll like.",
+    "destinationTitle": "Where are you exploring?",
+    "destinationHint": "Choose a city you're in or heading to. Your feed starts there.",
+    "next": "Continue",
+    "back": "Back",
+    "skip": "Skip for now",
+    "finish": "Start exploring",
+    "interests": {
+      "food": "Food",
+      "culture": "Culture",
+      "history": "History",
+      "nature": "Nature",
+      "hiking": "Hiking",
+      "beaches": "Beaches",
+      "nightlife": "Nightlife",
+      "art": "Art",
+      "photography": "Photography",
+      "budget": "Budget travel"
     }
   },
   "notFound": {

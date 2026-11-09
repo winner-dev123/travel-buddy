@@ -120,6 +120,32 @@
       "destination": "Destino atual ou próximo",
       "location": "Permissão de localização (opcional)",
       "discovery": "Descoberta de viajantes (desativada por padrão)"
+    },
+    "signInFirst": "Entre para configurar seu perfil.",
+    "progress": "Etapa {{current}} de {{total}}",
+    "profileTitle": "Boas-vindas!",
+    "profileHint": "Como outros viajantes devem ver seu nome?",
+    "languageTitle": "Escolha seu idioma",
+    "languageHint": "Você pode mudar depois nas configurações.",
+    "interestsTitle": "O que você mais gosta em viajar?",
+    "interestsHint": "Escolha alguns para mostrarmos histórias de que você vai gostar.",
+    "destinationTitle": "Onde você está explorando?",
+    "destinationHint": "Escolha uma cidade em que você está ou para onde vai. Seu feed começa por lá.",
+    "next": "Continuar",
+    "back": "Voltar",
+    "skip": "Pular por enquanto",
+    "finish": "Começar a explorar",
+    "interests": {
+      "food": "Gastronomia",
+      "culture": "Cultura",
+      "history": "História",
+      "nature": "Natureza",
+      "hiking": "Trilhas",
+      "beaches": "Praias",
+      "nightlife": "Vida noturna",
+      "art": "Arte",
+      "photography": "Fotografia",
+      "budget": "Viagem econômica"
     }
   },
   "notFound": {

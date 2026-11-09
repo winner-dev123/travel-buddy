@@ -50,7 +50,7 @@ export const FEATURES: Readonly<Record<FeatureKey, FeatureDefinition>> = {
   },
   onboarding: {
     phase: 1,
-    released: false,
+    released: true,
     requiresNetwork: true,
     plannedCapabilities: [
       'features.onboarding.capabilities.profileBasics',

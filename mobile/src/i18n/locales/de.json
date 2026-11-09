@@ -119,6 +119,32 @@
       "destination": "Aktuelles oder nächstes Reiseziel",
       "location": "Standortberechtigung (optional)",
       "discovery": "Reisende entdecken (standardmäßig aus)"
+    },
+    "signInFirst": "Melde dich an, um dein Profil einzurichten.",
+    "progress": "Schritt {{current}} von {{total}}",
+    "profileTitle": "Willkommen!",
+    "profileHint": "Wie sollen andere Reisende deinen Namen sehen?",
+    "languageTitle": "Sprache wählen",
+    "languageHint": "Du kannst sie später in den Einstellungen ändern.",
+    "interestsTitle": "Was liebst du am Reisen?",
+    "interestsHint": "Wähle ein paar aus, damit wir dir passende Geschichten zeigen.",
+    "destinationTitle": "Wo bist du gerade unterwegs?",
+    "destinationHint": "Wähle eine Stadt, in der du bist oder in die du reist. Dein Feed beginnt dort.",
+    "next": "Weiter",
+    "back": "Zurück",
+    "skip": "Vorerst überspringen",
+    "finish": "Los geht's",
+    "interests": {
+      "food": "Essen",
+      "culture": "Kultur",
+      "history": "Geschichte",
+      "nature": "Natur",
+      "hiking": "Wandern",
+      "beaches": "Strände",
+      "nightlife": "Nachtleben",
+      "art": "Kunst",
+      "photography": "Fotografie",
+      "budget": "Low Budget"
     }
   },
   "notFound": {

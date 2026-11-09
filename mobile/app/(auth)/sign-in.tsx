@@ -46,7 +46,8 @@ export default function SignInScreen() {
     if (outcome.kind === 'registration_required') {
       router.replace('/complete-registration');
     } else {
-      router.replace('/profile');
+      // PROF-002: straight to the feed, unless setup was never finished.
+      router.replace(outcome.me.onboarding_completed ? '/' : '/onboarding');
     }
   }
 

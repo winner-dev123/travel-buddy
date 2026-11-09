@@ -68,8 +68,8 @@ describe('app navigation shell', () => {
     expect(screen.getByTestId('sign-in-misconfigured')).toBeTruthy();
 
     await renderRouter(routes, { initialUrl: '/onboarding' });
-    expect(screen.getByTestId('phase-placeholder-onboarding')).toBeTruthy();
-    expect(screen.getByText('8. Traveler discovery (off by default)')).toBeTruthy();
+    // Onboarding is released; it needs a signed-in account.
+    expect(screen.getByText('Sign in to set up your profile.')).toBeTruthy();
   });
 
   it('applies the user locale override over the device locale', async () => {

@@ -12,9 +12,9 @@ beforeEach(async () => {
 });
 
 describe('feature flags', () => {
-  it('releases only the features that are built (the Phase 1 feed)', () => {
+  it('releases only the features that are built (Phase 1 feed and onboarding)', () => {
     for (const key of Object.keys(FEATURES) as FeatureKey[]) {
-      expect(isFeatureEnabled(key, [])).toBe(key === 'feed');
+      expect(isFeatureEnabled(key, [])).toBe(key === 'feed' || key === 'onboarding');
     }
   });
 

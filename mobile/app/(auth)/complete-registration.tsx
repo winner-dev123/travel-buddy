@@ -52,7 +52,7 @@ export default function CompleteRegistrationScreen() {
         legal: legal.data,
         locale: i18n.language || 'en',
       });
-      router.replace('/profile');
+      router.replace('/onboarding');
     } catch (caught) {
       setError(describeAuthError(caught, t));
     } finally {
