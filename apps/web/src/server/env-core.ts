@@ -62,7 +62,9 @@ function deriveSiteUrl(raw: z.infer<typeof schema>): string {
 }
 
 export function parseEnv(source: Record<string, string | undefined>): ServerEnv {
-  const raw = schema.parse(source);
+  // Treat empty strings as unset: container builds turn unset build args into `VAR=""`.
+  const cleaned = Object.fromEntries(Object.entries(source).filter(([, v]) => v !== undefined && v.trim() !== ''));
+  const raw = schema.parse(cleaned);
   const isLocal = raw.APP_ENV === 'development' || raw.APP_ENV === 'test';
   const isDevLike = isLocal || raw.APP_ENV === 'demo';
   const isHostedProduct = raw.APP_ENV === 'staging' || raw.APP_ENV === 'production';

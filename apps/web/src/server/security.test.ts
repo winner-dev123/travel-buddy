@@ -70,6 +70,12 @@ describe('JSON-LD serialization', () => {
 });
 
 describe('environment guards (docs/web/01 §7.1)', () => {
+  it('treats empty variables as unset (Docker build args)', () => {
+    const e = parseEnv({ APP_ENV: 'test', TB_API_MODE: '', API_BASE_URL: '', NEXT_PUBLIC_SITE_URL: '', NEXT_PUBLIC_MAP_STYLE_URL: '' });
+    expect(e.apiMode).toBe('mock');
+    expect(e.siteUrl).toBe('http://localhost:3000');
+  });
+
   it('defaults development to mock + dev identity', () => {
     const e = parseEnv({ APP_ENV: 'development' });
     expect(e.apiMode).toBe('mock');
