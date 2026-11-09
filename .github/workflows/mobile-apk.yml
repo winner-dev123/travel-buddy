@@ -1,0 +1,87 @@
+name: mobile-apk
+
+# Manually triggered Android APK build for testers and emulators (release build, debug-signed:
+# NOT for store distribution). Runs on Linux because Windows builds hit MAX_PATH in the native
+# CMake step. Public client configuration comes in as inputs; secrets are never needed here
+# (the app only ever embeds the Supabase PUBLISHABLE key, ADR-0020).
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_base_url:
+        description: Platform API base URL
+        required: true
+        default: https://travel-buddy-api-jet.vercel.app
+      supabase_url:
+        description: Supabase project URL
+        required: true
+        default: https://dmvhbgxxxilcniadoqvb.supabase.co
+      supabase_publishable_key:
+        description: Supabase PUBLISHABLE key (sb_publishable_...). Never a secret key.
+        required: true
+      architectures:
+        description: Comma-separated ABIs
+        required: true
+        default: x86_64,arm64-v8a
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: mobile
+
+jobs:
+  apk:
+    name: release APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - run: npm ci
+
+      - name: Client configuration
+        env:
+          API_BASE_URL: ${{ inputs.api_base_url }}
+          SUPABASE_URL: ${{ inputs.supabase_url }}
+          SUPABASE_KEY: ${{ inputs.supabase_publishable_key }}
+        run: |
+          case "$SUPABASE_KEY" in
+            sb_publishable_*) ;;
+            *) echo "::error::Only a Supabase publishable key (sb_publishable_...) may be embedded."; exit 1 ;;
+          esac
+          {
+            echo "EXPO_PUBLIC_API_BASE_URL=$API_BASE_URL"
+            echo "EXPO_PUBLIC_IDENTITY_PROVIDER=supabase"
+            echo "EXPO_PUBLIC_SUPABASE_URL=$SUPABASE_URL"
+            echo "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$SUPABASE_KEY"
+          } > .env.production.local
+
+      - name: Generate the native Android project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Gradle release build
+        working-directory: mobile/android
+        env:
+          ABIS: ${{ inputs.architectures }}
+        run: ./gradlew assembleRelease --no-daemon "-PreactNativeArchitectures=$ABIS"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: travel-buddy-apk
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 14
+          if-no-files-found: error
