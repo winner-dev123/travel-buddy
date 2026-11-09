@@ -41,6 +41,9 @@ export const POST_KINDS = [
   'experience',
 ] as const satisfies readonly PostKind[];
 
+/** Kinds that need a location (`location_precision` other than `none`); the platform answers 422 otherwise. */
+export const LOCATED_POST_KINDS = ['attraction_recommendation', 'restaurant_recommendation', 'review'] as const satisfies readonly PostKind[];
+
 export const TRAVEL_STYLES = [
   'adventure',
   'backpacking',

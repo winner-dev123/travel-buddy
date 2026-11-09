@@ -9,7 +9,8 @@ interface ComposerDraft {
   body: string;
   kind: PostKind;
   visibility: PostVisibility;
-  destination: Pick<DestinationSummary, 'id' | 'name' | 'path'> | null;
+  /** `undefined` = not chosen yet (the composer falls back to the browse destination); `null` = removed on purpose. */
+  destination?: Pick<DestinationSummary, 'id' | 'name' | 'path'> | null;
   setBody: (body: string) => void;
   setKind: (kind: PostKind) => void;
   setVisibility: (v: PostVisibility) => void;
@@ -17,7 +18,7 @@ interface ComposerDraft {
   reset: () => void;
 }
 
-const EMPTY = { body: '', kind: 'experience' as PostKind, visibility: 'followers' as PostVisibility, destination: null };
+const EMPTY = { body: '', kind: 'experience' as PostKind, visibility: 'followers' as PostVisibility, destination: undefined };
 
 export const useComposerStore = create<ComposerDraft>()(
   persist(

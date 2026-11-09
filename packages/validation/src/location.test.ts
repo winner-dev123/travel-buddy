@@ -84,6 +84,21 @@ describe('schemas', () => {
     expect(noDestination.success).toBe(false);
   });
 
+  it('requires a location for recommendations and reviews, like the platform (422 /location_precision)', () => {
+    const base = { body: 'Go early', visibility: 'public' } as const;
+    const unlocated = createPostSchema.safeParse({ ...base, kind: 'restaurant_recommendation', location_precision: 'none' });
+    expect(unlocated.success).toBe(false);
+    if (!unlocated.success) expect(unlocated.error.issues.map((i) => i.path.join('.'))).toEqual(['location_precision']);
+    const located = createPostSchema.safeParse({
+      ...base,
+      kind: 'attraction_recommendation',
+      location_precision: 'destination',
+      destination_id: '0193f1c2-0000-7000-8000-000000000001',
+    });
+    expect(located.success).toBe(true);
+    expect(createPostSchema.safeParse({ ...base, kind: 'tip', location_precision: 'none' }).success).toBe(true);
+  });
+
   it('maps URL feed slugs to API tabs with a safe default', () => {
     expect(feedTabFromSlug('for-you')).toBe('for_you');
     expect(feedTabFromSlug('nearby')).toBe('nearby');

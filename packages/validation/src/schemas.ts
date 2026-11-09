@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   FEED_TABS,
+  LOCATED_POST_KINDS,
   POST_KINDS,
   POST_VISIBILITIES,
   REPORT_REASONS,
@@ -137,7 +138,11 @@ export const createPostSchema = z
     message: V.required,
     path: ['destination_id'],
   })
-  .refine((p) => p.location_precision !== 'place' || Boolean(p.place_id), { message: V.required, path: ['place_id'] });
+  .refine((p) => p.location_precision !== 'place' || Boolean(p.place_id), { message: V.required, path: ['place_id'] })
+  .refine((p) => p.location_precision !== 'none' || !(LOCATED_POST_KINDS as readonly string[]).includes(p.kind), {
+    message: V.required,
+    path: ['location_precision'],
+  });
 export type CreatePostInput = z.infer<typeof createPostSchema>;
 
 export const commentSchema = z.object({

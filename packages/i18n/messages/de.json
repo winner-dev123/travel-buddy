@@ -727,6 +727,7 @@
     "placeholder": "Erzähl Reisenden von einem Ort, einem Tipp oder einem Moment.",
     "destinationLabel": "Reiseziel",
     "removeDestination": "Reiseziel entfernen",
+    "destinationRequired": "Diese Art von Beitrag braucht ein Reiseziel. Wähle oben eines aus.",
     "noGps": "Wir hängen nie deine genaue GPS-Position an, nur das Reiseziel, das du wählst.",
     "kindLabel": "Art",
     "kinds": {

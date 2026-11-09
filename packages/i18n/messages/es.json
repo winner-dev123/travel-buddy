@@ -727,6 +727,7 @@
     "placeholder": "Cuéntales a los viajeros sobre un lugar, un consejo o un momento.",
     "destinationLabel": "Destino",
     "removeDestination": "Quitar destino",
+    "destinationRequired": "Este tipo de publicación necesita un destino. Elige uno arriba.",
     "noGps": "Nunca adjuntamos tu posición GPS precisa, solo el destino que elijas.",
     "kindLabel": "Tipo",
     "kinds": {

@@ -727,6 +727,7 @@
     "placeholder": "Tell travelers about a place, a tip or a moment.",
     "destinationLabel": "Destination",
     "removeDestination": "Remove destination",
+    "destinationRequired": "This type of post needs a destination. Choose one above.",
     "noGps": "We never attach your precise GPS position, only the destination you choose.",
     "kindLabel": "Type",
     "kinds": {

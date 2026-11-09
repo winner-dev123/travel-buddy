@@ -60,6 +60,23 @@ test('publishing a travel post', async ({ page }) => {
   await expect(page.getByText(text)).toBeVisible();
 });
 
+test('a place recommendation needs a destination, and the default destination can be removed', async ({ page }) => {
+  await signInAs(page, /Yuki Tanaka/);
+  await page.getByRole('button', { name: /Share a moment|Continue your draft/ }).click();
+  await page.getByLabel('What’s happening?').fill('Best ramen near the station');
+  await page.getByLabel('Type', { exact: true }).selectOption('restaurant_recommendation');
+  const publish = page.getByRole('button', { name: 'Publish' });
+  await expect(publish).toBeEnabled(); // the browse destination (Tokyo) applies by default
+
+  await page.getByRole('button', { name: 'Remove destination' }).click();
+  await expect(page.getByText('This type of post needs a destination. Choose one above.')).toBeVisible();
+  await expect(publish).toBeDisabled();
+
+  await page.getByLabel('Type', { exact: true }).selectOption('tip');
+  await expect(publish).toBeEnabled(); // a tip may be posted without a location
+  await page.getByRole('button', { name: 'Discard draft' }).click();
+});
+
 test('reacting to a post is optimistic and persisted', async ({ page }) => {
   await signInAs(page, /Noah Fischer/);
   const first = page.getByRole('article').first();
