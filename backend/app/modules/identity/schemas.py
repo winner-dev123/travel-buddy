@@ -184,3 +184,24 @@ class ConsentRecordOut(_Response):
 
 class ConsentList(_Response):
     data: list[ConsentRecordOut]
+
+
+class AccountDeletionRequest(BaseModel):
+    """Contract ``AccountDeletionRequest``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    confirm: Literal[True]
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class DataSubjectRequestOut(_Response):
+    """Contract ``DataSubjectRequest``."""
+
+    id: uuid.UUID
+    kind: Literal["export", "deletion", "rectification"]
+    status: Literal["received", "processing", "completed", "rejected", "cancelled"]
+    requested_at: datetime
+    completed_at: datetime | None
+    scheduled_for: datetime | None = None
+    download: None = None

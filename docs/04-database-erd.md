@@ -788,7 +788,7 @@ erDiagram
 `user_id`, `key uuid`, `route` (method + template), `request_hash bytea`, `status` (`in_progress`, `completed`), `response_status`, `response_body jsonb`, `created_at`, `expires_at`. PK `(user_id, key)`.
 
 ### data_subject_requests
-`id`, `user_id`, `kind` (`export`, `deletion`, `rectification`), `status` (`received`, `processing`, `completed`, `rejected`), `artifact_media_id NULL` (export archive, 7-day signed link), `requested_at`, `completed_at`, `handled_by`.
+`id`, `user_id` (no FK: the record of a completed deletion outlives the account), `kind` (`export`, `deletion`, `rectification`), `status` (`received`, `processing`, `completed`, `rejected`, `cancelled`), `reason NULL`, `requested_at`, `scheduled_for NULL` (deletion: end of the 30-day grace), `completed_at`. Export adds `artifact_media_id` (7-day signed link) and staff handling adds `handled_by` when those flows land. `ix (user_id, requested_at DESC)`.
 
 ---
 

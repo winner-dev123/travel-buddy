@@ -25,6 +25,7 @@ QUEUE = "default"
 _EVENT_TYPES = (
     "profile.updated",
     "privacy.updated",
+    "user.deleted",
     "post.published",
     "post.updated",
     "post.deleted",

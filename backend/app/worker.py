@@ -19,6 +19,7 @@ from app.core.db import Database
 from app.core.logging import configure_logging
 from app.core.time import SystemClock
 from app.main import build_job_runner
+from app.modules.identity.config import IdentitySettings
 from app.modules.web_cache.config import WebCacheSettings
 
 logger = logging.getLogger("app.worker")
@@ -46,6 +47,7 @@ async def run(*, once: bool, idle_sleep_seconds: float) -> None:
         runner = build_job_runner(
             database=database,
             web_cache_settings=WebCacheSettings(),
+            identity_settings=IdentitySettings(),
             http_client=http_client,
             clock=SystemClock(),
         )

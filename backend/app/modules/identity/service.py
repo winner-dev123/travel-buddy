@@ -10,13 +10,14 @@ Flows (architecture section 8, contract ``/v1/auth/*``):
 
 from __future__ import annotations
 
+import logging
 import secrets
 import uuid
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.errors import AppError, ErrorCode, FieldError
@@ -28,6 +29,7 @@ from app.modules.billing import service as billing_service
 from app.modules.destinations.schemas import DestinationSummary
 from app.modules.identity import repository as repo
 from app.modules.identity.adapters.oidc import OidcVerifier, VerifiedIdentity
+from app.modules.identity.adapters.supabase_admin import IdpAccountDeleter
 from app.modules.identity.config import IdentitySettings
 from app.modules.identity.domain import (
     RefreshMatch,
@@ -44,6 +46,9 @@ from app.modules.identity.models import (
     ConsentRecord,
     ConsentSource,
     ConsentType,
+    DataSubjectRequest,
+    DataSubjectRequestKind,
+    DataSubjectRequestStatus,
     RetiredRefreshToken,
     RevokedReason,
     User,
@@ -51,11 +56,13 @@ from app.modules.identity.models import (
     UserStatus,
 )
 from app.modules.identity.schemas import (
+    AccountDeletionRequest,
     AccountRestriction,
     AuthResult,
     ConsentList,
     ConsentRecordOut,
     ConsentRequest,
+    DataSubjectRequestOut,
     DeviceInfo,
     LoginRequest,
     Me,
@@ -75,7 +82,12 @@ from app.modules.profiles.schemas import (
     UpdatePrivacySettingsRequest,
 )
 
+logger = logging.getLogger(__name__)
+
 DELETION_GRACE = timedelta(days=30)
+DELETION_ROUTE = "POST /v1/users/me/deletion"
+ACCOUNT_DELETIONS_JOB = "identity.account_deletions"
+IDP_ACCOUNT_DELETION_JOB = "identity.delete_idp_account"
 
 # Supplied by the composition root (location module, same layer): the user's browse destination.
 BrowseDestinationProvider = Callable[
@@ -244,8 +256,7 @@ class IdentityService:
             if user.status == UserStatus.SUSPENDED:
                 raise AppError(ErrorCode.ACCOUNT_SUSPENDED, "This account is suspended.")
             if user.status == UserStatus.PENDING_DELETION:
-                user.status = UserStatus.ACTIVE  # signing in cancels the deletion (AUTH-010)
-                user.deletion_requested_at = None
+                await _cancel_deletion(session, user)  # signing in cancels it (AUTH-010)
             if identity.email_verified and user.email_verified_at is None:
                 user.email_verified_at = now
             link.last_used_at = now
@@ -386,6 +397,73 @@ class IdentityService:
         raise AppError(ErrorCode.TOKEN_INVALID, "The refresh token is invalid.")
 
     # ─────────────────────────────── sessions & me ───────────────────────────────
+
+    # ─────────────────────────────── account deletion (AUTH-010) ───────────────────────────────
+
+    async def request_deletion(
+        self, principal: Principal, request: AccountDeletionRequest, *, idempotency_key: uuid.UUID
+    ) -> tuple[DataSubjectRequestOut, bool]:
+        """Schedule deletion after the grace period. Other sessions are signed out; this one stays
+        so the user can still cancel. Returns ``(request, replayed)``."""
+        now = self._clock.now()
+        async with self._sessionmaker() as session, session.begin():
+            replay = await platform.idempotency.claim(
+                session,
+                user_id=principal.user_id,
+                key=idempotency_key,
+                route=DELETION_ROUTE,
+                payload=request.model_dump(mode="json"),
+            )
+            if replay is not None:
+                return DataSubjectRequestOut.model_validate(replay.body), True
+            user = await self._active_user(session, principal)
+            if user.status == UserStatus.PENDING_DELETION:
+                raise AppError(ErrorCode.CONFLICT, "Account deletion is already scheduled.")
+            user.status = UserStatus.PENDING_DELETION
+            user.deletion_requested_at = now
+            await session.execute(
+                update(UserSession)
+                .where(
+                    UserSession.user_id == user.id,
+                    UserSession.revoked_at.is_(None),
+                    UserSession.id != principal.session_id,
+                )
+                .values(revoked_at=now, revoked_reason=RevokedReason.ACCOUNT_DELETED)
+                .execution_options(synchronize_session=False)
+            )
+            record = DataSubjectRequest(
+                user_id=user.id,
+                kind=DataSubjectRequestKind.DELETION,
+                status=DataSubjectRequestStatus.RECEIVED,
+                reason=request.reason,
+                requested_at=now,
+                scheduled_for=now + DELETION_GRACE,
+            )
+            session.add(record)
+            await session.flush()
+            platform.record_event(
+                session,
+                aggregate_type="user",
+                aggregate_id=user.id,
+                event_type="user.deletion_requested",
+                payload={"user_id": str(user.id)},
+            )
+            out = _request_out(record)
+            await platform.idempotency.complete(
+                session,
+                user_id=principal.user_id,
+                key=idempotency_key,
+                status=202,
+                body=out.model_dump(mode="json"),
+            )
+        return out, False
+
+    async def cancel_deletion(self, principal: Principal) -> None:
+        async with self._sessionmaker() as session, session.begin():
+            user = await session.get(User, principal.user_id, with_for_update=True)
+            if user is None or user.status != UserStatus.PENDING_DELETION:
+                raise AppError(ErrorCode.NOT_FOUND, "No account deletion is scheduled.")
+            await _cancel_deletion(session, user)
 
     async def logout(self, principal: Principal, *, all_sessions: bool) -> None:
         async with self._sessionmaker() as session, session.begin():
@@ -702,3 +780,109 @@ async def purge_expired(session: AsyncSession) -> int:
             UserSession.expires_at < platform.ago(days=90),
         ),
     )
+
+
+def _request_out(record: DataSubjectRequest) -> DataSubjectRequestOut:
+    return DataSubjectRequestOut.model_validate(
+        {
+            "id": record.id,
+            "kind": record.kind,
+            "status": record.status,
+            "requested_at": record.requested_at,
+            "completed_at": record.completed_at,
+            "scheduled_for": record.scheduled_for,
+        }
+    )
+
+
+async def _cancel_deletion(session: AsyncSession, user: User) -> None:
+    user.status = UserStatus.ACTIVE
+    user.deletion_requested_at = None
+    await session.execute(
+        update(DataSubjectRequest)
+        .where(
+            DataSubjectRequest.user_id == user.id,
+            DataSubjectRequest.kind == DataSubjectRequestKind.DELETION,
+            DataSubjectRequest.status == DataSubjectRequestStatus.RECEIVED,
+        )
+        .values(status=DataSubjectRequestStatus.CANCELLED)
+    )
+
+
+async def delete_due_accounts(session: AsyncSession, *, limit: int = 25) -> int:
+    """Erase accounts whose grace period ended (the deletion saga, docs/04 §14).
+
+    Deleting the ``users`` row cascades through every module's data (posts, comments, reactions,
+    follows, blocks, notifications, sessions, consents, preferences); references kept for
+    accountability become NULL or stay as bare IDs (reports, moderation history, audit log).
+    The IdP account is deleted by a retryable job, and ``user.deleted`` purges cached pages.
+    """
+    due = (
+        await session.scalars(
+            select(User)
+            .where(
+                User.status == UserStatus.PENDING_DELETION,
+                User.deletion_requested_at <= func.now() - DELETION_GRACE,
+            )
+            .order_by(User.deletion_requested_at)
+            .limit(limit)
+            .with_for_update(skip_locked=True)
+        )
+    ).all()
+    for user in due:
+        identities = (
+            await session.scalars(
+                select(AuthenticationIdentity).where(AuthenticationIdentity.user_id == user.id)
+            )
+        ).all()
+        for link in identities:
+            await platform.enqueue(
+                session,
+                queue="default",
+                kind=IDP_ACCOUNT_DELETION_JOB,
+                payload={"issuer": link.issuer, "subject": link.subject},
+                dedupe_key=f"idp-delete:{link.issuer}:{link.subject}",
+            )
+        author = (await profiles_service.authors(session, [user.id])).get(user.id)
+        platform.record_event(
+            session,
+            aggregate_type="user",
+            aggregate_id=user.id,
+            event_type="user.deleted",
+            payload={"user_id": str(user.id), "handle": author.handle if author else None},
+        )
+        await session.execute(
+            update(DataSubjectRequest)
+            .where(
+                DataSubjectRequest.user_id == user.id,
+                DataSubjectRequest.kind == DataSubjectRequestKind.DELETION,
+                DataSubjectRequest.status.in_(
+                    [DataSubjectRequestStatus.RECEIVED, DataSubjectRequestStatus.PROCESSING]
+                ),
+            )
+            .values(status=DataSubjectRequestStatus.COMPLETED, completed_at=func.now())
+        )
+        await session.execute(delete(User).where(User.id == user.id))
+    return len(due)
+
+
+def make_handlers(
+    sessionmaker: async_sessionmaker[AsyncSession], deleter: IdpAccountDeleter | None
+) -> dict[str, platform.JobHandler]:
+    async def account_deletions(job: platform.Job) -> None:
+        while True:
+            async with sessionmaker() as session, session.begin():
+                deleted = await delete_due_accounts(session)
+            if deleted:
+                logger.info("accounts deleted", extra={"count": deleted})
+            if deleted < 25:
+                return
+
+    async def idp_account(job: platform.Job) -> None:
+        issuer, subject = str(job.payload["issuer"]), str(job.payload["subject"])
+        if deleter is None or not deleter.handles(issuer):
+            logger.warning("idp_account_not_deleted", extra={"issuer": issuer})
+            return
+        await deleter.delete(issuer, subject)  # raising retries with backoff
+
+    return {ACCOUNT_DELETIONS_JOB: account_deletions, IDP_ACCOUNT_DELETION_JOB: idp_account}

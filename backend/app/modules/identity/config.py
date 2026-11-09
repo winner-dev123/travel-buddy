@@ -44,6 +44,10 @@ class IdentitySettings(BaseSettings):
     # "jwks_uri": "https://x.auth0.com/.well-known/jwks.json", "method": "oidc"}]'
     oidc_issuers: list[TrustedIssuer] = Field(default_factory=list)
 
+    # Supabase Auth Admin API key (server-only): deletes the IdP account when an account deletion
+    # completes (AUTH-010). Unset = our data is erased but the Supabase Auth user remains.
+    supabase_secret_key: SecretStr | None = None
+
     @model_validator(mode="after")
     def _guard_production(self) -> IdentitySettings:
         if self.app_env.allows_dev_adapters:

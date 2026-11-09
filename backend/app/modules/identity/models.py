@@ -228,3 +228,40 @@ class AdminRoleAssignment(Base):
     )
     granted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class DataSubjectRequestKind(StrEnum):
+    EXPORT = "export"
+    DELETION = "deletion"
+    RECTIFICATION = "rectification"
+
+
+class DataSubjectRequestStatus(StrEnum):
+    RECEIVED = "received"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    REJECTED = "rejected"
+    CANCELLED = "cancelled"
+
+
+class DataSubjectRequest(Base):
+    """GDPR requests (deletion now, export later). ``user_id`` has no foreign key on purpose: the
+    record of a completed deletion outlives the account (accountability, docs/04 §12)."""
+
+    __tablename__ = "data_subject_requests"
+    __table_args__ = (
+        enum_check("kind", DataSubjectRequestKind, "kind_enum"),
+        enum_check("status", DataSubjectRequestStatus, "status_enum"),
+        Index("ix_data_subject_requests__user_id", "user_id", text("requested_at DESC")),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    kind: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text)
+    reason: Mapped[str | None] = mapped_column(Text)
+    requested_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

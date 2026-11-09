@@ -50,6 +50,7 @@ from app.modules.health.api import router as health_router
 from app.modules.identity import service as identity_module
 from app.modules.identity.adapters.dev_idp import DevIdentityProvider
 from app.modules.identity.adapters.oidc import HttpJwksKeyProvider, IssuerConfig, OidcVerifier
+from app.modules.identity.adapters.supabase_admin import build_idp_deleter
 from app.modules.identity.api import auth_router, dev_idp_router, me_router
 from app.modules.identity.config import IdentitySettings
 from app.modules.identity.schemas import AccountRestriction
@@ -173,6 +174,7 @@ def create_app(
     job_runner = build_job_runner(
         database=database,
         web_cache_settings=web_cache_settings,
+        identity_settings=identity_settings,
         http_client=http_client,
         clock=clock,
     )
@@ -326,6 +328,7 @@ def build_job_runner(
     *,
     database: Database,
     web_cache_settings: WebCacheSettings,
+    identity_settings: IdentitySettings,
     http_client: httpx.AsyncClient,
     clock: Clock,
 ) -> JobRunner:
@@ -340,6 +343,11 @@ def build_job_runner(
     handlers.update(social_service.make_handlers(database.sessionmaker))
     notifications_service.subscribe(router)
     handlers.update(notifications_service.make_handlers(database.sessionmaker))
+    handlers.update(
+        identity_module.make_handlers(
+            database.sessionmaker, build_idp_deleter(identity_settings, http_client)
+        )
+    )
     # Daily retention purges, one per module that owns data with a retention rule (BL-1.18).
     purges = {
         "platform": purge_platform,
@@ -350,6 +358,14 @@ def build_job_runner(
         "notifications": notifications_service.purge_expired,
     }
     periodic = [Periodic(f"retention.{name}", f"retention.{name}", DAILY) for name in purges]
+    # Accounts whose 30-day grace ended are erased within the hour (AUTH-010: 30 + 7 days).
+    periodic.append(
+        Periodic(
+            identity_module.ACCOUNT_DELETIONS_JOB,
+            identity_module.ACCOUNT_DELETIONS_JOB,
+            timedelta(hours=1),
+        )
+    )
     handlers.update(
         {
             f"retention.{name}": retention_handler(database.sessionmaker, purge, name=name)

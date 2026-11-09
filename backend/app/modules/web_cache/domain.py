@@ -66,6 +66,9 @@ def revalidation_for(event_type: str, data: Mapping[str, Any]) -> Revalidation |
         tags += [t for t in (_profile_tag(data.get("handle")),) if t]
         if "handle" in changed:  # the old URL must stop serving the profile
             tags += [t for t in (_profile_tag(data.get("previous_handle")),) if t]
+    elif event_type == "user.deleted":
+        reason = "profile_visibility_changed"
+        tags += [t for t in (_profile_tag(data.get("handle")),) if t]
     elif event_type == "privacy.updated":
         if changed & _PRIVACY_VISIBILITY_FIELDS:
             reason = "profile_visibility_changed"

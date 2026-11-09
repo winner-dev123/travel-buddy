@@ -6,16 +6,19 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, Request, Response, status
+from fastapi.responses import JSONResponse
 
 from app.core.ratelimit import rate_limited
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
 from app.modules.identity.adapters.dev_idp import DevIdentityProvider
 from app.modules.identity.schemas import (
+    AccountDeletionRequest,
     AuthResult,
     ConsentList,
     ConsentRecordOut,
     ConsentRequest,
+    DataSubjectRequestOut,
     DevIdpToken,
     DevIdpTokenRequest,
     Jwks,
@@ -138,6 +141,33 @@ async def record_my_consent(
     body: ConsentRequest, request: Request, principal: CurrentPrincipal
 ) -> ConsentRecordOut:
     return await _service(request).record_consent(principal, body)
+
+
+@me_router.post(
+    "/deletion",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=DataSubjectRequestOut,
+    openapi_extra=rate_limited("sensitive"),
+)
+async def request_account_deletion(
+    body: AccountDeletionRequest,
+    request: Request,
+    principal: CurrentPrincipal,
+    idempotency_key: Annotated[uuid.UUID, Header(alias="Idempotency-Key")],
+) -> JSONResponse:
+    record, replayed = await _service(request).request_deletion(
+        principal, body, idempotency_key=idempotency_key
+    )
+    headers = {"Idempotent-Replayed": "true"} if replayed else {}
+    return JSONResponse(
+        record.model_dump(mode="json"), status_code=status.HTTP_202_ACCEPTED, headers=headers
+    )
+
+
+@me_router.delete("/deletion", status_code=status.HTTP_204_NO_CONTENT)
+async def cancel_account_deletion(request: Request, principal: CurrentPrincipal) -> Response:
+    await _service(request).cancel_deletion(principal)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @me_router.get("/sessions", response_model=SessionList)
