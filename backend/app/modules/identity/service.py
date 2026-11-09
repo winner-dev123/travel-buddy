@@ -894,3 +894,20 @@ async def is_active(session: AsyncSession, user_id: uuid.UUID) -> bool:
     """Whether others may see this account (suspended, pending-deletion or deactivated: no)."""
     status = await session.scalar(select(User.status).where(User.id == user_id))
     return status == UserStatus.ACTIVE
+
+
+async def ensure_system_account(
+    session: AsyncSession, *, account_id: uuid.UUID, handle: str, display_name: str, bio: str
+) -> bool:
+    """Create a platform-operated account (editorial content) if missing; True when created.
+
+    It has no sign-in identity, so nobody can authenticate as it.
+    """
+    if await session.get(User, account_id) is not None:
+        return False
+    session.add(User(id=account_id, status=UserStatus.ACTIVE, primary_locale="en"))
+    await session.flush()
+    await profiles_service.create_system_profile(
+        session, user_id=account_id, handle=handle, display_name=display_name, bio=bio
+    )
+    return True

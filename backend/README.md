@@ -28,6 +28,7 @@ It is a modular monolith ([ADR-0001](../docs/adr/0001-modular-monolith.md)): one
 | **Retention (BL-1.18)**: daily per-module purges per docs/04 §14, scheduled through `periodic_tasks` on every tick (worker, cron, after-response) | ✅ Implemented and integration-tested |
 | **Account deletion (BL-1.17)**: `POST`/`DELETE /v1/users/me/deletion`, 30-day grace (login cancels), hourly erasure saga with Supabase Auth Admin deletion and cache purge | ✅ Implemented and integration-tested |
 | **Media (BL-1.08, ADR-0022)**: `POST /v1/media/uploads`, `GET /v1/media/{id}`, `POST /v1/media/{id}/finalize`; presigned PUT to quarantine, verification, EXIF/GPS-free WebP variants; S3-compatible storage (own SigV4) or in-process store in development | ✅ Uploads, photo posts and avatars |
+| **Editorial content (BL-1.23)**: `python -m app.modules.social.seeding` loads the editors' account and evergreen launch posts (after the destination seed) | ✅ Implemented; seeded on staging |
 | **Jobs (BL-1.09)**: Postgres job queue, outbox relay, `python -m app.worker [--once]`, `/internal/jobs/tick` (cron secret), after-response tick for serverless | ✅ Implemented and integration-tested |
 | **Web cache webhooks (BL-1.25)**: signed `webCacheRevalidation` on profile visibility, handle and indexing changes | ✅ Implemented; enable with `WEB_REVALIDATE_URL`/`WEB_REVALIDATE_SECRET` (docs/11 §1.1) |
 | Realtime gateway, scheduler (periodic jobs) | ⏳ Phase 1/3 (documented in docs/02, not yet present) |

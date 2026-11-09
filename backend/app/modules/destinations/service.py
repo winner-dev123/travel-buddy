@@ -417,6 +417,25 @@ async def ancestry(session: AsyncSession, destination_id: uuid.UUID) -> list[uui
     return list(path) if path is not None else None
 
 
+async def id_for_path(session: AsyncSession, path: str) -> uuid.UUID | None:
+    """An active destination by its slug path (``portugal/lisbon``), one level at a time."""
+    parent_id: uuid.UUID | None = None
+    for segment in (s for s in path.strip("/").split("/") if s):
+        parent_filter = (
+            DestinationRow.parent_id.is_(None)
+            if parent_id is None
+            else DestinationRow.parent_id == parent_id
+        )
+        parent_id = await session.scalar(
+            select(DestinationRow.id).where(
+                _ACTIVE, parent_filter, DestinationRow.path_segment == segment
+            )
+        )
+        if parent_id is None:
+            return None
+    return parent_id
+
+
 async def country_destination_id(session: AsyncSession, country_code: str) -> uuid.UUID | None:
     found: uuid.UUID | None = await session.scalar(
         select(DestinationRow.id).where(

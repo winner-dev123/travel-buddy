@@ -15,7 +15,7 @@ from datetime import datetime
 from functools import cache
 from typing import Any
 
-from sqlalchemy import exists, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -627,3 +627,22 @@ async def user_id_for_handle(session: AsyncSession, handle: str) -> uuid.UUID | 
         select(UserProfile.user_id).where(UserProfile.handle == handle)
     )
     return found
+
+
+async def create_system_profile(
+    session: AsyncSession, *, user_id: uuid.UUID, handle: str, display_name: str, bio: str
+) -> None:
+    """Profile for a platform-operated account (editorial). Reserved handles are allowed here."""
+    session.add(
+        UserProfile(
+            user_id=user_id,
+            handle=handle,
+            display_name=display_name,
+            bio=bio,
+            account_visibility="public",
+            onboarding_completed_at=func.now(),
+        )
+    )
+    session.add(UserPreferences(user_id=user_id, ui_locale="en"))
+    session.add(UserPrivacySettings(user_id=user_id, search_engine_indexing=True))
+    await session.flush()
