@@ -47,6 +47,9 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
   const { path: segments } = await context.params;
   const subpath = segments.map(encodeURIComponent).join('/');
 
+  // Dot segments would be collapsed by fetch upstream (`/v1/x/../auth`), slipping past BLOCKED. Next normalizes
+  // them before routing today; refuse them here too so the boundary doesn't depend on that.
+  if (segments.some((s) => s === '' || s === '.' || s === '..')) return problem(404, 'not_found', 'Not found', requestId);
   if (BLOCKED.some((re) => re.test(segments.join('/')))) return problem(404, 'not_found', 'Not found', requestId);
   if (method !== 'GET' && !verifyCsrf(request)) return problem(403, 'csrf_failed', 'CSRF check failed', requestId);
 
