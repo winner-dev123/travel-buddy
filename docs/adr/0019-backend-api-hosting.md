@@ -11,6 +11,9 @@ The product owner asked to host the backend on Render. A Render service, even on
 
 ## Decision
 
+**Live staging API:** https://travel-buddy-api-jet.vercel.app (Vercel project `travel-buddy-api`). The unsuffixed `travel-buddy-api.vercel.app` belongs to another account.
+
+
 * **Staging API on Vercel serverless functions** (Python runtime), as a separate Vercel project with root directory `backend`, in region `iad1` (Washington, D.C.), next to Supabase `us-east-1`.
   * Entry point: `backend/index.py` (`app = create_app()`). Routing: `backend/vercel.json`. Pinned dependencies: `backend/requirements.txt`. The bundle excludes tests and migrations (`.vercelignore`).
   * `APP_ENV=staging`: the production guards are active, the development IdP is refused, and API docs are hidden.

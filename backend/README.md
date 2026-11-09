@@ -66,6 +66,13 @@ uvicorn app.main:create_app --factory --reload
 # http://localhost:8000/health/ready · API docs (dev only): http://localhost:8000/v1/docs
 ```
 
+## Deployments
+
+| Environment | URL | Notes |
+|---|---|---|
+| Staging API | https://travel-buddy-api-jet.vercel.app | Vercel serverless (`iad1`), `APP_ENV=staging`, Supabase via the transaction pooler, Supabase Auth as trusted issuer ([ADR-0019](../docs/adr/0019-backend-api-hosting.md)) |
+| Database | Supabase project `dmvhbgxxxilcniadoqvb` (`us-east-1`) | Migrations `0001`–`0002` applied. RLS lockdown verified. Data API disabled ([ADR-0018](../docs/adr/0018-supabase-managed-postgres.md)) |
+
 ## Supabase (production database)
 
 The database is Supabase-managed PostgreSQL ([ADR-0018](../docs/adr/0018-supabase-managed-postgres.md)):
