@@ -79,6 +79,6 @@ describe('app navigation shell', () => {
     await renderRouter(routes, { initialUrl: '/explore' });
 
     expect(screen.getAllByText('Mensagens').length).toBeGreaterThan(0); // tab label
-    expect(screen.getByText('Disponível na fase 4')).toBeTruthy();
+    expect(screen.getByText('Entre para planejar viagens e ver lugares.')).toBeTruthy();
   });
 });

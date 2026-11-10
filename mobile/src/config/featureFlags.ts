@@ -70,7 +70,7 @@ export const FEATURES: Readonly<Record<FeatureKey, FeatureDefinition>> = {
   },
   explore: {
     phase: 4,
-    released: false,
+    released: true,
     requiresNetwork: true,
     plannedCapabilities: [
       'features.explore.capabilities.map',
@@ -111,7 +111,7 @@ export const FEATURES: Readonly<Record<FeatureKey, FeatureDefinition>> = {
   discovery: { phase: 2, released: false, requiresNetwork: true, plannedCapabilities: [] },
   groups: { phase: 3, released: true, requiresNetwork: true, plannedCapabilities: [] },
   challenges: { phase: 5, released: false, requiresNetwork: true, plannedCapabilities: [] },
-  aiItinerary: { phase: 4, released: false, requiresNetwork: true, plannedCapabilities: [] },
+  aiItinerary: { phase: 4, released: true, requiresNetwork: true, plannedCapabilities: [] },
   // Downloaded guides and audio tours work offline once fetched.
   offlineGuides: { phase: 4, released: false, requiresNetwork: false, plannedCapabilities: [] },
   subscriptions: { phase: 3, released: false, requiresNetwork: true, plannedCapabilities: [] },

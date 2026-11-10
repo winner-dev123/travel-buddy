@@ -509,5 +509,83 @@
     "destination": "Reiseziel",
     "where": "Reiseziel: {{place}} (zum Ändern tippen)",
     "capacity": "Maximale Mitgliederzahl (2–50)"
+  },
+  "explore": {
+    "plan": "Reise mit KI planen",
+    "myTrips": "Meine Reisen",
+    "signInToPlan": "Melde dich an, um Reisen zu planen und Orte zu sehen.",
+    "places": "Orte",
+    "destination": "Reiseziel",
+    "where": "Orte in {{place}} (zum Ändern tippen)",
+    "searchPlaces": "Orte in {{place}} suchen",
+    "nearMe": "Orte in meiner Nähe",
+    "locationDenied": "Erlaube den Standortzugriff, um Orte in der Nähe zu sehen, oder wähle ein Reiseziel.",
+    "loadFailed": "Orte konnten nicht geladen werden. Versuch es erneut.",
+    "noPlaces": "Hier gibt es noch keine Orte.",
+    "place": "Ort",
+    "placeMissing": "Dieser Ort ist nicht verfügbar.",
+    "closed": "Dieser Ort ist dauerhaft geschlossen.",
+    "freshness": "Angaben zuletzt geprüft am {{date}}.",
+    "stale": "Diese Angaben sind möglicherweise veraltet. Prüfe sie, bevor du losgehst.",
+    "source": "Quelle: {{source}}",
+    "save": "Ort speichern",
+    "unsave": "Aus Gespeicherten entfernen",
+    "attributes": {
+      "opening_hours": "Öffnungszeiten",
+      "website": "Website",
+      "phone": "Telefon",
+      "cuisine": "Küche",
+      "wheelchair": "Rollstuhlzugang"
+    },
+    "categories": {
+      "attraction": "Sehenswürdigkeit",
+      "restaurant": "Restaurant",
+      "cafe": "Café",
+      "bar": "Bar",
+      "museum": "Museum",
+      "beach": "Strand",
+      "trail": "Wanderweg",
+      "viewpoint": "Aussichtspunkt",
+      "park": "Park",
+      "market": "Markt",
+      "lodging": "Unterkunft",
+      "transit_hub": "Verkehrsknoten",
+      "other": "Sonstiges"
+    }
+  },
+  "planner": {
+    "title": "Reise planen",
+    "start": "Erster Tag (JJJJ-MM-TT)",
+    "end": "Letzter Tag (JJJJ-MM-TT)",
+    "datesHint": "Nutze Daten im Format JJJJ-MM-TT, der letzte Tag am oder nach dem ersten, für bis zu {{max}} Tage.",
+    "pace": "Tempo",
+    "paces": {
+      "relaxed": "Entspannt",
+      "moderate": "Mittel",
+      "packed": "Voll"
+    },
+    "interests": "Interessen (durch Kommas getrennt)",
+    "preferences": "Sonst noch etwas? (optional)",
+    "privacy": "Beschreibe die Reise, nicht dich: keine Namen, Kontaktdaten oder anderen persönlichen Angaben.",
+    "generate": "Plan erstellen",
+    "quota": "Du hast die KI-Pläne dieses Monats aufgebraucht. Premium enthält mehr.",
+    "unavailable": "Der Reiseassistent ist gerade nicht verfügbar. Versuch es später erneut.",
+    "failed": "Diesmal konnten wir keinen Plan erstellen. Versuch es erneut, vielleicht mit weniger Vorgaben.",
+    "review": "Dein Plan",
+    "planning": "Deine Reise wird geplant… Das kann eine Minute dauern.",
+    "day": "Tag {{number}} · {{date}}",
+    "unverified": "Unbestätigter Vorschlag",
+    "save": "Als Reise speichern",
+    "again": "Neu planen",
+    "tripTitle": "Reise nach {{place}}"
+  },
+  "trips": {
+    "title": "Meine Reisen",
+    "empty": "Noch keine Reisen. Plane eine mit KI oder über ein Reiseziel.",
+    "loadFailed": "Reisen konnten nicht geladen werden. Versuch es erneut.",
+    "dates": "{{start}} – {{end}}",
+    "missing": "Diese Reise ist nicht verfügbar.",
+    "freeDay": "Noch nichts geplant.",
+    "aiSuggested": "KI-Vorschlag"
   }
 }

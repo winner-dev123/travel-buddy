@@ -509,5 +509,83 @@
     "destination": "Destination",
     "where": "Destination: {{place}} (tap to change)",
     "capacity": "Maximum members (2–50)"
+  },
+  "explore": {
+    "plan": "Plan a trip with AI",
+    "myTrips": "My trips",
+    "signInToPlan": "Sign in to plan trips and see places.",
+    "places": "Places",
+    "destination": "Destination",
+    "where": "Places in {{place}} (tap to change)",
+    "searchPlaces": "Search places in {{place}}",
+    "nearMe": "Places near me",
+    "locationDenied": "Allow location access to see places near you, or pick a destination.",
+    "loadFailed": "Places couldn't be loaded. Try again.",
+    "noPlaces": "No places found here yet.",
+    "place": "Place",
+    "placeMissing": "This place isn't available.",
+    "closed": "This place has closed permanently.",
+    "freshness": "Details last checked on {{date}}.",
+    "stale": "These details may be out of date. Check before you go.",
+    "source": "Source: {{source}}",
+    "save": "Save place",
+    "unsave": "Remove from saved",
+    "attributes": {
+      "opening_hours": "Opening hours",
+      "website": "Website",
+      "phone": "Phone",
+      "cuisine": "Cuisine",
+      "wheelchair": "Wheelchair access"
+    },
+    "categories": {
+      "attraction": "Attraction",
+      "restaurant": "Restaurant",
+      "cafe": "Café",
+      "bar": "Bar",
+      "museum": "Museum",
+      "beach": "Beach",
+      "trail": "Trail",
+      "viewpoint": "Viewpoint",
+      "park": "Park",
+      "market": "Market",
+      "lodging": "Lodging",
+      "transit_hub": "Transport hub",
+      "other": "Other"
+    }
+  },
+  "planner": {
+    "title": "Plan a trip",
+    "start": "First day (YYYY-MM-DD)",
+    "end": "Last day (YYYY-MM-DD)",
+    "datesHint": "Use YYYY-MM-DD dates, with the last day on or after the first, for up to {{max}} days.",
+    "pace": "Pace",
+    "paces": {
+      "relaxed": "Relaxed",
+      "moderate": "Moderate",
+      "packed": "Packed"
+    },
+    "interests": "Interests (comma separated)",
+    "preferences": "Anything else? (optional)",
+    "privacy": "Describe the trip, not yourself: no names, contacts or other personal details.",
+    "generate": "Create my plan",
+    "quota": "You've used this month's AI plans. Premium includes more.",
+    "unavailable": "The travel assistant isn't available right now. Try again later.",
+    "failed": "We couldn't create a plan this time. Try again, maybe with fewer constraints.",
+    "review": "Your plan",
+    "planning": "Planning your trip… This can take a minute.",
+    "day": "Day {{number}} · {{date}}",
+    "unverified": "Unverified suggestion",
+    "save": "Save as a trip",
+    "again": "Plan again",
+    "tripTitle": "Trip to {{place}}"
+  },
+  "trips": {
+    "title": "My trips",
+    "empty": "No trips yet. Plan one with AI or from a destination.",
+    "loadFailed": "Trips couldn't be loaded. Try again.",
+    "dates": "{{start}} – {{end}}",
+    "missing": "This trip isn't available.",
+    "freeDay": "Nothing planned yet.",
+    "aiSuggested": "AI suggestion"
   }
 }

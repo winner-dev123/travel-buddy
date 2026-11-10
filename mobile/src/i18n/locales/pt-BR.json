@@ -516,5 +516,83 @@
     "destination": "Destino",
     "where": "Destino: {{place}} (toque para trocar)",
     "capacity": "Máximo de membros (2–50)"
+  },
+  "explore": {
+    "plan": "Planeje uma viagem com IA",
+    "myTrips": "Minhas viagens",
+    "signInToPlan": "Entre para planejar viagens e ver lugares.",
+    "places": "Lugares",
+    "destination": "Destino",
+    "where": "Lugares em {{place}} (toque para trocar)",
+    "searchPlaces": "Buscar lugares em {{place}}",
+    "nearMe": "Lugares perto de mim",
+    "locationDenied": "Permita o acesso à localização para ver lugares por perto ou escolha um destino.",
+    "loadFailed": "Não foi possível carregar os lugares. Tente novamente.",
+    "noPlaces": "Ainda não há lugares aqui.",
+    "place": "Lugar",
+    "placeMissing": "Este lugar não está disponível.",
+    "closed": "Este lugar fechou definitivamente.",
+    "freshness": "Dados verificados pela última vez em {{date}}.",
+    "stale": "Estes dados podem estar desatualizados. Confira antes de ir.",
+    "source": "Fonte: {{source}}",
+    "save": "Salvar lugar",
+    "unsave": "Remover dos salvos",
+    "attributes": {
+      "opening_hours": "Horário",
+      "website": "Site",
+      "phone": "Telefone",
+      "cuisine": "Cozinha",
+      "wheelchair": "Acesso para cadeira de rodas"
+    },
+    "categories": {
+      "attraction": "Atração",
+      "restaurant": "Restaurante",
+      "cafe": "Café",
+      "bar": "Bar",
+      "museum": "Museu",
+      "beach": "Praia",
+      "trail": "Trilha",
+      "viewpoint": "Mirante",
+      "park": "Parque",
+      "market": "Mercado",
+      "lodging": "Hospedagem",
+      "transit_hub": "Estação",
+      "other": "Outro"
+    }
+  },
+  "planner": {
+    "title": "Planeje uma viagem",
+    "start": "Primeiro dia (AAAA-MM-DD)",
+    "end": "Último dia (AAAA-MM-DD)",
+    "datesHint": "Use datas AAAA-MM-DD, com o último dia igual ou depois do primeiro, por até {{max}} dias.",
+    "pace": "Ritmo",
+    "paces": {
+      "relaxed": "Tranquilo",
+      "moderate": "Moderado",
+      "packed": "Intenso"
+    },
+    "interests": "Interesses (separados por vírgula)",
+    "preferences": "Algo mais? (opcional)",
+    "privacy": "Descreva a viagem, não você: sem nomes, contatos ou outros dados pessoais.",
+    "generate": "Criar meu plano",
+    "quota": "Você já usou os planos com IA deste mês. O Premium inclui mais.",
+    "unavailable": "O assistente de viagem não está disponível agora. Tente mais tarde.",
+    "failed": "Não conseguimos criar um plano desta vez. Tente de novo, talvez com menos condições.",
+    "review": "Seu plano",
+    "planning": "Planejando sua viagem… Pode levar um minuto.",
+    "day": "Dia {{number}} · {{date}}",
+    "unverified": "Sugestão não verificada",
+    "save": "Salvar como viagem",
+    "again": "Planejar de novo",
+    "tripTitle": "Viagem para {{place}}"
+  },
+  "trips": {
+    "title": "Minhas viagens",
+    "empty": "Nenhuma viagem ainda. Planeje uma com IA ou a partir de um destino.",
+    "loadFailed": "Não foi possível carregar as viagens. Tente novamente.",
+    "dates": "{{start}} – {{end}}",
+    "missing": "Esta viagem não está disponível.",
+    "freeDay": "Nada planejado ainda.",
+    "aiSuggested": "Sugestão da IA"
   }
 }

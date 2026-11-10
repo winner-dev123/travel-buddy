@@ -12,13 +12,15 @@ beforeEach(async () => {
 });
 
 describe('feature flags', () => {
-  it('releases only the features that are built (feed, onboarding, companions, messaging, groups)', () => {
+  it('releases only the features that are built', () => {
     const released = new Set<FeatureKey>([
       'feed',
       'onboarding',
       'companions',
       'messaging',
       'groups',
+      'explore',
+      'aiItinerary',
     ]);
     for (const key of Object.keys(FEATURES) as FeatureKey[]) {
       expect(isFeatureEnabled(key, [])).toBe(released.has(key));
@@ -26,8 +28,8 @@ describe('feature flags', () => {
   });
 
   it('honours development overrides', () => {
-    expect(isFeatureEnabled('explore', ['explore'])).toBe(true);
-    expect(isFeatureEnabled('explore', ['groups'])).toBe(false);
+    expect(isFeatureEnabled('challenges', ['challenges'])).toBe(true);
+    expect(isFeatureEnabled('challenges', ['groups'])).toBe(false);
   });
 
   it('every planned capability key resolves to a translation', () => {
@@ -47,17 +49,17 @@ describe('feature flags', () => {
 describe('FeatureGate', () => {
   it('shows the phase placeholder when the feature is not released', async () => {
     await render(
-      <FeatureGate feature="explore" overrides={[]}>
+      <FeatureGate feature="challenges" overrides={[]}>
         <Text>real screen</Text>
       </FeatureGate>,
     );
-    expect(screen.getByText('Coming in Phase 4')).toBeTruthy();
+    expect(screen.getByText('Coming in Phase 5')).toBeTruthy();
     expect(screen.queryByText('real screen')).toBeNull();
   });
 
   it('renders the implementation when force-enabled', async () => {
     await render(
-      <FeatureGate feature="explore" overrides={['explore']}>
+      <FeatureGate feature="challenges" overrides={['challenges']}>
         <Text>real screen</Text>
       </FeatureGate>,
     );
@@ -65,8 +67,8 @@ describe('FeatureGate', () => {
   });
 
   it('keeps the placeholder when enabled but not implemented yet', async () => {
-    await render(<FeatureGate feature="explore" overrides={['explore']} />);
-    expect(screen.getByText('Coming in Phase 4')).toBeTruthy();
+    await render(<FeatureGate feature="challenges" overrides={['challenges']} />);
+    expect(screen.getByText('Coming in Phase 5')).toBeTruthy();
   });
 
   it('does not label offline-capable features as online only', async () => {

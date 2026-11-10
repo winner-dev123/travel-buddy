@@ -516,5 +516,83 @@
     "destination": "Destination",
     "where": "Destination : {{place}} (touchez pour changer)",
     "capacity": "Nombre maximum de membres (2–50)"
+  },
+  "explore": {
+    "plan": "Planifier un voyage avec l'IA",
+    "myTrips": "Mes voyages",
+    "signInToPlan": "Connectez-vous pour planifier des voyages et voir les lieux.",
+    "places": "Lieux",
+    "destination": "Destination",
+    "where": "Lieux à {{place}} (touchez pour changer)",
+    "searchPlaces": "Rechercher des lieux à {{place}}",
+    "nearMe": "Lieux près de moi",
+    "locationDenied": "Autorisez l'accès à la localisation pour voir les lieux proches, ou choisissez une destination.",
+    "loadFailed": "Impossible de charger les lieux. Réessayez.",
+    "noPlaces": "Aucun lieu ici pour le moment.",
+    "place": "Lieu",
+    "placeMissing": "Ce lieu n'est pas disponible.",
+    "closed": "Ce lieu a définitivement fermé.",
+    "freshness": "Informations vérifiées pour la dernière fois le {{date}}.",
+    "stale": "Ces informations peuvent être obsolètes. Vérifiez avant d'y aller.",
+    "source": "Source : {{source}}",
+    "save": "Enregistrer le lieu",
+    "unsave": "Retirer des enregistrés",
+    "attributes": {
+      "opening_hours": "Horaires",
+      "website": "Site web",
+      "phone": "Téléphone",
+      "cuisine": "Cuisine",
+      "wheelchair": "Accès fauteuil roulant"
+    },
+    "categories": {
+      "attraction": "Attraction",
+      "restaurant": "Restaurant",
+      "cafe": "Café",
+      "bar": "Bar",
+      "museum": "Musée",
+      "beach": "Plage",
+      "trail": "Sentier",
+      "viewpoint": "Point de vue",
+      "park": "Parc",
+      "market": "Marché",
+      "lodging": "Hébergement",
+      "transit_hub": "Gare",
+      "other": "Autre"
+    }
+  },
+  "planner": {
+    "title": "Planifier un voyage",
+    "start": "Premier jour (AAAA-MM-JJ)",
+    "end": "Dernier jour (AAAA-MM-JJ)",
+    "datesHint": "Utilisez des dates AAAA-MM-JJ, le dernier jour étant le même ou après le premier, pour {{max}} jours maximum.",
+    "pace": "Rythme",
+    "paces": {
+      "relaxed": "Détendu",
+      "moderate": "Modéré",
+      "packed": "Soutenu"
+    },
+    "interests": "Centres d'intérêt (séparés par des virgules)",
+    "preferences": "Autre chose ? (facultatif)",
+    "privacy": "Décrivez le voyage, pas vous : ni noms, ni coordonnées, ni autres données personnelles.",
+    "generate": "Créer mon programme",
+    "quota": "Vous avez utilisé les programmes IA de ce mois. Premium en inclut davantage.",
+    "unavailable": "L'assistant de voyage n'est pas disponible pour le moment. Réessayez plus tard.",
+    "failed": "Nous n'avons pas pu créer de programme cette fois. Réessayez, peut-être avec moins de contraintes.",
+    "review": "Votre programme",
+    "planning": "Préparation de votre voyage… Cela peut prendre une minute.",
+    "day": "Jour {{number}} · {{date}}",
+    "unverified": "Suggestion non vérifiée",
+    "save": "Enregistrer comme voyage",
+    "again": "Planifier à nouveau",
+    "tripTitle": "Voyage à {{place}}"
+  },
+  "trips": {
+    "title": "Mes voyages",
+    "empty": "Aucun voyage pour l'instant. Planifiez-en un avec l'IA ou depuis une destination.",
+    "loadFailed": "Impossible de charger les voyages. Réessayez.",
+    "dates": "{{start}} – {{end}}",
+    "missing": "Ce voyage n'est pas disponible.",
+    "freeDay": "Rien de prévu pour l'instant.",
+    "aiSuggested": "Suggestion de l'IA"
   }
 }

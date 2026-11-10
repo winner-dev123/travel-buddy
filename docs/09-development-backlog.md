@@ -139,7 +139,7 @@ Web-workstream items (Next.js app, BFF, web admin) are tracked by the web workst
 | BL-4.06 | Maps integration (MapLibre, tiles provider, routing port) | L | 4.01 | GUIDE-001..003 |
 | BL-4.07 | Guides + audio tours content model, admin authoring, purchase grants | L | 3.02 | GUIDE-004, GUIDE-005, BILL-001 |
 | BL-4.08 | Offline packages: build pipeline, signed manifests, licensing, quota | L | 4.06, 4.07 | OFF-001, OFF-004, OFF-005 |
-| BL-4.09 | Mobile: Explore tab, AI planner, trip editor, map, guide reader, audio player with geofences, downloads manager | XL | 4.03..4.08 | OFF-002 |
+| BL-4.09 | Mobile: Explore tab, AI planner, trip editor, map, guide reader, audio player with geofences, downloads manager | XL | 4.03..4.08 | OFF-002 | 🟡 First slice released: Explore tab (places in a destination or near me, place search), place detail with licensed attributes, source and freshness (stale notice) and save/unsave, AI planner (destination, dates, pace, interests; privacy hint) with polling review (disclaimer, warnings, unverified badges) and "save as trip", trips list and read-only trip detail; 5 locales, tests. Pending: itinerary editor with offline sync, map (BL-4.06), guide reader and audio player (BL-4.07), downloads manager (BL-4.08) |
 | BL-4.10 | Post translation (labelled) | M | 4.02 | POST-010, I18N-006 |
 | BL-4.11 | E2E: offline download → airplane mode → playback | S | 4.09 | OFF-002 |
 
