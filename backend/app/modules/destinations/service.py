@@ -409,6 +409,19 @@ async def summaries_by_id(
     return {summary.id: summary for summary in await _summaries(session, rows, preferences)}
 
 
+async def planning_destination(
+    session: AsyncSession, destination_id: uuid.UUID, preferences: Sequence[str]
+) -> tuple[DestinationSummary, str] | None:
+    """Localized summary and IANA time zone of an ACTIVE destination (AI trip context)."""
+    row = await session.scalar(
+        select(DestinationRow).where(DestinationRow.id == destination_id, _ACTIVE)
+    )
+    if row is None:
+        return None
+    [summary] = await _summaries(session, [row], preferences)
+    return summary, row.time_zone
+
+
 async def ancestry(session: AsyncSession, destination_id: uuid.UUID) -> list[uuid.UUID] | None:
     """IDs root -> self of an ACTIVE destination (post fan-out, LOC-006), or None."""
     path = await session.scalar(

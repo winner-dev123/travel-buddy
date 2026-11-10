@@ -116,6 +116,23 @@ class Settings(BaseSettings):
     stripe_webhook_secret: SecretStr | None = None
     stripe_api_base: str = "https://api.stripe.com"
 
+    # AI orchestration (BL-4.02, ADR-0024). "auto": Claude when ANTHROPIC_API_KEY is set, the
+    # deterministic fake in development and test, otherwise disabled (503 ai_unavailable).
+    ai_provider: Literal["auto", "anthropic", "fake", "disabled"] = "auto"
+    anthropic_api_key: SecretStr | None = None
+    anthropic_base_url: str | None = None
+    ai_itinerary_model: str = "claude-opus-5-5"
+    ai_itinerary_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
+    ai_itinerary_max_tokens: int = Field(default=16000, ge=1024, le=64000)
+    ai_timeout_seconds: float = Field(default=180.0, gt=0, le=600)
+    # Server-side refusal fallback (`fallbacks: "default"`, Claude API only; off for proxies).
+    ai_refusal_fallback: bool = True
+    # Global spend circuit breaker (AI-009): new generations stop once today's spend (UTC) reaches
+    # this; 0 stops them all. Provider breaker: that many failures in a row open it (cooldown).
+    ai_daily_budget_usd: float = Field(default=25.0, ge=0)
+    ai_breaker_failures: int = Field(default=5, ge=1, le=100)
+    ai_breaker_cooldown_seconds: float = Field(default=120.0, gt=0, le=3600)
+
     # Development-only adapters (never allowed in staging/production).
     dev_idp_enabled: bool = False
     dev_billing_enabled: bool = False
@@ -155,6 +172,14 @@ class Settings(BaseSettings):
         return "log" if self.app_env in (AppEnv.TEST, AppEnv.DEVELOPMENT) else "expo"
 
     @property
+    def resolved_ai_provider(self) -> str:
+        if self.ai_provider != "auto":
+            return self.ai_provider
+        if self.anthropic_api_key is not None:
+            return "anthropic"
+        return "fake" if self.app_env in (AppEnv.TEST, AppEnv.DEVELOPMENT) else "disabled"
+
+    @property
     def expose_api_docs(self) -> bool:
         return self.app_env.allows_dev_adapters
 
@@ -167,6 +192,10 @@ class Settings(BaseSettings):
             problems.append("DEV_IDP_ENABLED must be false outside development/test")
         if self.dev_billing_enabled:
             problems.append("DEV_BILLING_ENABLED must be false outside development/test")
+        if self.ai_provider == "fake":
+            problems.append("AI_PROVIDER=fake is only allowed in development/test")
+        if self.ai_provider == "anthropic" and self.anthropic_api_key is None:
+            problems.append("AI_PROVIDER=anthropic needs ANTHROPIC_API_KEY")
         key = self.cursor_signing_key.get_secret_value()
         if key == _DEV_CURSOR_KEY or len(key) < _MIN_SECRET_LENGTH:
             problems.append(

@@ -130,10 +130,12 @@ class IdentityService:
         browse_destination: BrowseDestinationProvider | None = None,
         limiter: RateLimiter | None = None,
         restrictions: RestrictionsProvider | None = None,
+        quota_usage: billing_service.QuotaUsage | None = None,
     ) -> None:
         self._sessionmaker = sessionmaker
         self._limiter = limiter
         self._restrictions = restrictions
+        self._quota_usage = quota_usage
         self._browse_destination = browse_destination
         self._verifier = verifier
         self._access_tokens = access_tokens
@@ -586,7 +588,12 @@ class IdentityService:
         for role in roles:
             permissions |= ROLE_PERMISSIONS[role]
         bundle = await profiles_service.get_profile_bundle(session, user.id)
-        entitlements = await billing_service.get_entitlements(session, user.id, at=now)
+        usage = (
+            await self._quota_usage(session, user.id, now)
+            if self._quota_usage is not None
+            else None
+        )
+        entitlements = await billing_service.get_entitlements(session, user.id, at=now, usage=usage)
         browse = (
             await self._browse_destination(session, user.id, [bundle.preferences.ui_locale])
             if self._browse_destination is not None

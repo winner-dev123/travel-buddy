@@ -5,6 +5,7 @@ this module.
 """
 
 from app.core.db import Base
+from app.modules.ai_assistant import models as ai_assistant_models
 from app.modules.billing import models as billing_models
 from app.modules.connections import models as connections_models
 from app.modules.destinations import models as destinations_models
@@ -24,6 +25,7 @@ from app.modules.trust_safety import models as trust_safety_models
 
 __all__ = [
     "Base",
+    "ai_assistant_models",
     "billing_models",
     "connections_models",
     "destinations_models",

@@ -73,6 +73,8 @@ class ErrorCode(StrEnum):
     ATTEMPTS_EXHAUSTED = "attempts_exhausted"
     LOCATION_UNRESOLVABLE = "location_unresolvable"
     UPSTREAM_UNAVAILABLE = "upstream_unavailable"
+    AI_UNAVAILABLE = "ai_unavailable"
+    AI_OUTPUT_INVALID = "ai_output_invalid"
     SERVICE_UNAVAILABLE = "service_unavailable"
     INTERNAL_ERROR = "internal_error"
 
@@ -125,6 +127,8 @@ _DEFAULT_STATUS: Mapping[ErrorCode, HTTPStatus] = {
     ErrorCode.CHALLENGE_NOT_ACTIVE: HTTPStatus.CONFLICT,
     ErrorCode.ATTEMPTS_EXHAUSTED: HTTPStatus.TOO_MANY_REQUESTS,
     ErrorCode.UPSTREAM_UNAVAILABLE: HTTPStatus.SERVICE_UNAVAILABLE,
+    ErrorCode.AI_UNAVAILABLE: HTTPStatus.SERVICE_UNAVAILABLE,
+    ErrorCode.AI_OUTPUT_INVALID: HTTPStatus.BAD_GATEWAY,
     ErrorCode.SERVICE_UNAVAILABLE: HTTPStatus.SERVICE_UNAVAILABLE,
     ErrorCode.INTERNAL_ERROR: HTTPStatus.INTERNAL_SERVER_ERROR,
 }

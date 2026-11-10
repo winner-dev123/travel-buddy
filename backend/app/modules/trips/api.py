@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
 from app.modules.trips.schemas import (
+    ApplyItineraryRequest,
     CreateTripRequest,
     DayInput,
     ItemInput,
@@ -178,6 +179,19 @@ async def delete_item(
 ) -> JSONResponse:
     return _tagged(
         await _service(request).delete_item(principal.user_id, trip_id, item_id, if_match=if_match)
+    )
+
+
+@router.post("/{trip_id}/apply-itinerary", response_model=TripOut)
+async def apply_itinerary(
+    trip_id: uuid.UUID,
+    body: ApplyItineraryRequest,
+    request: Request,
+    principal: CurrentPrincipal,
+    if_match: IfMatch = None,
+) -> JSONResponse:
+    return _tagged(
+        await _service(request).apply_itinerary(principal.user_id, trip_id, body, if_match=if_match)
     )
 
 

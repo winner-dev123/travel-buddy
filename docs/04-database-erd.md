@@ -718,7 +718,7 @@ erDiagram
 `id`, `user_id`, `package_id`, `device_id`, `granted_at`, `expires_at NULL`, `revoked_at`. `uq (user_id, package_id, device_id)`. Count of active licenses per user is checked against the entitlement quota.
 
 ### ai_generations
-`id`, `user_id FK SET NULL`, `feature` (`itinerary_generate`, `trip_replan`, `assistant_chat`, `challenge_judge`, `post_translate`), `provider`, `model`, `prompt_version`, `input_tokens`, `output_tokens`, `cost_micros bigint`, `latency_ms`, `status` (`succeeded`, `validation_failed`, `provider_error`, `refused`, `quota_exceeded`), `validation_errors jsonb`, `request_id`, `created_at`. **No raw prompt or response** is stored here. Optional debug capture goes to a separate `ai_generation_payloads` table with a 30-day TTL, disabled in production by default. `ix (user_id, feature, created_at DESC)` for quota counting.
+`id`, `user_id FK SET NULL`, `feature` (`itinerary_generate`, `trip_replan`, `assistant_chat`, `challenge_judge`, `post_translate`), `provider`, `model` (the model that answered), `prompt_version`, `status` (`pending`, `succeeded`, `validation_failed`, `provider_error`, `refused`, `quota_exceeded`, `unavailable`), `locale`, `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_write_tokens`, `cost_micros bigint`, `latency_ms`, `attempts smallint` (1, or 2 after the repair retry), `error_code` (`ai_output_invalid`, `ai_unavailable`), `validation_errors jsonb` (locations and reasons only, never model output), `params jsonb NULL` (the typed request, cleared when the generation finishes), `result jsonb NULL` (the validated `ItineraryProposal` the owner polls, cleared after 30 days), `request_id`, `provider_request_id`, `created_at`, `completed_at` (migration 0030, ADR-0024). **No raw prompt or response** is stored. Optional debug capture would go to a separate `ai_generation_payloads` table with a 30-day TTL, disabled in production by default (not built). Indexes: `ix (user_id, feature, created_at DESC)` for quota counting, `ix (created_at)` for the daily spend breaker. Breakers also read `completed_at`.
 
 ---
 
@@ -810,7 +810,8 @@ erDiagram
 | Connection inbox | `connection_requests WHERE recipient_id=$1 AND status='pending' ORDER BY created_at DESC` | `ix (recipient_id, status, created_at DESC)` |
 | Block check | `user_blocks WHERE (blocker_id=$a AND blocked_id=$b) OR (blocker_id=$b AND blocked_id=$a)` | PK + `ix (blocked_id)` |
 | Entitlement check | `subscription_entitlements WHERE user_id=$1 AND revoked_at IS NULL AND starts_at<=now() AND (ends_at IS NULL OR ends_at>now())` | partial `ix (user_id, entitlement_key)` |
-| AI quota | `count(*) FROM ai_generations WHERE user_id=$1 AND feature=$2 AND created_at >= month_start AND status='succeeded'` | `ix (user_id, feature, created_at DESC)` |
+| AI quota | `count(*) FROM ai_generations WHERE user_id=$1 AND feature=$2 AND created_at >= month_start AND status IN ('pending','succeeded')` (under a per-user advisory lock) | `ix (user_id, feature, created_at DESC)` |
+| AI spend breaker | `sum(cost_micros) FROM ai_generations WHERE created_at >= utc_day_start` | `ix (created_at)` |
 | Job claim | `… WHERE status='queued' AND queue=$1 AND run_at<=now() ORDER BY priority DESC, run_at FOR UPDATE SKIP LOCKED LIMIT n` | partial `ix (queue, priority, run_at)` |
 
 ## 14. Retention schedule (initial; subject to legal review)
@@ -830,7 +831,7 @@ erDiagram
 | content_reports + evidence | 12 months after resolution, unless under legal hold | Scheduler job |
 | moderation_actions | 3 years (repeat-offender detection) | Scheduler job |
 | audit_logs | 24 months (configurable per jurisdiction) | Partition drop |
-| ai_generations (metadata) | 13 months. Payload debug capture 30 days | Scheduler job |
+| ai_generations (metadata) | 13 months; `result` (validated proposal) 30 days; `params` until the generation finishes; `pending` rows fail after a day. Payload debug capture 30 days | Scheduler job |
 | billing_events, purchases, subscriptions | 7 years (accounting/tax; legal review). Pseudonymized on account deletion | Pseudonymization job |
 | Messages | Life of the conversation. On account deletion: bodies and attachments of the deleted user are erased, and the sender is shown as "Deleted user" | Hidden at read time as soon as the account is gone; the daily `retention.messaging` job turns them into tombstones and drops direct chats with no members left |
 | Posts, comments, media | Until deleted by the user, then hard-deleted after 30 days (undo window and moderation evidence). Removed-by-moderation content is kept as evidence per `content_reports` | Deletion job |

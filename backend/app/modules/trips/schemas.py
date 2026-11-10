@@ -95,6 +95,12 @@ class SyncRequest(_Request):
     operations: list[SyncOperation] = Field(max_length=200)
 
 
+class ApplyItineraryRequest(_Request):
+    generation_id: uuid.UUID
+    mode: Literal["replace", "merge"]
+    day_indexes: list[int] | None = Field(default=None, max_length=90)
+
+
 class SourceAttribution(_Response):
     kind: Literal["catalog_place", "destination_guide", "licensed_provider", "ai_general_knowledge"]
     ref_id: uuid.UUID | None = None

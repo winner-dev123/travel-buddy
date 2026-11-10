@@ -187,6 +187,23 @@ async def notify_from_event(
                 dedupe_key=f"{data.get('variant')}:{group}:{event_id}",
             )
         return created
+    if event_type == "ai.generation_completed":
+        user, generation = _uuid(data.get("user_id")), _uuid(data.get("generation_id"))
+        if user is None or generation is None:
+            return False
+        return await notify(
+            session,
+            user_id=user,
+            kind="ai_generation_ready",
+            entity_type="ai_generation",
+            entity_id=generation,
+            payload={
+                "generation_id": str(generation),
+                "feature": data.get("feature"),
+                "status": data.get("status"),
+            },
+            dedupe_key=f"ai_generation_ready:{generation}",
+        )
     if event_type == "moderation.action_applied":
         affected = _uuid(data.get("user_id"))
         target_type = str(data.get("target_type"))
@@ -255,6 +272,7 @@ async def _new_message(session: AsyncSession, data: Mapping[str, Any]) -> bool:
 
 
 EVENTS = (
+    "ai.generation_completed",
     "group.premium_notice",
     "message.sent",
     "conversation.read",

@@ -6,7 +6,7 @@ import logging
 import uuid
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 import httpx
 from fastapi import Depends, FastAPI
@@ -39,6 +39,15 @@ from app.core.security.access_tokens import (
 from app.core.time import Clock, SystemClock
 from app.modules.admin.api import router as admin_router
 from app.modules.admin.service import AdminService
+from app.modules.ai_assistant import service as ai_service
+from app.modules.ai_assistant.api import router as ai_router
+from app.modules.ai_assistant.provider import (
+    AIProvider,
+    AITask,
+    AnthropicProvider,
+    FakeAIProvider,
+    TaskConfig,
+)
 from app.modules.billing import service as billing_service
 from app.modules.billing.api import dev_router as dev_billing_router
 from app.modules.billing.api import router as billing_router
@@ -199,6 +208,7 @@ def create_app(
         browse_destination=location_service.browse_destination_summary,
         limiter=rate_limiter,
         restrictions=account_restrictions,
+        quota_usage=ai_service.quota_usage,
     )
 
     media_storage = build_media_storage(media_settings, http_client, clock)
@@ -211,6 +221,8 @@ def create_app(
         ),
         vapid=web_push_vapid,
     )
+    ai_provider = build_ai_provider(settings)
+    ai = build_ai_service(settings, database, clock, ai_provider)
     job_runner = build_job_runner(
         database=database,
         web_cache_settings=web_cache_settings,
@@ -219,6 +231,7 @@ def create_app(
         clock=clock,
         media_storage=media_storage,
         push_sender=push_sender,
+        ai=ai,
     )
 
     app = FastAPI(
@@ -296,8 +309,10 @@ def create_app(
         max_pending=media_settings.media_max_pending_uploads,
     )
     app.state.trip_service = trips_service.TripService(
-        sessionmaker=database.sessionmaker, cursors=cursor_codec, clock=clock
+        sessionmaker=database.sessionmaker, cursors=cursor_codec, clock=clock, plans=itinerary_plan
     )
+    app.state.ai_provider = ai_provider
+    app.state.ai_service = ai
     app.state.billing_service = billing_service.BillingService(
         sessionmaker=database.sessionmaker,
         clock=clock,
@@ -316,6 +331,7 @@ def create_app(
             api_base=settings.stripe_api_base,
         ),
         web_origin=settings.public_site_url,
+        usage=ai_service.quota_usage,
         providers=(
             {"apple": DevBillingProvider(), "google": DevBillingProvider()}
             if settings.dev_billing_enabled
@@ -409,6 +425,7 @@ def create_app(
     app.include_router(billing_router)
     app.include_router(groups_router)
     app.include_router(trips_router)
+    app.include_router(ai_router)
     app.include_router(group_invitations_router)
     app.include_router(realtime_router)
     app.include_router(realtime_tickets_router)
@@ -507,6 +524,76 @@ async def group_chat_policy(
     return await groups_service.chat_policy(session, group_id, user_id, now=now)
 
 
+def build_ai_provider(settings: Settings) -> AIProvider | None:
+    """The AI adapter for this environment (BL-4.02, ADR-0024); ``None`` = unavailable (503)."""
+    resolved = settings.resolved_ai_provider
+    if resolved == "anthropic" and settings.anthropic_api_key is not None:
+        return AnthropicProvider(
+            api_key=settings.anthropic_api_key.get_secret_value(),
+            base_url=settings.anthropic_base_url,
+            refusal_fallback=settings.ai_refusal_fallback,
+        )
+    if resolved == "fake":
+        return FakeAIProvider()
+    return None
+
+
+def build_ai_service(
+    settings: Settings, database: Database, clock: Clock, provider: AIProvider | None
+) -> ai_service.AIService:
+    itinerary = TaskConfig(
+        model=settings.ai_itinerary_model,
+        max_tokens=settings.ai_itinerary_max_tokens,
+        effort=settings.ai_itinerary_effort,
+        timeout_seconds=settings.ai_timeout_seconds,
+    )
+    return ai_service.AIService(
+        sessionmaker=database.sessionmaker,
+        clock=clock,
+        provider=provider,
+        tasks={AITask.ITINERARY_GENERATE: itinerary, AITask.TRIP_REPLAN: itinerary},
+        policy=ai_service.SpendPolicy(
+            daily_budget_micros=round(settings.ai_daily_budget_usd * 1_000_000),
+            breaker_failures=settings.ai_breaker_failures,
+            breaker_cooldown=timedelta(seconds=settings.ai_breaker_cooldown_seconds),
+        ),
+        problem_base_url=settings.error_type_base_url,
+    )
+
+
+async def itinerary_plan(
+    session: AsyncSession, user_id: uuid.UUID, generation_id: uuid.UUID
+) -> trips_service.ItineraryPlan | None:
+    """An AI proposal as the trips module applies it (ai_assistant -> trips; AI-002)."""
+    proposal = await ai_service.proposal_for(session, user_id, generation_id)
+    if proposal is None:
+        return None
+    return trips_service.ItineraryPlan(
+        generation_id=generation_id,
+        days=tuple(
+            trips_service.PlannedDay(
+                day_index=day["day_index"],
+                date=date.fromisoformat(day["date"]),
+                items=tuple(
+                    trips_service.PlannedItem(
+                        kind=item["kind"],
+                        title=item["title"],
+                        notes=item["description"] or None,
+                        place_id=uuid.UUID(item["place_id"]) if item["place_id"] else None,
+                        start_time=item["suggested_start_time"],
+                        duration_minutes=item["estimated_duration_minutes"],
+                        confidence=item["confidence"],
+                        unverified=item["unverified"],
+                        source_attribution=tuple(item["source_attribution"]),
+                    )
+                    for item in day["items"]
+                ),
+            )
+            for day in proposal["itinerary"]["days"]
+        ),
+    )
+
+
 def build_vapid(settings: Settings) -> Vapid | None:
     """The Web Push application server key, when configured (BL-3.16)."""
     if settings.web_push_vapid_private_key is None:
@@ -534,10 +621,14 @@ def build_job_runner(
     clock: Clock,
     media_storage: ObjectStorage | None = None,
     push_sender: PushSender | None = None,
+    ai: ai_service.AIService | None = None,
 ) -> JobRunner:
     """Event subscriptions and job handlers for every module (shared by the API and workers)."""
     router = EventRouter()
     handlers: dict[str, JobHandler] = {}
+    if ai is not None:
+        ai_service.subscribe(router)
+        handlers.update(ai_service.make_handlers(ai))
     web_cache_service.subscribe(router, web_cache_settings)
     handlers[web_cache_service.JOB_KIND] = web_cache_service.make_handler(
         web_cache_settings, http_client, clock
@@ -580,6 +671,7 @@ def build_job_runner(
         "billing": billing_service.purge_expired,
         "groups": groups_service.purge_expired,
         "trips": trips_service.purge_expired,
+        "ai_assistant": ai_service.purge_expired,
         "location": location_service.purge_expired,
     }
     periodic = [Periodic(f"retention.{name}", f"retention.{name}", DAILY) for name in purges]

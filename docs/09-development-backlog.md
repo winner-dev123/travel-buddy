@@ -92,8 +92,8 @@ Web-workstream items (Next.js app, BFF, web admin) are tracked by the web workst
 
 ## 4. Phase 2 — Travel companions
 
-| ID | Item | Size | Depends | Req |
-|---|---|---|---|---|
+| ID | Item | Size | Depends | Req | Status |
+|---|---|---|---|---|---|
 | BL-2.01 | Discovery consent + privacy settings UI and API | S | 1.04 | DISC-001, DISC-010 | ✅ Done: API (consent required to enable, withdrawal turns discovery off, city/neighbourhood granularity) and mobile consent screen (what's shared and never shown, safety guidance, explicit acknowledgement, granularity) |
 | BL-2.02 | Discovery sessions (start/stop, TTL, invisible mode, GPS → destination resolution and discard) | M | 1.07 | DISC-002, DISC-003, DISC-006, LOC-009 | ✅ Done: `GET/PUT/DELETE /v1/users/me/discovery-location` (migration 0020, no coordinate column); by destination (neighbourhood only when the user chose that granularity) or GPS resolved with PostGIS and discarded (`GeoPointInput` repr redacted); 1-72 h TTL enforced by query filter; visible/invisible; one open session; 10 starts a day; purged 30 days after ending |
 | BL-2.03 | Discover endpoint: matching score (interests, dates, languages, styles), block filtering, randomization within bands | M | 2.02, 1.12 | DISC-004, DISC-005, DISC-007, DISC-008 | ✅ Done: `GET /v1/travelers/discover` (`discovery` rate class): reciprocal (`here_now` only where the caller is visible; `upcoming` only with a shared trip there), invisible users neither appear nor browse, opted-out users vanish at once, blocks both ways excluded; documented weights (interests 0.40, styles 0.25, languages 0.20, dates 0.15) bucketed high/medium/low, shuffled within bands, declined requesters last; filters by style, interest, language; cards carry no coordinates, distances or activity times, respect profile visibility, show neighbourhood only if both chose it; relationship and can-request on each card |
@@ -108,8 +108,8 @@ Web-workstream items (Next.js app, BFF, web admin) are tracked by the web workst
 
 ## 5. Phase 3 — Messaging, billing, groups
 
-| ID | Item | Size | Depends | Req |
-|---|---|---|---|---|
+| ID | Item | Size | Depends | Req | Status |
+|---|---|---|---|---|---|
 | BL-3.01 | Billing module: products, Apple + Google adapters (verify, server notifications), DevBillingProvider | L | 0.13 | BILL-001..006 | 🟡 Core done: products (seeded premium monthly/annual for iOS and Android), subscriptions, purchases, store-event inbox; `GET /v1/billing/products`, `POST /v1/billing/purchases/verify` and `/restore` (idempotent, one store transaction per account → `409 purchase_already_linked`), normalized store events through the docs/07 state machine (duplicates once, out-of-order ignored); `DevBillingProvider` + `/v1/dev/billing/events` in dev/test. Pending: Apple JWS + App Store Server API and Google Play adapters and their webhooks (need store credentials; verification answers 503 until configured) |
 | BL-3.02 | Entitlement materialization + Redis cache + entitlements endpoint | M | 3.01 | BILL-007 | ✅ Done (without Redis cache: one indexed query per evaluation): grants rewritten on every state change in the same transaction; `GET /v1/billing/entitlements` (no-store) and `Me.entitlements` share one evaluator; status, grace end and `active_subscription` with its management path |
 | BL-3.03 | Conversations + messages persistence (seq, idempotency), REST endpoints | L | 2.04 | DM-001, DM-004, DM-005, DM-010, DM-011 | ✅ Done: `/v1/conversations` (list, open direct, get, history and seq sync, send, edit within 15 min, delete as tombstone, reactions, threads, receipts, mute, clear, pins). Seq assigned under a conversation row lock; idempotent on `client_message_id`; authorization re-checked on every send (connection, blocks, `messaging_limited`); reciprocal read receipts; collapsed `new_message` notifications that respect mute and level and carry no bodies; message reports and staff removal; deleted accounts' messages tombstoned by retention |
@@ -129,11 +129,11 @@ Web-workstream items (Next.js app, BFF, web admin) are tracked by the web workst
 
 ## 6. Phase 4 — AI travel guidance
 
-| ID | Item | Size | Depends | Req |
-|---|---|---|---|---|
+| ID | Item | Size | Depends | Req | Status |
+|---|---|---|---|---|---|
 | BL-4.01 | Places ingestion from licensed provider (adapter) + freshness | L | 1.05 | DEST-003 |
-| BL-4.02 | AI provider port, adapters, telemetry, quotas, circuit breaker | M | 3.02 | AI-001, AI-009 |
-| BL-4.03 | Itinerary generation (grounded candidates, schema, semantic validation, repair) | L | 4.01, 4.02 | AI-002..004, AI-007, AI-008 |
+| BL-4.02 | AI provider port, adapters, telemetry, quotas, circuit breaker | M | 3.02 | AI-001, AI-009 | ✅ Done (ADR-0024; Claude needs `ANTHROPIC_API_KEY`): `AIProvider` port with per-task model/effort/timeout config; Claude adapter on the official SDK (structured outputs, cacheable system prompt, server-side refusal fallback) and an offline fake for dev/tests; asynchronous `POST /v1/ai/itineraries/generate` → `GET /v1/ai/generations/{id}` with idempotency; `ai_generations` telemetry (tokens, cost, latency, attempts, validation errors; no prompts); monthly quotas through entitlements (failed generations are free; usage shown in `Me` and billing entitlements); database-backed daily spend and provider breakers (`503 ai_unavailable` + `Retry-After`); `ai_generation_ready` notification; retention (proposals 30 days, telemetry 13 months) |
+| BL-4.03 | Itinerary generation (grounded candidates, schema, semantic validation, repair) | L | 4.01, 4.02 | AI-002..004, AI-007, AI-008 | 🟡 Generation done without catalog grounding: draft schema with no hours/price/availability/safety fields, typed context builder, semantic checks (one day per date, candidate place IDs, no overlaps, before midnight), one repair retry then `ai_output_invalid`, localized disclaimer and warnings, `POST /v1/trips/{id}/apply-itinerary` (replace/merge per day, AI origin, confidence and attribution kept). Pending: place candidates and licensed place joins (BL-4.01), so every activity is `unverified` for now; red-team eval set |
 | BL-4.04 | Trips, days, items, saved places, collaborators, offline sync protocol | L | 1.05 | TRIP-001..005 | 🟡 Trips done: `/v1/trips` create (a day per date, destinations), list with role, get, edit and delete with `If-Match` versions; days and items (fractional ordering, moves between days, tombstones); `POST /sync` for offline batches (newer write wins, later server edits come back as conflicts with the server state, invalid ops reported, idempotent); owners and editors edit, viewers and public readers read. Pending: saved places (need the places catalog, BL-4.01), collaborator management endpoints, connections/group visibility |
 | BL-4.05 | Replanning (premium) | M | 4.03, 4.04 | AI-005 |
 | BL-4.06 | Maps integration (MapLibre, tiles provider, routing port) | L | 4.01 | GUIDE-001..003 |

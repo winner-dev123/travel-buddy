@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -73,6 +73,9 @@ from app.modules.billing.stripe import (
     verify_signature,
 )
 from app.modules.platform import service as platform
+
+# (session, user, at) -> current usage per quota, from the modules that own the counted rows.
+QuotaUsage = Callable[[AsyncSession, uuid.UUID, datetime], Awaitable[Mapping[Quota, int]]]
 
 VERIFY_ROUTE = "POST /v1/billing/purchases/verify"
 RESTORE_ROUTE = "POST /v1/billing/purchases/restore"
@@ -249,12 +252,20 @@ class BillingService:
         providers: Mapping[str, BillingProvider],
         stripe: StripeClient | None = None,
         web_origin: str = "http://localhost:3000",
+        usage: QuotaUsage | None = None,
     ) -> None:
         self._sessionmaker = sessionmaker
         self._clock = clock
         self._providers = dict(providers)
         self._stripe = stripe
         self._web_origin = web_origin.rstrip("/")
+        self._usage = usage
+
+    async def _entitlements(
+        self, session: AsyncSession, user_id: uuid.UUID, at: datetime
+    ) -> Entitlements:
+        usage = await self._usage(session, user_id, at) if self._usage is not None else None
+        return await get_entitlements(session, user_id, at=at, usage=usage)
 
     async def products(self, platform_name: str) -> list[ProductOut]:
         async with self._sessionmaker() as session:
@@ -267,7 +278,7 @@ class BillingService:
 
     async def entitlements(self, user_id: uuid.UUID) -> Entitlements:
         async with self._sessionmaker() as session:
-            return await get_entitlements(session, user_id, at=self._clock.now())
+            return await self._entitlements(session, user_id, self._clock.now())
 
     def _provider(self, store: str) -> BillingProvider:
         provider = self._providers.get(store)
@@ -293,7 +304,7 @@ class BillingService:
             purchase = await self._apply(session, principal.user_id, claim.store, transaction, now)
             result = VerifyPurchaseResult(
                 purchase=purchase,
-                entitlements=await get_entitlements(session, principal.user_id, at=now),
+                entitlements=await self._entitlements(session, principal.user_id, now),
             )
             await platform.idempotency.complete(
                 session,
@@ -327,7 +338,7 @@ class BillingService:
                 except AppError as exc:
                     if exc.code is not ErrorCode.PURCHASE_ALREADY_LINKED:
                         raise
-            result = await get_entitlements(session, principal.user_id, at=now)
+            result = await self._entitlements(session, principal.user_id, now)
             await platform.idempotency.complete(
                 session,
                 user_id=principal.user_id,
@@ -801,6 +812,7 @@ __all__ = [
     "BillingService",
     "Feature",
     "Quota",
+    "QuotaUsage",
     "get_entitlements",
     "group_premium",
     "has",

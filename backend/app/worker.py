@@ -18,7 +18,13 @@ from app.core.config import get_settings
 from app.core.db import Database
 from app.core.logging import configure_logging
 from app.core.time import SystemClock
-from app.main import build_job_runner, build_media_storage, build_vapid
+from app.main import (
+    build_ai_provider,
+    build_ai_service,
+    build_job_runner,
+    build_media_storage,
+    build_vapid,
+)
 from app.modules.identity.config import IdentitySettings
 from app.modules.media.config import MediaSettings
 from app.modules.notifications.webpush import build_sender as build_push_sender
@@ -68,6 +74,7 @@ async def run(*, once: bool, idle_sleep_seconds: float) -> None:
                 ),
                 vapid=build_vapid(settings),
             ),
+            ai=build_ai_service(settings, database, SystemClock(), build_ai_provider(settings)),
         )
         try:
             while not stop.is_set():

@@ -49,6 +49,14 @@ Without storage settings, uploads answer `503` and everything else works. To ena
 
 Processing runs as a job (worker, cron tick or after-response tick).
 
+### 1.5 AI itineraries (BL-4.02, ADR-0024)
+
+Without `ANTHROPIC_API_KEY`, staging and production answer `503 ai_unavailable` for AI requests and everything else works. To enable them:
+
+1. Create an API key in the Anthropic console, with a monthly spend limit for the workspace.
+2. Set on the API project (and on any worker): `ANTHROPIC_API_KEY`, plus `AI_DAILY_BUDGET_USD` (the server's own daily spend breaker, default 25). `AI_ITINERARY_MODEL` (default `claude-opus-5-5`) and `AI_ITINERARY_EFFORT` (default `medium`) are optional.
+3. Generations run as jobs. On the serverless API, set `JOBS_INLINE_AFTER_RESPONSE=true` so a generation starts right after its request, and allow a function duration long enough for one provider call (about 60 to 180 s). The daily cron alone would leave generations pending until they fail after 30 minutes.
+
 ## 2. Runtime topology (production reference)
 
 ```mermaid
@@ -176,4 +184,4 @@ Launch in a single region close to the core markets (an EU region, for GDPR and 
 
 ## 10. Cost guardrails
 
-Budgets and alerts per environment. Staging scales to zero off-hours. Media size limits and CDN caching. AI spend circuit breaker. Log retention 30 days hot, 1 year cold.
+Budgets and alerts per environment. Staging scales to zero off-hours. Media size limits and CDN caching. AI: per-user monthly quotas, the server-side daily spend breaker (`AI_DAILY_BUDGET_USD`) and the Anthropic workspace spend limit. Log retention 30 days hot, 1 year cold.

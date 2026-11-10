@@ -13,13 +13,14 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Sequence
-from datetime import datetime, time, timedelta
+from collections.abc import Awaitable, Callable, Sequence
+from dataclasses import dataclass
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any, Literal
 
 from pydantic import ValidationError
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.errors import AppError, ErrorCode, FieldError
@@ -37,6 +38,7 @@ from app.modules.trips.models import (
     TripDestination,
 )
 from app.modules.trips.schemas import (
+    ApplyItineraryRequest,
     CollaboratorOut,
     CreateTripRequest,
     DayInput,
@@ -111,13 +113,51 @@ def _item_state(item: ItineraryItem) -> dict[str, Any]:
     }
 
 
+@dataclass(frozen=True, slots=True)
+class PlannedItem:
+    kind: str
+    title: str
+    notes: str | None
+    place_id: uuid.UUID | None
+    start_time: str | None
+    duration_minutes: int | None
+    confidence: float
+    unverified: bool
+    source_attribution: tuple[dict[str, Any], ...]
+
+
+@dataclass(frozen=True, slots=True)
+class PlannedDay:
+    day_index: int
+    date: date
+    items: tuple[PlannedItem, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ItineraryPlan:
+    """A validated AI proposal, as this module needs it (supplied by the composition root)."""
+
+    generation_id: uuid.UUID
+    days: tuple[PlannedDay, ...]
+
+
+# (session, user, generation) -> the user's own succeeded proposal, or None.
+PlanLoader = Callable[[AsyncSession, uuid.UUID, uuid.UUID], Awaitable[ItineraryPlan | None]]
+
+
 class TripService:
     def __init__(
-        self, *, sessionmaker: async_sessionmaker[AsyncSession], cursors: CursorCodec, clock: Clock
+        self,
+        *,
+        sessionmaker: async_sessionmaker[AsyncSession],
+        cursors: CursorCodec,
+        clock: Clock,
+        plans: PlanLoader | None = None,
     ) -> None:
         self._sessionmaker = sessionmaker
         self._cursors = cursors
         self._clock = clock
+        self._plans = plans
 
     # ─────────────────────────────── access ───────────────────────────────
 
@@ -683,6 +723,76 @@ class TripService:
             return await self._out(session, trip)
 
     # ─────────────────────────────── offline sync ───────────────────────────────
+
+    async def apply_itinerary(
+        self,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+        request: ApplyItineraryRequest,
+        *,
+        if_match: str | None,
+    ) -> TripOut:
+        """Copy an AI proposal into the trip (AI-002, TRIP-001): each proposed day lands on the
+        trip day with the same date (else the same index). ``replace`` tombstones that day's items
+        first; ``merge`` appends. Items keep their AI origin, confidence and attribution."""
+        if self._plans is None:
+            raise AppError(ErrorCode.FEATURE_DISABLED, "AI itineraries aren't available.")
+        async with self._sessionmaker() as session, session.begin():
+            trip, _ = await self._load(session, trip_id, user_id, write=True, lock=True)
+            _check_version(trip.version, if_match)
+            plan = await self._plans(session, user_id, request.generation_id)
+            if plan is None:
+                raise _not_found("Proposal")
+            wanted = set(request.day_indexes) if request.day_indexes is not None else None
+            days = (
+                await session.scalars(select(ItineraryDay).where(ItineraryDay.trip_id == trip.id))
+            ).all()
+            by_date = {day.date: day for day in days if day.date is not None}
+            by_index = {day.day_index: day for day in days}
+            now = self._clock.now()
+            applied = 0
+            for planned in plan.days:
+                if wanted is not None and planned.day_index not in wanted:
+                    continue
+                target = by_date.get(planned.date) or by_index.get(planned.day_index)
+                if target is None:
+                    continue
+                if request.mode == "replace":
+                    await session.execute(
+                        update(ItineraryItem)
+                        .where(
+                            ItineraryItem.day_id == target.id, ItineraryItem.deleted_at.is_(None)
+                        )
+                        .values(deleted_at=now, updated_at=now)
+                    )
+                start = await self._order_after(session, target.id, None)
+                for offset, item in enumerate(planned.items):
+                    session.add(
+                        ItineraryItem(
+                            day_id=target.id,
+                            sort_order=start + offset,
+                            kind=item.kind,
+                            place_id=item.place_id,
+                            title=item.title[:120],
+                            notes=item.notes,
+                            start_time=_hhmm(item.start_time),
+                            duration_minutes=item.duration_minutes,
+                            origin="ai",
+                            ai_confidence=Decimal(str(round(item.confidence, 3))),
+                            unverified=item.unverified,
+                            source_attribution=list(item.source_attribution),
+                            updated_at=now,
+                        )
+                    )
+                applied += 1
+            if not applied:
+                raise _invalid("/day_indexes", "None of the proposed days match this trip.")
+            if trip.origin == "manual":
+                trip.origin = "ai_assisted"
+            trip.ai_generation_id = plan.generation_id
+            self._touch(trip)
+            await session.flush()
+            return await self._out(session, trip)
 
     async def sync(
         self,

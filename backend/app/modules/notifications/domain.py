@@ -301,6 +301,43 @@ SUBSCRIPTION_BODIES: Final[dict[str, Text]] = {
 }
 
 
+# ai_generation_ready: (title, body) by outcome.
+AI_GENERATION_TEXTS: Final[dict[str, tuple[Text, Text]]] = {
+    "succeeded": (
+        {
+            "en": "Your itinerary is ready",
+            "es": "Tu itinerario está listo",
+            "pt-BR": "Seu roteiro está pronto",
+            "fr": "Votre itinéraire est prêt",
+            "de": "Dein Reiseplan ist fertig",
+        },
+        {
+            "en": "Open it to review the plan and add it to your trip.",
+            "es": "Ábrelo para revisar el plan y añadirlo a tu viaje.",
+            "pt-BR": "Abra para revisar o plano e adicioná-lo à sua viagem.",
+            "fr": "Ouvrez-le pour revoir le programme et l'ajouter à votre voyage.",
+            "de": "Öffne ihn, um den Plan zu prüfen und zu deiner Reise hinzuzufügen.",
+        },
+    ),
+    "failed": (
+        {
+            "en": "We couldn't finish your itinerary",
+            "es": "No pudimos terminar tu itinerario",
+            "pt-BR": "Não conseguimos concluir seu roteiro",
+            "fr": "Nous n'avons pas pu terminer votre itinéraire",
+            "de": "Wir konnten deinen Reiseplan nicht fertigstellen",
+        },
+        {
+            "en": "It didn't count towards your monthly limit. Please try again.",
+            "es": "No se descontó de tu límite mensual. Inténtalo de nuevo.",
+            "pt-BR": "Isso não foi descontado do seu limite mensal. Tente novamente.",
+            "fr": "Cela n'a pas été décompté de votre limite mensuelle. Réessayez.",
+            "de": "Das wurde nicht auf dein Monatslimit angerechnet. Bitte versuch es erneut.",
+        },
+    ),
+}
+
+
 def render(
     kind: str, payload: Mapping[str, Any], *, actor: str | None, locale: str
 ) -> tuple[str, str]:
@@ -311,6 +348,10 @@ def render(
         )
         group = str(payload.get("group_name") or "")
         return _pick(_PREMIUM_TITLE, locale), _pick(body, locale).format(group=group)
+    if kind == "ai_generation_ready":
+        outcome = "succeeded" if payload.get("status") == "succeeded" else "failed"
+        title, body = AI_GENERATION_TEXTS[outcome]
+        return _pick(title, locale), _pick(body, locale)
     if kind == "moderation_notice":
         body = MODERATION_BODIES.get(str(payload.get("variant")), MODERATION_BODIES["warned"])
         return _pick(_GUIDELINES, locale), _pick(body, locale)
@@ -320,7 +361,9 @@ def render(
 
 
 def renderable_kinds() -> frozenset[str]:
-    return frozenset({*_TEMPLATES, "moderation_notice", "subscription_notice"})
+    return frozenset(
+        {*_TEMPLATES, "ai_generation_ready", "moderation_notice", "subscription_notice"}
+    )
 
 
 def in_quiet_hours(now_local_minutes: int, start: str, end: str) -> bool:

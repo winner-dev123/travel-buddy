@@ -307,11 +307,12 @@ See [06 — Realtime messaging protocol](06-realtime-messaging-protocol.md). The
 
 ## 13. AI orchestration
 
-* The `AIProvider` port exposes `generate_structured(task, schema, context) -> validated model`. Adapters are configured per task (model, temperature, max tokens, timeout, cost ceiling).
+* The `AIProvider` port exposes `complete(task, config, prompt, schema) -> completion` (structured text plus token usage). The service wraps it as generate-structured: validation, repair, quotas, breakers and telemetry, identical for every adapter. Tasks are configured individually (model, effort, max tokens, timeout). The Claude adapter uses the official SDK with structured outputs; a deterministic fake serves development and tests ([ADR-0024](adr/0024-ai-provider-and-cost-controls.md)).
+* Generations are asynchronous: `POST` returns `202` and a `pending` generation, the outbox job calls the provider outside any transaction, and the client polls `GET /v1/ai/generations/{id}` or waits for the `ai_generation_ready` notification. Proposals are applied to a trip with `POST /v1/trips/{id}/apply-itinerary`.
 * **Grounding**: itinerary generation receives catalog candidates (places in the destination, filtered by interests) as context, and the output schema requires each activity to reference a `place_id` from that set or be flagged `unverified: true`. Opening hours, prices and availability are never generated; they are joined from licensed place data with `data_freshness_at`, or omitted.
 * Output passes Pydantic validation, then semantic checks (dates inside the trip, place IDs inside the candidate set, no time overlaps). Failure triggers one repair retry, then a typed error.
 * **Data minimization**: prompts contain trip parameters, interests and catalog data only. Exact locations, private messages and other users' data are excluded by construction. The context builder takes typed inputs only, never a raw user object.
-* Every call is recorded in `ai_generations` (tokens, cost, latency, model, prompt version, validation result). Per-user monthly quotas are enforced through entitlements, and there is a global spend circuit breaker.
+* Every call is recorded in `ai_generations` (tokens, cost, latency, model, prompt version, validation result). Per-user monthly quotas are enforced through entitlements; failed generations do not count. A global daily spend breaker and a provider-failure breaker both read that table, so every serverless instance shares their state, and refuse new work with `503 ai_unavailable`.
 
 ## 14. Maps, guides and offline
 
