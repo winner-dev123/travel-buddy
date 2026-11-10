@@ -15,6 +15,7 @@ import Blocked from '../app/settings/blocked';
 import DeleteAccount from '../app/settings/delete-account';
 import Privacy from '../app/settings/privacy';
 import EditProfile from '../app/settings/profile';
+import People from '../app/people';
 import Follows from '../app/user/follows';
 import UserProfile from '../app/user/[id]';
 import Profile from '../app/(tabs)/profile';
@@ -473,4 +474,18 @@ it('lists followers and opens a profile', async () => {
   expect(mockApi.get).toHaveBeenCalledWith('/v1/users/u2/followers', {
     query: { cursor: undefined, limit: 30 },
   });
+});
+
+it('finds people by name once two characters are typed', async () => {
+  mockApi.get.mockResolvedValue({
+    data: [{ id: 'u5', handle: 'marta', display_name: 'Marta', avatar: null }],
+    page: { next_cursor: null, has_more: false },
+  });
+  await renderScreen(<People />);
+  await fireEvent.changeText(screen.getByTestId('people-query'), 'm');
+  expect(mockApi.get).not.toHaveBeenCalled(); // one character is too few
+  await fireEvent.changeText(screen.getByTestId('people-query'), 'mar');
+  await fireEvent.press(await screen.findByTestId('people-u5'));
+  expect(mockApi.get).toHaveBeenCalledWith('/v1/users/search', { query: { q: 'mar', limit: 20 } });
+  expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/user/[id]', params: { id: 'u5' } });
 });

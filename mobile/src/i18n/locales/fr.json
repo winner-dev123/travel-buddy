@@ -1131,5 +1131,12 @@
     "following": "Abonnements",
     "empty": "Personne pour l'instant.",
     "error": "Impossible de charger cette liste. Vérifiez votre connexion et réessayez."
+  },
+  "people": {
+    "title": "Trouver des personnes",
+    "search": "Nom ou @identifiant",
+    "hint": "Saisissez au moins deux caractères.",
+    "empty": "Personne ne correspond à ce nom.",
+    "error": "La recherche n'est pas disponible pour le moment. Réessayez bientôt."
   }
 }

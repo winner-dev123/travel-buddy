@@ -1114,5 +1114,12 @@
     "following": "Folgt",
     "empty": "Noch niemand hier.",
     "error": "Diese Liste konnte nicht geladen werden. Prüfe deine Verbindung und versuch es noch einmal."
+  },
+  "people": {
+    "title": "Leute finden",
+    "search": "Name oder @Handle",
+    "hint": "Gib mindestens zwei Zeichen ein.",
+    "empty": "Niemand passt zu diesem Namen.",
+    "error": "Die Suche ist gerade nicht verfügbar. Versuch es bald noch einmal."
   }
 }

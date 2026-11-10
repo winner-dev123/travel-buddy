@@ -1114,5 +1114,12 @@
     "following": "Following",
     "empty": "No one here yet.",
     "error": "We couldn't load this list. Check your connection and try again."
+  },
+  "people": {
+    "title": "Find people",
+    "search": "Name or @handle",
+    "hint": "Type at least two characters.",
+    "empty": "No one matches that name.",
+    "error": "Search isn't available right now. Try again soon."
   }
 }

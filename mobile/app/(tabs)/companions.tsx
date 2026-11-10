@@ -150,6 +150,12 @@ function Companions() {
               onPress={() => router.push('/groups')}
               testID="companions-groups"
             />
+            <Button
+              label={t('people.title')}
+              variant="secondary"
+              onPress={() => router.push('/people')}
+              testID="companions-people"
+            />
             {respond.isError ? <Notice tone="error">{t('user.actionFailed')}</Notice> : null}
             {heading(t('companions.incoming'))}
             {(incoming.data?.data ?? []).length === 0

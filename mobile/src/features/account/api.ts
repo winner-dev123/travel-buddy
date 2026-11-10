@@ -325,3 +325,8 @@ export function listFollows(
     query: { cursor, limit: 30 },
   });
 }
+
+/** `GET /v1/users/search` by handle or display name (at least two characters). */
+export function searchPeople(client: ApiClient, q: string): Promise<Page<UserSummary>> {
+  return client.get<Page<UserSummary>>('/v1/users/search', { query: { q, limit: 20 } });
+}

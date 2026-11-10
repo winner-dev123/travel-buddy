@@ -1131,5 +1131,12 @@
     "following": "Siguiendo",
     "empty": "Todavía no hay nadie.",
     "error": "No pudimos cargar esta lista. Revisa tu conexión e inténtalo de nuevo."
+  },
+  "people": {
+    "title": "Buscar personas",
+    "search": "Nombre o @usuario",
+    "hint": "Escribe al menos dos caracteres.",
+    "empty": "Nadie coincide con ese nombre.",
+    "error": "La búsqueda no está disponible ahora. Inténtalo de nuevo pronto."
   }
 }
