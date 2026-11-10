@@ -33,16 +33,8 @@ CONTRACT_PATH = REPO_ROOT / "contracts" / "openapi" / "openapi.yaml"
 DELIVERED_PHASE = 5
 PENDING_OPERATIONS = frozenset(
     {
-        "GET /v1/catalog/travel-interests",
-        "GET /v1/users/search",
-        "GET /v1/users/{}/relationship",
-        "GET /v1/groups/{}/join-requests",
-        "POST /v1/groups/{}/join-requests",
-        "POST /v1/groups/{}/join-requests/{}/approve",
-        "POST /v1/groups/{}/join-requests/{}/reject",
         "POST /v1/billing/webhooks/apple",
         "POST /v1/billing/webhooks/google",
-        "PATCH /v1/admin/destinations/{}",
     }
 )
 REALTIME_DIR = REPO_ROOT / "contracts" / "realtime"

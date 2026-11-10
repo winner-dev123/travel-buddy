@@ -7,9 +7,11 @@ entry commit together. The table rejects UPDATE and DELETE (database trigger).
 from __future__ import annotations
 
 import uuid
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from datetime import datetime
 from typing import Any
 
+from sqlalchemy import literal, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.request_context import current_request_id
@@ -42,3 +44,40 @@ def audit(
             details=details,
         )
     )
+
+
+async def query(
+    session: AsyncSession,
+    *,
+    resource_type: str | None,
+    resource_id: uuid.UUID | None,
+    actor_id: uuid.UUID | None,
+    start: datetime | None,
+    end: datetime | None,
+    after: tuple[datetime, uuid.UUID] | None,
+    limit: int,
+) -> Sequence[AuditLog]:
+    """Audit entries, newest first (ADM-002); ``after`` is the last ``(occurred_at, id)`` seen."""
+    conditions: list[Any] = []
+    if resource_type is not None:
+        conditions.append(AuditLog.resource_type == resource_type)
+    if resource_id is not None:
+        conditions.append(AuditLog.resource_id == str(resource_id))
+    if actor_id is not None:
+        conditions.append(AuditLog.actor_id == actor_id)
+    if start is not None:
+        conditions.append(AuditLog.occurred_at >= start)
+    if end is not None:
+        conditions.append(AuditLog.occurred_at < end)
+    if after is not None:
+        conditions.append(
+            tuple_(AuditLog.occurred_at, AuditLog.id) < tuple_(literal(after[0]), literal(after[1]))
+        )
+    return (
+        await session.scalars(
+            select(AuditLog)
+            .where(*conditions)
+            .order_by(AuditLog.occurred_at.desc(), AuditLog.id.desc())
+            .limit(limit)
+        )
+    ).all()

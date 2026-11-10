@@ -773,3 +773,41 @@ async def export_user_data(
             session, UserPrivacySettings, UserPrivacySettings.user_id == user_id
         ),
     }
+
+
+def _like(text: str) -> str:
+    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+async def search_authors(
+    session: AsyncSession,
+    query: str,
+    *,
+    exclude: frozenset[uuid.UUID],
+    after_handle: str | None,
+    limit: int,
+) -> list[AuthorInfo]:
+    """Profiles whose handle starts with, or display name contains, ``query`` (PROF-003),
+    ordered by handle for keyset paging."""
+    from sqlalchemy import or_ as either
+
+    from app.modules.profiles.models import UserProfile
+
+    pattern = _like(query.strip().lstrip("@"))
+    conditions = [
+        either(
+            UserProfile.handle.ilike(f"{pattern}%", escape="\\"),
+            UserProfile.display_name.ilike(f"%{pattern}%", escape="\\"),
+        )
+    ]
+    if exclude:
+        conditions.append(UserProfile.user_id.not_in(exclude))
+    if after_handle is not None:
+        conditions.append(UserProfile.handle > after_handle)
+    ids = list(
+        await session.scalars(
+            select(UserProfile.user_id).where(*conditions).order_by(UserProfile.handle).limit(limit)
+        )
+    )
+    found = await authors(session, ids)
+    return [found[i] for i in ids if i in found]

@@ -6,7 +6,7 @@ import uuid
 from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.modules.profiles.schemas import UserSummary
 
@@ -116,3 +116,33 @@ class SuspendUserRequest(_Request):
 
 class ReinstateUserRequest(_Request):
     notes: str = Field(min_length=3, max_length=1000)
+
+
+class AdminDestinationUpdate(BaseModel):
+    """At least one of the fields (DEST-004)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    is_featured: bool | None = None
+    status: Literal["active", "hidden"] | None = None
+
+    @model_validator(mode="after")
+    def _not_empty(self) -> AdminDestinationUpdate:
+        if self.is_featured is None and self.status is None:
+            raise ValueError("Change is_featured or status.")
+        return self
+
+
+class AuditLogEntry(_Response):
+    """Contract ``AuditLogEntry``."""
+
+    id: uuid.UUID
+    occurred_at: datetime
+    actor_id: uuid.UUID | None
+    actor_type: Literal["user", "admin", "system", "service"]
+    action: str
+    resource_type: str
+    resource_id: uuid.UUID | None
+    scope_group_id: uuid.UUID | None
+    request_id: str | None
+    metadata: dict[str, Any]

@@ -17,6 +17,7 @@ from pydantic import (
 )
 
 from app.core.i18n import LOCALE_TAG_PATTERN
+from app.core.pagination import PageInfo
 from app.modules.destinations.schemas import DestinationSummary
 from app.modules.media.schemas import MediaRef
 from app.modules.profiles.schemas import UserSummary as UserSummary  # re-export
@@ -228,3 +229,27 @@ class PublicProfile(_Response):
 
 class FollowState(_Response):
     status: Literal["following", "requested"]
+
+
+class RelationshipOut(BaseModel):
+    """Contract ``Relationship`` (CONN-001)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    user_id: uuid.UUID
+    state: Literal[
+        "none", "request_pending", "request_received", "connected", "declined", "blocked"
+    ]
+    pending_request_id: uuid.UUID | None
+    cooldown_until: datetime | None
+    can_request_connection: bool
+    can_message: bool
+    is_following: bool
+    is_followed_by: bool
+
+
+class UserSummaryPage(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    data: list[UserSummary]
+    page: PageInfo

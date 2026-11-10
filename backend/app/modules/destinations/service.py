@@ -542,12 +542,33 @@ async def kind_of(session: AsyncSession, destination_id: uuid.UUID) -> str | Non
     return kind
 
 
+async def admin_update(
+    session: AsyncSession,
+    destination_id: uuid.UUID,
+    *,
+    is_featured: bool | None,
+    status: str | None,
+) -> Destination:
+    """Featured flag and visibility, set by content staff (DEST-004); the admin module audits it
+    in the same transaction. Hidden destinations drop out of every public read."""
+    row = await session.get(DestinationRow, destination_id, with_for_update=True)
+    if row is None:
+        raise _not_found()
+    if is_featured is not None:
+        row.is_featured = is_featured
+    if status is not None:
+        row.status = status
+    await session.flush()
+    return await _detail(session, row, ("en",))
+
+
 __all__ = [
     "PLACE_STALE_AFTER",
     "DestinationService",
     "ListFilters",
     "PlaceCandidate",
     "PlaceService",
+    "admin_update",
     "place_candidates",
     "place_ids_within",
     "place_is_listed",

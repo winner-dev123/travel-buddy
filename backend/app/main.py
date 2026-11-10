@@ -294,6 +294,8 @@ def create_app(
         sessionmaker=database.sessionmaker,
         clock=clock,
         relationship=connections_service.relationship_between,
+        relationship_detail=connections_service.relationship_detail,
+        cursors=cursor_codec,
     )
     app.state.discovery_session_service = location_service.DiscoverySessionService(
         sessionmaker=database.sessionmaker

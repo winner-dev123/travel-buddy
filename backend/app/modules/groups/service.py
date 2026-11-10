@@ -21,7 +21,7 @@ import uuid
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Protocol
+from typing import Any, NoReturn, Protocol
 
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -63,6 +63,7 @@ from app.modules.groups.schemas import (
     GroupInvitationOut,
     GroupInvitationPage,
     GroupInvitationPreview,
+    GroupJoinRequestPage,
     GroupMemberOut,
     GroupMemberPage,
     GroupOut,
@@ -374,6 +375,34 @@ class GroupService:
             for r in rows
             if r.user_id in users
         ]
+
+    # ─────────────────────────────── join requests ───────────────────────────────
+    # GRP-006 needs public or unlisted ``request_to_join`` groups, which cannot be created yet
+    # (visibility is private and invite-only, GRP-002). Until then the routes sit behind the
+    # ``group_join_requests`` flag, and the answers follow from that rule.
+
+    async def join_requests(self, user_id: uuid.UUID, group_id: uuid.UUID) -> GroupJoinRequestPage:
+        async with self._sessionmaker() as session:
+            context = await self._context(session, group_id, user_id)
+            if Permission.MEMBERS_APPROVE not in context.permissions():
+                raise _forbidden()
+        return GroupJoinRequestPage(data=[], page=PageInfo(next_cursor=None))
+
+    async def request_to_join(self, user_id: uuid.UUID, group_id: uuid.UUID) -> NoReturn:
+        async with self._sessionmaker() as session:
+            group = await session.get(TravelGroup, group_id)
+            if group is None or group.visibility == "private":
+                raise _not_found()  # private groups are invisible to non-members
+            raise AppError(ErrorCode.FORBIDDEN, "This group takes members by invitation only.")
+
+    async def review_join_request(
+        self, user_id: uuid.UUID, group_id: uuid.UUID, join_request_id: uuid.UUID
+    ) -> NoReturn:
+        async with self._sessionmaker() as session:
+            context = await self._context(session, group_id, user_id)
+            if Permission.MEMBERS_APPROVE not in context.permissions():
+                raise _forbidden()
+        raise AppError(ErrorCode.NOT_FOUND, "Join request not found.")
 
     # ─────────────────────────────── groups ───────────────────────────────
 

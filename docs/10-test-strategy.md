@@ -74,6 +74,7 @@
 | Rate-limit enforcement on sensitive routes | T-MSG-03, CONN-005 |
 | Injection and attachment handling (SQLi probes via schemathesis, oversized and polyglot files) | T-INJ-*, T-MED-* |
 | Response-schema leakage scan: walk every OpenAPI response schema for forbidden field names (`lat`, `lng`, `latitude`, `longitude`, `distance`, `email` outside `MyProfile`, `birth_*`, `answer*` outside judge schemas) | T-LOC-01, T-CHAL-01 |
+| Route coverage both ways, read from the app's generated OpenAPI document (FastAPI 0.16x wraps included routers, so `app.routes` lists no `APIRoute`s): every implemented route exists in the contract with its rate-limit class, and every contract operation of a delivered phase is implemented, except gaps listed explicitly in the test | ADR-0002 |
 
 ### 3.5 Performance targets (k6)
 

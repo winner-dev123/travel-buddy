@@ -9,6 +9,7 @@ from fastapi import APIRouter, Body, Depends, Header, Query, Request, Response, 
 from fastapi.responses import JSONResponse
 from pydantic import Field
 
+from app.core.feature_flags import Flag, require_flag
 from app.core.ratelimit import rate_limited
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
@@ -21,6 +22,8 @@ from app.modules.groups.schemas import (
     DirectInvitationRequest,
     GroupInvitationPage,
     GroupInvitationPreview,
+    GroupJoinRequestOut,
+    GroupJoinRequestPage,
     GroupMemberOut,
     GroupMemberPage,
     GroupOut,
@@ -28,6 +31,7 @@ from app.modules.groups.schemas import (
     GroupRoleList,
     GroupSettingsOut,
     InvitationTokenRequest,
+    JoinRequestBody,
     LinkInvitationRequest,
     OwnershipTransferOut,
     RestrictMemberRequest,
@@ -349,3 +353,55 @@ async def redeem_group_invitation(
     body: InvitationTokenRequest, request: Request, principal: CurrentPrincipal
 ) -> GroupMemberOut:
     return await _service(request).redeem(principal.user_id, body.token)
+
+
+# Join requests (GRP-006) wait for public groups: behind the ``group_join_requests`` flag.
+_JOIN_REQUESTS = [Depends(require_flag(Flag.GROUP_JOIN_REQUESTS))]
+
+
+@router.get(
+    "/{group_id}/join-requests", response_model=GroupJoinRequestPage, dependencies=_JOIN_REQUESTS
+)
+async def list_group_join_requests(
+    group_id: uuid.UUID, request: Request, principal: CurrentPrincipal
+) -> GroupJoinRequestPage:
+    return await _service(request).join_requests(principal.user_id, group_id)
+
+
+@router.post(
+    "/{group_id}/join-requests",
+    status_code=status.HTTP_201_CREATED,
+    response_model=GroupJoinRequestOut,
+    dependencies=_JOIN_REQUESTS,
+    openapi_extra=rate_limited("contact"),
+)
+async def create_group_join_request(
+    group_id: uuid.UUID,
+    request: Request,
+    principal: CurrentPrincipal,
+    idempotency_key: Annotated[uuid.UUID, Header(alias="Idempotency-Key")],
+    body: JoinRequestBody | None = None,
+) -> GroupJoinRequestOut:
+    return await _service(request).request_to_join(principal.user_id, group_id)
+
+
+@router.post(
+    "/{group_id}/join-requests/{join_request_id}/approve",
+    response_model=GroupMemberOut,
+    dependencies=_JOIN_REQUESTS,
+)
+async def approve_group_join_request(
+    group_id: uuid.UUID, join_request_id: uuid.UUID, request: Request, principal: CurrentPrincipal
+) -> GroupMemberOut:
+    return await _service(request).review_join_request(principal.user_id, group_id, join_request_id)
+
+
+@router.post(
+    "/{group_id}/join-requests/{join_request_id}/reject",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=_JOIN_REQUESTS,
+)
+async def reject_group_join_request(
+    group_id: uuid.UUID, join_request_id: uuid.UUID, request: Request, principal: CurrentPrincipal
+) -> Response:
+    return await _service(request).review_join_request(principal.user_id, group_id, join_request_id)

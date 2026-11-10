@@ -20,8 +20,10 @@ from app.core.security.principal import ROLE_PERMISSIONS, Permission, PlatformRo
 from app.core.time import Clock
 from app.modules.admin.deps import Staff
 from app.modules.admin.schemas import (
+    AdminDestinationUpdate,
     AdminReport,
     AdminUser,
+    AuditLogEntry,
     ModerationActionOut,
     ModerationActionRequest,
     ResolveReportRequest,
@@ -29,6 +31,8 @@ from app.modules.admin.schemas import (
 )
 from app.modules.challenges import service as challenges
 from app.modules.challenges.schemas import RewardDetail, RewardReviewRequest
+from app.modules.destinations import service as destinations
+from app.modules.destinations.schemas import Destination
 from app.modules.identity import service as identity
 from app.modules.messaging import service as messaging
 from app.modules.observability import service as observability
@@ -59,7 +63,7 @@ def _audit(
     staff: Staff,
     action: str,
     resource_type: str,
-    resource_id: uuid.UUID,
+    resource_id: uuid.UUID | str,
     **metadata: Any,
 ) -> None:
     observability.audit(
@@ -72,6 +76,13 @@ def _audit(
         justification=staff.justification,
         metadata=metadata,
     )
+
+
+def _uuid_or_none(value: str | None) -> uuid.UUID | None:
+    try:
+        return uuid.UUID(value) if value else None
+    except ValueError:
+        return None
 
 
 class AdminService:
@@ -339,6 +350,92 @@ class AdminService:
             out = await self._user(session, user_id)
             _audit(session, staff, "user.viewed", "user", user_id)
             return out
+
+    async def audit_logs(
+        self,
+        staff: Staff,
+        *,
+        resource_type: str | None,
+        resource_id: uuid.UUID | None,
+        actor_id: uuid.UUID | None,
+        start: datetime | None,
+        end: datetime | None,
+        cursor: str | None,
+        limit: int,
+    ) -> Page[AuditLogEntry]:
+        """Audit queries (ADM-002, SAFE-007); every query is itself audited."""
+        filters = {
+            "resource_type": resource_type,
+            "resource_id": str(resource_id) if resource_id else None,
+            "actor_id": str(actor_id) if actor_id else None,
+            "from": start.isoformat() if start else None,
+            "to": end.isoformat() if end else None,
+        }
+        after = None
+        if cursor:
+            position = self._cursors.decode(cursor, scope="admin.audit")
+            if position.get("f") != filters:
+                raise AppError(ErrorCode.INVALID_CURSOR, "The cursor belongs to another query.")
+            after = (datetime.fromisoformat(str(position["c"])), uuid.UUID(str(position["i"])))
+        async with self._sessionmaker() as session, session.begin():
+            rows = list(
+                await observability.query(
+                    session,
+                    resource_type=resource_type,
+                    resource_id=resource_id,
+                    actor_id=actor_id,
+                    start=start,
+                    end=end,
+                    after=after,
+                    limit=limit + 1,
+                )
+            )
+            _audit(session, staff, "audit_logs.viewed", "audit_log", "query", filters=filters)
+        has_more = len(rows) > limit
+        rows = rows[:limit]
+        next_cursor = (
+            self._cursors.encode(
+                {"f": filters, "c": rows[-1].occurred_at.isoformat(), "i": str(rows[-1].id)},
+                scope="admin.audit",
+            )
+            if has_more and rows
+            else None
+        )
+        return Page[AuditLogEntry](
+            data=[
+                AuditLogEntry(
+                    id=row.id,
+                    occurred_at=row.occurred_at,
+                    actor_id=row.actor_id,
+                    actor_type=row.actor_type,  # type: ignore[arg-type]
+                    action=row.action,
+                    resource_type=row.resource_type,
+                    resource_id=_uuid_or_none(row.resource_id),
+                    scope_group_id=row.scope_group_id,
+                    request_id=row.request_id,
+                    metadata=row.details or {},
+                )
+                for row in rows
+            ],
+            page=PageInfo(next_cursor=next_cursor, has_more=has_more),
+        )
+
+    async def update_destination(
+        self, staff: Staff, destination_id: uuid.UUID, request: AdminDestinationUpdate
+    ) -> Destination:
+        async with self._sessionmaker() as session, session.begin():
+            updated = await destinations.admin_update(
+                session, destination_id, is_featured=request.is_featured, status=request.status
+            )
+            _audit(
+                session,
+                staff,
+                "destination.updated",
+                "destination",
+                destination_id,
+                **request.model_dump(exclude_none=True),
+            )
+            return updated
 
     async def review_challenge_reward(
         self, staff: Staff, reward_id: uuid.UUID, request: RewardReviewRequest

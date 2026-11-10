@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Header, Query, Request, status
@@ -12,9 +13,11 @@ from app.core.pagination import Page
 from app.core.security.principal import Permission
 from app.modules.admin.deps import Staff, staff
 from app.modules.admin.schemas import (
+    AdminDestinationUpdate,
     AdminReport,
     AdminUser,
     AssignReportRequest,
+    AuditLogEntry,
     ModerationActionOut,
     ModerationActionRequest,
     ReinstateUserRequest,
@@ -24,6 +27,7 @@ from app.modules.admin.schemas import (
 )
 from app.modules.admin.service import AdminService
 from app.modules.challenges.schemas import RewardDetail, RewardReviewRequest
+from app.modules.destinations.schemas import Destination
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
 
@@ -142,6 +146,41 @@ async def admin_get_user(
     who: Annotated[Staff, Depends(staff(Permission.USERS_READ, justified=True))],
 ) -> AdminUser:
     return await _service(request).get_user(who, user_id)
+
+
+@router.get("/audit-logs", response_model=Page[AuditLogEntry])
+async def admin_list_audit_logs(
+    request: Request,
+    who: Annotated[Staff, Depends(staff(Permission.AUDIT_READ, justified=True))],
+    resource_type: Annotated[str | None, Query(max_length=60)] = None,
+    resource_id: uuid.UUID | None = None,
+    actor_id: uuid.UUID | None = None,
+    start: Annotated[datetime | None, Query(alias="from")] = None,
+    end: Annotated[datetime | None, Query(alias="to")] = None,
+    cursor: Cursor = None,
+    limit: Limit = 20,
+) -> JSONResponse:
+    page = await _service(request).audit_logs(
+        who,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        actor_id=actor_id,
+        start=start,
+        end=end,
+        cursor=cursor,
+        limit=limit,
+    )
+    return _page(page)
+
+
+@router.patch("/destinations/{destination_id}", response_model=Destination)
+async def admin_update_destination(
+    destination_id: uuid.UUID,
+    body: AdminDestinationUpdate,
+    request: Request,
+    who: Annotated[Staff, Depends(staff(Permission.CONTENT_DESTINATIONS_WRITE, justified=True))],
+) -> Destination:
+    return await _service(request).update_destination(who, destination_id, body)
 
 
 @router.post("/challenge-rewards/{reward_id}/review", response_model=RewardDetail)

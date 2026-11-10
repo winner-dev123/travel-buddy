@@ -235,3 +235,22 @@ class OwnershipTransferOut(_Response):
     created_at: datetime
     expires_at: datetime
     responded_at: datetime | None
+
+
+class JoinRequestBody(_Request):
+    message: str | None = Field(default=None, max_length=300)
+
+
+class GroupJoinRequestOut(_Response):
+    id: uuid.UUID
+    group_id: uuid.UUID
+    user: UserSummary
+    message: str | None
+    status: Literal["pending", "approved", "rejected", "cancelled"]
+    created_at: datetime
+    reviewed_at: datetime | None
+
+
+class GroupJoinRequestPage(_Response):
+    data: list[GroupJoinRequestOut]
+    page: PageInfo

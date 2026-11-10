@@ -13,7 +13,13 @@ from pydantic import BaseModel, ConfigDict
 
 from app.core.config import Settings
 from app.core.feature_flags import FeatureFlags
-from app.core.i18n import DEFAULT_LOCALE, SUPPORTED_LOCALES
+from app.core.i18n import (
+    DEFAULT_LOCALE,
+    SUPPORTED_LOCALES,
+    negotiate_ui_locale,
+    parse_accept_language,
+)
+from app.modules.client_config.catalog import catalog
 from app.modules.identity.service import IdentityService
 
 router = APIRouter(prefix="/v1", tags=["config"])
@@ -99,3 +105,27 @@ async def get_client_config(
             for key in (offline.public_keys() if offline is not None else [])
         ],
     )
+
+
+class CatalogEntry(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    code: str
+    label: str
+    group: str | None = None
+
+
+class TravelInterestCatalog(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    travel_styles: list[CatalogEntry]
+    interests: list[CatalogEntry]
+
+
+@router.get("/catalog/travel-interests", response_model=TravelInterestCatalog)
+async def get_travel_interest_catalog(request: Request) -> TravelInterestCatalog:
+    """Travel styles and suggested interests, labelled in the best UI locale (PROF-004, I18N-003);
+    no sign-in needed (onboarding shows it before the profile exists)."""
+    tags = parse_accept_language(request.headers.get("accept-language"))
+    locale = negotiate_ui_locale(tags[0] if tags else None)
+    return TravelInterestCatalog.model_validate(catalog(locale))

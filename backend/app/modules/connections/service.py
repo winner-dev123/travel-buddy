@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from sqlalchemy import and_, delete, func, or_, select, update
@@ -166,6 +167,56 @@ async def relationship_between(
         shared_context=await _shared_context(session, viewer, other),
     )
     return state, can_request
+
+
+@dataclass(frozen=True, slots=True)
+class RelationshipDetail:
+    """For ``GET /v1/users/{id}/relationship`` (CONN-001)."""
+
+    state: str
+    can_request: bool
+    pending_request_id: uuid.UUID | None
+    cooldown_until: datetime | None
+
+
+async def relationship_detail(
+    session: AsyncSession, viewer: uuid.UUID, other: uuid.UUID, now: datetime
+) -> RelationshipDetail:
+    state, can_request = await relationship_between(session, viewer, other, now)
+    if viewer == other:
+        return RelationshipDetail(state, can_request, None, None)
+    pending = await session.scalar(
+        select(ConnectionRequest.id)
+        .where(
+            ConnectionRequest.status == RequestStatus.PENDING,
+            ConnectionRequest.expires_at > now,
+            or_(
+                and_(
+                    ConnectionRequest.requester_id == viewer,
+                    ConnectionRequest.recipient_id == other,
+                ),
+                and_(
+                    ConnectionRequest.requester_id == other,
+                    ConnectionRequest.recipient_id == viewer,
+                ),
+            ),
+        )
+        .limit(1)
+    )
+    declined_at = await session.scalar(
+        select(func.max(ConnectionRequest.responded_at)).where(
+            ConnectionRequest.requester_id == viewer,
+            ConnectionRequest.recipient_id == other,
+            ConnectionRequest.status == RequestStatus.DECLINED,
+        )
+    )
+    cooldown = declined_at + DECLINE_COOLDOWN if declined_at is not None else None
+    return RelationshipDetail(
+        state=state,
+        can_request=can_request,
+        pending_request_id=pending,
+        cooldown_until=cooldown if cooldown is not None and cooldown > now else None,
+    )
 
 
 async def end_between(session: AsyncSession, a: uuid.UUID, b: uuid.UUID) -> None:

@@ -29,11 +29,13 @@ from app.modules.social.schemas import (
     ReactionOut,
     ReactionRequest,
     ReactionResult,
+    RelationshipOut,
     ShareLink,
     ShareRequest,
     UpdateCommentRequest,
     UpdatePostRequest,
     UserSummary,
+    UserSummaryPage,
 )
 from app.modules.social.service import PostService
 
@@ -103,6 +105,23 @@ async def delete_post(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.get(
+    "/v1/users/search",
+    response_model=UserSummaryPage,
+    tags=["profiles"],
+    openapi_extra=rate_limited("search"),
+)
+async def search_users(
+    request: Request,
+    principal: CurrentPrincipal,
+    q: Annotated[str, Query(min_length=2, max_length=50)],
+    cursor: Annotated[str | None, Query(max_length=1024)] = None,
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+) -> UserSummaryPage:
+    service: PublicProfileService = request.app.state.public_profile_service
+    return await service.search(principal.user_id, q, cursor=cursor, limit=limit)
+
+
 @router.get("/v1/users/by-handle/{handle}", response_model=PublicProfile, tags=["profiles"])
 async def get_profile_by_handle(
     request: Request,
@@ -119,6 +138,16 @@ async def get_profile(
 ) -> PublicProfile:
     service: PublicProfileService = request.app.state.public_profile_service
     return await service.by_id(principal.user_id, user_id)
+
+
+@router.get(
+    "/v1/users/{user_id}/relationship", response_model=RelationshipOut, tags=["connections"]
+)
+async def get_relationship(
+    user_id: uuid.UUID, request: Request, principal: CurrentPrincipal
+) -> RelationshipOut:
+    service: PublicProfileService = request.app.state.public_profile_service
+    return await service.relationship(principal.user_id, user_id)
 
 
 @router.get("/v1/users/{user_id}/posts", response_model=Page[Post], tags=["profiles"])

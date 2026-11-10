@@ -54,7 +54,7 @@ beforeEach(async () => {
 });
 
 it('requests an export with an idempotency key and offers the download link', async () => {
-  const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+  const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
   mockApi.get.mockResolvedValue({ data: [ready], page: { next_cursor: null } });
   mockApi.post.mockResolvedValueOnce({ ...ready, id: 'x2', status: 'received', download: null });
   await renderUi(<YourData />);
