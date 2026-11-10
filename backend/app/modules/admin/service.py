@@ -53,12 +53,15 @@ from app.modules.identity.schemas import (
     RecordDataRequest,
     ResolveDataRequest,
 )
+from app.modules.media import service as media
+from app.modules.media.schemas import EditorialMedia, EditorialRightsRequest
 from app.modules.messaging import service as messaging
 from app.modules.observability import service as observability
 from app.modules.platform import service as platform
 from app.modules.profiles import service as profiles
 from app.modules.social import service as social
 from app.modules.trust_safety import service as trust_safety
+from app.modules.trust_safety.schemas import MessageFilterPolicyOut, UpdateMessageFilterRequest
 
 CREATE_ACTION_ROUTE = "POST /v1/admin/moderation-actions"
 _CONTENT_STATES = {
@@ -633,7 +636,12 @@ class AdminService:
     ) -> Destination:
         async with self._sessionmaker() as session, session.begin():
             updated = await destinations.admin_update(
-                session, destination_id, is_featured=request.is_featured, status=request.status
+                session,
+                destination_id,
+                is_featured=request.is_featured,
+                status=request.status,
+                cover_media_id=request.cover_media_id,
+                set_cover=request.sets_cover,
             )
             _audit(
                 session,
@@ -641,9 +649,58 @@ class AdminService:
                 "destination.updated",
                 "destination",
                 destination_id,
-                **request.model_dump(exclude_none=True),
+                **request.model_dump(mode="json", exclude_unset=True),
             )
             return updated
+
+    async def message_filter(self) -> MessageFilterPolicyOut:
+        async with self._sessionmaker() as session:
+            return await trust_safety.message_filter_policy(session)
+
+    async def update_message_filter(
+        self, staff: Staff, request: UpdateMessageFilterRequest
+    ) -> MessageFilterPolicyOut:
+        """Replace the new-connection keyword filter (SAFE-006), audited with what changed."""
+        async with self._sessionmaker() as session, session.begin():
+            before, after = await trust_safety.update_message_filter(
+                session, request, staff_id=staff.principal.user_id
+            )
+            _audit(
+                session,
+                staff,
+                "safety.message_filter.updated",
+                "message_filter",
+                "1",
+                added=sorted(set(after.terms) - set(before.terms)),
+                removed=sorted(set(before.terms) - set(after.terms)),
+                new_connection_days=[before.new_connection_days, after.new_connection_days],
+            )
+            return after
+
+    async def set_editorial_rights(
+        self, staff: Staff, media_id: uuid.UUID, request: EditorialRightsRequest
+    ) -> EditorialMedia:
+        """Verify or revoke the rights of editorial media (DEST-007), audited with the staff
+        justification. Revoking hides the image everywhere and purges cached pages using it."""
+        async with self._sessionmaker() as session, session.begin():
+            result = await media.set_editorial_rights(
+                session,
+                media_id,
+                verified=request.verified,
+                staff_id=staff.principal.user_id,
+                attribution=request.attribution,
+            )
+            affected = await destinations.cover_rights_changed(session, media_id)
+            _audit(
+                session,
+                staff,
+                "media.rights_verified" if request.verified else "media.rights_revoked",
+                "media",
+                media_id,
+                attribution=result.attribution.model_dump(mode="json"),
+                destinations_affected=affected,
+            )
+            return result
 
     async def review_challenge_reward(
         self, staff: Staff, reward_id: uuid.UUID, request: RewardReviewRequest

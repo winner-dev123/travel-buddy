@@ -362,6 +362,41 @@ def test_revoke_another_session(live_app: LiveApp) -> None:
     assert missing.status_code == 404
 
 
+@pytest.mark.req("AUTH-005")
+@pytest.mark.security
+def test_signing_in_from_a_recovery_link_ends_older_sessions(live_app: LiveApp) -> None:
+    sub = f"user-{uuid.uuid4()}"
+    phone = _register(live_app, _id_token(live_app, sub=sub)).json()["tokens"]
+    laptop = live_app.client.post(
+        "/v1/auth/login", json={"id_token": _id_token(live_app, sub=sub), "client": "web"}
+    ).json()["tokens"]
+    stranger = _register(live_app, _id_token(live_app)).json()["tokens"]
+    live_app.clock.set(live_app.clock.now() + timedelta(minutes=5))
+
+    recovery = _id_token(live_app, sub=sub, recovered=True)
+    after = live_app.client.post("/v1/auth/login", json={"id_token": recovery, "client": "web"})
+    assert after.status_code == 200, after.text
+    fresh = after.json()["tokens"]
+    for old in (phone, laptop):
+        assert _refresh(live_app, old["refresh_token"]).json()["code"] == "session_revoked"
+    reasons = db_scalar(
+        live_app.db_url,
+        "SELECT string_agg(DISTINCT revoked_reason, ',') FROM user_sessions WHERE id IN (:a, :b)",
+        a=uuid.UUID(phone["session_id"]),
+        b=uuid.UUID(laptop["session_id"]),
+    )
+    assert reasons == "password_changed"
+    assert (
+        _refresh(live_app, stranger["refresh_token"]).status_code == 200
+    )  # other users unaffected
+
+    # A later sign-in with a token from the same recovery keeps the sessions opened since then.
+    live_app.clock.set(live_app.clock.now() + timedelta(minutes=1))
+    again = live_app.client.post("/v1/auth/login", json={"id_token": recovery, "client": "ios"})
+    assert again.status_code == 200, again.text
+    assert _refresh(live_app, fresh["refresh_token"]).status_code == 200
+
+
 @pytest.mark.security
 def test_cannot_revoke_someone_elses_session(live_app: LiveApp) -> None:
     alice = _register(live_app, _id_token(live_app)).json()["tokens"]

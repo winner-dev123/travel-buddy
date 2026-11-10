@@ -258,7 +258,7 @@ paths:
       tags: [auth]
       operationId: login
       summary: Exchange an IdP ID token for a platform session
-      description: Maps `(iss, sub)` to an existing account and issues a new session for the device. `client` (`ios`, `android`, `web`) is recorded on the session and shown in session lists. Returns `404 not_found` if no account is linked (client should route to registration). Logging in during the deletion grace period cancels the pending deletion.
+      description: Maps `(iss, sub)` to an existing account and issues a new session for the device. `client` (`ios`, `android`, `web`) is recorded on the session and shown in session lists. Returns `404 not_found` if no account is linked (client should route to registration). Logging in during the deletion grace period cancels the pending deletion. A token from a password-recovery link (IdP `amr` method `recovery`) revokes every session opened before the recovery, on all devices (AUTH-005).
       security: []
       x-phase: 1
       x-requirements: [AUTH-004, AUTH-005]
@@ -2193,9 +2193,13 @@ paths:
       tags: [media]
       operationId: createMediaUpload
       summary: Request a presigned upload URL (quarantine bucket)
-      description: Allowed types and sizes depend on `purpose` (docs/05 §7). The URL expires in 5 minutes.
+      description: |
+        Allowed types and sizes depend on `purpose` (docs/05 §7). The URL expires in 5 minutes.
+        `purpose = editorial` (destination covers, guide imagery) is for content staff only (`403 forbidden`
+        otherwise) and requires `attribution`; other purposes refuse it (`422 validation_failed`). Editorial
+        media is published only after staff verify its rights (`POST /v1/admin/media/{mediaId}/rights`).
       x-phase: 1
-      x-requirements: [POST-002, SAFE-005, POST-004, SAFE-004]
+      x-requirements: [POST-002, SAFE-005, POST-004, SAFE-004, DEST-007]
       x-rate-limit-class: media_upload
       x-idempotency: required
       parameters:
@@ -2212,6 +2216,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/MediaUpload' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '409': { $ref: '#/components/responses/IdempotencyConflict' }
         '413': { $ref: '#/components/responses/PayloadTooLarge' }
         '415': { $ref: '#/components/responses/UnsupportedMediaType' }
@@ -2775,9 +2780,11 @@ paths:
         Persisted before acknowledgement. Idempotent on `(conversation, sender, client_message_id)`: a retry
         returns the original message with `200` and the `Idempotent-Replayed: true` header. Authorization is
         re-checked on every send (membership, block state, connection for direct, member restriction,
-        `chat_mode`). Attachments must be media with purpose `message`.
+        `chat_mode`). Attachments must be media with purpose `message`. In a direct chat with a connection
+        made less than `new_connection_days` ago (default 7), a body with a term from the staff-managed filter
+        is refused (`422 validation_failed`, `errors[].code = message_filtered`; SAFE-006).
       x-phase: 3
-      x-requirements: [DM-004, DM-005, DM-012, DM-013, GCHAT-002, SAFE-005]
+      x-requirements: [DM-004, DM-005, DM-012, DM-013, GCHAT-002, SAFE-005, SAFE-006]
       x-rate-limit-class: message
       x-idempotency: required
       parameters:
@@ -2817,8 +2824,9 @@ paths:
       tags: [messaging]
       operationId: editMessage
       summary: Edit my message (within the edit window, default 15 minutes)
+      description: The new-connection keyword filter applies to edits as to sends (`message_filtered`, SAFE-006).
       x-phase: 3
-      x-requirements: [DM-010]
+      x-requirements: [DM-010, SAFE-006]
       x-rate-limit-class: message
       parameters:
         - $ref: '#/components/parameters/ConversationId'
@@ -5832,9 +5840,13 @@ paths:
     patch:
       tags: [admin]
       operationId: adminUpdateDestination
-      summary: Manage featured status and visibility of destinations
+      summary: Manage featured status, visibility and cover of destinations
+      description: |
+        `cover_media_id` must be editorial media that finished processing and whose rights were verified
+        (`422 validation_failed` with `errors[].code` `not_editorial`, `not_ready` or `rights_not_verified`);
+        `null` removes the cover.
       x-phase: 1
-      x-requirements: [DEST-004, ADM-007, ADM-008, ADM-009]
+      x-requirements: [DEST-004, DEST-007, ADM-007, ADM-008, ADM-009]
       x-rate-limit-class: admin
       x-platform-permission: content.destinations.write
       parameters:
@@ -5851,15 +5863,50 @@ paths:
               properties:
                 is_featured: { type: boolean }
                 status: { type: string, enum: [active, hidden] }
+                cover_media_id: { type: [string, 'null'], format: uuid }
       responses:
         '200':
           description: Updated.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Destination' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/admin/media/{mediaId}/rights:
+    post:
+      tags: [admin]
+      operationId: adminSetEditorialRights
+      summary: Verify or revoke the rights of editorial media
+      description: |
+        Editorial media (destination covers, guide imagery) can be published only after a staff member checked
+        its license. Verification transfers the asset to the platform, so it outlives the uploader's account.
+        Revoking hides it everywhere at once and purges cached pages that show it.
+      x-phase: 1
+      x-requirements: [DEST-007, ADM-007, ADM-008, ADM-009]
+      x-rate-limit-class: admin
+      x-platform-permission: content.destinations.write
+      parameters:
+        - $ref: '#/components/parameters/AuditJustification'
+        - $ref: '#/components/parameters/MediaId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EditorialRightsRequest' }
+      responses:
+        '200':
+          description: Rights status updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EditorialMedia' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/admin/challenge-rewards/{rewardId}/review:
     post:
@@ -6080,6 +6127,54 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/admin/safety/message-filter:
+    get:
+      tags: [admin]
+      operationId: adminGetMessageFilter
+      summary: Keyword filter for direct messages from new connections, with the defaults
+      x-phase: 2
+      x-requirements: [SAFE-006, ADM-007]
+      x-rate-limit-class: admin
+      x-platform-permission: safety.filters.manage
+      responses:
+        '200':
+          description: The filter in force. `version` is 0 while the defaults apply.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MessageFilterPolicy' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      tags: [admin]
+      operationId: adminUpdateMessageFilter
+      summary: Replace the filtered terms and the new-connection window (audited, effective at once)
+      description: |
+        Terms are stored normalized (case-folded, without accents or punctuation) and match whole words.
+        `version` must be the one last read (`409 conflict` otherwise). The audit entry lists the terms added
+        and removed.
+      x-phase: 2
+      x-requirements: [SAFE-006, ADM-007, ADM-008]
+      x-rate-limit-class: admin
+      x-platform-permission: safety.filters.manage
+      parameters:
+        - $ref: '#/components/parameters/AuditJustification'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateMessageFilterRequest' }
+      responses:
+        '200':
+          description: Saved.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MessageFilterPolicy' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/admin/billing/policy:
@@ -6784,6 +6879,7 @@ components:
         - billing.configure
         - audit.read
         - privacy.requests.manage
+        - safety.filters.manage
         - roles.assign
     TravelStyle: { type: string, enum: [adventure, backpacking, luxury, food, culture, photography, digital_nomad, nature, family] }
     DestinationKind: { type: string, enum: [country, admin_region, city, district, neighborhood, area] }
@@ -6828,7 +6924,10 @@ components:
     ReportStatus: { type: string, enum: [open, in_review, actioned, dismissed] }
     ModerationActionType: { type: string, enum: [remove_content, restore_content, limit_visibility, warn, restrict, suspend, ban, reinstate, remove_member] }
     ConsentType: { type: string, enum: [terms, privacy_policy, location, traveler_discovery, marketing, ai_personalization, post_translation, search_indexing] }
-    MediaPurpose: { type: string, enum: [post, avatar, message, group_cover, challenge] }
+    MediaPurpose:
+      type: string
+      description: '`editorial` is uploaded by content staff only (DEST-007).'
+      enum: [post, avatar, message, group_cover, challenge, editorial]
     MediaStatus: { type: string, enum: [pending_upload, scanning, ready, rejected, deleted] }
     NotificationType:
       type: string
@@ -7034,6 +7133,7 @@ components:
         name: { type: string, maxLength: 100 }
         nonce: { type: string, maxLength: 128, description: 'Copied into the `nonce` claim when supplied.' }
         mfa: { type: boolean, default: false, description: 'Simulates a completed second factor: `amr` becomes `["dev", "mfa"]`. Staff permissions require it (ADM-007).' }
+        recovered: { type: boolean, default: false, description: 'Simulates a session opened from a password-recovery link: `amr` gains `{"method": "recovery", "timestamp": iat}` like Supabase Auth. Logging in with it revokes older sessions (AUTH-005).' }
     DevIdpToken:
       type: object
       required: [id_token, expires_at]
@@ -7567,17 +7667,42 @@ components:
             display it wherever the media is shown. Null for user-generated media, which is credited via its author.
             Rights are verified server-side before editorial media can be published (DEST-007).
           anyOf:
-            - type: object
-              additionalProperties: false
-              required: [text, license]
-              properties:
-                text: { type: string, maxLength: 300, example: Photo by Ana Souza }
-                license: { type: string, maxLength: 100, example: CC BY-SA 4.0 }
-                url: { type: [string, 'null'], format: uri, description: Source or license URL. }
+            - { $ref: '#/components/schemas/MediaAttribution' }
             - { type: 'null' }
         variants:
           type: object
           additionalProperties: { type: string, format: uri }
+    MediaAttribution:
+      type: object
+      additionalProperties: false
+      required: [text, license]
+      properties:
+        text: { type: string, minLength: 1, maxLength: 300, example: Photo by Ana Souza }
+        license: { type: string, minLength: 1, maxLength: 100, example: CC BY-SA 4.0 }
+        url: { type: [string, 'null'], format: uri, maxLength: 2000, description: Source or license URL. }
+    EditorialMedia:
+      type: object
+      description: Admin view of editorial media and its rights status (DEST-007).
+      required: [id, status, attribution, rights_verified_at, ref, created_at]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        status: { $ref: '#/components/schemas/MediaStatus' }
+        attribution: { $ref: '#/components/schemas/MediaAttribution' }
+        rights_verified_at: { $ref: '#/components/schemas/NullableTimestamp' }
+        ref:
+          anyOf:
+            - { $ref: '#/components/schemas/MediaRef' }
+            - { type: 'null' }
+        created_at: { $ref: '#/components/schemas/Timestamp' }
+    EditorialRightsRequest:
+      type: object
+      additionalProperties: false
+      required: [verified]
+      properties:
+        verified: { type: boolean, description: '`true` after checking the license; `false` revokes (the image disappears wherever it is shown).' }
+        attribution:
+          description: Corrected credit, if the uploaded one was wrong.
+          allOf: [{ $ref: '#/components/schemas/MediaAttribution' }]
     CreateMediaUploadRequest:
       type: object
       additionalProperties: false
@@ -7591,6 +7716,9 @@ components:
         height: { type: integer, minimum: 1, maximum: 20000 }
         duration_ms: { type: integer, minimum: 1, maximum: 180000 }
         alt_text: { type: string, maxLength: 300 }
+        attribution:
+          description: Required for `purpose = editorial`, refused otherwise (DEST-007).
+          allOf: [{ $ref: '#/components/schemas/MediaAttribution' }]
     MediaUpload:
       type: object
       required: [media_id, upload, max_bytes]
@@ -9688,6 +9816,26 @@ components:
         status: { type: string, enum: [completed, rejected] }
         resolution: { type: string, minLength: 1, maxLength: 2000, description: The outcome as told to the user. }
     QuotaKey: { type: string, enum: [ai.itinerary_generations, ai.trip_replans, offline.packages, groups.owned] }
+    MessageFilterPolicy:
+      type: object
+      description: Keyword filter for direct messages from new connections (SAFE-006).
+      required: [terms, new_connection_days, default_terms, default_new_connection_days, version, updated_at, updated_by]
+      properties:
+        terms: { type: array, items: { type: string } }
+        new_connection_days: { type: integer, minimum: 0, maximum: 90, description: A connection younger than this is filtered; 0 turns the filter off. }
+        default_terms: { type: array, items: { type: string } }
+        default_new_connection_days: { type: integer }
+        version: { type: integer, minimum: 0 }
+        updated_at: { $ref: '#/components/schemas/NullableTimestamp' }
+        updated_by: { type: [string, 'null'], format: uuid }
+    UpdateMessageFilterRequest:
+      type: object
+      additionalProperties: false
+      required: [terms, new_connection_days, version]
+      properties:
+        terms: { type: array, maxItems: 500, items: { type: string, maxLength: 60 } }
+        new_connection_days: { type: integer, minimum: 0, maximum: 90 }
+        version: { type: integer, minimum: 0 }
     BillingPolicy:
       type: object
       required: [quotas, group_admin_grace_days, default_group_admin_grace_days, version, updated_at, updated_by]

@@ -1,10 +1,11 @@
-// req: DM-001, DM-005, DM-007, DM-010, DM-012
+// req: DM-001, DM-005, DM-007, DM-010, DM-012, SAFE-006
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { Alert } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { ApiProblem } from '@/api';
 import { useSessionStore } from '@/auth/sessionStore';
 import type { Me } from '@/auth/types';
 import type { Conversation, Message } from '@/features/messages/api';
@@ -199,6 +200,30 @@ describe('chat', () => {
       }),
     );
     expect(await screen.findByText('On my way')).toBeTruthy();
+  });
+
+  it('explains a message refused by the new-connection safety filter', async () => {
+    mockParams = { id: 'c1' };
+    serve(conversation({ read_through_seq: 1 }), [message('m1', 1, bo, 'Hi!')]);
+    mockApi.put.mockResolvedValue({});
+    mockApi.post.mockRejectedValue(
+      new ApiProblem(
+        {
+          type: 'x',
+          title: 'Unprocessable',
+          status: 422,
+          code: 'validation_failed',
+          errors: [{ field: '/body', code: 'message_filtered', message: 'No.' }],
+        },
+        'r',
+      ),
+    );
+    await renderUi(<Chat />);
+    await fireEvent.changeText(await screen.findByTestId('chat-input'), 'gift card?');
+    await fireEvent.press(screen.getByTestId('chat-send'));
+    expect(await screen.findByTestId('chat-send-error')).toHaveTextContent(
+      "This can't be sent to someone you just connected with. Keep it friendly.",
+    );
   });
 
   it('shows read state reciprocally and tombstones', async () => {

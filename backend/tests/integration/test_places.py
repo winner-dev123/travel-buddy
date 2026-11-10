@@ -109,7 +109,7 @@ def _fresh_catalog(app: LiveApp) -> Iterator[None]:  # noqa: F811
     db_scalar(app.db_url, clear)
 
 
-@pytest.mark.req("DEST-003")
+@pytest.mark.req("DEST-003", "GUIDE-002")
 def test_ingested_places_carry_attribution_freshness_and_localized_names(
     app: LiveApp,  # noqa: F811
 ) -> None:

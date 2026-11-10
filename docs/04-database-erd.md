@@ -189,7 +189,7 @@ erDiagram
 | kind | text | `country`, `admin_region`, `city`, `district`, `neighborhood`, `area` |
 | country_code | char(2) | |
 | continent | text | `africa`, `asia`, `europe`, `middle_east`, `north_america`, `central_america_caribbean`, `south_america`, `oceania` (editorial directory grouping, DEST-006). Denormalized from the country. `ix (continent, popularity_score DESC) WHERE status='active'` |
-| cover_media_id | uuid NULL FK→media_assets SET NULL | Editorial cover. The asset must have `rights_verified_at` (DEST-007) |
+| cover_media_id | uuid NULL (no FK) | Editorial cover (DEST-007): set only to editorial media that is `ready` with `rights_verified_at`, and shown only while that still holds. No FK on purpose: media rows hang off `users`, and the catalog must not be reachable from the user graph (`TRUNCATE users CASCADE`, erasure) |
 | slug | text uq | `rio-de-janeiro-br` |
 | path_segment | text | URL segment, unique among siblings: `uq (parent_id, path_segment)` (NULL parent treated as root via `COALESCE`). Supports `GET /v1/destinations/lookup?path=brazil/rio-de-janeiro` and `DestinationSummary.path` |
 | default_name | text | English or ASCII fallback |
@@ -289,8 +289,8 @@ erDiagram
 | Column | Notes |
 |---|---|
 | id uuid PK | UUIDv7 |
-| owner_id FK→users CASCADE | Account erasure deletes the rows; the saga queues deletion of the stored objects |
-| purpose | `post`, `avatar`, `message`, `group_cover`, `challenge` (implemented); `guide`, `audio`, `export` arrive with their modules |
+| owner_id NULL FK→users CASCADE | Account erasure deletes the rows; the saga queues deletion of the stored objects. NULL only for editorial media whose rights were verified: it then belongs to the platform and outlives the uploader (`ck owner_required`) |
+| purpose | `post`, `avatar`, `message`, `group_cover`, `challenge`, `editorial` (destination covers and guide imagery, content staff only) |
 | quarantine_key | Object key in the quarantine bucket (`<owner>/<id>`); processed variants live in the public bucket |
 | mime_type, bytes, sha256 | Declared values are checked against actual values after upload |
 | width, height, duration_ms | NULL |
@@ -298,11 +298,10 @@ erDiagram
 | rejection_reason | NULL |
 | alt_text | NULL, ≤ 300 |
 | finalized_at, processed_at | NULL. Variants are re-encoded without EXIF/GPS before `ready`, so `processed_at` marks metadata removal |
-| attribution_text, attribution_license, attribution_url | NULL. Required for editorial purposes (`guide`, `audio`, destination covers). Exposed as `MediaRef.attribution` (DEST-007) |
-| rights_verified_at, rights_verified_by FK→users SET NULL | NULL. Editorial media cannot be attached to published content until set. Not exposed in the API |
+| attribution_text, attribution_license, attribution_url | NULL. Required for `editorial` (`ck editorial_attribution`), given with the upload. Exposed as `MediaRef.attribution` (DEST-007) |
+| rights_verified_at, rights_verified_by FK→users SET NULL | NULL; editorial only (`ck rights_editorial_only`). Set by content staff (`POST /v1/admin/media/{id}/rights`, audited). Editorial media cannot be published until set; clearing it hides the asset everywhere. Shown only in the admin API |
 | variants | jsonb `[{"width", "height", "key"}]`, largest first (WebP) |
 | created_at | `ix (owner_id, created_at DESC)`, `ix (status, created_at)` (purges) |
-| (editorial) attribution_*, rights_verified_* | Added with destination covers and guides (DEST-007) |
 
 ### posts
 | Column | Notes |
@@ -792,6 +791,9 @@ erDiagram
 
 ### moderation_actions
 `id`, `scope` (`platform`, `group`), `group_id NULL`, `target_type`, `target_id`, `action` (`remove_content`, `restore_content`, `limit_visibility`, `warn`, `restrict`, `suspend`, `ban`, `reinstate`, `remove_member`), `restriction_kind NULL` (`posting_limited`, `commenting_limited`, `messaging_limited`, `connection_requests_limited`, `discovery_disabled`, `media_upload_limited`; required when `action='restrict'`), `reason_code`, `notes`, `actor_id FK SET NULL`, `report_id FK NULL`, `expires_at NULL`, `created_at`. `ix (target_type, target_id, created_at DESC)`.
+
+### message_filter_policies (runtime policy, at most one row)
+`id smallint` (always 1, `CHECK (id = 1)`), `terms text[]` (normalized: case-folded, no accents or punctuation; whole-word match), `new_connection_days` (0–90, default 7; 0 turns the filter off), `version` (optimistic concurrency), `updated_at`, `updated_by NULL` (staff; no FK). No row means the code defaults (`trust_safety/domain.py`). Read on each direct message and edit between connections younger than the window (SAFE-006, migration 0044).
 
 ### asynchronous_jobs (durable queue)
 `id`, `queue`, `kind`, `payload jsonb`, `status` (`queued`, `running`, `succeeded`, `failed`, `dead`), `priority smallint`, `attempts`, `max_attempts`, `run_at`, `locked_at`, `locked_by`, `last_error`, `dedupe_key NULL` (`uq WHERE status IN ('queued','running')`), `request_id`, `created_at`, `finished_at`. `ix (queue, priority DESC, run_at) WHERE status='queued'`.

@@ -22,15 +22,17 @@ from typing import Protocol
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.core.errors import AppError, ErrorCode
+from app.core.errors import AppError, ErrorCode, FieldError
 from app.core.ids import uuid7
-from app.core.security.principal import Principal
+from app.core.security.principal import Permission, Principal
 from app.modules.media.config import MediaSettings as MediaSettings  # re-export for other modules
 from app.modules.media.models import MediaAsset, MediaPurpose, MediaStatus, RejectionReason
 from app.modules.media.processing import RejectedMediaError, process_image, verify
 from app.modules.media.schemas import (
     CreateMediaUploadRequest,
+    EditorialMedia,
     MediaAssetOut,
+    MediaAttribution,
     MediaRef,
     MediaUpload,
     UploadTarget,
@@ -56,6 +58,7 @@ LIMITS: Mapping[str, tuple[frozenset[str], int, int]] = {
     MediaPurpose.MESSAGE: (IMAGES, 25 * MB, 0),
     MediaPurpose.GROUP_COVER: (STILL_IMAGES, 10 * MB, 0),
     MediaPurpose.CHALLENGE: (STILL_IMAGES, 10 * MB, 0),
+    MediaPurpose.EDITORIAL: (STILL_IMAGES, 25 * MB, 0),
 }
 PROCESSABLE = STILL_IMAGES  # HEIC needs a decoder, video a transcoding service
 
@@ -125,6 +128,15 @@ def _ref(asset: MediaAsset, sign: Signer | None = None) -> MediaRef:
         height=int(largest["height"]) if ready and largest and "height" in largest else None,
         duration_ms=asset.duration_ms,
         alt_text=asset.alt_text,
+        attribution=_attribution(asset),
+    )
+
+
+def _attribution(asset: MediaAsset) -> MediaAttribution | None:
+    if asset.attribution_text is None or asset.attribution_license is None:
+        return None
+    return MediaAttribution(
+        text=asset.attribution_text, license=asset.attribution_license, url=asset.attribution_url
     )
 
 
@@ -180,6 +192,34 @@ class MediaService:
                 ErrorCode.UNSUPPORTED_MEDIA_TYPE,
                 "Only JPEG, PNG and WebP images can be uploaded for now.",
             )
+        if request.purpose == "editorial":
+            # Content staff only; the credit is part of the upload (DEST-007).
+            if Permission.CONTENT_DESTINATIONS_WRITE not in principal.permissions:
+                raise AppError(ErrorCode.FORBIDDEN, "Editorial media is uploaded by content staff.")
+            if request.attribution is None:
+                raise AppError(
+                    ErrorCode.VALIDATION_FAILED,
+                    "Editorial media needs its credit and license.",
+                    errors=[
+                        FieldError(
+                            field="attribution",
+                            code="required",
+                            message="Editorial media needs its credit and license.",
+                        )
+                    ],
+                )
+        elif request.attribution is not None:
+            raise AppError(
+                ErrorCode.VALIDATION_FAILED,
+                "Only editorial media carries an attribution.",
+                errors=[
+                    FieldError(
+                        field="attribution",
+                        code="not_allowed",
+                        message="Only editorial media carries an attribution.",
+                    )
+                ],
+            )
         max_bytes = video_max if request.mime_type in VIDEOS else image_max
         if request.bytes > max_bytes:
             raise AppError(
@@ -211,6 +251,7 @@ class MediaService:
                 )
             media_id = uuid7()
             key = f"{principal.user_id}/{media_id}"
+            credit = request.attribution
             asset = MediaAsset(
                 id=media_id,
                 owner_id=principal.user_id,
@@ -224,6 +265,9 @@ class MediaService:
                 duration_ms=request.duration_ms,
                 alt_text=request.alt_text,
                 quarantine_key=key,
+                attribution_text=credit.text if credit else None,
+                attribution_license=credit.license if credit else None,
+                attribution_url=credit.url if credit else None,
             )
             session.add(asset)
             target = storage.presign_put(
@@ -291,6 +335,7 @@ async def process(
             return asset.status if asset else "missing"
         key, owner, declared = asset.quarantine_key, asset.owner_id, asset.mime_type
         private = asset.purpose in PRIVATE_PURPOSES
+        prefix = "e" if asset.purpose == MediaPurpose.EDITORIAL else f"m/{owner}"
         expected_bytes, expected_sha = asset.bytes, asset.sha256
     reason: str | None = None
     variants: list[dict[str, object]] = []
@@ -322,7 +367,7 @@ async def process(
                     }
                 )
                 continue
-            public_key = f"m/{owner}/{media_id}/{variant.width}.webp"
+            public_key = f"{prefix}/{media_id}/{variant.width}.webp"
             await storage.write_public(public_key, variant.data, "image/webp")
             variants.append(
                 {
@@ -358,7 +403,11 @@ async def process(
             aggregate_type="media",
             aggregate_id=media_id,
             event_type="media.ready" if reason is None else "media.rejected",
-            payload={"media_id": str(media_id), "owner_id": str(owner), "reason": reason},
+            payload={
+                "media_id": str(media_id),
+                "owner_id": str(owner) if owner else None,
+                "reason": reason,
+            },
         )
     if reason is not None:
         for written in variants:  # a rejection after partial writes leaves nothing reachable
@@ -427,6 +476,85 @@ async def refs(
         return {}
     rows = await session.scalars(select(MediaAsset).where(MediaAsset.id.in_(set(media_ids))))
     return {row.id: _ref(row, sign) for row in rows}
+
+
+# ─────────────────────────────── editorial media (DEST-007) ───────────────────────────────
+
+
+def _editorial_out(asset: MediaAsset) -> EditorialMedia:
+    credit = _attribution(asset)
+    assert credit is not None  # guaranteed by ck_media_assets__editorial_attribution
+    return EditorialMedia(
+        id=asset.id,
+        status=asset.status,  # type: ignore[arg-type]
+        attribution=credit,
+        rights_verified_at=asset.rights_verified_at,
+        ref=_ref(asset) if asset.status != MediaStatus.DELETED else None,
+        created_at=asset.created_at,
+    )
+
+
+async def set_editorial_rights(
+    session: AsyncSession,
+    media_id: uuid.UUID,
+    *,
+    verified: bool,
+    staff_id: uuid.UUID,
+    attribution: MediaAttribution | None = None,
+) -> EditorialMedia:
+    """Verify (or revoke) the rights of an editorial asset; only verified assets can be
+    published (``editorial_refs``). Verification moves ownership to the platform, so the asset
+    no longer depends on the uploader's account. The admin module audits the call."""
+    asset = await session.get(MediaAsset, media_id, with_for_update=True)
+    if asset is None or asset.purpose != MediaPurpose.EDITORIAL:
+        raise AppError(ErrorCode.NOT_FOUND, "Editorial media not found.")
+    if asset.status in (MediaStatus.REJECTED, MediaStatus.DELETED):
+        raise AppError(ErrorCode.CONFLICT, f"This media is {asset.status}.")
+    if attribution is not None:
+        asset.attribution_text = attribution.text
+        asset.attribution_license = attribution.license
+        asset.attribution_url = attribution.url
+    if verified:
+        asset.rights_verified_at = func.now()
+        asset.rights_verified_by = staff_id
+        asset.owner_id = None
+    else:
+        asset.rights_verified_at = None
+        asset.rights_verified_by = None
+    await session.flush()
+    await session.refresh(asset)
+    return _editorial_out(asset)
+
+
+async def editorial_problem(session: AsyncSession, media_id: uuid.UUID) -> str | None:
+    """Why an asset cannot be published as editorial media, or None when it can."""
+    asset = await session.get(MediaAsset, media_id)
+    if asset is None or asset.purpose != MediaPurpose.EDITORIAL:
+        return "not_editorial"
+    if asset.status != MediaStatus.READY:
+        return "not_ready"
+    if asset.rights_verified_at is None:
+        return "rights_not_verified"
+    return None
+
+
+async def editorial_refs(
+    session: AsyncSession, media_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, MediaRef]:
+    """Refs of the given assets that may be shown as editorial media right now: ready and with
+    verified rights. Revoking the rights hides an asset everywhere at once."""
+    wanted = {m for m in media_ids if m is not None}
+    if not wanted:
+        return {}
+    rows = await session.scalars(
+        select(MediaAsset).where(
+            MediaAsset.id.in_(wanted),
+            MediaAsset.purpose == MediaPurpose.EDITORIAL,
+            MediaAsset.status == MediaStatus.READY,
+            MediaAsset.rights_verified_at.is_not(None),
+        )
+    )
+    return {row.id: _ref(row) for row in rows}
 
 
 async def erase_assets(session: AsyncSession, media_ids: Sequence[uuid.UUID]) -> None:

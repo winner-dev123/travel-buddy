@@ -120,6 +120,28 @@ def _invalid(field: str, message: str) -> AppError:
     )
 
 
+async def _ensure_not_filtered(
+    session: AsyncSession, user_id: uuid.UUID, conversation: Conversation, body: str | None
+) -> None:
+    """Direct messages to a new connection may not contain filtered terms (SAFE-006)."""
+    if not body or conversation.kind != ConversationKind.DIRECT:
+        return
+    peer = (await _peers(session, [conversation.id], user_id)).get(conversation.id)
+    if peer is None:
+        return
+    connected_at = await connections.connected_since(session, user_id, peer)
+    term = await trust_safety.filtered_term(
+        session, body, connected_at=connected_at, now=await _db_now(session)
+    )
+    if term is not None:
+        message = "This can't be sent to someone you just connected with. Keep it friendly."
+        raise AppError(
+            ErrorCode.VALIDATION_FAILED,
+            message,
+            errors=[FieldError(field="/body", code="message_filtered", message=message)],
+        )
+
+
 def _floor(member: ConversationMember) -> int:
     return history_floor(
         joined_at_seq=member.joined_at_seq, cleared_through_seq=member.cleared_through_seq
@@ -906,6 +928,7 @@ class MessagingService:
             )
             if kind != MessageKind.ANNOUNCEMENT:  # admins may announce in admins-only chats
                 await _ensure_can_send(session, me, conversation, self._group_policy)
+            await _ensure_not_filtered(session, me, conversation, request.body)
             floor = _floor(member)
             if request.reply_to_message_id is not None:
                 target = await session.get(Message, request.reply_to_message_id)
@@ -1026,6 +1049,7 @@ class MessagingService:
                     "Messages can be edited for 15 minutes after sending.",
                 )
             await _ensure_can_send(session, user_id, conversation, self._group_policy)
+            await _ensure_not_filtered(session, user_id, conversation, body)
             message.body = body
             message.edited_at = now
             platform.record_event(

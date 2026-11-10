@@ -109,7 +109,9 @@ class Destination(Base):
     kind: Mapped[str] = mapped_column(Text)
     country_code: Mapped[str] = mapped_column(Text)
     continent: Mapped[str] = mapped_column(Text)
-    # FK to media_assets is added with the media module (BL-1.08); editorial rights per DEST-007.
+    # Editorial media with verified rights only (DEST-007), checked when set and again on every
+    # read, so a revoked or deleted asset simply shows no cover. No FK on purpose: media rows
+    # hang off users, and the catalog must not be reachable from the user graph.
     cover_media_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     slug: Mapped[str] = mapped_column(Text)
     path_segment: Mapped[str] = mapped_column(Text)

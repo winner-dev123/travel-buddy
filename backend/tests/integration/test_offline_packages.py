@@ -23,8 +23,10 @@ from tests.integration.conftest import LiveApp, db_scalar
 from tests.integration.test_billing import store  # noqa: F401 - dev billing app fixture
 from tests.integration.test_destinations import catalog  # noqa: F401 - module-scoped fixture
 from tests.integration.test_groups import _premium
+from tests.integration.test_guides import _guides
 from tests.integration.test_identity_flows import _auth
 from tests.integration.test_posts import _destination, _problem, _user
+from tests.integration.test_trips import _create as _create_trip
 
 pytestmark = pytest.mark.integration
 
@@ -162,6 +164,33 @@ def test_license_verify_and_download_a_package(store: LiveApp) -> None:  # noqa:
     gone = _fetch(store, license_["download"]["base_url"], "index.json")
     assert gone.status_code == 404  # released licenses stop downloading
     assert _license(store, token, portuguese["id"]).status_code == 201  # quota freed
+
+
+@pytest.mark.req("DISC-011", "TRIP-001", "OFF-001")
+def test_the_travel_guide_works_without_ever_enabling_discovery(store: LiveApp) -> None:  # noqa: F811
+    _build(store, read_document(DEFAULT_FILE), ("en",))
+    token, user_id = _user(store)
+    privacy = store.client.get("/v1/users/me/privacy", headers=_auth(token)).json()
+    assert privacy["discovery_enabled"] is False  # never turned on
+
+    trip = _create_trip(store, token)
+    assert trip.status_code == 201, trip.text
+    [guide] = _guides(store, **{"Accept-Language": "en"})
+    assert store.client.get(f"/v1/guides/{guide['id']}", headers=_auth(token)).status_code == 200
+    granted = _license(store, token, _packages(store, token)["en"]["id"])
+    assert granted.status_code == 201, granted.text
+    index = _fetch(store, granted.json()["download"]["base_url"], "index.json")
+    assert index.status_code == 200
+
+    # Nothing about the traveller became discoverable along the way.
+    traces = db_scalar(
+        store.db_url,
+        "SELECT (SELECT count(*) FROM traveler_discovery_sessions WHERE user_id = :u) "
+        "+ (SELECT count(*) FROM consent_records WHERE user_id = :u "
+        "AND consent_type = 'traveler_discovery')",
+        u=uuid.UUID(user_id),
+    )
+    assert traces == 0
 
 
 @pytest.mark.req("OFF-001", "OFF-005")

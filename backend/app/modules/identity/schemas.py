@@ -135,6 +135,8 @@ class DevIdpTokenRequest(_Request):
     nonce: str | None = Field(default=None, max_length=128)
     # Simulates a completed second factor (adds RFC 8176 "mfa" to amr) for staff flows (ADM-007).
     mfa: bool = False
+    # Simulates a session opened from a password-recovery link (AUTH-005).
+    recovered: bool = False
 
 
 class DevIdpToken(_Response):

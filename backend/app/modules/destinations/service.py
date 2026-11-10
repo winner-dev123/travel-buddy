@@ -15,7 +15,7 @@ from sqlalchemy import Select, and_, exists, func, or_, select, text, update
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.core.errors import AppError, ErrorCode
+from app.core.errors import AppError, ErrorCode, FieldError
 from app.core.pagination import CursorCodec, Page, PageInfo
 from app.modules.destinations.domain import join_path, localized, parse_near
 from app.modules.destinations.models import (
@@ -37,6 +37,8 @@ from app.modules.destinations.places import (
 from app.modules.destinations.places import ids_within as place_ids_within
 from app.modules.destinations.places import is_listed as place_is_listed
 from app.modules.destinations.schemas import Destination, DestinationSummary, GeoPoint
+from app.modules.media import service as media
+from app.modules.media.schemas import MediaRef
 from app.modules.platform import service as platform
 
 _ACTIVE = DestinationRow.status == DestinationStatus.ACTIVE
@@ -331,7 +333,17 @@ async def _summaries(
         ).all():
             ancestors[row.id] = row
     locs = await _localizations(session, set(ancestors))
-    return [_summary(row, ancestors, locs, preferences) for row in rows]
+    covers = await _covers(session, rows)
+    return [_summary(row, ancestors, locs, preferences, covers) for row in rows]
+
+
+async def _covers(
+    session: AsyncSession, rows: Sequence[DestinationRow]
+) -> dict[uuid.UUID, MediaRef]:
+    """Covers by media id; an asset whose rights were revoked is simply absent (DEST-007)."""
+    return await media.editorial_refs(
+        session, [row.cover_media_id for row in rows if row.cover_media_id is not None]
+    )
 
 
 def _name(
@@ -348,6 +360,7 @@ def _summary(
     known: dict[uuid.UUID, DestinationRow],
     locs: dict[uuid.UUID, list[DestinationLocalization]],
     preferences: Sequence[str],
+    covers: dict[uuid.UUID, MediaRef] | None = None,
 ) -> DestinationSummary:
     chain = [known[i] for i in row.path if i in known]
     country = next((d for d in chain if d.kind == "country"), None)
@@ -367,6 +380,7 @@ def _summary(
             ),
             "continent": row.continent,
             "tagline": localized(taglines, preferences),
+            "cover": (covers or {}).get(row.cover_media_id) if row.cover_media_id else None,
         }
     )
 
@@ -379,13 +393,16 @@ async def _detail(
     ).all()
     known = {r.id: r for r in chain_rows} | {row.id: row}
     locs = await _localizations(session, set(known))
+    covers = await _covers(session, list(known.values()))
     ancestors = [
-        _summary(known[i], known, locs, preferences) for i in row.path if i != row.id and i in known
+        _summary(known[i], known, locs, preferences, covers)
+        for i in row.path
+        if i != row.id and i in known
     ]
     has_children = bool(
         await session.scalar(select(exists().where(DestinationRow.parent_id == row.id, _ACTIVE)))
     )
-    base = _summary(row, known, locs, preferences).model_dump()
+    base = _summary(row, known, locs, preferences, covers).model_dump()
     return Destination.model_validate(
         {
             **base,
@@ -543,20 +560,67 @@ async def kind_of(session: AsyncSession, destination_id: uuid.UUID) -> str | Non
     return kind
 
 
+_COVER_PROBLEMS = {
+    "not_editorial": "Covers must be editorial media uploaded by content staff.",
+    "not_ready": "The cover is still processing or was rejected.",
+    "rights_not_verified": "Verify the rights of this image before publishing it.",
+}
+
+
+async def cover_rights_changed(session: AsyncSession, media_id: uuid.UUID) -> int:
+    """Purge cached pages of destinations using this cover after its rights changed (a revoked
+    cover disappears at once, not when the cache expires). Returns how many were affected."""
+    rows = (
+        await session.scalars(
+            select(DestinationRow).where(DestinationRow.cover_media_id == media_id)
+        )
+    ).all()
+    for row in rows:
+        platform.record_event(
+            session,
+            aggregate_type="destination",
+            aggregate_id=row.id,
+            event_type="destination.updated",
+            payload={
+                "destination_id": str(row.id),
+                "slug": row.slug,
+                "changed": ["cover"],
+                "status": row.status,
+                "is_featured": row.is_featured,
+            },
+        )
+    return len(rows)
+
+
 async def admin_update(
     session: AsyncSession,
     destination_id: uuid.UUID,
     *,
     is_featured: bool | None,
     status: str | None,
+    cover_media_id: uuid.UUID | None = None,
+    set_cover: bool = False,
 ) -> Destination:
-    """Featured flag and visibility, set by content staff (DEST-004); the admin module audits it
-    in the same transaction. Hidden destinations drop out of every public read; the
-    ``destination.updated`` event purges the cached web pages at once (SAFE-012)."""
+    """Featured flag, visibility and cover, set by content staff (DEST-004, DEST-007); the admin
+    module audits it in the same transaction. Hidden destinations drop out of every public read;
+    the ``destination.updated`` event purges the cached web pages at once (SAFE-012). A cover
+    must be editorial media that is processed and whose rights were verified."""
     row = await session.get(DestinationRow, destination_id, with_for_update=True)
     if row is None:
         raise _not_found()
     changed: list[str] = []
+    if set_cover and row.cover_media_id != cover_media_id:
+        if cover_media_id is not None:
+            problem = await media.editorial_problem(session, cover_media_id)
+            if problem is not None:
+                message = _COVER_PROBLEMS[problem]
+                raise AppError(
+                    ErrorCode.VALIDATION_FAILED,
+                    message,
+                    errors=[FieldError(field="cover_media_id", code=problem, message=message)],
+                )
+        row.cover_media_id = cover_media_id
+        changed.append("cover")
     if is_featured is not None and row.is_featured != is_featured:
         row.is_featured = is_featured
         changed.append("is_featured")

@@ -161,6 +161,54 @@ def test_direct_invitations_are_free_to_accept_and_do_not_open_dms(store: LiveAp
     _problem(dm, 403, "connection_required")
 
 
+@pytest.mark.req("GCHAT-002", "I18N-004")
+def test_group_chat_threads_mentions_reactions_pins_and_mute(store: LiveApp) -> None:  # noqa: F811
+    owner, owner_id, _ = _premium(store)
+    group = _group(store, owner)
+    member, _ = _join(store, owner, group["id"])
+    chat = group["conversation_id"]
+    url = f"/v1/conversations/{chat}"
+
+    root = _say(store, owner, chat, "Jantar às 8? 🍷 東京の友達も来る")
+    assert root.status_code == 201, root.text
+    assert root.json()["body"] == "Jantar às 8? 🍷 東京の友達も来る"  # full Unicode round trip
+    root_id = root.json()["id"]
+    reply = store.client.post(
+        f"{url}/messages",
+        headers={**_auth(member), "Idempotency-Key": str(uuid.uuid4())},
+        json={
+            "client_message_id": str(uuid.uuid4()),
+            "body": "Count me in",
+            "reply_to_message_id": root_id,
+            "thread_root_id": root_id,
+            "mentions": [owner_id],
+        },
+    )
+    assert reply.status_code == 201, reply.text
+    assert reply.json()["mentions"] == [owner_id]
+    assert reply.json()["thread_root_id"] == root_id
+    thread = store.client.get(f"{url}/threads/{root_id}", headers=_auth(owner))
+    assert thread.status_code == 200, thread.text
+    assert [m["id"] for m in thread.json()["data"]] == [reply.json()["id"]]
+
+    react = f"{url}/messages/{root_id}/reactions/%F0%9F%91%8D"
+    assert store.client.put(react, headers=_auth(member)).status_code == 204
+    assert store.client.put(f"{url}/pins/{root_id}", headers=_auth(owner)).status_code == 204
+    history = store.client.get(f"{url}/messages", headers=_auth(member)).json()["data"]
+    shown = next(m for m in history if m["id"] == root_id)
+    assert shown["reactions"] == [{"emoji": "👍", "count": 1, "reacted_by_me": True}]
+    assert shown["pinned"] is True
+    assert shown["thread_reply_count"] == 1
+
+    muted = store.client.put(
+        f"{url}/mute",
+        headers=_auth(member),
+        json={"muted_until": "2099-01-01T00:00:00Z", "notification_level": "mentions"},
+    )
+    assert muted.status_code == 200, muted.text
+    assert muted.json()["notification_level"] == "mentions"
+
+
 @pytest.mark.req("GRP-005", "GRP-012", "T-GRP-02")
 def test_link_invitations_respect_uses_capacity_and_revocation(store: LiveApp) -> None:  # noqa: F811
     owner, _, _ = _premium(store)

@@ -131,7 +131,7 @@ def test_following_tab_shows_followed_authors_including_followers_only(app: Live
     assert secret in _ids(body)
 
 
-@pytest.mark.req("FEED-003")
+@pytest.mark.req("FEED-003", "I18N-005", "POST-011")
 def test_category_tag_and_language_filters(app: LiveApp) -> None:  # noqa: F811
     author, _ = _user(app)
     rome = _destination(app, "italy/rome")

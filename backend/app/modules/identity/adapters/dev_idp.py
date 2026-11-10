@@ -44,6 +44,7 @@ class DevIdentityProvider:
         name: str | None = None,
         nonce: str | None = None,
         mfa: bool = False,
+        recovered: bool = False,
     ) -> tuple[str, datetime]:
         now = self._clock.now()
         expires_at = now + DEV_TOKEN_TTL
@@ -58,6 +59,8 @@ class DevIdentityProvider:
             "exp": int(expires_at.timestamp()),
             "amr": ["dev", "mfa"] if mfa else ["dev"],
         }
+        if recovered:  # Supabase's shape for a session opened from a recovery link
+            claims["amr"] = [*claims["amr"], {"method": "recovery", "timestamp": claims["iat"]}]
         if name:
             claims["name"] = name
         if nonce:

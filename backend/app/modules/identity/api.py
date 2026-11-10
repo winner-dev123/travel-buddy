@@ -261,6 +261,7 @@ async def dev_idp_mint_token(body: DevIdpTokenRequest, request: Request) -> DevI
         name=body.name,
         nonce=body.nonce,
         mfa=body.mfa,
+        recovered=body.recovered,
     )
     return DevIdpToken(id_token=token, expires_at=expires_at)
 

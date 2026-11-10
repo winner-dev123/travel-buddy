@@ -46,6 +46,8 @@ from app.modules.identity.schemas import (
     RecordDataRequest,
     ResolveDataRequest,
 )
+from app.modules.media.schemas import EditorialMedia, EditorialRightsRequest
+from app.modules.trust_safety.schemas import MessageFilterPolicyOut, UpdateMessageFilterRequest
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
 
@@ -322,6 +324,33 @@ async def admin_update_destination(
     who: Annotated[Staff, Depends(staff(Permission.CONTENT_DESTINATIONS_WRITE, justified=True))],
 ) -> Destination:
     return await _service(request).update_destination(who, destination_id, body)
+
+
+@router.get("/safety/message-filter", response_model=MessageFilterPolicyOut)
+async def admin_get_message_filter(
+    request: Request,
+    _who: Annotated[Staff, Depends(staff(Permission.SAFETY_FILTERS_MANAGE))],
+) -> MessageFilterPolicyOut:
+    return await _service(request).message_filter()
+
+
+@router.put("/safety/message-filter", response_model=MessageFilterPolicyOut)
+async def admin_update_message_filter(
+    body: UpdateMessageFilterRequest,
+    request: Request,
+    who: Annotated[Staff, Depends(staff(Permission.SAFETY_FILTERS_MANAGE, justified=True))],
+) -> MessageFilterPolicyOut:
+    return await _service(request).update_message_filter(who, body)
+
+
+@router.post("/media/{media_id}/rights", response_model=EditorialMedia)
+async def admin_set_editorial_rights(
+    media_id: uuid.UUID,
+    body: EditorialRightsRequest,
+    request: Request,
+    who: Annotated[Staff, Depends(staff(Permission.CONTENT_DESTINATIONS_WRITE, justified=True))],
+) -> EditorialMedia:
+    return await _service(request).set_editorial_rights(who, media_id, body)
 
 
 @router.post("/challenge-rewards/{reward_id}/review", response_model=RewardDetail)

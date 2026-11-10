@@ -9,10 +9,20 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-Purpose = Literal["post", "avatar", "message", "group_cover", "challenge"]
+Purpose = Literal["post", "avatar", "message", "group_cover", "challenge", "editorial"]
 MimeType = Literal[
     "image/jpeg", "image/png", "image/webp", "image/heic", "video/mp4", "video/quicktime"
 ]
+
+
+class MediaAttribution(BaseModel):
+    """Credit for editorial or licensed media (contract ``MediaAttribution``, DEST-007)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    text: str = Field(min_length=1, max_length=300)
+    license: str = Field(min_length=1, max_length=100)
+    url: str | None = Field(default=None, max_length=2000, pattern=r"^https?://\S+$")
 
 
 class CreateMediaUploadRequest(BaseModel):
@@ -26,6 +36,8 @@ class CreateMediaUploadRequest(BaseModel):
     height: int | None = Field(default=None, ge=1, le=20_000)
     duration_ms: int | None = Field(default=None, ge=1, le=180_000)
     alt_text: str | None = Field(default=None, max_length=300)
+    # Required for (and only accepted with) ``purpose = editorial``.
+    attribution: MediaAttribution | None = None
 
 
 class _Response(BaseModel):
@@ -56,7 +68,27 @@ class MediaRef(_Response):
     duration_ms: int | None = None
     alt_text: str | None = None
     blurhash: str | None = None
-    attribution: None = None
+    attribution: MediaAttribution | None = None
+
+
+class EditorialMedia(_Response):
+    """Admin view of an editorial asset (contract ``EditorialMedia``)."""
+
+    id: uuid.UUID
+    status: Literal["pending_upload", "scanning", "ready", "rejected", "deleted"]
+    attribution: MediaAttribution
+    rights_verified_at: datetime | None
+    ref: MediaRef | None
+    created_at: datetime
+
+
+class EditorialRightsRequest(BaseModel):
+    """Contract ``EditorialRightsRequest``: verify or revoke, optionally correcting the credit."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    verified: bool
+    attribution: MediaAttribution | None = None
 
 
 class MediaAssetOut(_Response):

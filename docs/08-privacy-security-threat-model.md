@@ -126,7 +126,7 @@ Verification column: **U** = unit test, **I** = integration test, **S** = securi
 |---|---|---|---|
 | T-MSG-01 | Message tampering in transit | TLS 1.2+ everywhere | O |
 | T-MSG-02 | Replay or duplication | `client_message_id` uniqueness. Seq ordering | I |
-| T-MSG-03 | Spam floods | Per-user send rate (e.g., 30/min DM, 60/min group). New-connection link limits. Keyword and URL reputation filter | S |
+| T-MSG-03 | Spam floods | Per-user send rate (e.g., 30/min DM, 60/min group). Keyword filter for direct messages and edits from connections younger than 7 days (staff-managed list, whole-word match after case, accent and punctuation folding; refused with `message_filtered`, SAFE-006). Link limits and URL reputation: not yet | S |
 | T-MSG-04 | Attachment URL leakage | Private bucket. Signed URLs ≤ 5 min, issued per request after an authz check. No public listing | S |
 | T-MSG-05 | Message bodies in push or logs | Push payloads contain IDs and a preview only if allowed. Logs never contain bodies (redaction) | U |
 | T-MSG-07 | Web Push endpoint leakage (endpoints are capability URLs that let anyone push to the browser) | Stored envelope-encrypted with a hash for lookup. Never logged or returned by any API. Deleted on session revocation or provider 404/410 | U, R |

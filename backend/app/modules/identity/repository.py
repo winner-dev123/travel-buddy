@@ -91,12 +91,15 @@ async def revoke_sessions(
     reason: str,
     now: datetime,
     session_id: uuid.UUID | None = None,
+    created_before: datetime | None = None,
 ) -> int:
     stmt = update(UserSession).where(
         UserSession.user_id == user_id, UserSession.revoked_at.is_(None)
     )
     if session_id is not None:
         stmt = stmt.where(UserSession.id == session_id)
+    if created_before is not None:
+        stmt = stmt.where(UserSession.created_at < created_before)
     result = await session.execute(
         stmt.values(revoked_at=now, revoked_reason=reason)
         .returning(UserSession.id)

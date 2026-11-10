@@ -23,13 +23,26 @@ from app.core.pagination import CursorCodec, Page, PageInfo
 from app.modules.platform import service as platform
 from app.modules.profiles import service as profiles
 from app.modules.profiles.schemas import UserSummary
+from app.modules.trust_safety.domain import (
+    DEFAULT_MESSAGE_FILTER_TERMS,
+    DEFAULT_NEW_CONNECTION_DAYS,
+    MAX_TERM_LENGTH,
+    clean_terms,
+    matched_term,
+)
 from app.modules.trust_safety.models import (
     ContentReport,
+    MessageFilterPolicy,
     ModerationAction,
     ReportStatus,
     UserBlock,
 )
-from app.modules.trust_safety.schemas import CreateReportRequest, ReportReceipt
+from app.modules.trust_safety.schemas import (
+    CreateReportRequest,
+    MessageFilterPolicyOut,
+    ReportReceipt,
+    UpdateMessageFilterRequest,
+)
 
 BlockHook = Callable[[AsyncSession, uuid.UUID, uuid.UUID], Awaitable[None]]
 
@@ -469,6 +482,73 @@ async def active_restrictions(
         ):
             best[kind] = ActiveRestriction(kind, row.reason_code, row.expires_at)
     return [best[k] for k in sorted(best)]
+
+
+# ─────────────────────── keyword filter for new connections (SAFE-006) ───────────────────────
+
+
+_DEFAULT_TERMS = clean_terms(DEFAULT_MESSAGE_FILTER_TERMS)
+
+
+async def message_filter_policy(session: AsyncSession) -> MessageFilterPolicyOut:
+    row = await session.get(MessageFilterPolicy, 1)
+    return MessageFilterPolicyOut(
+        terms=list(row.terms) if row is not None else _DEFAULT_TERMS,
+        new_connection_days=(
+            row.new_connection_days if row is not None else DEFAULT_NEW_CONNECTION_DAYS
+        ),
+        default_terms=_DEFAULT_TERMS,
+        default_new_connection_days=DEFAULT_NEW_CONNECTION_DAYS,
+        version=row.version if row is not None else 0,
+        updated_at=row.updated_at if row is not None else None,
+        updated_by=row.updated_by if row is not None else None,
+    )
+
+
+async def update_message_filter(
+    session: AsyncSession, request: UpdateMessageFilterRequest, *, staff_id: uuid.UUID
+) -> tuple[MessageFilterPolicyOut, MessageFilterPolicyOut]:
+    """Replace the list (optimistic: ``version`` must match). Returns (before, after); the admin
+    module audits the change."""
+    long = [t for t in request.terms if len(t) > MAX_TERM_LENGTH]
+    if long:
+        message = f"Terms can be up to {MAX_TERM_LENGTH} characters."
+        raise AppError(
+            ErrorCode.VALIDATION_FAILED,
+            message,
+            errors=[FieldError(field="/terms", code="too_long", message=message)],
+        )
+    row = await session.get(MessageFilterPolicy, 1, with_for_update=True)
+    before = await message_filter_policy(session)
+    if request.version != before.version:
+        raise AppError(
+            ErrorCode.CONFLICT, "The filter changed since you loaded it. Reload and try again."
+        )
+    if row is None:
+        row = MessageFilterPolicy(id=1, version=0)
+        session.add(row)
+    row.terms = clean_terms(request.terms)
+    row.new_connection_days = request.new_connection_days
+    row.version = before.version + 1
+    row.updated_at = func.now()
+    row.updated_by = staff_id
+    await session.flush()
+    await session.refresh(row)
+    return before, await message_filter_policy(session)
+
+
+async def filtered_term(
+    session: AsyncSession, body: str | None, *, connected_at: datetime | None, now: datetime
+) -> str | None:
+    """The filtered term in a direct message to a connection made less than the configured
+    number of days ago, or None. Older connections and group chats are not filtered."""
+    if not body or connected_at is None:
+        return None
+    policy = await session.get(MessageFilterPolicy, 1)
+    days = policy.new_connection_days if policy is not None else DEFAULT_NEW_CONNECTION_DAYS
+    if now - connected_at >= timedelta(days=days):
+        return None
+    return matched_term(body, list(policy.terms) if policy is not None else _DEFAULT_TERMS)
 
 
 async def ensure_not_restricted(

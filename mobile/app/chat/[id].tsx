@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getApiClient } from '@/api';
+import { ApiProblem, getApiClient } from '@/api';
 import { useSessionStore } from '@/auth/sessionStore';
 import { Button, Notice, TextField } from '@/components/Form';
 import { MediaPreview } from '@/features/feed/PhotoGallery';
@@ -54,6 +54,13 @@ const MUTE_FOR = [
   { hours: 8, label: 'messages.muteFor.8' },
   { hours: 168, label: 'messages.muteFor.168' },
 ] as const;
+
+/** SAFE-006: a new connection's message matched the safety filter (not a network failure). */
+function isFiltered(error: unknown): boolean {
+  return (
+    error instanceof ApiProblem && error.errors.some((field) => field.code === 'message_filtered')
+  );
+}
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -573,7 +580,11 @@ export default function ChatScreen() {
             </Notice>
           ) : (
             <>
-              {send.isError ? <Notice tone="error">{t('messages.sendFailed')}</Notice> : null}
+              {send.isError ? (
+                <Notice tone="error" testID="chat-send-error">
+                  {isFiltered(send.error) ? t('messages.filtered') : t('messages.sendFailed')}
+                </Notice>
+              ) : null}
               {replyTo ? (
                 <View style={styles.pinRow} testID="chat-replying">
                   <Text

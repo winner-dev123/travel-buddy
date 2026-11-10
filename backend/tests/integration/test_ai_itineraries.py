@@ -146,7 +146,7 @@ def test_generate_poll_and_get_a_validated_grounded_proposal(app: LiveApp) -> No
     )
 
 
-@pytest.mark.req("AI-002", "AI-003", "TRIP-001")
+@pytest.mark.req("AI-002", "AI-003", "TRIP-001", "TRIP-002")
 def test_apply_a_proposal_to_a_trip(app: LiveApp) -> None:  # noqa: F811
     token, _ = _user(app)
     generation = _accepted(app, token)

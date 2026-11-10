@@ -8,6 +8,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.modules.media.schemas import MediaRef
+
 DestinationKindName = Literal["country", "admin_region", "city", "district", "neighborhood", "area"]
 ContinentName = Literal[
     "africa",
@@ -40,7 +42,7 @@ class DestinationSummary(_Model):
     country_name: str | None
     continent: ContinentName
     tagline: str | None
-    cover: None = None  # MediaRef once editorial media lands (BL-1.08, DEST-007)
+    cover: MediaRef | None = None  # editorial media with verified rights (DEST-007)
 
 
 class Destination(DestinationSummary):

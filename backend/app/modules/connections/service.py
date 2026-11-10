@@ -592,6 +592,17 @@ async def request_stats_since(
     return {requester: (sent, refused) for requester, sent, refused in rows.all()}
 
 
+async def connected_since(session: AsyncSession, a: uuid.UUID, b: uuid.UUID) -> datetime | None:
+    """When ``a`` and ``b`` connected, or None (new-connection message filter, SAFE-006)."""
+    low, high = sorted((a, b))
+    found: datetime | None = await session.scalar(
+        select(UserConnection.connected_at).where(
+            UserConnection.user_low_id == low, UserConnection.user_high_id == high
+        )
+    )
+    return found
+
+
 async def connected_ids(
     session: AsyncSession, user_id: uuid.UUID, others: Sequence[uuid.UUID]
 ) -> set[uuid.UUID]:

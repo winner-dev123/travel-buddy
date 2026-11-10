@@ -119,17 +119,22 @@ class ReinstateUserRequest(_Request):
 
 
 class AdminDestinationUpdate(BaseModel):
-    """At least one of the fields (DEST-004)."""
+    """At least one of the fields (DEST-004). ``cover_media_id: null`` removes the cover."""
 
     model_config = ConfigDict(extra="forbid")
 
     is_featured: bool | None = None
     status: Literal["active", "hidden"] | None = None
+    cover_media_id: uuid.UUID | None = None
+
+    @property
+    def sets_cover(self) -> bool:
+        return "cover_media_id" in self.model_fields_set
 
     @model_validator(mode="after")
     def _not_empty(self) -> AdminDestinationUpdate:
-        if self.is_featured is None and self.status is None:
-            raise ValueError("Change is_featured or status.")
+        if self.is_featured is None and self.status is None and not self.sets_cover:
+            raise ValueError("Change is_featured, status or cover_media_id.")
         return self
 
 

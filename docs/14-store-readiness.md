@@ -10,7 +10,7 @@ the first submission, close the gaps listed in [§6](#6-gaps-before-the-first-su
 
 | Requirement | Where it lives | Status |
 |---|---|---|
-| Filter objectionable content | Moderation states on posts, comments and messages; automated checks on upload (media scanning hook); hidden content never reaches feeds (SAFE-004) | ✅ backend |
+| Filter objectionable content | Moderation states on posts, comments and messages; automated checks on upload (media scanning hook); hidden content never reaches feeds (SAFE-004); staff-managed keyword filter on direct messages from connections younger than 7 days (SAFE-006) | ✅ backend |
 | Report content and people | `POST /v1/reports` for users, posts, comments, messages, groups and challenges (SAFE-002); the app reports profiles, stories, comments and messages from their menus (SCR-131) | ✅ |
 | Block abusive users | `PUT /v1/users/{id}/block` hides profiles, posts, messages, trips and challenges both ways (SAFE-001); the app blocks from the profile after a confirmation and lists blocked people | ✅ |
 | Users control their own content | Authors edit and delete their stories and comments in the app; story authors can remove comments on their stories; feed "hide / not interested"; group admins remove and restrict members | ✅ |

@@ -198,7 +198,7 @@ Legend. **Auth:** `bearer` = platform access token. `optional` = anonymous allow
 
 | Endpoint | Phase | Auth | Idempotency | Rate class | Entitlement | Requirements |
 |---|---|---|---|---|---|---|
-| `POST /v1/media/uploads` | 1 | bearer | required | media_upload |  | POST-002, SAFE-005, POST-004, SAFE-004 |
+| `POST /v1/media/uploads` | 1 | bearer (`editorial`: + `content.destinations.write`) | required | media_upload |  | POST-002, SAFE-005, POST-004, SAFE-004, DEST-007 |
 | `GET /v1/media/{mediaId}` | 1 | bearer | — | read |  | POST-002 |
 | `POST /v1/media/{mediaId}/finalize` | 1 | bearer | — | media_upload |  | POST-002, SAFE-005, SAFE-004 |
 
@@ -392,7 +392,10 @@ Legend. **Auth:** `bearer` = platform access token. `optional` = anonymous allow
 | `GET /v1/admin/users/{userId}` | 1 | bearer + `users.read` | — | admin |  | ADM-003, ADM-007, ADM-008, ADM-009 |
 | `POST /v1/admin/users/{userId}/suspend` | 1 | bearer + `users.suspend` | — | admin |  | ADM-002, ADM-007, ADM-008, ADM-009 |
 | `POST /v1/admin/users/{userId}/reinstate` | 1 | bearer + `users.suspend` | — | admin |  | ADM-002, ADM-007, ADM-008, ADM-009 |
-| `PATCH /v1/admin/destinations/{destinationId}` | 1 | bearer + `content.destinations.write` | — | admin |  | DEST-004, ADM-007, ADM-008, ADM-009 |
+| `PATCH /v1/admin/destinations/{destinationId}` | 1 | bearer + `content.destinations.write` | — | admin |  | DEST-004, DEST-007, ADM-007, ADM-008, ADM-009 |
+| `GET /v1/admin/safety/message-filter` | 2 | bearer + `safety.filters.manage` | — | admin |  | SAFE-006, ADM-007 |
+| `PUT /v1/admin/safety/message-filter` | 2 | bearer + `safety.filters.manage` | — | admin |  | SAFE-006, ADM-007, ADM-008 |
+| `POST /v1/admin/media/{mediaId}/rights` | 1 | bearer + `content.destinations.write` | — | admin |  | DEST-007, ADM-007, ADM-008, ADM-009 |
 | `POST /v1/admin/challenge-rewards/{rewardId}/review` | 5 | bearer + `content.rewards.review` | — | admin |  | CHAL-014, ADM-007, ADM-008, ADM-009 |
 | `GET /v1/admin/audit-logs` | 6 | bearer + `audit.read` | — | admin |  | ADM-002, SAFE-007, ADM-007, ADM-008 |
 

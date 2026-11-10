@@ -34,6 +34,8 @@ class VerifiedIdentity:
     amr: frozenset[str]
     auth_time: datetime
     method: str
+    # When the user came back through a password-recovery link (AUTH-005), else None.
+    recovered_at: datetime | None = None
 
 
 class KeyProvider(Protocol):
@@ -126,6 +128,25 @@ def _parse_amr(claims: Mapping[str, Any]) -> frozenset[str]:
     if claims.get("aal") == "aal2":
         methods.add(MFA_METHOD)
     return frozenset(methods)
+
+
+RECOVERY_METHOD = "recovery"
+
+
+def _recovered_at(claims: Mapping[str, Any]) -> datetime | None:
+    """When the session behind the token was established through a password-recovery link.
+
+    Supabase Auth records it as an ``amr`` entry ``{"method": "recovery", "timestamp": ...}``; the
+    user is about to set (or has just set) a new password, so older sessions must end (AUTH-005).
+    """
+    stamps = [
+        int(item["timestamp"])
+        for item in claims.get("amr") or []
+        if isinstance(item, dict)
+        and item.get("method") == RECOVERY_METHOD
+        and isinstance(item.get("timestamp"), int | float)
+    ]
+    return datetime.fromtimestamp(max(stamps), tz=UTC) if stamps else None
 
 
 def _email_verified(claims: Mapping[str, Any]) -> bool:
@@ -224,4 +245,5 @@ class OidcVerifier:
             amr=amr,
             auth_time=auth_time,
             method=config.method,
+            recovered_at=_recovered_at(claims),
         )

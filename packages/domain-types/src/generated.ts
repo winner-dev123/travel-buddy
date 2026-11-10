@@ -145,7 +145,7 @@ export interface paths {
         put?: never;
         /**
          * Exchange an IdP ID token for a platform session
-         * @description Maps `(iss, sub)` to an existing account and issues a new session for the device. `client` (`ios`, `android`, `web`) is recorded on the session and shown in session lists. Returns `404 not_found` if no account is linked (client should route to registration). Logging in during the deletion grace period cancels the pending deletion.
+         * @description Maps `(iss, sub)` to an existing account and issues a new session for the device. `client` (`ios`, `android`, `web`) is recorded on the session and shown in session lists. Returns `404 not_found` if no account is linked (client should route to registration). Logging in during the deletion grace period cancels the pending deletion. A token from a password-recovery link (IdP `amr` method `recovery`) revokes every session opened before the recovery, on all devices (AUTH-005).
          */
         post: operations["login"];
         delete?: never;
@@ -1347,6 +1347,9 @@ export interface paths {
         /**
          * Request a presigned upload URL (quarantine bucket)
          * @description Allowed types and sizes depend on `purpose` (docs/05 §7). The URL expires in 5 minutes.
+         *     `purpose = editorial` (destination covers, guide imagery) is for content staff only (`403 forbidden`
+         *     otherwise) and requires `attribution`; other purposes refuse it (`422 validation_failed`). Editorial
+         *     media is published only after staff verify its rights (`POST /v1/admin/media/{mediaId}/rights`).
          */
         post: operations["createMediaUpload"];
         delete?: never;
@@ -1718,7 +1721,9 @@ export interface paths {
          * @description Persisted before acknowledgement. Idempotent on `(conversation, sender, client_message_id)`: a retry
          *     returns the original message with `200` and the `Idempotent-Replayed: true` header. Authorization is
          *     re-checked on every send (membership, block state, connection for direct, member restriction,
-         *     `chat_mode`). Attachments must be media with purpose `message`.
+         *     `chat_mode`). Attachments must be media with purpose `message`. In a direct chat with a connection
+         *     made less than `new_connection_days` ago (default 7), a body with a term from the staff-managed filter
+         *     is refused (`422 validation_failed`, `errors[].code = message_filtered`; SAFE-006).
          */
         post: operations["sendMessage"];
         delete?: never;
@@ -1744,7 +1749,10 @@ export interface paths {
         delete: operations["deleteMessage"];
         options?: never;
         head?: never;
-        /** Edit my message (within the edit window, default 15 minutes) */
+        /**
+         * Edit my message (within the edit window, default 15 minutes)
+         * @description The new-connection keyword filter applies to edits as to sends (`message_filtered`, SAFE-006).
+         */
         patch: operations["editMessage"];
         trace?: never;
     };
@@ -3397,8 +3405,35 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Manage featured status and visibility of destinations */
+        /**
+         * Manage featured status, visibility and cover of destinations
+         * @description `cover_media_id` must be editorial media that finished processing and whose rights were verified
+         *     (`422 validation_failed` with `errors[].code` `not_editorial`, `not_ready` or `rights_not_verified`);
+         *     `null` removes the cover.
+         */
         patch: operations["adminUpdateDestination"];
+        trace?: never;
+    };
+    "/v1/admin/media/{mediaId}/rights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify or revoke the rights of editorial media
+         * @description Editorial media (destination covers, guide imagery) can be published only after a staff member checked
+         *     its license. Verification transfers the asset to the platform, so it outlives the uploader's account.
+         *     Revoking hides it everywhere at once and purges cached pages that show it.
+         */
+        post: operations["adminSetEditorialRights"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/admin/challenge-rewards/{rewardId}/review": {
@@ -3515,6 +3550,29 @@ export interface paths {
          * @description Records who handled it and the outcome told to the user. Exports and deletions complete by themselves (`409`).
          */
         post: operations["adminResolveDataRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/safety/message-filter": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Keyword filter for direct messages from new connections, with the defaults */
+        get: operations["adminGetMessageFilter"];
+        /**
+         * Replace the filtered terms and the new-connection window (audited, effective at once)
+         * @description Terms are stored normalized (case-folded, without accents or punctuation) and match whole words.
+         *     `version` must be the one last read (`409 conflict` otherwise). The audit entry lists the terms added
+         *     and removed.
+         */
+        put: operations["adminUpdateMessageFilter"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3752,7 +3810,7 @@ export interface components {
          *     support ⊂ moderator ⊂ admin ⊂ superadmin. Admin operations name their permission in `x-platform-permission`.
          * @enum {string}
          */
-        PlatformPermission: "users.read" | "users.read_sensitive" | "users.suspend" | "users.ban" | "moderation.reports.read" | "moderation.reports.manage" | "moderation.actions.read" | "moderation.actions.write" | "content.destinations.write" | "content.feature" | "content.rewards.review" | "entitlements.grant" | "billing.configure" | "audit.read" | "privacy.requests.manage" | "roles.assign";
+        PlatformPermission: "users.read" | "users.read_sensitive" | "users.suspend" | "users.ban" | "moderation.reports.read" | "moderation.reports.manage" | "moderation.actions.read" | "moderation.actions.write" | "content.destinations.write" | "content.feature" | "content.rewards.review" | "entitlements.grant" | "billing.configure" | "audit.read" | "privacy.requests.manage" | "safety.filters.manage" | "roles.assign";
         /** @enum {string} */
         TravelStyle: "adventure" | "backpacking" | "luxury" | "food" | "culture" | "photography" | "digital_nomad" | "nature" | "family";
         /** @enum {string} */
@@ -3841,8 +3899,11 @@ export interface components {
         ModerationActionType: "remove_content" | "restore_content" | "limit_visibility" | "warn" | "restrict" | "suspend" | "ban" | "reinstate" | "remove_member";
         /** @enum {string} */
         ConsentType: "terms" | "privacy_policy" | "location" | "traveler_discovery" | "marketing" | "ai_personalization" | "post_translation" | "search_indexing";
-        /** @enum {string} */
-        MediaPurpose: "post" | "avatar" | "message" | "group_cover" | "challenge";
+        /**
+         * @description `editorial` is uploaded by content staff only (DEST-007).
+         * @enum {string}
+         */
+        MediaPurpose: "post" | "avatar" | "message" | "group_cover" | "challenge" | "editorial";
         /** @enum {string} */
         MediaStatus: "pending_upload" | "scanning" | "ready" | "rejected" | "deleted";
         /** @enum {string} */
@@ -4021,6 +4082,11 @@ export interface components {
              * @default false
              */
             mfa?: boolean;
+            /**
+             * @description Simulates a session opened from a password-recovery link: `amr` gains `{"method": "recovery", "timestamp": iat}` like Supabase Auth. Logging in with it revokes older sessions (AUTH-005).
+             * @default false
+             */
+            recovered?: boolean;
         };
         DevIdpToken: {
             id_token: string;
@@ -4465,20 +4531,36 @@ export interface components {
              *     display it wherever the media is shown. Null for user-generated media, which is credited via its author.
              *     Rights are verified server-side before editorial media can be published (DEST-007).
              */
-            attribution?: {
-                /** @example Photo by Ana Souza */
-                text: string;
-                /** @example CC BY-SA 4.0 */
-                license: string;
-                /**
-                 * Format: uri
-                 * @description Source or license URL.
-                 */
-                url?: string | null;
-            } | null;
+            attribution?: components["schemas"]["MediaAttribution"] | null;
             variants?: {
                 [key: string]: string;
             };
+        };
+        MediaAttribution: {
+            /** @example Photo by Ana Souza */
+            text: string;
+            /** @example CC BY-SA 4.0 */
+            license: string;
+            /**
+             * Format: uri
+             * @description Source or license URL.
+             */
+            url?: string | null;
+        };
+        /** @description Admin view of editorial media and its rights status (DEST-007). */
+        EditorialMedia: {
+            id: components["schemas"]["Uuid"];
+            status: components["schemas"]["MediaStatus"];
+            attribution: components["schemas"]["MediaAttribution"];
+            rights_verified_at: components["schemas"]["NullableTimestamp"];
+            ref: components["schemas"]["MediaRef"] | null;
+            created_at: components["schemas"]["Timestamp"];
+        };
+        EditorialRightsRequest: {
+            /** @description `true` after checking the license; `false` revokes (the image disappears wherever it is shown). */
+            verified: boolean;
+            /** @description Corrected credit, if the uploaded one was wrong. */
+            attribution?: components["schemas"]["MediaAttribution"];
         };
         CreateMediaUploadRequest: {
             purpose: components["schemas"]["MediaPurpose"];
@@ -4490,6 +4572,8 @@ export interface components {
             height?: number;
             duration_ms?: number;
             alt_text?: string;
+            /** @description Required for `purpose = editorial`, refused otherwise (DEST-007). */
+            attribution?: components["schemas"]["MediaAttribution"];
         };
         MediaUpload: {
             media_id: components["schemas"]["Uuid"];
@@ -6175,6 +6259,23 @@ export interface components {
         };
         /** @enum {string} */
         QuotaKey: "ai.itinerary_generations" | "ai.trip_replans" | "offline.packages" | "groups.owned";
+        /** @description Keyword filter for direct messages from new connections (SAFE-006). */
+        MessageFilterPolicy: {
+            terms: string[];
+            /** @description A connection younger than this is filtered; 0 turns the filter off. */
+            new_connection_days: number;
+            default_terms: string[];
+            default_new_connection_days: number;
+            version: number;
+            updated_at: components["schemas"]["NullableTimestamp"];
+            /** Format: uuid */
+            updated_by: string | null;
+        };
+        UpdateMessageFilterRequest: {
+            terms: string[];
+            new_connection_days: number;
+            version: number;
+        };
         BillingPolicy: {
             quotas: {
                 key: components["schemas"]["QuotaKey"];
@@ -9018,6 +9119,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
             409: components["responses"]["IdempotencyConflict"];
             413: components["responses"]["PayloadTooLarge"];
             415: components["responses"]["UnsupportedMediaType"];
@@ -13364,6 +13466,8 @@ export interface operations {
                     is_featured?: boolean;
                     /** @enum {string} */
                     status?: "active" | "hidden";
+                    /** Format: uuid */
+                    cover_media_id?: string | null;
                 };
             };
         };
@@ -13380,6 +13484,45 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminSetEditorialRights: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Why the staff member is performing this action or viewing sensitive data (ADM-009). Stored verbatim
+                 *     in `audit_logs.metadata.justification`. Missing or blank → `400 justification_required`.
+                 */
+                "X-Audit-Justification": components["parameters"]["AuditJustification"];
+            };
+            path: {
+                mediaId: components["parameters"]["MediaId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditorialRightsRequest"];
+            };
+        };
+        responses: {
+            /** @description Rights status updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditorialMedia"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
             default: components["responses"]["Problem"];
         };
     };
@@ -13648,6 +13791,64 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            422: components["responses"]["ValidationFailed"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminGetMessageFilter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The filter in force. `version` is 0 while the defaults apply. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageFilterPolicy"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminUpdateMessageFilter: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Why the staff member is performing this action or viewing sensitive data (ADM-009). Stored verbatim
+                 *     in `audit_logs.metadata.justification`. Missing or blank → `400 justification_required`.
+                 */
+                "X-Audit-Justification": components["parameters"]["AuditJustification"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMessageFilterRequest"];
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageFilterPolicy"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationFailed"];
             default: components["responses"]["Problem"];
         };

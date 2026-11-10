@@ -12,13 +12,14 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     SmallInteger,
     Text,
     Uuid,
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, enum_check
@@ -173,3 +174,21 @@ class ModerationAction(Base):
     )
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class MessageFilterPolicy(Base):
+    """Staff-managed keyword filter for direct messages from new connections (SAFE-006). At most
+    one row; without it the code defaults apply (``domain.DEFAULT_MESSAGE_FILTER_TERMS``)."""
+
+    __tablename__ = "message_filter_policies"
+    __table_args__ = (
+        CheckConstraint("id = 1", name="singleton"),
+        CheckConstraint("new_connection_days BETWEEN 0 AND 90", name="days_range"),
+    )
+
+    id: Mapped[int] = mapped_column(SmallInteger, primary_key=True, default=1)
+    terms: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default=text("'{}'"))
+    new_connection_days: Mapped[int] = mapped_column(Integer, server_default=text("7"))
+    version: Mapped[int] = mapped_column(Integer, server_default=text("1"))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)  # staff; no FK, like audit actors
