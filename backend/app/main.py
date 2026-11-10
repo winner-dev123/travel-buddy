@@ -40,6 +40,7 @@ from app.core.time import Clock, SystemClock
 from app.modules.admin.api import router as admin_router
 from app.modules.admin.service import AdminService
 from app.modules.ai_assistant import service as ai_service
+from app.modules.ai_assistant.api import posts_router as translation_router
 from app.modules.ai_assistant.api import router as ai_router
 from app.modules.ai_assistant.provider import (
     AIProvider,
@@ -437,6 +438,7 @@ def create_app(
     app.include_router(trips_router)
     app.include_router(saved_places_router)
     app.include_router(ai_router)
+    app.include_router(translation_router)
     app.include_router(group_invitations_router)
     app.include_router(realtime_router)
     app.include_router(realtime_tickets_router)
@@ -562,7 +564,16 @@ def build_ai_service(
         sessionmaker=database.sessionmaker,
         clock=clock,
         provider=provider,
-        tasks={AITask.ITINERARY_GENERATE: itinerary, AITask.TRIP_REPLAN: itinerary},
+        tasks={
+            AITask.ITINERARY_GENERATE: itinerary,
+            AITask.TRIP_REPLAN: itinerary,
+            AITask.POST_TRANSLATE: TaskConfig(
+                model=settings.ai_translation_model,
+                max_tokens=8000,
+                effort=settings.ai_translation_effort,
+                timeout_seconds=min(settings.ai_timeout_seconds, 60.0),
+            ),
+        },
         policy=ai_service.SpendPolicy(
             daily_budget_micros=round(settings.ai_daily_budget_usd * 1_000_000),
             breaker_failures=settings.ai_breaker_failures,

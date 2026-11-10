@@ -125,6 +125,8 @@ class Settings(BaseSettings):
     ai_itinerary_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
     ai_itinerary_max_tokens: int = Field(default=16000, ge=1024, le=64000)
     ai_timeout_seconds: float = Field(default=180.0, gt=0, le=600)
+    ai_translation_model: str = "claude-opus-5-5"
+    ai_translation_effort: Literal["low", "medium", "high", "xhigh", "max"] = "low"
     # Server-side refusal fallback (`fallbacks: "default"`, Claude API only; off for proxies).
     ai_refusal_fallback: bool = True
     # Global spend circuit breaker (AI-009): new generations stop once today's spend (UTC) reaches

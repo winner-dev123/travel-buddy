@@ -719,6 +719,9 @@ erDiagram
 ### offline_package_licenses
 `id`, `user_id`, `package_id`, `device_id`, `granted_at`, `expires_at NULL`, `revoked_at`. `uq (user_id, package_id, device_id)`. Count of active licenses per user is checked against the entitlement quota.
 
+### post_translations
+`post_id FK→posts CASCADE`, `target_language`, `source_language`, `body_hash` (sha256 of the post text the translation was made from; a mismatch means the post was edited and the translation is redone), `text`, `model`, `created_at`. PK `(post_id, target_language)` (migration 0033). A cache of machine translations shown with the "machine-translated" label (POST-010); the original post is never modified.
+
 ### ai_generations
 `id`, `user_id FK SET NULL`, `feature` (`itinerary_generate`, `trip_replan`, `assistant_chat`, `challenge_judge`, `post_translate`), `provider`, `model` (the model that answered), `prompt_version`, `status` (`pending`, `succeeded`, `validation_failed`, `provider_error`, `refused`, `quota_exceeded`, `unavailable`), `locale`, `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_write_tokens`, `cost_micros bigint`, `latency_ms`, `attempts smallint` (1, or 2 after the repair retry), `error_code` (`ai_output_invalid`, `ai_unavailable`), `validation_errors jsonb` (locations and reasons only, never model output), `params jsonb NULL` (the typed request, cleared when the generation finishes), `result jsonb NULL` (the validated `ItineraryProposal` the owner polls, cleared after 30 days), `request_id`, `provider_request_id`, `created_at`, `completed_at` (migration 0030, ADR-0024). **No raw prompt or response** is stored. Optional debug capture would go to a separate `ai_generation_payloads` table with a 30-day TTL, disabled in production by default (not built). Indexes: `ix (user_id, feature, created_at DESC)` for quota counting, `ix (created_at)` for the daily spend breaker. Breakers also read `completed_at`.
 
@@ -833,6 +836,7 @@ erDiagram
 | content_reports + evidence | 12 months after resolution, unless under legal hold | Scheduler job |
 | moderation_actions | 3 years (repeat-offender detection) | Scheduler job |
 | audit_logs | 24 months (configurable per jurisdiction) | Partition drop |
+| post_translations | 90 days (recomputed on demand) | Scheduler job |
 | ai_generations (metadata) | 13 months; `result` (validated proposal) 30 days; `params` until the generation finishes; `pending` rows fail after a day. Payload debug capture 30 days | Scheduler job |
 | billing_events, purchases, subscriptions | 7 years (accounting/tax; legal review). Pseudonymized on account deletion | Pseudonymization job |
 | Messages | Life of the conversation. On account deletion: bodies and attachments of the deleted user are erased, and the sender is shown as "Deleted user" | Hidden at read time as soon as the account is gone; the daily `retention.messaging` job turns them into tombstones and drops direct chats with no members left |

@@ -82,3 +82,20 @@ class AIGeneration(Base):
     provider_request_id: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class PostTranslation(Base):
+    """Cached machine translation of a post into one language (POST-010). Reused while the post's
+    text is unchanged (``body_hash``); the original is never replaced."""
+
+    __tablename__ = "post_translations"
+
+    post_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("posts.id", ondelete="CASCADE"), primary_key=True
+    )
+    target_language: Mapped[str] = mapped_column(Text, primary_key=True)
+    source_language: Mapped[str] = mapped_column(Text)
+    body_hash: Mapped[str] = mapped_column(Text)
+    text: Mapped[str] = mapped_column(Text)
+    model: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

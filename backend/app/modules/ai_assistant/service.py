@@ -28,12 +28,14 @@ from typing import Any, Literal
 
 from pydantic import ValidationError
 from sqlalchemy import func, select, update
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.errors import AppError, ErrorCode, FieldError, build_problem
 from app.core.request_context import current_request_id
 from app.core.security.principal import Principal
 from app.core.time import Clock
+from app.modules.ai_assistant import translation
 from app.modules.ai_assistant.domain import (
     DRAFT_SCHEMA,
     MAX_DAYS,
@@ -47,7 +49,7 @@ from app.modules.ai_assistant.domain import (
     schema_errors,
     semantic_errors,
 )
-from app.modules.ai_assistant.models import AIGeneration
+from app.modules.ai_assistant.models import AIGeneration, PostTranslation
 from app.modules.ai_assistant.provider import (
     AIProvider,
     AITask,
@@ -60,11 +62,14 @@ from app.modules.ai_assistant.schemas import (
     AIGenerationOut,
     GenerateItineraryRequest,
     ItineraryProposal,
+    TranslationOut,
 )
 from app.modules.billing import service as billing
 from app.modules.billing.schemas import QuotaStatusOut
 from app.modules.destinations import service as destinations
+from app.modules.identity import service as identity
 from app.modules.platform import service as platform
+from app.modules.social import service as social
 
 GENERATE_ROUTE = "POST /v1/ai/itineraries/generate"
 REQUESTED_EVENT = "ai.generation_requested"
@@ -93,6 +98,14 @@ _FAILURES: Mapping[str, tuple[ErrorCode, str]] = {
     "unavailable": (
         ErrorCode.AI_UNAVAILABLE,
         "The travel assistant isn't available right now. Try again later.",
+    ),
+}
+_TRANSLATION_FAILURES: Mapping[str, tuple[ErrorCode, str]] = {
+    "validation_failed": (ErrorCode.AI_OUTPUT_INVALID, "The translation didn't work. Try again."),
+    "refused": (ErrorCode.AI_OUTPUT_INVALID, "This post can't be translated."),
+    "provider_error": (
+        ErrorCode.AI_UNAVAILABLE,
+        "Translation isn't available right now. Try again later.",
     ),
 }
 _FAILURE_STATUS: Mapping[ErrorCode, int] = {
@@ -384,6 +397,111 @@ class AIService:
                 self._close(row, "provider_error", now)
             return self._out(row, await quota_status(session, user_id, AITask(row.feature), now))
 
+    # ─────────────────────────────── post translation ───────────────────────────────
+
+    async def translate_post(
+        self, viewer_id: uuid.UUID, post_id: uuid.UUID, target: str
+    ) -> TranslationOut:
+        """A labelled machine translation of a post the viewer can see (POST-010, I18N-006).
+        Needs the viewer's ``post_translation`` consent; the cached translation is reused while
+        the post's text is unchanged."""
+        now = self._clock.now()
+        async with self._sessionmaker() as session:
+            post = await social.visible_post(session, post_id, viewer_id)
+            if not await identity.consent_granted(session, viewer_id, "post_translation"):
+                raise AppError(
+                    ErrorCode.CONSENT_REQUIRED,
+                    "Turn on post translation in your settings first.",
+                    extensions={"consent_type": "post_translation"},
+                )
+            text, source = post.body.strip(), post.language
+            if not text:
+                raise _invalid("/target", "This post has no text to translate.")
+            if translation.same_language(source, target):
+                raise _invalid("/target", "This post is already in that language.")
+            digest = translation.body_hash(post.body)
+            cached = await session.get(PostTranslation, (post_id, target))
+            if cached is not None and cached.body_hash == digest:
+                return _translation(post_id, source, target, cached.text, cached.model)
+            provider = await self._guard(session, now)
+
+        config = self._tasks[AITask.POST_TRANSLATE]
+        run = _Run(model=config.model)
+        status, result = "provider_error", None
+        started = time.monotonic()
+        try:
+            completion = await provider.complete(
+                task=AITask.POST_TRANSLATE,
+                config=config,
+                prompt=translation.build_prompt(
+                    text, source_language=source, target_language=target
+                ),
+                schema=translation.SCHEMA,
+            )
+            run.attempts, run.usage, run.model = 1, completion.usage, completion.model
+            run.provider_request_id = completion.provider_request_id
+            status = "refused" if completion.refused else "validation_failed"
+            if not completion.refused:
+                try:
+                    draft = translation.TranslationDraft.model_validate_json(completion.text or "")
+                except ValidationError:
+                    pass
+                else:
+                    if translation.plausible(draft.text, text):
+                        status, result = "succeeded", draft.text
+        except ProviderError:
+            status = "provider_error"
+        latency_ms = int((time.monotonic() - started) * 1000)
+
+        finished = self._clock.now()
+        async with self._sessionmaker() as session, session.begin():
+            session.add(
+                AIGeneration(
+                    user_id=viewer_id,
+                    feature=AITask.POST_TRANSLATE.value,
+                    provider=provider.name,
+                    model=run.model,
+                    prompt_version=translation.PROMPT_VERSION,
+                    status=status,
+                    locale=target,
+                    input_tokens=run.usage.input_tokens,
+                    output_tokens=run.usage.output_tokens,
+                    cache_read_tokens=run.usage.cache_read_tokens,
+                    cache_write_tokens=run.usage.cache_write_tokens,
+                    cost_micros=cost_micros(run.model, run.usage),
+                    latency_ms=latency_ms,
+                    attempts=run.attempts,
+                    error_code=(
+                        None if status == "succeeded" else _TRANSLATION_FAILURES[status][0].value
+                    ),
+                    validation_errors=[],
+                    request_id=current_request_id(),
+                    provider_request_id=run.provider_request_id,
+                    created_at=now,
+                    completed_at=finished,
+                )
+            )
+            if result is not None:
+                fields = {
+                    "source_language": source,
+                    "body_hash": digest,
+                    "text": result,
+                    "model": run.model,
+                    "created_at": finished,
+                }
+                await session.execute(
+                    insert(PostTranslation)
+                    .values(post_id=post_id, target_language=target, **fields)
+                    .on_conflict_do_update(
+                        index_elements=[PostTranslation.post_id, PostTranslation.target_language],
+                        set_=fields,
+                    )
+                )
+        if result is None:
+            code, detail = _TRANSLATION_FAILURES[status]
+            raise AppError(code, detail)
+        return _translation(post_id, source, target, result, run.model)
+
     # ─────────────────────────────── the job ───────────────────────────────
 
     def _close(self, row: AIGeneration, status: str, now: datetime) -> None:
@@ -546,6 +664,20 @@ class AIService:
         return "validation_failed", None
 
 
+def _translation(
+    post_id: uuid.UUID, source: str, target: str, text: str, model: str
+) -> TranslationOut:
+    return TranslationOut(
+        post_id=post_id,
+        source_language=source,
+        target_language=target,
+        text=text,
+        provider_attribution=(
+            "Machine translation by Claude (Anthropic)" if model.startswith("claude") else None
+        ),
+    )
+
+
 def _lock_key(user_id: uuid.UUID) -> int:
     return int.from_bytes(user_id.bytes[:4], "big", signed=True)
 
@@ -564,7 +696,7 @@ def subscribe(router: platform.EventRouter) -> None:
 
 async def purge_expired(session: AsyncSession) -> int:
     """Retention (docs/04 §14): stuck ``pending`` rows fail after a day, proposals go after 30
-    days, telemetry after 13 months."""
+    days, telemetry after 13 months, cached post translations after 90 days."""
     stuck = await session.execute(
         update(AIGeneration)
         .where(AIGeneration.status == "pending", AIGeneration.created_at < platform.ago(days=1))
@@ -583,10 +715,14 @@ async def purge_expired(session: AsyncSession) -> int:
     removed = await platform.delete_batch(
         session, AIGeneration, AIGeneration.created_at < platform.ago(days=400)
     )
+    translations = await platform.delete_batch(
+        session, PostTranslation, PostTranslation.created_at < platform.ago(days=90)
+    )
     return (
         int(getattr(stuck, "rowcount", 0) or 0)
         + int(getattr(proposals, "rowcount", 0) or 0)
         + removed
+        + translations
     )
 
 

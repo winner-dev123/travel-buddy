@@ -314,7 +314,14 @@
     "commentsCount_many": "{{count}} de comentários",
     "commentsCount_other": "{{count}} comentários",
     "report": "Denunciar esta história",
-    "authorA11y": "Abrir o perfil de {{name}}"
+    "authorA11y": "Abrir o perfil de {{name}}",
+    "translate": "Traduzir",
+    "translating": "Traduzindo…",
+    "translatedFrom": "Tradução automática do {{language}}",
+    "showOriginal": "Ver original",
+    "translationConsent": "As traduções são feitas por IA e precisam da sua permissão.",
+    "allowTranslation": "Permitir traduções",
+    "translationFailed": "A tradução não funcionou."
   },
   "compose": {
     "open": "Compartilhar uma história",

@@ -156,3 +156,14 @@ class AIGenerationOut(_Out):
     result: ItineraryProposal | None
     error: dict[str, Any] | None
     quota: QuotaStatusOut
+
+
+class TranslationOut(_Out):
+    """Contract ``Translation``: always labelled as machine-made (I18N-006)."""
+
+    post_id: uuid.UUID
+    source_language: str
+    target_language: str
+    text: str
+    machine_translated: Literal[True] = True
+    provider_attribution: str | None

@@ -311,7 +311,14 @@
     "commentsCount_one": "{{count}} comment",
     "commentsCount_other": "{{count}} comments",
     "report": "Report this story",
-    "authorA11y": "Open {{name}}'s profile"
+    "authorA11y": "Open {{name}}'s profile",
+    "translate": "Translate",
+    "translating": "Translating…",
+    "translatedFrom": "Machine-translated from {{language}}",
+    "showOriginal": "Show original",
+    "translationConsent": "Translations are made by AI and need your OK.",
+    "allowTranslation": "Allow translations",
+    "translationFailed": "Translation didn't work."
   },
   "compose": {
     "open": "Share a story",

@@ -314,7 +314,14 @@
     "commentsCount_many": "{{count}} de commentaires",
     "commentsCount_other": "{{count}} commentaires",
     "report": "Signaler ce récit",
-    "authorA11y": "Ouvrir le profil de {{name}}"
+    "authorA11y": "Ouvrir le profil de {{name}}",
+    "translate": "Traduire",
+    "translating": "Traduction…",
+    "translatedFrom": "Traduit automatiquement depuis : {{language}}",
+    "showOriginal": "Voir l'original",
+    "translationConsent": "Les traductions sont faites par une IA et nécessitent votre accord.",
+    "allowTranslation": "Autoriser les traductions",
+    "translationFailed": "La traduction n'a pas fonctionné."
   },
   "compose": {
     "open": "Partager un récit",

@@ -109,3 +109,35 @@ export async function searchDestinations(
   });
   return page.data;
 }
+
+/** Contract `Translation`: always machine-made, never replaces the original (POST-010). */
+export interface PostTranslation {
+  post_id: string;
+  source_language: string;
+  target_language: string;
+  text: string;
+  machine_translated: true;
+  provider_attribution?: string | null;
+}
+
+/** Version of the post-translation consent text (I18N-006). */
+export const TRANSLATION_CONSENT_VERSION = '2026-11-01';
+
+export function translatePost(
+  client: ApiClient,
+  postId: string,
+  target: string,
+): Promise<PostTranslation> {
+  return client.get<PostTranslation>(`/v1/posts/${postId}/translation`, { query: { target } });
+}
+
+export async function allowTranslation(client: ApiClient): Promise<void> {
+  await client.post('/v1/users/me/consents', {
+    body: {
+      consent_type: 'post_translation',
+      version: TRANSLATION_CONSENT_VERSION,
+      granted: true,
+      source: 'prompt',
+    },
+  });
+}

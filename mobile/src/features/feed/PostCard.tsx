@@ -7,6 +7,7 @@ import { getApiClient } from '@/api';
 import { useAppTheme } from '@/theme/useAppTheme';
 
 import { setReaction } from './api';
+import { TranslatableBody } from './TranslatableBody';
 import type { MediaRef, Post, UserSummary } from './types';
 
 export function Avatar({ user, size = 40 }: { user: UserSummary | null; size?: number }) {
@@ -122,11 +123,7 @@ export function PostCard({ post, onOpen, onOpenAuthor, interactive = true }: Pos
           </Text>
         </View>
       </Pressable>
-      {post.body ? (
-        <Text style={[theme.typography.body, { color: theme.colors.textPrimary }]}>
-          {post.body}
-        </Text>
-      ) : null}
+      {post.body ? <TranslatableBody post={post} enabled={interactive} /> : null}
       {post.media[0] ? <MediaPreview media={post.media[0]} /> : null}
       {post.tags.length > 0 ? (
         <Text style={[theme.typography.caption, { color: theme.colors.primary }]}>

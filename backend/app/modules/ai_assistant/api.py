@@ -5,14 +5,18 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, Request, status
+from fastapi import APIRouter, Depends, Header, Query, Request, status
 from fastapi.responses import JSONResponse
 
 from app.core.i18n import negotiate_ui_locale, parse_accept_language
 from app.core.ratelimit.http import rate_limited
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
-from app.modules.ai_assistant.schemas import AIGenerationOut, GenerateItineraryRequest
+from app.modules.ai_assistant.schemas import (
+    AIGenerationOut,
+    GenerateItineraryRequest,
+    TranslationOut,
+)
 from app.modules.ai_assistant.service import AIService
 
 router = APIRouter(prefix="/v1/ai", tags=["ai"])
@@ -55,3 +59,20 @@ async def get_generation(
     generation_id: uuid.UUID, request: Request, principal: CurrentPrincipal
 ) -> AIGenerationOut:
     return await _service(request).get(principal.user_id, generation_id)
+
+
+# Machine translation of a post (POST-010). Lives here because it calls the AI provider; the
+# social module owns the post itself.
+posts_router = APIRouter(prefix="/v1/posts", tags=["posts"])
+
+
+@posts_router.get(
+    "/{post_id}/translation", response_model=TranslationOut, openapi_extra=rate_limited("ai")
+)
+async def translate_post(
+    post_id: uuid.UUID,
+    request: Request,
+    principal: CurrentPrincipal,
+    target: Annotated[str, Query(max_length=35, pattern=r"^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$")],
+) -> TranslationOut:
+    return await _service(request).translate_post(principal.user_id, post_id, target)

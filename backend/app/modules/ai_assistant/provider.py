@@ -31,6 +31,7 @@ Effort = Literal["low", "medium", "high", "xhigh", "max"]
 class AITask(StrEnum):
     ITINERARY_GENERATE = "itinerary_generate"
     TRIP_REPLAN = "trip_replan"
+    POST_TRANSLATE = "post_translate"
 
 
 @dataclass(frozen=True, slots=True)
@@ -254,10 +255,19 @@ def fake_itinerary(prompt: Prompt) -> str:
     return json.dumps({"days": days, "warnings": [], "confidence": 0.7})
 
 
+def fake_translation(prompt: Prompt) -> str:
+    """Development/test answer: the text, tagged with the target language."""
+    payload = json.loads(prompt.user)
+    return json.dumps({"text": f"[{payload['target_language']}] {payload['text']}"})
+
+
 @dataclass
 class FakeAIProvider:
     responders: dict[AITask, Responder] = field(
-        default_factory=lambda: {AITask.ITINERARY_GENERATE: fake_itinerary}
+        default_factory=lambda: {
+            AITask.ITINERARY_GENERATE: fake_itinerary,
+            AITask.POST_TRANSLATE: fake_translation,
+        }
     )
     calls: list[Prompt] = field(default_factory=list)
     _script: deque[Scripted] = field(default_factory=deque)

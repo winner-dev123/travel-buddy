@@ -1105,3 +1105,11 @@ async def purge_realtime_tickets(session: AsyncSession) -> int:
         delete(RealtimeTicket).where(RealtimeTicket.expires_at < func.now())
     )
     return int(getattr(result, "rowcount", 0) or 0)
+
+
+async def consent_granted(session: AsyncSession, user_id: uuid.UUID, consent_type: str) -> bool:
+    """Whether the user's latest ledger record for ``consent_type`` grants it (opt-in features)."""
+    return any(
+        record.consent_type == consent_type and record.granted
+        for record in await repo.latest_consents(session, user_id)
+    )
