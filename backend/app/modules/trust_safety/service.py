@@ -561,3 +561,39 @@ async def export_user_data(
             exclude=("assigned_to", "resolved_by", "evidence", "target_author_id", "priority"),
         ),
     }
+
+
+async def report_queue_stats(session: AsyncSession, now: datetime) -> dict[str, object]:
+    """The moderation queue for the ops summary (ADM-006, SAFE-003)."""
+    from sqlalchemy import func as fn
+
+    from app.modules.trust_safety.models import ContentReport
+
+    waiting = ContentReport.status.in_(("open", "in_review"))
+    total, unassigned, oldest = (
+        await session.execute(
+            select(
+                fn.count(),
+                fn.count().filter(ContentReport.assigned_to.is_(None)),
+                fn.min(ContentReport.created_at),
+            ).where(waiting)
+        )
+    ).one()
+    by_priority = {
+        str(priority): int(count)
+        for priority, count in (
+            await session.execute(
+                select(ContentReport.priority, fn.count())
+                .where(waiting)
+                .group_by(ContentReport.priority)
+            )
+        ).all()
+    }
+    return {
+        "open_reports": int(total),
+        "unassigned_reports": int(unassigned),
+        "oldest_open_age_seconds": (
+            max(0, int((now - oldest).total_seconds())) if oldest else None
+        ),
+        "open_by_priority": by_priority,
+    }

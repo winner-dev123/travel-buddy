@@ -140,3 +140,32 @@ class DevBillingEventRequest(_Request):
     ]
     event_id: str | None = Field(default=None, max_length=200)
     signed_date: datetime | None = None
+
+
+class EntitlementGrantOut(BaseModel):
+    """Contract ``EntitlementGrant`` (BILL-009)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: uuid.UUID
+    user_id: uuid.UUID | None
+    entitlement_key: str
+    source_type: Literal["promo", "admin_grant"]
+    starts_at: datetime
+    ends_at: datetime | None
+    revoked_at: datetime | None
+    created_at: datetime
+
+
+class EntitlementGrantList(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    data: list[EntitlementGrantOut]
+
+
+class GrantEntitlementRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    entitlement_key: str = Field(pattern=r"^(premium|content:[a-z_]+:[a-z0-9_-]{1,60})$")
+    ends_at: datetime
+    reason: str = Field(min_length=10, max_length=500)

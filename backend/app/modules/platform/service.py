@@ -29,6 +29,7 @@ from app.modules.platform.jobs import (
     enqueue,
 )
 from app.modules.platform.models import OutboxEvent
+from app.modules.platform.ops import ops_stats
 from app.modules.platform.ratelimit import PostgresRateLimitStore
 from app.modules.platform.retention import (
     DAILY,
@@ -56,6 +57,7 @@ __all__ = [
     "export_rows",
     "idempotency",
     "jsonable",
+    "ops_stats",
     "purge_platform",
     "record_event",
     "retention_handler",

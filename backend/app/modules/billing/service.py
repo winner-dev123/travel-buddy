@@ -21,7 +21,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.core.errors import AppError, ErrorCode
+from app.core.errors import AppError, ErrorCode, FieldError
 from app.core.security.principal import Principal
 from app.core.time import Clock
 from app.modules.billing.apple import (
@@ -65,6 +65,7 @@ from app.modules.billing.providers import BillingProvider, PurchaseClaim, StoreT
 from app.modules.billing.schemas import (
     ActiveSubscription,
     EntitlementFeatures,
+    EntitlementGrantOut,
     EntitlementQuotas,
     Entitlements,
     ProductOut,
@@ -896,3 +897,75 @@ async def export_user_data(
             session, SubscriptionEntitlement, SubscriptionEntitlement.user_id == user_id
         ),
     }
+
+
+# ─────────────────────────── staff grants (BILL-009) ───────────────────────────
+
+MAX_GRANT = timedelta(days=366)
+
+
+def _grant_out(row: SubscriptionEntitlement) -> EntitlementGrantOut:
+    return EntitlementGrantOut(
+        id=row.id,
+        user_id=row.user_id,
+        entitlement_key=row.entitlement_key,
+        source_type=row.source_type,  # type: ignore[arg-type]
+        starts_at=row.starts_at,
+        ends_at=row.ends_at,
+        revoked_at=row.revoked_at,
+        created_at=row.created_at,
+    )
+
+
+async def grant_entitlement(
+    session: AsyncSession, user_id: uuid.UUID, *, key: str, ends_at: datetime, now: datetime
+) -> EntitlementGrantOut:
+    """A time-limited promotional grant (the admin module audits it in the same transaction)."""
+    if ends_at <= now or ends_at > now + MAX_GRANT:
+        raise AppError(
+            ErrorCode.VALIDATION_FAILED,
+            "A grant ends within the next year.",
+            errors=[
+                FieldError(
+                    field="/ends_at", code="range", message="Pick an end date within a year."
+                )
+            ],
+        )
+    grant_id = uuid.uuid4()
+    row = SubscriptionEntitlement(
+        id=grant_id,
+        user_id=user_id,
+        entitlement_key=key,
+        source_type=GrantSource.ADMIN_GRANT,
+        source_id=grant_id,
+        starts_at=now,
+        ends_at=ends_at,
+        created_at=now,
+    )
+    session.add(row)
+    await session.flush()
+    return _grant_out(row)
+
+
+async def staff_grants(session: AsyncSession, user_id: uuid.UUID) -> list[EntitlementGrantOut]:
+    rows = await session.scalars(
+        select(SubscriptionEntitlement)
+        .where(
+            SubscriptionEntitlement.user_id == user_id,
+            SubscriptionEntitlement.source_type.in_((GrantSource.PROMO, GrantSource.ADMIN_GRANT)),
+        )
+        .order_by(SubscriptionEntitlement.created_at.desc())
+    )
+    return [_grant_out(r) for r in rows]
+
+
+async def revoke_staff_grant(
+    session: AsyncSession, grant_id: uuid.UUID, *, now: datetime
+) -> EntitlementGrantOut:
+    row = await session.get(SubscriptionEntitlement, grant_id, with_for_update=True)
+    if row is None or row.source_type not in (GrantSource.PROMO, GrantSource.ADMIN_GRANT):
+        raise AppError(ErrorCode.NOT_FOUND, "Grant not found.")
+    if row.revoked_at is None:
+        row.revoked_at = now
+        await session.flush()
+    return _grant_out(row)

@@ -5894,6 +5894,99 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/admin/users/{userId}/entitlement-grants:
+    get:
+      tags: [admin]
+      operationId: adminListEntitlementGrants
+      summary: Promotional and staff grants of a user (active and past)
+      x-phase: 6
+      x-requirements: [BILL-009, ADM-007]
+      x-rate-limit-class: admin
+      x-platform-permission: entitlements.grant
+      parameters:
+        - $ref: '#/components/parameters/AuditJustification'
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Grants, newest first.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EntitlementGrantList' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [admin]
+      operationId: adminGrantEntitlement
+      summary: Grant a promotional entitlement for a limited time (audited)
+      description: Grants end on `ends_at` (at most one year away) and can be revoked. The user's entitlements change at once.
+      x-phase: 6
+      x-requirements: [BILL-009, ADM-007, ADM-008]
+      x-rate-limit-class: admin
+      x-platform-permission: entitlements.grant
+      parameters:
+        - $ref: '#/components/parameters/AuditJustification'
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GrantEntitlementRequest' }
+      responses:
+        '201':
+          description: Granted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EntitlementGrant' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/admin/entitlement-grants/{grantId}/revoke:
+    post:
+      tags: [admin]
+      operationId: adminRevokeEntitlementGrant
+      summary: Revoke a promotional or staff grant (audited)
+      x-phase: 6
+      x-requirements: [BILL-009, ADM-007, ADM-008]
+      x-rate-limit-class: admin
+      x-platform-permission: entitlements.grant
+      parameters:
+        - $ref: '#/components/parameters/AuditJustification'
+        - name: grantId
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+      responses:
+        '200':
+          description: Revoked.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EntitlementGrant' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/admin/ops/summary:
+    get:
+      tags: [admin]
+      operationId: adminOpsSummary
+      summary: Operational health at a glance (moderation queue, outbox lag, job failures)
+      x-phase: 6
+      x-requirements: [ADM-006]
+      x-rate-limit-class: admin
+      x-platform-permission: audit.read
+      responses:
+        '200':
+          description: Current figures.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OpsSummary' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/admin/audit-logs:
     get:
       tags: [admin]
@@ -9260,6 +9353,59 @@ components:
         reason_code: { type: string, maxLength: 40 }
         notes: { type: string, minLength: 3, maxLength: 2000 }
         until: { $ref: '#/components/schemas/NullableTimestamp' }
+    GrantEntitlementRequest:
+      type: object
+      additionalProperties: false
+      required: [entitlement_key, ends_at, reason]
+      properties:
+        entitlement_key: { type: string, pattern: '^(premium|content:[a-z_]+:[a-z0-9_-]{1,60})$' }
+        ends_at: { $ref: '#/components/schemas/Timestamp' }
+        reason: { type: string, minLength: 10, maxLength: 500 }
+    EntitlementGrant:
+      type: object
+      required: [id, user_id, entitlement_key, source_type, starts_at, ends_at, revoked_at, created_at]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        user_id: { type: [string, 'null'], format: uuid }
+        entitlement_key: { type: string }
+        source_type: { type: string, enum: [promo, admin_grant] }
+        starts_at: { $ref: '#/components/schemas/Timestamp' }
+        ends_at: { $ref: '#/components/schemas/NullableTimestamp' }
+        revoked_at: { $ref: '#/components/schemas/NullableTimestamp' }
+        created_at: { $ref: '#/components/schemas/Timestamp' }
+    EntitlementGrantList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/EntitlementGrant' } }
+    OpsSummary:
+      type: object
+      required: [generated_at, moderation, outbox, jobs]
+      properties:
+        generated_at: { $ref: '#/components/schemas/Timestamp' }
+        moderation:
+          type: object
+          required: [open_reports, unassigned_reports, oldest_open_age_seconds, open_by_priority]
+          properties:
+            open_reports: { type: integer, minimum: 0 }
+            unassigned_reports: { type: integer, minimum: 0 }
+            oldest_open_age_seconds: { type: [integer, 'null'], minimum: 0 }
+            open_by_priority: { type: object, additionalProperties: { type: integer, minimum: 0 } }
+        outbox:
+          type: object
+          required: [unpublished_events, oldest_unpublished_age_seconds]
+          properties:
+            unpublished_events: { type: integer, minimum: 0 }
+            oldest_unpublished_age_seconds: { type: [integer, 'null'], minimum: 0 }
+        jobs:
+          type: object
+          required: [queued_due, running, failed_last_24h, dead_last_24h, oldest_due_age_seconds]
+          properties:
+            queued_due: { type: integer, minimum: 0 }
+            running: { type: integer, minimum: 0 }
+            failed_last_24h: { type: integer, minimum: 0 }
+            dead_last_24h: { type: integer, minimum: 0 }
+            oldest_due_age_seconds: { type: [integer, 'null'], minimum: 0 }
     AuditLogEntry:
       type: object
       required: [id, occurred_at, actor_id, actor_type, action, resource_type, resource_id, scope_group_id, request_id, metadata]

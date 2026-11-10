@@ -3418,6 +3418,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/users/{userId}/entitlement-grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Promotional and staff grants of a user (active and past) */
+        get: operations["adminListEntitlementGrants"];
+        put?: never;
+        /**
+         * Grant a promotional entitlement for a limited time (audited)
+         * @description Grants end on `ends_at` (at most one year away) and can be revoked. The user's entitlements change at once.
+         */
+        post: operations["adminGrantEntitlement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/entitlement-grants/{grantId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke a promotional or staff grant (audited) */
+        post: operations["adminRevokeEntitlementGrant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/ops/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Operational health at a glance (moderation queue, outbox lag, job failures) */
+        get: operations["adminOpsSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/audit-logs": {
         parameters: {
             query?: never;
@@ -5918,6 +5973,48 @@ export interface components {
             reason_code: string;
             notes: string;
             until: components["schemas"]["NullableTimestamp"];
+        };
+        GrantEntitlementRequest: {
+            entitlement_key: string;
+            ends_at: components["schemas"]["Timestamp"];
+            reason: string;
+        };
+        EntitlementGrant: {
+            id: components["schemas"]["Uuid"];
+            /** Format: uuid */
+            user_id: string | null;
+            entitlement_key: string;
+            /** @enum {string} */
+            source_type: "promo" | "admin_grant";
+            starts_at: components["schemas"]["Timestamp"];
+            ends_at: components["schemas"]["NullableTimestamp"];
+            revoked_at: components["schemas"]["NullableTimestamp"];
+            created_at: components["schemas"]["Timestamp"];
+        };
+        EntitlementGrantList: {
+            data: components["schemas"]["EntitlementGrant"][];
+        };
+        OpsSummary: {
+            generated_at: components["schemas"]["Timestamp"];
+            moderation: {
+                open_reports: number;
+                unassigned_reports: number;
+                oldest_open_age_seconds: number | null;
+                open_by_priority: {
+                    [key: string]: number;
+                };
+            };
+            outbox: {
+                unpublished_events: number;
+                oldest_unpublished_age_seconds: number | null;
+            };
+            jobs: {
+                queued_due: number;
+                running: number;
+                failed_last_24h: number;
+                dead_last_24h: number;
+                oldest_due_age_seconds: number | null;
+            };
         };
         AuditLogEntry: {
             id: components["schemas"]["Uuid"];
@@ -13085,6 +13182,130 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminListEntitlementGrants: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Why the staff member is performing this action or viewing sensitive data (ADM-009). Stored verbatim
+                 *     in `audit_logs.metadata.justification`. Missing or blank → `400 justification_required`.
+                 */
+                "X-Audit-Justification": components["parameters"]["AuditJustification"];
+            };
+            path: {
+                userId: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Grants, newest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntitlementGrantList"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminGrantEntitlement: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Why the staff member is performing this action or viewing sensitive data (ADM-009). Stored verbatim
+                 *     in `audit_logs.metadata.justification`. Missing or blank → `400 justification_required`.
+                 */
+                "X-Audit-Justification": components["parameters"]["AuditJustification"];
+            };
+            path: {
+                userId: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GrantEntitlementRequest"];
+            };
+        };
+        responses: {
+            /** @description Granted. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntitlementGrant"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminRevokeEntitlementGrant: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Why the staff member is performing this action or viewing sensitive data (ADM-009). Stored verbatim
+                 *     in `audit_logs.metadata.justification`. Missing or blank → `400 justification_required`.
+                 */
+                "X-Audit-Justification": components["parameters"]["AuditJustification"];
+            };
+            path: {
+                grantId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntitlementGrant"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminOpsSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current figures. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpsSummary"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
             default: components["responses"]["Problem"];
         };
     };

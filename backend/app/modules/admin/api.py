@@ -20,12 +20,18 @@ from app.modules.admin.schemas import (
     AuditLogEntry,
     ModerationActionOut,
     ModerationActionRequest,
+    OpsSummary,
     ReinstateUserRequest,
     ResolveReportRequest,
     SuspendUserRequest,
     TargetType,
 )
 from app.modules.admin.service import AdminService
+from app.modules.billing.schemas import (
+    EntitlementGrantList,
+    EntitlementGrantOut,
+    GrantEntitlementRequest,
+)
 from app.modules.challenges.schemas import RewardDetail, RewardReviewRequest
 from app.modules.destinations.schemas import Destination
 
@@ -146,6 +152,46 @@ async def admin_get_user(
     who: Annotated[Staff, Depends(staff(Permission.USERS_READ, justified=True))],
 ) -> AdminUser:
     return await _service(request).get_user(who, user_id)
+
+
+@router.get("/users/{user_id}/entitlement-grants", response_model=EntitlementGrantList)
+async def admin_list_entitlement_grants(
+    user_id: uuid.UUID,
+    request: Request,
+    who: Annotated[Staff, Depends(staff(Permission.ENTITLEMENTS_GRANT, justified=True))],
+) -> EntitlementGrantList:
+    return await _service(request).grants(who, user_id)
+
+
+@router.post(
+    "/users/{user_id}/entitlement-grants",
+    status_code=status.HTTP_201_CREATED,
+    response_model=EntitlementGrantOut,
+)
+async def admin_grant_entitlement(
+    user_id: uuid.UUID,
+    body: GrantEntitlementRequest,
+    request: Request,
+    who: Annotated[Staff, Depends(staff(Permission.ENTITLEMENTS_GRANT, justified=True))],
+) -> EntitlementGrantOut:
+    return await _service(request).grant(who, user_id, body)
+
+
+@router.post("/entitlement-grants/{grant_id}/revoke", response_model=EntitlementGrantOut)
+async def admin_revoke_entitlement_grant(
+    grant_id: uuid.UUID,
+    request: Request,
+    who: Annotated[Staff, Depends(staff(Permission.ENTITLEMENTS_GRANT, justified=True))],
+) -> EntitlementGrantOut:
+    return await _service(request).revoke_grant(who, grant_id)
+
+
+@router.get("/ops/summary", response_model=OpsSummary)
+async def admin_ops_summary(
+    request: Request,
+    _who: Annotated[Staff, Depends(staff(Permission.AUDIT_READ))],
+) -> OpsSummary:
+    return await _service(request).ops_summary()
 
 
 @router.get("/audit-logs", response_model=Page[AuditLogEntry])

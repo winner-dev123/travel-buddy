@@ -26,8 +26,15 @@ from app.modules.admin.schemas import (
     AuditLogEntry,
     ModerationActionOut,
     ModerationActionRequest,
+    OpsSummary,
     ResolveReportRequest,
     SuspendUserRequest,
+)
+from app.modules.billing import service as billing
+from app.modules.billing.schemas import (
+    EntitlementGrantList,
+    EntitlementGrantOut,
+    GrantEntitlementRequest,
 )
 from app.modules.challenges import service as challenges
 from app.modules.challenges.schemas import RewardDetail, RewardReviewRequest
@@ -350,6 +357,55 @@ class AdminService:
             out = await self._user(session, user_id)
             _audit(session, staff, "user.viewed", "user", user_id)
             return out
+
+    async def grants(self, staff: Staff, user_id: uuid.UUID) -> EntitlementGrantList:
+        async with self._sessionmaker() as session, session.begin():
+            if not await identity.is_active(session, user_id):
+                raise AppError(ErrorCode.NOT_FOUND, "User not found.")
+            data = await billing.staff_grants(session, user_id)
+            _audit(session, staff, "entitlement_grants.viewed", "user", user_id)
+        return EntitlementGrantList(data=data)
+
+    async def grant(
+        self, staff: Staff, user_id: uuid.UUID, request: GrantEntitlementRequest
+    ) -> EntitlementGrantOut:
+        """BILL-009: time-limited, audited with the reason and the staff justification."""
+        async with self._sessionmaker() as session, session.begin():
+            if not await identity.is_active(session, user_id):
+                raise AppError(ErrorCode.NOT_FOUND, "User not found.")
+            grant = await billing.grant_entitlement(
+                session,
+                user_id,
+                key=request.entitlement_key,
+                ends_at=request.ends_at,
+                now=self._clock.now(),
+            )
+            _audit(
+                session,
+                staff,
+                "entitlement.granted",
+                "user",
+                user_id,
+                grant_id=str(grant.id),
+                entitlement_key=grant.entitlement_key,
+                ends_at=request.ends_at.isoformat(),
+                reason=request.reason,
+            )
+        return grant
+
+    async def revoke_grant(self, staff: Staff, grant_id: uuid.UUID) -> EntitlementGrantOut:
+        async with self._sessionmaker() as session, session.begin():
+            grant = await billing.revoke_staff_grant(session, grant_id, now=self._clock.now())
+            _audit(session, staff, "entitlement.revoked", "entitlement_grant", grant_id)
+        return grant
+
+    async def ops_summary(self) -> OpsSummary:
+        """ADM-006: moderation queue, outbox lag and job failures right now."""
+        now = self._clock.now()
+        async with self._sessionmaker() as session:
+            moderation = await trust_safety.report_queue_stats(session, now)
+            platform_stats = await platform.ops_stats(session, now)
+        return OpsSummary(generated_at=now, moderation=moderation, **platform_stats)
 
     async def audit_logs(
         self,

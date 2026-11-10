@@ -146,3 +146,12 @@ class AuditLogEntry(_Response):
     scope_group_id: uuid.UUID | None
     request_id: str | None
     metadata: dict[str, Any]
+
+
+class OpsSummary(_Response):
+    """Contract ``OpsSummary`` (ADM-006)."""
+
+    generated_at: datetime
+    moderation: dict[str, Any]
+    outbox: dict[str, Any]
+    jobs: dict[str, Any]
