@@ -8,7 +8,7 @@ import { getApiClient } from '@/api';
 import { mintDevIdToken } from '@/auth/devIdp';
 import { describeAuthError } from '@/auth/errors';
 import { exchangeIdToken } from '@/auth/session';
-import { SupabaseAuthClient } from '@/auth/supabaseAuth';
+import { SupabaseAuthClient, SupabaseAuthError } from '@/auth/supabaseAuth';
 import { Button, Notice, TextField } from '@/components/Form';
 import { getIdentityProviderKind, getSupabaseConfig } from '@/config/env';
 import { useAppTheme } from '@/theme/useAppTheme';
@@ -28,6 +28,8 @@ export default function SignInScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  // After a sign-up, or when sign-in says the email isn't confirmed yet (SCR-002).
+  const [canResend, setCanResend] = useState(false);
   // A build without Supabase settings shows an explicit error instead of crashing.
   const supabase = useMemo(() => {
     if (provider !== 'supabase') {
@@ -77,6 +79,7 @@ export default function SignInScreen() {
         const result = await supabase.signUp(trimmedEmail, password);
         if (result.kind === 'confirmation_sent') {
           setInfo(t('auth.confirmationSent'));
+          setCanResend(true);
           setMode('signIn');
           return;
         }
@@ -91,6 +94,23 @@ export default function SignInScreen() {
         // The Supabase session was only needed for the exchange.
         void supabase.signOut(accessToken);
       }
+    } catch (caught) {
+      setError(describeAuthError(caught, t));
+      if (caught instanceof SupabaseAuthError && caught.code === 'email_not_confirmed') {
+        setCanResend(true);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resend() {
+    if (!supabase || email.trim().length === 0) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await supabase.resendConfirmation(email.trim());
+      setInfo(t('auth.confirmationResent'));
     } catch (caught) {
       setError(describeAuthError(caught, t));
     } finally {
@@ -182,6 +202,15 @@ export default function SignInScreen() {
             disabled={misconfigured}
             testID="sign-in-submit"
           />
+          {provider === 'supabase' && canResend && mode === 'signIn' ? (
+            <Button
+              variant="secondary"
+              label={t('auth.resendConfirmation')}
+              onPress={() => void resend()}
+              disabled={busy || email.trim().length === 0}
+              testID="sign-in-resend"
+            />
+          ) : null}
           {provider === 'supabase' ? (
             <Button
               variant="secondary"

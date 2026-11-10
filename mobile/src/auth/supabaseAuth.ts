@@ -74,6 +74,11 @@ export class SupabaseAuthClient {
   }
 
   /** Ends the Supabase session after the exchange; failures are irrelevant to the user. */
+  /** Send the sign-up confirmation email again (Supabase rate-limits this per address). */
+  async resendConfirmation(email: string): Promise<void> {
+    await this.call('/auth/v1/resend', { type: 'signup', email });
+  }
+
   async signOut(accessToken: string): Promise<void> {
     try {
       await this.fetchImpl(`${this.config.url}/auth/v1/logout?scope=local`, {

@@ -188,7 +188,9 @@
       "unknown": "Something went wrong. Please try again.",
       "missingFields": "Enter your email and password.",
       "notConfigured": "Sign-in is not configured in this build."
-    }
+    },
+    "resendConfirmation": "Resend the confirmation email",
+    "confirmationResent": "We sent another confirmation email. Open the link in it, then sign in."
   },
   "registration": {
     "title": "Almost there",

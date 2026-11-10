@@ -189,7 +189,9 @@
       "unknown": "Algo salió mal. Inténtalo de nuevo.",
       "missingFields": "Introduce tu correo y tu contraseña.",
       "notConfigured": "El inicio de sesión no está configurado en esta versión."
-    }
+    },
+    "resendConfirmation": "Reenviar el correo de confirmación",
+    "confirmationResent": "Te enviamos otro correo de confirmación. Abre el enlace y luego inicia sesión."
   },
   "registration": {
     "title": "Ya casi está",

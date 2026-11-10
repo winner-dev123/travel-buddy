@@ -189,7 +189,9 @@
       "unknown": "Algo deu errado. Tente de novo.",
       "missingFields": "Informe seu e-mail e sua senha.",
       "notConfigured": "O login não está configurado nesta versão."
-    }
+    },
+    "resendConfirmation": "Reenviar o e-mail de confirmação",
+    "confirmationResent": "Enviamos outro e-mail de confirmação. Abra o link e depois entre."
   },
   "registration": {
     "title": "Quase lá",

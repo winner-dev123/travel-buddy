@@ -106,6 +106,21 @@ describe('Supabase Auth client', () => {
     await expect(auth.signInWithPassword('a@b.co', 'x')).rejects.toBeInstanceOf(SupabaseAuthError);
   });
 
+  it('resends the sign-up confirmation and maps the email rate limit', async () => {
+    const fetchImpl = jest.fn(async () => json(200, {}));
+    const auth = new SupabaseAuthClient(config, fetchImpl);
+    await auth.resendConfirmation('ana@example.com');
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('https://proj.supabase.co/auth/v1/resend');
+    expect(JSON.parse(init.body as string)).toEqual({ type: 'signup', email: 'ana@example.com' });
+    const limited = new SupabaseAuthClient(config, async () =>
+      json(429, { error_code: 'over_email_send_rate_limit' }),
+    );
+    await expect(limited.resendConfirmation('a@b.co')).rejects.toMatchObject({
+      code: 'rate_limited',
+    });
+  });
+
   it('treats sign-up without a session as "confirmation sent"', async () => {
     const auth = new SupabaseAuthClient(config, async () =>
       json(200, { id: 'u', email: 'a@b.co' }),
