@@ -5,13 +5,14 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, Request, Response, status
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, Header, Path, Query, Request, Response, status
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.core.ratelimit import rate_limited
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
 from app.modules.identity.adapters.dev_idp import DevIdentityProvider
+from app.modules.identity.exports import DataExportService
 from app.modules.identity.schemas import (
     AccountDeletionRequest,
     AuthResult,
@@ -19,6 +20,7 @@ from app.modules.identity.schemas import (
     ConsentRecordOut,
     ConsentRequest,
     DataSubjectRequestOut,
+    DataSubjectRequestPage,
     DevIdpToken,
     DevIdpTokenRequest,
     Jwks,
@@ -43,6 +45,7 @@ from app.modules.profiles.schemas import (
 
 auth_router = APIRouter(prefix="/v1/auth", tags=["auth"])
 me_router = APIRouter(prefix="/v1/users/me", tags=["me"])
+exports_router = APIRouter(tags=["me"])
 dev_idp_router = APIRouter(prefix="/v1/dev/idp", tags=["auth"])
 
 CurrentPrincipal = Annotated[Principal, Depends(get_principal)]
@@ -164,6 +167,50 @@ async def request_account_deletion(
     return JSONResponse(
         record.model_dump(mode="json"), status_code=status.HTTP_202_ACCEPTED, headers=headers
     )
+
+
+@me_router.post(
+    "/data-exports",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=DataSubjectRequestOut,
+    openapi_extra=rate_limited("sensitive"),
+)
+async def request_data_export(
+    request: Request,
+    principal: CurrentPrincipal,
+    idempotency_key: Annotated[uuid.UUID, Header(alias="Idempotency-Key")],
+) -> JSONResponse:
+    exports: DataExportService = request.app.state.data_export_service
+    record, replayed = await exports.request(principal.user_id, idempotency_key=idempotency_key)
+    headers = {"Idempotent-Replayed": "true"} if replayed else {}
+    return JSONResponse(
+        record.model_dump(mode="json"), status_code=status.HTTP_202_ACCEPTED, headers=headers
+    )
+
+
+@me_router.get("/data-requests", response_model=DataSubjectRequestPage)
+async def list_my_data_requests(
+    request: Request,
+    principal: CurrentPrincipal,
+    cursor: Annotated[str | None, Query(max_length=1024)] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> DataSubjectRequestPage:
+    exports: DataExportService = request.app.state.data_export_service
+    return await exports.list_requests(
+        principal.user_id,
+        cursor=cursor,
+        limit=limit,
+        download_base=f"{str(request.base_url).rstrip('/')}/v1/data-exports",
+    )
+
+
+@exports_router.get("/v1/data-exports/{token}")
+async def download_data_export(
+    token: Annotated[str, Path(max_length=512)], request: Request
+) -> RedirectResponse:
+    """The 7-day link from a finished export: the token is the authorization."""
+    exports: DataExportService = request.app.state.data_export_service
+    return RedirectResponse(await exports.download_url(token), status_code=307)
 
 
 @me_router.delete("/deletion", status_code=status.HTTP_204_NO_CONTENT)

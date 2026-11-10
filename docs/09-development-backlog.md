@@ -163,7 +163,7 @@ Web-workstream items (Next.js app, BFF, web admin) are tracked by the web workst
 |---|---|---|---|
 | BL-6.01 | Subscription lifecycle hardening, refunds, restore, sandbox → production | M | BILL-* |
 | BL-6.02 | Admin dashboards (moderation SLAs, ops), subscription config, promo grants | L | ADM-004..006, BILL-009 |
-| BL-6.03 | Data export and DSR tooling | M | AUTH-011, SAFE-010 |
+| BL-6.03 | Data export and DSR tooling | M | AUTH-011, SAFE-010 | 🟡 Self-service export done (migration 0039): `POST /v1/users/me/data-exports` (idempotent, one active export per user), a job that asks every module for its part (16 module exporters through `platform.export_rows`, which always drops binary and secret-named columns) and writes a ZIP (README, manifest, one JSON file per record kind) to private storage, a `data_export_ready` notification, `GET /v1/users/me/data-requests` (exports and deletions, 7-day link for finished exports), `/v1/data-exports/{token}` (HMAC token, re-checked, 307 to short-lived storage), daily deletion of expired archives; a unit test fails when a table that references users is neither exported nor excused. Mobile "Your data" (request, progress, download within 7 days) and a My rewards entry on the profile. Pending: staff DSR tooling (rectification, handled_by), the web screen (web session) |
 | BL-6.04 | Load and soak tests, chaos drills (Redis loss, realtime node loss) | M | NFR-001..005 |
 | BL-6.05 | Privacy review, DPIA sign-off, records of processing, policies | M | SAFE-010 |
 | BL-6.06 | App Store / Play readiness (UGC policies, account deletion in-app, privacy labels, data safety form) | M | — |

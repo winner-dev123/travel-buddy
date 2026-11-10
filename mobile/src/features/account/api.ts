@@ -12,6 +12,7 @@ export const accountKeys = {
     ['me', 'connection-requests', direction] as const,
   connections: ['me', 'connections'] as const,
   posts: (id: string) => ['user', id, 'posts'] as const,
+  dataRequests: ['me', 'data-requests'] as const,
 };
 
 /** Re-read `Me` after a settings change so every screen shows the saved state. */
@@ -71,6 +72,25 @@ export async function requestDeletion(
   });
   await refreshMe(client);
   return request;
+}
+
+/** Contract `DataSubjectRequest` (exports and deletions, AUTH-010/011). */
+export interface DataRequest {
+  id: string;
+  kind: 'export' | 'deletion' | 'rectification';
+  status: 'received' | 'processing' | 'completed' | 'rejected' | 'cancelled';
+  requested_at: string;
+  completed_at: string | null;
+  scheduled_for?: string | null;
+  download?: { url: string; expires_at: string } | null;
+}
+
+export function requestDataExport(client: ApiClient, idempotencyKey: string): Promise<DataRequest> {
+  return client.post<DataRequest>('/v1/users/me/data-exports', { idempotencyKey });
+}
+
+export function listDataRequests(client: ApiClient): Promise<Page<DataRequest>> {
+  return client.get<Page<DataRequest>>('/v1/users/me/data-requests', { query: { limit: 20 } });
 }
 
 export async function cancelDeletion(client: ApiClient): Promise<void> {

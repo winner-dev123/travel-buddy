@@ -2292,3 +2292,40 @@ def make_handlers(
         MEMBER_GONE_JOB: member_gone,
         AI_JUDGE_JOB: judge_answer,
     }
+
+
+async def export_user_data(
+    session: AsyncSession, user_id: uuid.UUID
+) -> dict[str, list[dict[str, object]]]:
+    """Personal-data export (BL-6.03; AUTH-011): what this module holds about the user."""
+    return {
+        "challenges_created": await platform.export_rows(
+            session, GroupChallenge, GroupChallenge.created_by == user_id
+        ),
+        "challenge_participations": await platform.export_rows(
+            session, ChallengeParticipant, ChallengeParticipant.user_id == user_id
+        ),
+        # Judging detail stays out while challenges run (CHAL-008).
+        "challenge_answers": await platform.export_rows(
+            session,
+            ChallengeSubmission,
+            ChallengeSubmission.submitted_by == user_id,
+            exclude=("answer_normalized", "idempotency_key", "ai_rationale", "evaluated_by"),
+        ),
+        "challenge_wins": await platform.export_rows(
+            session, ChallengeWinner, ChallengeWinner.user_id == user_id, exclude=("confirmed_by",)
+        ),
+        "badges": await platform.export_rows(session, UserBadge, UserBadge.user_id == user_id),
+        "rewards": await platform.export_rows(
+            session,
+            RewardFulfillment,
+            RewardFulfillment.recipient_user_id == user_id,
+            exclude=("issued_by",),
+        ),
+        "challenge_disputes": await platform.export_rows(
+            session,
+            ChallengeDispute,
+            ChallengeDispute.raised_by == user_id,
+            exclude=("resolved_by",),
+        ),
+    }

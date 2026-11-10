@@ -402,3 +402,16 @@ async def purge_expired(session: AsyncSession) -> int:
     ) + await platform.delete_batch(
         session, FeedSession, FeedSession.expires_at < platform.ago(hours=1)
     )
+
+
+async def export_user_data(
+    session: AsyncSession, user_id: uuid.UUID
+) -> dict[str, list[dict[str, object]]]:
+    """Personal-data export (BL-6.03; AUTH-011): what this module holds about the user."""
+    from app.modules.feed.models import FeedFeedback
+
+    return {
+        "feed_feedback": await platform.export_rows(
+            session, FeedFeedback, FeedFeedback.user_id == user_id
+        ),
+    }

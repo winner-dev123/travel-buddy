@@ -284,7 +284,7 @@ Offline: **Works offline** (fully functional from local data) · **Cached read-o
 | SCR-110 | Devices and sessions | `/settings/sessions` | 1 | User | Online only | `GET/DELETE /v1/users/me/sessions` | AUTH |
 | SCR-111 | Subscription management | `/settings/subscription` | 3 | User | Cached read-only | `GET /v1/billing/entitlements`, `POST /v1/billing/purchases/restore` | BILL |
 | SCR-112 | Blocked users | `/settings/blocked` | 1 | User | Online only | blocks endpoints | SAFE |
-| SCR-113 | Account deletion and data export | `/settings/account` | 1 / 6 | User | Online only | deletion and export endpoints | AUTH |
+| SCR-113 | Account deletion and data export | `/settings/delete-account`, `/settings/data` | 1 / 6 | User | Online only | deletion and export endpoints | AUTH |
 | SCR-114 | Safety center (guidance, how reporting works) | `/settings/safety` | 1 | Guest / User | Works offline (bundled copy) | — | SAFE |
 | SCR-115 | Badges and achievements | `/profile/badges` | 5 | User | Cached read-only | badges endpoint | CHAL |
 

@@ -8,6 +8,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StringConstraints
 
+from app.core.pagination import PageInfo
 from app.core.security.principal import Permission, PlatformRole
 from app.modules.billing.schemas import Entitlements
 from app.modules.destinations.schemas import DestinationSummary
@@ -195,6 +196,11 @@ class AccountDeletionRequest(BaseModel):
     reason: str | None = Field(default=None, max_length=500)
 
 
+class ExportDownload(_Response):
+    url: str
+    expires_at: datetime
+
+
 class DataSubjectRequestOut(_Response):
     """Contract ``DataSubjectRequest``."""
 
@@ -204,7 +210,12 @@ class DataSubjectRequestOut(_Response):
     requested_at: datetime
     completed_at: datetime | None
     scheduled_for: datetime | None = None
-    download: None = None
+    download: ExportDownload | None = None
+
+
+class DataSubjectRequestPage(_Response):
+    data: list[DataSubjectRequestOut]
+    page: PageInfo
 
 
 class WebPushKeys(_Request):

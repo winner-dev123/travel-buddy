@@ -258,7 +258,26 @@
       "media_upload_limited": "Foto-Uploads"
     },
     "bioHint_one": "Noch {{count}} Zeichen",
-    "bioHint_other": "Noch {{count}} Zeichen"
+    "bioHint_other": "Noch {{count}} Zeichen",
+    "yourData": "Deine Daten",
+    "dataExplain": "Erhalte eine Kopie der personenbezogenen Daten, die Travel Buddy über dich speichert: Profil, Beiträge, gesendete Nachrichten, Reisen, Gruppen und mehr. Wir benachrichtigen dich, sobald das Archiv bereit ist; der Download-Link gilt 7 Tage.",
+    "dataRequest": "Meine Daten anfordern",
+    "dataPreparing": "Wir bereiten dein Archiv vor. Wir melden uns, sobald es bereit ist.",
+    "dataBusy": "Deine Daten werden bereits vorbereitet.",
+    "dataRequested": "Angefordert am {{date}}",
+    "dataDownload": "Herunterladen (bis {{date}})",
+    "dataKinds": {
+      "export": "Datenexport",
+      "deletion": "Kontolöschung",
+      "rectification": "Berichtigung"
+    },
+    "dataStatus": {
+      "received": "Eingegangen",
+      "processing": "In Bearbeitung",
+      "completed": "Bereit",
+      "rejected": "Nicht möglich",
+      "cancelled": "Storniert"
+    }
   },
   "feed": {
     "title": "Reisegeschichten",

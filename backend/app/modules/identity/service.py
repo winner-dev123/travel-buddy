@@ -1113,3 +1113,43 @@ async def consent_granted(session: AsyncSession, user_id: uuid.UUID, consent_typ
         record.consent_type == consent_type and record.granted
         for record in await repo.latest_consents(session, user_id)
     )
+
+
+async def export_user_data(
+    session: AsyncSession, user_id: uuid.UUID
+) -> dict[str, list[dict[str, object]]]:
+    """Personal-data export (BL-6.03; AUTH-011): what this module holds about the user."""
+    from app.modules.identity.models import (
+        AdminRoleAssignment,
+        AuthenticationIdentity,
+        ConsentRecord,
+        DataSubjectRequest,
+        DevicePushToken,
+        User,
+        UserSession,
+    )
+
+    return {
+        "account": await platform.export_rows(session, User, User.id == user_id),
+        "sign_in_methods": await platform.export_rows(
+            session, AuthenticationIdentity, AuthenticationIdentity.user_id == user_id
+        ),
+        "sessions": await platform.export_rows(
+            session, UserSession, UserSession.user_id == user_id
+        ),
+        "consents": await platform.export_rows(
+            session, ConsentRecord, ConsentRecord.user_id == user_id
+        ),
+        "push_devices": await platform.export_rows(
+            session, DevicePushToken, DevicePushToken.user_id == user_id
+        ),
+        "data_requests": await platform.export_rows(
+            session,
+            DataSubjectRequest,
+            DataSubjectRequest.user_id == user_id,
+            exclude=("artifact_key",),
+        ),
+        "staff_roles": await platform.export_rows(
+            session, AdminRoleAssignment, AdminRoleAssignment.user_id == user_id
+        ),
+    }

@@ -310,3 +310,20 @@ from app.modules.location.discovery import purge_expired as purge_expired  # noq
 from app.modules.location.discovery import require_discovery as require_discovery  # noqa: E402
 from app.modules.location.discovery import session_hops_since as session_hops_since  # noqa: E402
 from app.modules.location.discovery import visible_sessions_in as visible_sessions_in  # noqa: E402
+
+
+async def export_user_data(
+    session: AsyncSession, user_id: uuid.UUID
+) -> dict[str, list[dict[str, object]]]:
+    """Personal-data export (BL-6.03; AUTH-011): what this module holds about the user."""
+    from app.modules.location.models import TravelerDiscoverySession, UserSelectedLocation
+    from app.modules.platform import service as platform
+
+    return {
+        "selected_locations": await platform.export_rows(
+            session, UserSelectedLocation, UserSelectedLocation.user_id == user_id
+        ),
+        "discovery_sessions": await platform.export_rows(
+            session, TravelerDiscoverySession, TravelerDiscoverySession.user_id == user_id
+        ),
+    }

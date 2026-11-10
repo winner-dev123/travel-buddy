@@ -1588,3 +1588,22 @@ async def purge_expired(session: AsyncSession) -> int:
     return int(getattr(invitations, "rowcount", 0) or 0) + int(
         getattr(transfers, "rowcount", 0) or 0
     )
+
+
+async def export_user_data(
+    session: AsyncSession, user_id: uuid.UUID
+) -> dict[str, list[dict[str, object]]]:
+    """Personal-data export (BL-6.03; AUTH-011): what this module holds about the user."""
+    from app.modules.groups.models import GroupInvitation, GroupMembership, TravelGroup
+
+    return {
+        "group_memberships": await platform.export_rows(
+            session, GroupMembership, GroupMembership.user_id == user_id
+        ),
+        "groups_owned": await platform.export_rows(
+            session, TravelGroup, TravelGroup.owner_id == user_id, exclude=("premium_notice",)
+        ),
+        "group_invitations_received": await platform.export_rows(
+            session, GroupInvitation, GroupInvitation.invitee_user_id == user_id
+        ),
+    }

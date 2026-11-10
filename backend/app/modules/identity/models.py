@@ -246,14 +246,21 @@ class DataSubjectRequestStatus(StrEnum):
 
 
 class DataSubjectRequest(Base):
-    """GDPR requests (deletion now, export later). ``user_id`` has no foreign key on purpose: the
-    record of a completed deletion outlives the account (accountability, docs/04 §12)."""
+    """GDPR requests: deletion and export. ``user_id`` has no foreign key on purpose: the record
+    of a completed deletion outlives the account (accountability, docs/04 §12). An export keeps
+    its archive's storage key until the 7-day link expires (BL-6.03)."""
 
     __tablename__ = "data_subject_requests"
     __table_args__ = (
         enum_check("kind", DataSubjectRequestKind, "kind_enum"),
         enum_check("status", DataSubjectRequestStatus, "status_enum"),
         Index("ix_data_subject_requests__user_id", "user_id", text("requested_at DESC")),
+        Index(
+            "uq_data_subject_requests__active_export",
+            "user_id",
+            unique=True,
+            postgresql_where=text("kind = 'export' AND status IN ('received', 'processing')"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
@@ -266,6 +273,8 @@ class DataSubjectRequest(Base):
     )
     scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    artifact_key: Mapped[str | None] = mapped_column(Text)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class PushProvider(StrEnum):

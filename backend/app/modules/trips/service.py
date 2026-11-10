@@ -1070,3 +1070,36 @@ async def replan_snapshot(
             SnapshotDay(day_index=d.day_index, date=d.date, items=tuple(by_day[d.id])) for d in days
         ),
     )
+
+
+async def export_user_data(
+    session: AsyncSession, user_id: uuid.UUID
+) -> dict[str, list[dict[str, object]]]:
+    """Personal-data export (BL-6.03; AUTH-011): what this module holds about the user."""
+    from sqlalchemy import select as query
+
+    from app.modules.trips.models import (
+        ItineraryDay,
+        ItineraryItem,
+        SavedPlace,
+        Trip,
+        TripCollaborator,
+    )
+
+    owned = query(Trip.id).where(Trip.owner_id == user_id)
+    days = query(ItineraryDay.id).where(ItineraryDay.trip_id.in_(owned))
+    return {
+        "trips": await platform.export_rows(session, Trip, Trip.owner_id == user_id),
+        "itinerary_days": await platform.export_rows(
+            session, ItineraryDay, ItineraryDay.trip_id.in_(owned)
+        ),
+        "itinerary_items": await platform.export_rows(
+            session, ItineraryItem, ItineraryItem.day_id.in_(days)
+        ),
+        "trip_collaborations": await platform.export_rows(
+            session, TripCollaborator, TripCollaborator.user_id == user_id
+        ),
+        "saved_places": await platform.export_rows(
+            session, SavedPlace, SavedPlace.user_id == user_id
+        ),
+    }

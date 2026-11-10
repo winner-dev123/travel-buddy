@@ -210,6 +210,19 @@ async def notify_from_event(
                 dedupe_key=f"{kind}:{challenge}:{event_id}",
             )
         return created
+    if event_type == "identity.data_export_ready":
+        user, request = _uuid(data.get("user_id")), _uuid(data.get("request_id"))
+        if user is None or request is None:
+            return False
+        return await notify(
+            session,
+            user_id=user,
+            kind="data_export_ready",
+            entity_type="data_request",
+            entity_id=request,
+            payload={"request_id": str(request), "expires_at": data.get("expires_at")},
+            dedupe_key=f"data_export_ready:{request}",
+        )
     if event_type == "ai.generation_completed":
         user, generation = _uuid(data.get("user_id")), _uuid(data.get("generation_id"))
         if user is None or generation is None:
@@ -303,6 +316,7 @@ CHALLENGE_VARIANTS = {
 
 EVENTS = (
     "ai.generation_completed",
+    "identity.data_export_ready",
     *CHALLENGE_VARIANTS,
     "group.premium_notice",
     "message.sent",
@@ -449,3 +463,17 @@ async def purge_expired(session: AsyncSession) -> int:
     return await platform.delete_batch(
         session, Notification, Notification.created_at < platform.ago(days=90)
     )
+
+
+async def export_user_data(
+    session: AsyncSession, user_id: uuid.UUID
+) -> dict[str, list[dict[str, object]]]:
+    """Personal-data export (BL-6.03; AUTH-011): what this module holds about the user."""
+    return {
+        "notifications": await platform.export_rows(
+            session,
+            Notification,
+            Notification.user_id == user_id,
+            exclude=("dedupe_key", "pushed_at"),
+        ),
+    }

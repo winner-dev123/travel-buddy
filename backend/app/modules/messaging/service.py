@@ -1481,3 +1481,20 @@ async def remove_group_member(
         )
         .values(left_at=func.now())
     )
+
+
+async def export_user_data(
+    session: AsyncSession, user_id: uuid.UUID
+) -> dict[str, list[dict[str, object]]]:
+    """Personal-data export (BL-6.03; AUTH-011): what this module holds about the user."""
+    return {
+        "messages_sent": await platform.export_rows(
+            session, Message, Message.sender_id == user_id, exclude=("client_message_id",)
+        ),
+        "message_reactions": await platform.export_rows(
+            session, MessageReaction, MessageReaction.user_id == user_id
+        ),
+        "conversations": await platform.export_rows(
+            session, ConversationMember, ConversationMember.user_id == user_id
+        ),
+    }

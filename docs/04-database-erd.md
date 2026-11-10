@@ -800,7 +800,7 @@ erDiagram
 `user_id`, `key uuid`, `route` (method + template), `request_hash bytea`, `status` (`in_progress`, `completed`), `response_status`, `response_body jsonb`, `created_at`, `expires_at`. PK `(user_id, key)`.
 
 ### data_subject_requests
-`id`, `user_id` (no FK: the record of a completed deletion outlives the account), `kind` (`export`, `deletion`, `rectification`), `status` (`received`, `processing`, `completed`, `rejected`, `cancelled`), `reason NULL`, `requested_at`, `scheduled_for NULL` (deletion: end of the 30-day grace), `completed_at`. Export adds `artifact_media_id` (7-day signed link) and staff handling adds `handled_by` when those flows land. `ix (user_id, requested_at DESC)`.
+`id`, `user_id` (no FK: the record of a completed deletion outlives the account), `kind` (`export`, `deletion`, `rectification`), `status` (`received`, `processing`, `completed`, `rejected`, `cancelled`), `reason NULL`, `requested_at`, `scheduled_for NULL` (deletion: end of the 30-day grace), `completed_at`, `artifact_key NULL` (export: the ZIP in private storage, cleared when the archive is deleted), `expires_at NULL` (export: end of the 7-day link). Staff handling adds `handled_by` when that flow lands. `ix (user_id, requested_at DESC)`; `uq (user_id) WHERE kind = 'export' AND status IN ('received', 'processing')` (one active export).
 
 ---
 

@@ -193,6 +193,18 @@ function SignedInProfile({ me }: { me: Me }) {
             onPress={() => router.push('/settings/blocked')}
             testID="profile-menu-blocked"
           />
+          <MenuRow
+            icon="gift-outline"
+            label={t('challenges.myRewards')}
+            onPress={() => router.push('/rewards')}
+            testID="profile-menu-rewards"
+          />
+          <MenuRow
+            icon="download-outline"
+            label={t('account.yourData')}
+            onPress={() => router.push('/settings/data')}
+            testID="profile-menu-data"
+          />
           {!pending ? (
             <MenuRow
               icon="trash-outline"

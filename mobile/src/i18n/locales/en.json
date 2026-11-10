@@ -258,7 +258,26 @@
       "media_upload_limited": "Photo uploads"
     },
     "bioHint_one": "{{count}} character left",
-    "bioHint_other": "{{count}} characters left"
+    "bioHint_other": "{{count}} characters left",
+    "yourData": "Your data",
+    "dataExplain": "Get a copy of the personal data Travel Buddy keeps about you: profile, posts, messages you sent, trips, groups and more. We'll notify you when the archive is ready; the download link works for 7 days.",
+    "dataRequest": "Request my data",
+    "dataPreparing": "We're preparing your archive. We'll notify you when it's ready.",
+    "dataBusy": "Your data is already being prepared.",
+    "dataRequested": "Requested {{date}}",
+    "dataDownload": "Download (until {{date}})",
+    "dataKinds": {
+      "export": "Data export",
+      "deletion": "Account deletion",
+      "rectification": "Correction"
+    },
+    "dataStatus": {
+      "received": "Received",
+      "processing": "In progress",
+      "completed": "Ready",
+      "rejected": "Not possible",
+      "cancelled": "Cancelled"
+    }
   },
   "feed": {
     "title": "Travel stories",

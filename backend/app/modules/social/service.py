@@ -797,3 +797,24 @@ async def purge_expired(session: AsyncSession) -> int:
         Comment,
         (Comment.deleted_at < platform.ago(days=30)) & ~has_replies,
     )
+
+
+async def export_user_data(
+    session: AsyncSession, user_id: uuid.UUID
+) -> dict[str, list[dict[str, object]]]:
+    """Personal-data export (BL-6.03; AUTH-011): what this module holds about the user."""
+    from sqlalchemy import or_ as either
+
+    from app.modules.social.models import Bookmark, Comment, Follow, Post, Reaction
+
+    return {
+        "posts": await platform.export_rows(
+            session, Post, Post.author_id == user_id, exclude=("quality_score",)
+        ),
+        "comments": await platform.export_rows(session, Comment, Comment.author_id == user_id),
+        "reactions": await platform.export_rows(session, Reaction, Reaction.user_id == user_id),
+        "bookmarks": await platform.export_rows(session, Bookmark, Bookmark.user_id == user_id),
+        "follows": await platform.export_rows(
+            session, Follow, either(Follow.follower_id == user_id, Follow.followee_id == user_id)
+        ),
+    }

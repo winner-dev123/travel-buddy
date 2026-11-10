@@ -769,6 +769,33 @@ paths:
               schema: { $ref: '#/components/schemas/DataSubjectRequestPage' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/data-exports/{token}:
+    get:
+      tags: [me]
+      operationId: downloadDataExport
+      summary: Download a finished data export (redirects to short-lived storage)
+      description: |
+        `DataSubjectRequest.download.url` points here. The token is the authorization (it names one
+        export and expires with `download.expires_at`, 7 days after completion), so no bearer token
+        is needed. Every request re-checks the export, then answers `307` to a short-lived storage
+        URL for the ZIP archive (README.txt, manifest.json and one JSON file per kind of record).
+      security: [{}]
+      x-phase: 6
+      x-requirements: [AUTH-011]
+      x-rate-limit-class: read
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string, maxLength: 512 }
+      responses:
+        '307':
+          description: Temporary redirect to the archive in storage.
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+        default: { $ref: '#/components/responses/Problem' }
 
   # ───────────────────────────── Location: browse / upcoming / discovery ─────────────────────────────
   /v1/users/me/browse-destination:

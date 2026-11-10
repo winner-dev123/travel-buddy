@@ -483,3 +483,19 @@ async def purge_expired(session: AsyncSession) -> int:
         (MediaAsset.status == MediaStatus.REJECTED)
         & (MediaAsset.created_at < platform.ago(days=30)),
     )
+
+
+async def export_user_data(
+    session: AsyncSession, user_id: uuid.UUID
+) -> dict[str, list[dict[str, object]]]:
+    """Personal-data export (BL-6.03; AUTH-011): what this module holds about the user."""
+    from app.modules.media.models import MediaAsset
+
+    return {
+        "media": await platform.export_rows(
+            session,
+            MediaAsset,
+            MediaAsset.owner_id == user_id,
+            exclude=("quarantine_key", "variants", "rejection_reason"),
+        ),
+    }

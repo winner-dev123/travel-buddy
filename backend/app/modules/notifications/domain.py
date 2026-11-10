@@ -407,6 +407,25 @@ CHALLENGE_TEXTS: Final[dict[str, tuple[Text, Text]]] = {
 }
 
 
+# data_export_ready (BL-6.03): the archive and its 7-day link are ready.
+DATA_EXPORT_TEXTS: Final[tuple[Text, Text]] = (
+    {
+        "en": "Your data is ready",
+        "es": "Tus datos están listos",
+        "pt-BR": "Seus dados estão prontos",
+        "fr": "Vos données sont prêtes",
+        "de": "Deine Daten sind bereit",
+    },
+    {
+        "en": "Download your archive within 7 days from Settings > Your data.",
+        "es": "Descarga tu archivo en los próximos 7 días desde Ajustes > Tus datos.",
+        "pt-BR": "Baixe seu arquivo em até 7 dias em Configurações > Seus dados.",
+        "fr": "Téléchargez votre archive sous 7 jours depuis Réglages > Vos données.",
+        "de": "Lade dein Archiv innerhalb von 7 Tagen unter Einstellungen > Deine Daten herunter.",
+    },
+)
+
+
 def render(
     kind: str, payload: Mapping[str, Any], *, actor: str | None, locale: str
 ) -> tuple[str, str]:
@@ -425,6 +444,8 @@ def render(
         outcome = "succeeded" if payload.get("status") == "succeeded" else "failed"
         title, body = AI_GENERATION_TEXTS[outcome]
         return _pick(title, locale), _pick(body, locale)
+    if kind == "data_export_ready":
+        return _pick(DATA_EXPORT_TEXTS[0], locale), _pick(DATA_EXPORT_TEXTS[1], locale)
     if kind == "moderation_notice":
         body = MODERATION_BODIES.get(str(payload.get("variant")), MODERATION_BODIES["warned"])
         return _pick(_GUIDELINES, locale), _pick(body, locale)
@@ -440,6 +461,7 @@ def renderable_kinds() -> frozenset[str]:
             "ai_generation_ready",
             "challenge_started",
             "challenge_result",
+            "data_export_ready",
             "moderation_notice",
             "subscription_notice",
         }

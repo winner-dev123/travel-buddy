@@ -1018,3 +1018,17 @@ __all__ = [
     "quota_usage",
     "subscribe",
 ]
+
+
+async def export_user_data(
+    session: AsyncSession, user_id: uuid.UUID
+) -> dict[str, list[dict[str, object]]]:
+    """Personal-data export (BL-6.03; AUTH-011): what this module holds about the user."""
+    return {
+        "ai_requests": await platform.export_rows(
+            session,
+            AIGeneration,
+            AIGeneration.user_id == user_id,
+            exclude=("provider_request_id", "request_id", "cost_micros"),
+        ),
+    }

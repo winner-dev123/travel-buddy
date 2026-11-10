@@ -325,3 +325,17 @@ class GuideService:
             ],
             content_license=row.content_license,
         )
+
+
+async def export_user_data(
+    session: AsyncSession, user_id: uuid.UUID
+) -> dict[str, list[dict[str, object]]]:
+    """Personal-data export (BL-6.03; AUTH-011): what this module holds about the user."""
+    from app.modules.guides.models import OfflinePackageLicense
+    from app.modules.platform import service as platform
+
+    return {
+        "offline_licenses": await platform.export_rows(
+            session, OfflinePackageLicense, OfflinePackageLicense.user_id == user_id
+        ),
+    }

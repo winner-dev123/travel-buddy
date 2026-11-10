@@ -543,3 +543,21 @@ async def file_system_report(
     )
     await session.flush()
     return True
+
+
+async def export_user_data(
+    session: AsyncSession, user_id: uuid.UUID
+) -> dict[str, list[dict[str, object]]]:
+    """Personal-data export (BL-6.03; AUTH-011): what this module holds about the user."""
+    from app.modules.trust_safety.models import ContentReport, UserBlock
+
+    return {
+        "blocks": await platform.export_rows(session, UserBlock, UserBlock.blocker_id == user_id),
+        # Reports the user made; who handled them and the evidence snapshot stay out.
+        "reports_made": await platform.export_rows(
+            session,
+            ContentReport,
+            ContentReport.reporter_id == user_id,
+            exclude=("assigned_to", "resolved_by", "evidence", "target_author_id", "priority"),
+        ),
+    }

@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.ids import uuid7
 from app.core.request_context import current_request_id
 from app.modules.platform import idempotency
+from app.modules.platform.export import export_rows, jsonable
 from app.modules.platform.jobs import (
     EventRouter,
     Job,
@@ -52,7 +53,9 @@ __all__ = [
     "backoff",
     "delete_batch",
     "enqueue",
+    "export_rows",
     "idempotency",
+    "jsonable",
     "purge_platform",
     "record_event",
     "retention_handler",

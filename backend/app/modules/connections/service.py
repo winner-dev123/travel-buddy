@@ -549,3 +549,28 @@ async def connected_ids(
         )
     )
     return {high if low == user_id else low for low, high in rows.all()}
+
+
+async def export_user_data(
+    session: AsyncSession, user_id: uuid.UUID
+) -> dict[str, list[dict[str, object]]]:
+    """Personal-data export (BL-6.03; AUTH-011): what this module holds about the user."""
+    from sqlalchemy import or_ as either
+
+    from app.modules.connections.models import ConnectionRequest, UserConnection
+
+    return {
+        "connection_requests": await platform.export_rows(
+            session,
+            ConnectionRequest,
+            either(
+                ConnectionRequest.requester_id == user_id,
+                ConnectionRequest.recipient_id == user_id,
+            ),
+        ),
+        "connections": await platform.export_rows(
+            session,
+            UserConnection,
+            either(UserConnection.user_low_id == user_id, UserConnection.user_high_id == user_id),
+        ),
+    }

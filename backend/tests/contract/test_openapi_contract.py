@@ -10,9 +10,11 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 import yaml
@@ -26,6 +28,23 @@ from tests.conftest import REPO_ROOT
 pytestmark = pytest.mark.contract
 
 CONTRACT_PATH = REPO_ROOT / "contracts" / "openapi" / "openapi.yaml"
+# Contract operations up to this phase must all be implemented (later phases may be partial),
+# except the known gaps below, each tracked in docs/09. Remove an entry when it lands.
+DELIVERED_PHASE = 5
+PENDING_OPERATIONS = frozenset(
+    {
+        "GET /v1/catalog/travel-interests",
+        "GET /v1/users/search",
+        "GET /v1/users/{}/relationship",
+        "GET /v1/groups/{}/join-requests",
+        "POST /v1/groups/{}/join-requests",
+        "POST /v1/groups/{}/join-requests/{}/approve",
+        "POST /v1/groups/{}/join-requests/{}/reject",
+        "POST /v1/billing/webhooks/apple",
+        "POST /v1/billing/webhooks/google",
+        "PATCH /v1/admin/destinations/{}",
+    }
+)
 REALTIME_DIR = REPO_ROOT / "contracts" / "realtime"
 
 # Property names that must never appear in schemas describing another user.
@@ -65,47 +84,86 @@ def test_contract_is_valid_openapi_31(spec: dict[str, Any]) -> None:
     validate(spec)
 
 
-def test_implemented_routes_exist_in_contract(spec: dict[str, Any]) -> None:
+_METHODS = ("get", "put", "post", "patch", "delete")
+
+
+def _shape(path: str) -> str:
+    """The path with parameter names erased: code uses ``{post_id}``, the contract ``{postId}``."""
+    return re.sub(r"\{[^}]+\}", "{}", path)
+
+
+def _implemented() -> list[tuple[str, str, dict[str, Any]]]:
+    """``(path, METHOD, operation)`` for every API route, from the app's generated OpenAPI
+    document. FastAPI 0.16x wraps included routers, so ``app.routes`` no longer lists ``APIRoute``
+    objects; a scan of it finds nothing and would pass silently. The guard below makes sure the
+    routes really are seen. Development-only routes are included, so they are checked too."""
     from app.main import create_app
     from tests.conftest import make_identity_settings, make_settings
 
-    # Development-only routes included, so they are checked too.
     app: FastAPI = create_app(
-        make_settings(dev_idp_enabled=True), identity_settings=make_identity_settings()
+        make_settings(dev_idp_enabled=True, dev_billing_enabled=True),
+        identity_settings=make_identity_settings(),
     )
-    contract_paths: dict[str, dict[str, Any]] = spec["paths"]
+    generated: dict[str, dict[str, Any]] = app.openapi()["paths"]
+    found = [
+        (path, method.upper(), operation)
+        for path, item in generated.items()
+        for method, operation in item.items()
+        if method in _METHODS
+    ]
+    assert len(found) > 200, f"only {len(found)} routes seen: route discovery is broken"
+    return found
+
+
+def test_implemented_routes_exist_in_contract(spec: dict[str, Any]) -> None:
+    contract = {_shape(path): item for path, item in spec["paths"].items()}
     missing = [
-        f"{method} {route.path}"
-        for route in app.routes
-        if isinstance(route, APIRoute)
-        for method in sorted(route.methods - {"HEAD", "OPTIONS"})
-        if method.lower() not in contract_paths.get(route.path, {})
+        f"{method} {path}"
+        for path, method, _ in _implemented()
+        if method.lower() not in contract.get(_shape(path), {})
     ]
     assert not missing, f"implemented but not in contract: {missing}"
+
+
+def test_contract_routes_are_implemented(spec: dict[str, Any]) -> None:
+    """The reverse: every contract operation of a delivered phase has a backend route. Later
+    phases may list operations that are still to come."""
+    implemented = {(_shape(path), method.lower()) for path, method, _ in _implemented()}
+    absent = [
+        f"{method.upper()} {path} (phase {operation.get('x-phase')})"
+        for path, item in spec["paths"].items()
+        for method, operation in item.items()
+        if method in _METHODS
+        and (_shape(path), method) not in implemented
+        and operation.get("x-phase", 0) <= DELIVERED_PHASE
+        and f"{method.upper()} {_shape(path)}" not in PENDING_OPERATIONS
+    ]
+    assert not absent, f"in the contract but not implemented: {absent}"
+    landed = sorted(
+        entry
+        for entry in PENDING_OPERATIONS
+        if (entry.split(" ", 1)[1], entry.split(" ", 1)[0].lower()) in implemented
+    )
+    assert not landed, f"implemented now; remove from PENDING_OPERATIONS: {landed}"
 
 
 def test_implemented_routes_use_the_contract_rate_limit_class(spec: dict[str, Any]) -> None:
     """Each route's effective class (declared or method default) matches x-rate-limit-class."""
     from app.core.ratelimit import route_rate_class
-    from app.main import create_app
-    from tests.conftest import make_identity_settings, make_settings
 
-    app: FastAPI = create_app(
-        make_settings(dev_idp_enabled=True), identity_settings=make_identity_settings()
-    )
+    contract = {_shape(path): item for path, item in spec["paths"].items()}
     mismatched = []
-    for route in app.routes:
-        if not isinstance(route, APIRoute):
-            continue
-        for method in sorted(route.methods - {"HEAD", "OPTIONS"}):
-            operation = spec["paths"].get(route.path, {}).get(method.lower())
-            if operation is None:
-                continue  # reported by test_implemented_routes_exist_in_contract
-            effective, _ = route_rate_class(route, method)
-            if effective.value != operation.get("x-rate-limit-class"):
-                mismatched.append(
-                    f"{method} {route.path}: {effective} != {operation.get('x-rate-limit-class')}"
-                )
+    for path, method, operation in _implemented():
+        documented = contract.get(_shape(path), {}).get(method.lower())
+        if documented is None:
+            continue  # reported by test_implemented_routes_exist_in_contract
+        # route_rate_class reads only the declared extras and the path.
+        route = cast(APIRoute, SimpleNamespace(openapi_extra=operation, path=path))
+        effective, _ = route_rate_class(route, method)
+        if effective.value != documented.get("x-rate-limit-class"):
+            mismatched.append(
+                f"{method} {path}: {effective} != {documented.get('x-rate-limit-class')}"
+            )
     assert not mismatched, mismatched
 
 

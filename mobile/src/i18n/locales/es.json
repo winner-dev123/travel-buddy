@@ -260,7 +260,26 @@
     },
     "bioHint_one": "Queda {{count}} carácter",
     "bioHint_many": "Quedan {{count}} de caracteres",
-    "bioHint_other": "Quedan {{count}} caracteres"
+    "bioHint_other": "Quedan {{count}} caracteres",
+    "yourData": "Tus datos",
+    "dataExplain": "Obtén una copia de los datos personales que Travel Buddy guarda sobre ti: perfil, publicaciones, mensajes que enviaste, viajes, grupos y más. Te avisaremos cuando el archivo esté listo; el enlace de descarga funciona durante 7 días.",
+    "dataRequest": "Solicitar mis datos",
+    "dataPreparing": "Estamos preparando tu archivo. Te avisaremos cuando esté listo.",
+    "dataBusy": "Ya estamos preparando tus datos.",
+    "dataRequested": "Solicitado el {{date}}",
+    "dataDownload": "Descargar (hasta el {{date}})",
+    "dataKinds": {
+      "export": "Exportación de datos",
+      "deletion": "Eliminación de la cuenta",
+      "rectification": "Corrección"
+    },
+    "dataStatus": {
+      "received": "Recibida",
+      "processing": "En curso",
+      "completed": "Lista",
+      "rejected": "No es posible",
+      "cancelled": "Cancelada"
+    }
   },
   "feed": {
     "title": "Historias de viaje",

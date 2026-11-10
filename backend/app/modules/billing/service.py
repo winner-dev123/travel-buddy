@@ -820,3 +820,28 @@ __all__ = [
     "snapshot",
     "timedelta",
 ]
+
+
+async def export_user_data(
+    session: AsyncSession, user_id: uuid.UUID
+) -> dict[str, list[dict[str, object]]]:
+    """Personal-data export (BL-6.03; AUTH-011): what this module holds about the user."""
+    from app.modules.billing.models import (
+        BillingCustomer,
+        Purchase,
+        Subscription,
+        SubscriptionEntitlement,
+    )
+
+    return {
+        "billing_accounts": await platform.export_rows(
+            session, BillingCustomer, BillingCustomer.user_id == user_id
+        ),
+        "subscriptions": await platform.export_rows(
+            session, Subscription, Subscription.user_id == user_id
+        ),
+        "purchases": await platform.export_rows(session, Purchase, Purchase.user_id == user_id),
+        "entitlements": await platform.export_rows(
+            session, SubscriptionEntitlement, SubscriptionEntitlement.user_id == user_id
+        ),
+    }

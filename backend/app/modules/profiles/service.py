@@ -755,3 +755,21 @@ async def push_context(session: AsyncSession, user_id: uuid.UUID) -> PushContext
         time_zone=preferences.time_zone,
         quiet_hours=(str(quiet["start"]), str(quiet["end"])) if quiet else None,
     )
+
+
+async def export_user_data(
+    session: AsyncSession, user_id: uuid.UUID
+) -> dict[str, list[dict[str, object]]]:
+    """Personal-data export (BL-6.03; AUTH-011): what this module holds about the user."""
+    from app.modules.platform import service as platform
+    from app.modules.profiles.models import UserPreferences, UserPrivacySettings, UserProfile
+
+    return {
+        "profile": await platform.export_rows(session, UserProfile, UserProfile.user_id == user_id),
+        "preferences": await platform.export_rows(
+            session, UserPreferences, UserPreferences.user_id == user_id
+        ),
+        "privacy_settings": await platform.export_rows(
+            session, UserPrivacySettings, UserPrivacySettings.user_id == user_id
+        ),
+    }

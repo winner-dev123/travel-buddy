@@ -72,17 +72,19 @@ from app.modules.groups import service as groups_service
 from app.modules.groups.api import invitations_router as group_invitations_router
 from app.modules.groups.api import router as groups_router
 from app.modules.guides import packages as offline_packages
+from app.modules.guides import service as guides_service
 from app.modules.guides.api import router as guides_router
 from app.modules.guides.offline import DownloadTokens, ManifestSigner, development_manifest_key
 from app.modules.guides.packages import OfflinePackageService
 from app.modules.guides.service import GuideService
 from app.modules.health.api import ReadinessCheck
 from app.modules.health.api import router as health_router
+from app.modules.identity import exports as data_exports
 from app.modules.identity import service as identity_module
 from app.modules.identity.adapters.dev_idp import DevIdentityProvider
 from app.modules.identity.adapters.oidc import HttpJwksKeyProvider, IssuerConfig, OidcVerifier
 from app.modules.identity.adapters.supabase_admin import build_idp_deleter
-from app.modules.identity.api import auth_router, dev_idp_router, me_router
+from app.modules.identity.api import auth_router, dev_idp_router, exports_router, me_router
 from app.modules.identity.config import IdentitySettings
 from app.modules.identity.schemas import AccountRestriction
 from app.modules.identity.service import IdentityService
@@ -326,6 +328,15 @@ def create_app(
         sessionmaker=database.sessionmaker, cursors=cursor_codec, clock=clock, plans=itinerary_plan
     )
     app.state.guide_service = GuideService(sessionmaker=database.sessionmaker, clock=clock)
+    app.state.data_export_service = data_exports.DataExportService(
+        sessionmaker=database.sessionmaker,
+        clock=clock,
+        cursors=cursor_codec,
+        tokens=data_exports.ExportTokens(
+            settings.cursor_signing_key.get_secret_value().encode("utf-8")
+        ),
+        storage=media_storage,
+    )
     app.state.challenge_service = challenges_service.ChallengeService(
         sessionmaker=database.sessionmaker,
         clock=clock,
@@ -447,6 +458,7 @@ def create_app(
     app.include_router(client_config_router)
     app.include_router(auth_router)
     app.include_router(me_router)
+    app.include_router(exports_router)
     app.include_router(destinations_router)
     app.include_router(places_router)
     app.include_router(location_router)
@@ -528,6 +540,27 @@ def build_rate_limiter(
             raise RuntimeError("RATE_LIMIT_STORE=redis needs REDIS_URL")
         return RateLimiter(RedisRateLimitStore(redis), policy, clock)
     return RateLimiter(PostgresRateLimitStore(database.sessionmaker), policy, clock)
+
+
+# Personal-data export (BL-6.03): every module that keeps personal data exports its own part.
+DATA_EXPORTERS: tuple[data_exports.Exporter, ...] = (
+    identity_module.export_user_data,
+    profiles_service.export_user_data,
+    social_service.export_user_data,
+    feed_service.export_user_data,
+    connections_service.export_user_data,
+    messaging_service.export_user_data,
+    groups_service.export_user_data,
+    trips_service.export_user_data,
+    location_service.export_user_data,
+    billing_service.export_user_data,
+    ai_service.export_user_data,
+    challenges_service.export_user_data,
+    trust_safety_service.export_user_data,
+    media_service.export_user_data,
+    notifications_service.export_user_data,
+    guides_service.export_user_data,
+)
 
 
 class GroupChatRooms:
@@ -764,6 +797,11 @@ def build_job_runner(
     handlers.update(groups_service.make_handlers(database.sessionmaker, clock))
     challenges_service.subscribe(router)
     handlers.update(
+        data_exports.make_export_handlers(
+            database.sessionmaker, clock, media_storage, DATA_EXPORTERS
+        )
+    )
+    handlers.update(
         challenges_service.make_handlers(
             database.sessionmaker, clock, judge=challenge_answer_judge(ai)
         )
@@ -793,6 +831,8 @@ def build_job_runner(
     }
     periodic = [Periodic(f"retention.{name}", f"retention.{name}", DAILY) for name in purges]
     periodic.append(Periodic(abuse_signals.JOB_KIND, abuse_signals.JOB_KIND, timedelta(hours=1)))
+    # Export archives go once their 7-day link has expired (BL-6.03).
+    periodic.append(Periodic(data_exports.CLEANUP_JOB, data_exports.CLEANUP_JOB, DAILY))
     # Challenges start and close on time (CHAL-003); reads also apply due moves lazily.
     periodic.append(
         Periodic(

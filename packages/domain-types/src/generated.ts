@@ -477,6 +477,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/data-exports/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download a finished data export (redirects to short-lived storage)
+         * @description `DataSubjectRequest.download.url` points here. The token is the authorization (it names one
+         *     export and expires with `download.expires_at`, 7 days after completion), so no bearer token
+         *     is needed. Every request re-checks the export, then answers `307` to a short-lived storage
+         *     URL for the ZIP archive (README.txt, manifest.json and one JSON file per kind of record).
+         */
+        get: operations["downloadDataExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/users/me/browse-destination": {
         parameters: {
             query?: never;
@@ -6967,6 +6990,30 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthenticated"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    downloadDataExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Temporary redirect to the archive in storage. */
+            307: {
+                headers: {
+                    Location: components["headers"]["Location"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["ServiceUnavailable"];
             default: components["responses"]["Problem"];
         };
     };
