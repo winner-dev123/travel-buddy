@@ -43,6 +43,7 @@ from app.modules.billing import service as billing_service
 from app.modules.billing.api import dev_router as dev_billing_router
 from app.modules.billing.api import router as billing_router
 from app.modules.billing.providers import DevBillingProvider, UnconfiguredStore
+from app.modules.billing.stripe import StripeClient
 from app.modules.client_config.api import router as client_config_router
 from app.modules.connections import service as connections_service
 from app.modules.connections.api import router as connections_router
@@ -289,6 +290,21 @@ def create_app(
     app.state.billing_service = billing_service.BillingService(
         sessionmaker=database.sessionmaker,
         clock=clock,
+        stripe=StripeClient(
+            http_client,
+            secret_key=(
+                settings.stripe_secret_key.get_secret_value()
+                if settings.stripe_secret_key
+                else None
+            ),
+            webhook_secret=(
+                settings.stripe_webhook_secret.get_secret_value()
+                if settings.stripe_webhook_secret
+                else None
+            ),
+            api_base=settings.stripe_api_base,
+        ),
+        web_origin=settings.public_site_url,
         providers=(
             {"apple": DevBillingProvider(), "google": DevBillingProvider()}
             if settings.dev_billing_enabled

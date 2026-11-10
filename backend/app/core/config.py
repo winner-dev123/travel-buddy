@@ -108,6 +108,11 @@ class Settings(BaseSettings):
     push_provider: Literal["auto", "expo", "log", "disabled"] = "auto"
     expo_access_token: SecretStr | None = None
 
+    # Stripe for web purchases (BL-3.14, ADR-0012). Unset: checkout, portal and webhooks give 503.
+    stripe_secret_key: SecretStr | None = None
+    stripe_webhook_secret: SecretStr | None = None
+    stripe_api_base: str = "https://api.stripe.com"
+
     # Development-only adapters (never allowed in staging/production).
     dev_idp_enabled: bool = False
     dev_billing_enabled: bool = False

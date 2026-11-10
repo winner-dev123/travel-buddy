@@ -11,9 +11,10 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from collections.abc import Mapping, Sequence
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import func, select, update
@@ -47,6 +48,7 @@ from app.modules.billing.entitlements import (
     group_premium_status,
 )
 from app.modules.billing.models import (
+    BillingCustomer,
     BillingEvent,
     Product,
     Purchase,
@@ -63,6 +65,12 @@ from app.modules.billing.schemas import (
     PurchaseOut,
     QuotaStatusOut,
     VerifyPurchaseResult,
+)
+from app.modules.billing.stripe import (
+    HANDLED_EVENTS,
+    StripeClient,
+    StripeSubscription,
+    verify_signature,
 )
 from app.modules.platform import service as platform
 
@@ -237,10 +245,14 @@ class BillingService:
         sessionmaker: async_sessionmaker[AsyncSession],
         clock: Clock,
         providers: Mapping[str, BillingProvider],
+        stripe: StripeClient | None = None,
+        web_origin: str = "http://localhost:3000",
     ) -> None:
         self._sessionmaker = sessionmaker
         self._clock = clock
         self._providers = dict(providers)
+        self._stripe = stripe
+        self._web_origin = web_origin.rstrip("/")
 
     async def products(self, platform_name: str) -> list[ProductOut]:
         async with self._sessionmaker() as session:
@@ -526,6 +538,210 @@ class BillingService:
             )
         return outcome
 
+    # ─────────────────────────── web: Stripe (BL-3.14, ADR-0012) ───────────────────────────
+
+    def _require_stripe(self) -> StripeClient:
+        if self._stripe is None or not self._stripe.configured:
+            raise AppError(ErrorCode.SERVICE_UNAVAILABLE, "Web payments aren't available yet.")
+        return self._stripe
+
+    async def checkout(
+        self,
+        principal: Principal,
+        *,
+        product_id: uuid.UUID,
+        success_path: str,
+        cancel_path: str,
+        idempotency_key: uuid.UUID,
+    ) -> tuple[str, datetime | None]:
+        """A hosted Checkout URL. Completing it grants nothing: only the webhook does."""
+        stripe = self._require_stripe()
+        me, now = principal.user_id, self._clock.now()
+        async with self._sessionmaker() as session, session.begin():
+            product = await session.get(Product, product_id)
+            if product is None or product.platform != "web" or not product.active:
+                raise AppError(ErrorCode.NOT_FOUND, "Product not found.")
+            snap = await snapshot(session, me, at=now)
+            if (product.plan_key == "premium" and snap.plan is Plan.PREMIUM) or (
+                product.kind == ProductKind.NON_CONSUMABLE
+                and all(snap.has_content(k) for k in product.entitlement_keys)
+            ):
+                raise AppError(ErrorCode.CONFLICT, "You already have this.")  # no double charge
+            customer = await _stripe_customer(session, me)
+            if customer is None:
+                customer = await stripe.create_customer(
+                    user_id=str(me), idempotency_key=f"customer-{me}"
+                )
+                await session.execute(
+                    insert(BillingCustomer)
+                    .values(user_id=me, provider="stripe", provider_customer_id=customer)
+                    .on_conflict_do_nothing()
+                )
+            price, kind = product.sku, product.kind
+        return await stripe.create_checkout_session(
+            customer=customer,
+            price_id=price,
+            mode="subscription" if kind == ProductKind.AUTO_RENEWABLE else "payment",
+            user_id=str(me),
+            success_url=f"{self._web_origin}{success_path}",
+            cancel_url=f"{self._web_origin}{cancel_path}",
+            idempotency_key=str(idempotency_key),
+        )
+
+    async def portal(self, principal: Principal, *, return_path: str | None) -> str:
+        stripe = self._require_stripe()
+        async with self._sessionmaker() as session:
+            customer = await _stripe_customer(session, principal.user_id)
+        if customer is None:
+            raise AppError(ErrorCode.NOT_FOUND, "There's no web subscription to manage.")
+        return await stripe.create_portal_session(
+            customer=customer, return_url=f"{self._web_origin}{return_path or '/'}"
+        )
+
+    async def stripe_webhook(self, payload: bytes, signature: str | None) -> str:
+        """Verify, store once by event ID, and apply. Returns the processing outcome."""
+        stripe = self._stripe
+        if stripe is None or not stripe.webhook_secret:
+            raise AppError(ErrorCode.SERVICE_UNAVAILABLE, "Web payments aren't available yet.")
+        now = self._clock.now()
+        verify_signature(payload, signature, stripe.webhook_secret, now=now)
+        try:
+            event = json.loads(payload)
+        except ValueError:
+            raise AppError(ErrorCode.BAD_REQUEST, "The event isn't JSON.") from None
+        event_type = str(event.get("type"))
+        obj = (event.get("data") or {}).get("object") or {}
+        created = event.get("created")
+        signed = datetime.fromtimestamp(int(created), tz=UTC) if created else now
+        async with self._sessionmaker() as session, session.begin():
+            stored = await session.execute(
+                insert(BillingEvent)
+                .values(
+                    provider="stripe",
+                    provider_event_id=str(event.get("id")),
+                    event_type=event_type,
+                    signed_date=signed,
+                    payload={"type": event_type, "object_id": obj.get("id")},
+                )
+                .on_conflict_do_nothing(
+                    index_elements=[BillingEvent.provider, BillingEvent.provider_event_id]
+                )
+                .returning(BillingEvent.id)
+            )
+            event_id = stored.scalar_one_or_none()
+            if event_id is None:
+                return "duplicate"
+            outcome = "ignored"
+            subscription_ref: str | None = None
+            if event_type in HANDLED_EVENTS:
+                if event_type == "checkout.session.completed":
+                    subscription_ref = obj.get("subscription")
+                elif event_type.startswith("customer.subscription."):
+                    subscription_ref = obj.get("id")
+                elif obj.get("customer") and (
+                    event_type == "charge.refunded" or obj.get("status") == "lost"
+                ):
+                    outcome = await self._revoke_stripe(session, str(obj["customer"]), now)
+            row_id: uuid.UUID | None = None
+            if subscription_ref:
+                fresh = await stripe.get_subscription(
+                    str(subscription_ref)
+                )  # order isn't guaranteed
+                row_id = await self._apply_stripe(session, fresh, now)
+                outcome = "processed" if row_id else "ignored"
+            await session.execute(
+                update(BillingEvent)
+                .where(BillingEvent.id == event_id)
+                .values(
+                    subscription_id=row_id,
+                    processing_status=outcome,
+                    processed_at=func.now(),
+                    attempts=1,
+                )
+            )
+        return outcome
+
+    async def _apply_stripe(
+        self, session: AsyncSession, fresh: StripeSubscription, now: datetime
+    ) -> uuid.UUID | None:
+        product = await session.scalar(
+            select(Product).where(Product.platform == "web", Product.sku == fresh.price_id)
+        )
+        mapped = await session.scalar(
+            select(BillingCustomer.user_id).where(
+                BillingCustomer.provider == "stripe",
+                BillingCustomer.provider_customer_id == fresh.customer,
+            )
+        )
+        user_id = (
+            mapped if mapped is not None else (uuid.UUID(fresh.user_id) if fresh.user_id else None)
+        )
+        if product is None or user_id is None:
+            return None
+        subscription = await session.scalar(
+            select(Subscription)
+            .where(
+                Subscription.provider == "stripe", Subscription.original_transaction_id == fresh.id
+            )
+            .with_for_update()
+        )
+        if subscription is None:
+            subscription = Subscription(
+                user_id=user_id,
+                provider="stripe",
+                product_id=product.id,
+                original_transaction_id=fresh.id,
+                status=fresh.status,
+                current_period_start=fresh.current_period_start,
+                environment="production" if fresh.livemode else "sandbox",
+            )
+            session.add(subscription)
+        subscription.product_id = product.id
+        if subscription.status != SubscriptionStatus.REVOKED:
+            subscription.status = fresh.status
+        subscription.auto_renew_enabled = fresh.auto_renew
+        subscription.current_period_start = fresh.current_period_start
+        subscription.current_period_end = fresh.current_period_end
+        subscription.grace_period_ends_at = (
+            fresh.current_period_end if fresh.status == SubscriptionStatus.IN_GRACE_PERIOD else None
+        )
+        if fresh.status == SubscriptionStatus.EXPIRED and subscription.expired_at is None:
+            subscription.expired_at = now
+        subscription.last_event_at = now
+        await session.flush()
+        await session.refresh(subscription)
+        await _materialize(session, subscription, product, now=now)
+        return subscription.id
+
+    async def _revoke_stripe(self, session: AsyncSession, customer: str, now: datetime) -> str:
+        """A refund or a lost dispute revokes the customer's web subscriptions at once."""
+        user_id = await session.scalar(
+            select(BillingCustomer.user_id).where(
+                BillingCustomer.provider == "stripe",
+                BillingCustomer.provider_customer_id == customer,
+            )
+        )
+        if user_id is None:
+            return "ignored"
+        rows = (
+            await session.scalars(
+                select(Subscription).where(
+                    Subscription.user_id == user_id,
+                    Subscription.provider == "stripe",
+                    Subscription.status != SubscriptionStatus.REVOKED,
+                )
+            )
+        ).all()
+        for subscription in rows:
+            subscription.status = SubscriptionStatus.REVOKED
+            subscription.revoked_at = now
+            subscription.last_event_at = now
+            product = await session.get(Product, subscription.product_id)
+            assert product is not None
+            await session.flush()
+            await _materialize(session, subscription, product, now=now)
+        return "processed" if rows else "ignored"
+
     @staticmethod
     def _transition(
         subscription: Subscription,
@@ -558,6 +774,15 @@ class BillingService:
         subscription.status = target
         subscription.last_event_at = at
         del now
+
+
+async def _stripe_customer(session: AsyncSession, user_id: uuid.UUID) -> str | None:
+    customer: str | None = await session.scalar(
+        select(BillingCustomer.provider_customer_id).where(
+            BillingCustomer.user_id == user_id, BillingCustomer.provider == "stripe"
+        )
+    )
+    return customer
 
 
 async def purge_expired(session: AsyncSession) -> int:

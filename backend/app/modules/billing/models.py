@@ -14,6 +14,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    PrimaryKeyConstraint,
     Text,
     UniqueConstraint,
     Uuid,
@@ -176,3 +177,22 @@ class BillingEvent(Base):
     processing_status: Mapped[str] = mapped_column(Text, server_default=text("'pending'"))
     error: Mapped[str | None] = mapped_column(Text)
     attempts: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+
+
+class BillingCustomer(Base):
+    """A user's Stripe customer, for Checkout and the Customer Portal (ADR-0012). Card data is
+    never stored (hosted Checkout)."""
+
+    __tablename__ = "billing_customers"
+    __table_args__ = (
+        PrimaryKeyConstraint("user_id", "provider"),
+        UniqueConstraint("provider", "provider_customer_id"),
+        enum_check("provider", ("stripe",), "provider_enum"),
+    )
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    provider: Mapped[str] = mapped_column(Text, server_default=text("'stripe'"))
+    provider_customer_id: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

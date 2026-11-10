@@ -7,7 +7,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Body, Depends, Header, Request
 from fastapi.responses import JSONResponse
-from pydantic import Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.ratelimit import rate_limited
 from app.core.security.authn import get_principal
@@ -33,6 +33,8 @@ CurrentPrincipal = Annotated[Principal, Depends(get_principal)]
 VerifyBody = Annotated[AppleVerifyRequest | GoogleVerifyRequest, Field(discriminator="provider")]
 RestoreBody = Annotated[AppleRestoreRequest | GoogleRestoreRequest, Field(discriminator="provider")]
 NO_STORE = {"Cache-Control": "no-store"}
+# Relative paths on the web origin only: absolute URLs are refused (no open redirects).
+RELATIVE_PATH = r"^/[A-Za-z0-9/_\-.~%?=&]*$"
 
 
 def _service(request: Request) -> BillingService:
@@ -120,3 +122,65 @@ async def simulate_store_event(
         signed_date=body.signed_date,
     )
     return {"outcome": outcome}
+
+
+class CheckoutRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    product_id: uuid.UUID
+    success_path: str = Field(max_length=512, pattern=RELATIVE_PATH)
+    cancel_path: str = Field(max_length=512, pattern=RELATIVE_PATH)
+
+
+class PortalRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    return_path: str | None = Field(default=None, max_length=512, pattern=RELATIVE_PATH)
+
+
+@router.post(
+    "/checkout-sessions",
+    status_code=201,
+    openapi_extra=rate_limited("billing"),
+)
+async def create_checkout_session(
+    body: CheckoutRequest,
+    request: Request,
+    principal: CurrentPrincipal,
+    idempotency_key: Annotated[uuid.UUID, Header(alias="Idempotency-Key")],
+) -> JSONResponse:
+    """Web only (ADR-0012): a hosted Checkout URL; only the webhook grants entitlements."""
+    url, expires_at = await _service(request).checkout(
+        principal,
+        product_id=body.product_id,
+        success_path=body.success_path,
+        cancel_path=body.cancel_path,
+        idempotency_key=idempotency_key,
+    )
+    return JSONResponse(
+        {"url": url, "expires_at": expires_at.isoformat() if expires_at else None},
+        status_code=201,
+        headers=NO_STORE,
+    )
+
+
+@router.post("/portal-sessions", status_code=201, openapi_extra=rate_limited("billing"))
+async def create_portal_session(
+    request: Request,
+    principal: CurrentPrincipal,
+    body: Annotated[PortalRequest | None, Body()] = None,
+) -> JSONResponse:
+    url = await _service(request).portal(principal, return_path=body.return_path if body else None)
+    return JSONResponse({"url": url, "expires_at": None}, status_code=201, headers=NO_STORE)
+
+
+@router.post("/webhooks/stripe", openapi_extra=rate_limited("webhook"))
+async def receive_stripe_webhook(
+    request: Request,
+    stripe_signature: Annotated[
+        str | None, Header(alias="Stripe-Signature", max_length=2048)
+    ] = None,
+) -> dict[str, str]:
+    """Signature-verified against the raw body before parsing; stored once per event."""
+    outcome = await _service(request).stripe_webhook(await request.body(), stripe_signature)
+    return {"status": outcome}

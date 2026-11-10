@@ -27,6 +27,7 @@ PROBLEM_MEDIA_TYPE = "application/problem+json"
 
 class ErrorCode(StrEnum):
     VALIDATION_FAILED = "validation_failed"
+    BAD_REQUEST = "bad_request"
     INVALID_CURSOR = "invalid_cursor"
     UNAUTHENTICATED = "unauthenticated"
     MFA_REQUIRED = "mfa_required"
@@ -78,6 +79,7 @@ class ErrorCode(StrEnum):
 
 _DEFAULT_STATUS: Mapping[ErrorCode, HTTPStatus] = {
     ErrorCode.VALIDATION_FAILED: HTTPStatus.UNPROCESSABLE_ENTITY,
+    ErrorCode.BAD_REQUEST: HTTPStatus.BAD_REQUEST,
     ErrorCode.INVALID_CURSOR: HTTPStatus.BAD_REQUEST,
     ErrorCode.UNAUTHENTICATED: HTTPStatus.UNAUTHORIZED,
     ErrorCode.MFA_REQUIRED: HTTPStatus.FORBIDDEN,
