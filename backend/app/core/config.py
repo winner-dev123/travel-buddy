@@ -112,6 +112,11 @@ class Settings(BaseSettings):
     web_push_vapid_subject: str = "mailto:support@travelbuddy.app"
 
     # Stripe for web purchases (BL-3.14, ADR-0012). Unset: checkout, portal and webhooks give 503.
+    # App Store signed data (BL-6.01): the app's bundle id and the pinned SHA-256 fingerprint(s)
+    # of Apple Root CA - G3 (comma-separated hex). Both are needed to verify StoreKit 2
+    # transactions and App Store Server Notifications; without them Apple answers 503.
+    apple_bundle_id: str | None = None
+    apple_root_ca_sha256: str | None = None
     stripe_secret_key: SecretStr | None = None
     stripe_webhook_secret: SecretStr | None = None
     stripe_api_base: str = "https://api.stripe.com"

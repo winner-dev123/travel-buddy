@@ -24,6 +24,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.core.errors import AppError, ErrorCode
 from app.core.security.principal import Principal
 from app.core.time import Clock
+from app.modules.billing.apple import (
+    AppleJWSVerifier,
+    AppleSignatureError,
+    notification_event,
+)
+from app.modules.billing.apple import signed_date as apple_signed_date
 from app.modules.billing.domain import (
     GRACE,
     PERIODS,
@@ -253,11 +259,13 @@ class BillingService:
         stripe: StripeClient | None = None,
         web_origin: str = "http://localhost:3000",
         usage: QuotaUsage | None = None,
+        apple: AppleJWSVerifier | None = None,
     ) -> None:
         self._sessionmaker = sessionmaker
         self._clock = clock
         self._providers = dict(providers)
         self._stripe = stripe
+        self._apple = apple
         self._web_origin = web_origin.rstrip("/")
         self._usage = usage
 
@@ -550,6 +558,49 @@ class BillingService:
                 )
             )
         return outcome
+
+    # ─────────────────────────── App Store notifications (BL-6.01) ───────────────────────────
+
+    async def apple_webhook(self, signed_payload: str) -> str:
+        """App Store Server Notifications v2 (BILL-007, BILL-008): verified against the pinned
+        Apple root, stored once per ``notificationUUID`` and applied; ``ignored`` for types that
+        change nothing. ``400`` for anything not signed by Apple for this app."""
+        if self._apple is None:
+            raise AppError(
+                ErrorCode.SERVICE_UNAVAILABLE,
+                "App Store notifications aren't set up yet.",
+                headers={"Retry-After": "3600"},
+            )
+        now = self._clock.now()
+        try:
+            notification = self._apple.decode(signed_payload, now=now)
+            data = notification.get("data") or {}
+            if data.get("bundleId") != self._apple.bundle_id:
+                raise AppleSignatureError("another app")
+            info = data.get("signedTransactionInfo")
+            tx = self._apple.decode(info, now=now) if info else None
+        except AppleSignatureError:
+            raise AppError(
+                ErrorCode.BAD_REQUEST, "The notification isn't signed by Apple."
+            ) from None
+        kind, subtype = str(notification.get("notificationType")), notification.get("subtype")
+        event = notification_event(kind, subtype)
+        if event is None or tx is None:
+            return "ignored"
+        return await self.apply_event(
+            provider="apple",
+            provider_event_id=str(notification["notificationUUID"]),
+            original_transaction_id=str(tx["originalTransactionId"]),
+            event=event,
+            # A store event can't be from our future (clock skew would delay its effect).
+            signed_date=min(apple_signed_date(notification) or now, now),
+            payload={
+                "notification_type": kind,
+                "subtype": subtype,
+                "transaction_id": tx.get("transactionId"),
+                "environment": data.get("environment"),
+            },
+        )
 
     # ─────────────────────────── web: Stripe (BL-3.14, ADR-0012) ───────────────────────────
 

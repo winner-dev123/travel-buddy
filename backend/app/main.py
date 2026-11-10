@@ -52,7 +52,8 @@ from app.modules.ai_assistant.provider import (
 from app.modules.billing import service as billing_service
 from app.modules.billing.api import dev_router as dev_billing_router
 from app.modules.billing.api import router as billing_router
-from app.modules.billing.providers import DevBillingProvider, UnconfiguredStore
+from app.modules.billing.apple import AppleJWSVerifier, AppleStoreProvider
+from app.modules.billing.providers import BillingProvider, DevBillingProvider, UnconfiguredStore
 from app.modules.billing.stripe import StripeClient
 from app.modules.challenges import service as challenges_service
 from app.modules.challenges.api import router as challenges_router
@@ -360,6 +361,7 @@ def create_app(
     )
     app.state.ai_provider = ai_provider
     app.state.ai_service = ai
+    apple_verifier = build_apple_verifier(settings)
     app.state.billing_service = billing_service.BillingService(
         sessionmaker=database.sessionmaker,
         clock=clock,
@@ -379,14 +381,8 @@ def create_app(
         ),
         web_origin=settings.public_site_url,
         usage=quota_usage,
-        providers=(
-            {"apple": DevBillingProvider(), "google": DevBillingProvider()}
-            if settings.dev_billing_enabled
-            else {
-                "apple": UnconfiguredStore("the App Store"),
-                "google": UnconfiguredStore("Google Play"),
-            }
-        ),
+        providers=billing_providers(settings, apple_verifier),
+        apple=apple_verifier,
     )
     realtime_bus = build_realtime_bus(settings, redis)
     app.state.realtime_bus = realtime_bus
@@ -542,6 +538,27 @@ def build_rate_limiter(
             raise RuntimeError("RATE_LIMIT_STORE=redis needs REDIS_URL")
         return RateLimiter(RedisRateLimitStore(redis), policy, clock)
     return RateLimiter(PostgresRateLimitStore(database.sessionmaker), policy, clock)
+
+
+def build_apple_verifier(settings: Settings) -> AppleJWSVerifier | None:
+    """App Store signed data needs the bundle id and the pinned Apple root (BL-6.01)."""
+    if not settings.apple_bundle_id or not settings.apple_root_ca_sha256:
+        return None
+    return AppleJWSVerifier(
+        root_fingerprints=settings.apple_root_ca_sha256.split(","),
+        bundle_id=settings.apple_bundle_id,
+    )
+
+
+def billing_providers(
+    settings: Settings, apple: AppleJWSVerifier | None
+) -> dict[str, BillingProvider]:
+    if settings.dev_billing_enabled:
+        return {"apple": DevBillingProvider(), "google": DevBillingProvider()}
+    return {
+        "apple": AppleStoreProvider(apple) if apple else UnconfiguredStore("the App Store"),
+        "google": UnconfiguredStore("Google Play"),
+    }
 
 
 # Personal-data export (BL-6.03): every module that keeps personal data exports its own part.

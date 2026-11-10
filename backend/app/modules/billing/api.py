@@ -174,6 +174,21 @@ async def create_portal_session(
     return JSONResponse({"url": url, "expires_at": None}, status_code=201, headers=NO_STORE)
 
 
+class AppleNotificationRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    signedPayload: str = Field(min_length=1, max_length=65536)  # noqa: N815 - Apple's name
+
+
+@router.post("/webhooks/apple", openapi_extra=rate_limited("webhook"))
+async def receive_apple_notification(
+    body: AppleNotificationRequest, request: Request
+) -> dict[str, str]:
+    """App Store Server Notifications v2; verified against the pinned Apple root."""
+    outcome = await _service(request).apple_webhook(body.signedPayload)
+    return {"status": outcome}
+
+
 @router.post("/webhooks/stripe", openapi_extra=rate_limited("webhook"))
 async def receive_stripe_webhook(
     request: Request,

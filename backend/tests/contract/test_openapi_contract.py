@@ -33,7 +33,6 @@ CONTRACT_PATH = REPO_ROOT / "contracts" / "openapi" / "openapi.yaml"
 DELIVERED_PHASE = 5
 PENDING_OPERATIONS = frozenset(
     {
-        "POST /v1/billing/webhooks/apple",
         "POST /v1/billing/webhooks/google",
     }
 )
