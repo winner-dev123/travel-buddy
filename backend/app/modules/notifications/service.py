@@ -187,6 +187,29 @@ async def notify_from_event(
                 dedupe_key=f"{data.get('variant')}:{group}:{event_id}",
             )
         return created
+    if event_type in ("challenge.started", "challenge.cancelled"):
+        challenge = _uuid(data.get("challenge_id"))
+        kind = "challenge_started" if event_type == "challenge.started" else "challenge_result"
+        created = False
+        for raw in data.get("recipient_ids") or []:
+            recipient = _uuid(raw)
+            if recipient is None or challenge is None:
+                continue
+            created |= await notify(
+                session,
+                user_id=recipient,
+                kind=kind,
+                entity_type="challenge",
+                entity_id=challenge,
+                payload={
+                    "challenge_id": str(challenge),
+                    "group_id": data.get("group_id"),
+                    "title": data.get("title"),
+                    "variant": "started" if kind == "challenge_started" else "cancelled",
+                },
+                dedupe_key=f"{kind}:{challenge}:{event_id}",
+            )
+        return created
     if event_type == "ai.generation_completed":
         user, generation = _uuid(data.get("user_id")), _uuid(data.get("generation_id"))
         if user is None or generation is None:
@@ -273,6 +296,8 @@ async def _new_message(session: AsyncSession, data: Mapping[str, Any]) -> bool:
 
 EVENTS = (
     "ai.generation_completed",
+    "challenge.started",
+    "challenge.cancelled",
     "group.premium_notice",
     "message.sent",
     "conversation.read",

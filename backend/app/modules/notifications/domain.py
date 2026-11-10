@@ -338,6 +338,43 @@ AI_GENERATION_TEXTS: Final[dict[str, tuple[Text, Text]]] = {
 }
 
 
+# challenge_started / challenge_result: (title, body) by variant; bodies use {title}.
+CHALLENGE_TEXTS: Final[dict[str, tuple[Text, Text]]] = {
+    "started": (
+        {
+            "en": "A challenge has started",
+            "es": "Empezó un desafío",
+            "pt-BR": "Um desafio começou",
+            "fr": "Un défi a commencé",
+            "de": "Eine Challenge hat begonnen",
+        },
+        {
+            "en": "{title} is live in your group. Good luck!",
+            "es": "{title} ya está activo en tu grupo. ¡Suerte!",
+            "pt-BR": "{title} já está valendo no seu grupo. Boa sorte!",
+            "fr": "{title} est lancé dans votre groupe. Bonne chance !",
+            "de": "{title} läuft jetzt in deiner Gruppe. Viel Glück!",
+        },
+    ),
+    "cancelled": (
+        {
+            "en": "Challenge cancelled",
+            "es": "Desafío cancelado",
+            "pt-BR": "Desafio cancelado",
+            "fr": "Défi annulé",
+            "de": "Challenge abgesagt",
+        },
+        {
+            "en": "{title} was cancelled by the group admins.",
+            "es": "Los administradores del grupo cancelaron {title}.",
+            "pt-BR": "Os administradores do grupo cancelaram {title}.",
+            "fr": "Les administrateurs du groupe ont annulé {title}.",
+            "de": "{title} wurde von den Gruppen-Admins abgesagt.",
+        },
+    ),
+}
+
+
 def render(
     kind: str, payload: Mapping[str, Any], *, actor: str | None, locale: str
 ) -> tuple[str, str]:
@@ -348,6 +385,10 @@ def render(
         )
         group = str(payload.get("group_name") or "")
         return _pick(_PREMIUM_TITLE, locale), _pick(body, locale).format(group=group)
+    if kind in ("challenge_started", "challenge_result"):
+        default = "started" if kind == "challenge_started" else "cancelled"
+        title, body = CHALLENGE_TEXTS.get(str(payload.get("variant")), CHALLENGE_TEXTS[default])
+        return _pick(title, locale), _pick(body, locale).format(title=payload.get("title") or "")
     if kind == "ai_generation_ready":
         outcome = "succeeded" if payload.get("status") == "succeeded" else "failed"
         title, body = AI_GENERATION_TEXTS[outcome]
@@ -362,7 +403,14 @@ def render(
 
 def renderable_kinds() -> frozenset[str]:
     return frozenset(
-        {*_TEMPLATES, "ai_generation_ready", "moderation_notice", "subscription_notice"}
+        {
+            *_TEMPLATES,
+            "ai_generation_ready",
+            "challenge_started",
+            "challenge_result",
+            "moderation_notice",
+            "subscription_notice",
+        }
     )
 
 

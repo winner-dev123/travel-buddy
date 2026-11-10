@@ -70,6 +70,10 @@ class ErrorCode(StrEnum):
     GROUP_CAPACITY_REACHED = "group_capacity_reached"
     INVITATION_INVALID = "invitation_invalid"
     CHALLENGE_NOT_ACTIVE = "challenge_not_active"
+    CHALLENGE_LOCKED = "challenge_locked"
+    ATTEMPT_COOLDOWN = "attempt_cooldown"
+    NOT_TEAM_CAPTAIN = "not_team_captain"
+    REWARD_NOT_PERMITTED = "reward_not_permitted"
     ATTEMPTS_EXHAUSTED = "attempts_exhausted"
     LOCATION_UNRESOLVABLE = "location_unresolvable"
     UPSTREAM_UNAVAILABLE = "upstream_unavailable"
@@ -125,7 +129,11 @@ _DEFAULT_STATUS: Mapping[ErrorCode, HTTPStatus] = {
     ErrorCode.GROUP_CAPACITY_REACHED: HTTPStatus.CONFLICT,
     ErrorCode.INVITATION_INVALID: HTTPStatus.GONE,
     ErrorCode.CHALLENGE_NOT_ACTIVE: HTTPStatus.CONFLICT,
-    ErrorCode.ATTEMPTS_EXHAUSTED: HTTPStatus.TOO_MANY_REQUESTS,
+    ErrorCode.CHALLENGE_LOCKED: HTTPStatus.CONFLICT,
+    ErrorCode.ATTEMPT_COOLDOWN: HTTPStatus.CONFLICT,
+    ErrorCode.NOT_TEAM_CAPTAIN: HTTPStatus.FORBIDDEN,
+    ErrorCode.REWARD_NOT_PERMITTED: HTTPStatus.UNPROCESSABLE_ENTITY,
+    ErrorCode.ATTEMPTS_EXHAUSTED: HTTPStatus.CONFLICT,
     ErrorCode.UPSTREAM_UNAVAILABLE: HTTPStatus.SERVICE_UNAVAILABLE,
     ErrorCode.AI_UNAVAILABLE: HTTPStatus.SERVICE_UNAVAILABLE,
     ErrorCode.AI_OUTPUT_INVALID: HTTPStatus.BAD_GATEWAY,

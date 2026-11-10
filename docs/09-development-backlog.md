@@ -145,11 +145,11 @@ Web-workstream items (Next.js app, BFF, web admin) are tracked by the web workst
 
 ## 7. Phase 5 — Interactive community activities
 
-| ID | Item | Size | Depends | Req |
-|---|---|---|---|---|
-| BL-5.01 | Challenge model, config validation, lifecycle + scheduler activation | M | 3.07 | CHAL-001..003 |
-| BL-5.02 | Answer normalization + exact/multi-answer evaluation | S | 5.01 | CHAL-006 |
-| BL-5.03 | Submissions: attempts, cooldown, transactional winner determination | M | 5.02 | CHAL-005, CHAL-009, CHAL-010 |
+| ID | Item | Size | Depends | Req | Status |
+|---|---|---|---|---|---|
+| BL-5.01 | Challenge model, config validation, lifecycle + scheduler activation | M | 3.07 | CHAL-001..003 | ✅ Done: challenge tables (migration 0036, incl. participants, submissions and winners for BL-5.03); create (idempotent, `challenges.manage` + group premium, else `entitlement_required`), list (drafts for managers only, cursors), member view (released hints only, no answers), manager view with ETag, edit with `If-Match` (after the start only `ends_at` may be extended, `rules_version` bumps), publish (review gate for discount/promotional rewards), cancel; scheduler starts and closes challenges every 5 min (reads apply due moves too) and notifies members; prize policy rejects cash, cash equivalents, raffles, wagers and paid entry |
+| BL-5.02 | Answer normalization + exact/multi-answer evaluation | S | 5.01 | CHAL-006 | ✅ Normalization done (NFKC, case, accents, punctuation, whitespace, leading articles and elisions per locale); multiple accepted answers stored normalized and deduplicated; evaluation runs with submissions (BL-5.03) |
+| BL-5.03 | Submissions: attempts, cooldown, transactional winner determination | M | 5.02 | CHAL-005, CHAL-009, CHAL-010 | ✅ Done: idempotent, append-only `POST /submissions` (rate class `submission`) under the challenge row lock, so submissions are serialized and first-correct order is commit order (race test: 5 concurrent correct answers, `first_n_correct` of 2 → the 2 earliest win); window check (`challenge_not_active`), attempt limit (`attempts_exhausted`), cooldown (`attempt_cooldown` + `Retry-After`), answers empty after normalization rejected without using an attempt, no second attempt after a correct answer; `exact` judged at once, `ai_assisted` exact matches correct and the rest `pending`, `admin_review` always `pending`; provisional winners per policy (`admin_selects` picks no one); `GET /submissions` (own, or all for `challenges.judge`, AI fields for judges only) and `GET /results` (members see confirmed winners after publication, judges see provisional ones). Error status for `attempts_exhausted`/`attempt_cooldown` aligned with the contract (409). Team mode submits via captains in BL-5.04 |
 | BL-5.04 | Team mode (teams, captain, shared thread) | M | 5.03, 3.09 | CHAL-004 |
 | BL-5.05 | Admin review + AI-assisted judging (never final for real rewards) | M | 5.03, 4.02 | CHAL-006, CHAL-007 |
 | BL-5.06 | Rewards, review gate, fulfillment state machine, badges | M | 5.03 | CHAL-012..015 |

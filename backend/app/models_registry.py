@@ -7,6 +7,7 @@ this module.
 from app.core.db import Base
 from app.modules.ai_assistant import models as ai_assistant_models
 from app.modules.billing import models as billing_models
+from app.modules.challenges import models as challenges_models
 from app.modules.connections import models as connections_models
 from app.modules.destinations import models as destinations_models
 from app.modules.feed import models as feed_models
@@ -28,6 +29,7 @@ __all__ = [
     "Base",
     "ai_assistant_models",
     "billing_models",
+    "challenges_models",
     "connections_models",
     "destinations_models",
     "feed_models",

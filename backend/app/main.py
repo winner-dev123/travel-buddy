@@ -54,6 +54,8 @@ from app.modules.billing.api import dev_router as dev_billing_router
 from app.modules.billing.api import router as billing_router
 from app.modules.billing.providers import DevBillingProvider, UnconfiguredStore
 from app.modules.billing.stripe import StripeClient
+from app.modules.challenges import service as challenges_service
+from app.modules.challenges.api import router as challenges_router
 from app.modules.client_config.api import router as client_config_router
 from app.modules.connections import service as connections_service
 from app.modules.connections.api import router as connections_router
@@ -324,6 +326,9 @@ def create_app(
         sessionmaker=database.sessionmaker, cursors=cursor_codec, clock=clock, plans=itinerary_plan
     )
     app.state.guide_service = GuideService(sessionmaker=database.sessionmaker, clock=clock)
+    app.state.challenge_service = challenges_service.ChallengeService(
+        sessionmaker=database.sessionmaker, clock=clock, cursors=cursor_codec
+    )
     app.state.offline_package_service = OfflinePackageService(
         sessionmaker=database.sessionmaker,
         clock=clock,
@@ -451,6 +456,7 @@ def create_app(
     app.include_router(trips_router)
     app.include_router(saved_places_router)
     app.include_router(guides_router)
+    app.include_router(challenges_router)
     app.include_router(ai_router)
     app.include_router(translation_router)
     app.include_router(group_invitations_router)
@@ -713,6 +719,7 @@ def build_job_runner(
     )
     handlers.update(abuse_signals.make_handlers(database.sessionmaker))
     handlers.update(groups_service.make_handlers(database.sessionmaker, clock))
+    handlers.update(challenges_service.make_handlers(database.sessionmaker, clock))
     handlers.update(
         media_service.make_handlers(
             database.sessionmaker, media_storage, media_service.NoopScanner()
@@ -738,6 +745,14 @@ def build_job_runner(
     }
     periodic = [Periodic(f"retention.{name}", f"retention.{name}", DAILY) for name in purges]
     periodic.append(Periodic(abuse_signals.JOB_KIND, abuse_signals.JOB_KIND, timedelta(hours=1)))
+    # Challenges start and close on time (CHAL-003); reads also apply due moves lazily.
+    periodic.append(
+        Periodic(
+            challenges_service.LIFECYCLE_JOB,
+            challenges_service.LIFECYCLE_JOB,
+            timedelta(minutes=5),
+        )
+    )
     periodic.append(
         Periodic(
             groups_service.PREMIUM_WATCH_JOB,

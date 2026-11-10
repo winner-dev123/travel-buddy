@@ -637,7 +637,7 @@ erDiagram
 | rules_version | Snapshot of the rules version the attempt was made under |
 | submitted_at, evaluated_at | |
 
-Submission transaction: lock the participant row (or team row), check `status='active'`, time window, `attempts_used < max_attempts` and cooldown, then insert the submission, increment `attempts_used`, evaluate if `exact`, and, if correct and the winner policy allows, insert into `challenge_winners`. Everything runs under a challenge-level advisory lock so first-correct ordering is deterministic.
+Submission transaction: lock the participant row (or team row), check `status='active'`, time window, `attempts_used < max_attempts` and cooldown, then insert the submission, increment `attempts_used`, evaluate if `exact`, and, if correct and the winner policy allows, insert into `challenge_winners`. Everything runs under a challenge-level lock (the `group_challenges` row, `SELECT … FOR UPDATE`, which also orders submissions against cancel and edits), so first-correct ordering is deterministic: commit order equals `submitted_at` order.
 
 ### challenge_winners
 `id`, `challenge_id`, `user_id NULL`, `team_id NULL` (`ck` exactly one), `submission_id FK`, `rank smallint`, `status` (`provisional`, `confirmed`, `revoked`), `determined_by` (`system`, `admin`), `determined_at`, `confirmed_by`. `uq (challenge_id, rank) WHERE status <> 'revoked'`.

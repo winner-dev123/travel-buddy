@@ -163,7 +163,7 @@ Verification column: **U** = unit test, **I** = integration test, **S** = securi
 | T-CHAL-04 | Admin collusion or unfair judging | All judging audited. Rules versioned and frozen once active. Disputes escalate to platform | R |
 | T-CHAL-05 | AI judge manipulation (prompt injection in answer text) | Answer passed as quoted data with a strict output schema. AI never final for real-world rewards | U |
 | T-CHAL-06 | Illegal lottery or prize structures | Reward types restricted. Monetary-pattern review. Legal review per jurisdiction | R, O |
-| T-CHAL-07 | Race: two "first correct" winners | Challenge-level advisory lock serializes winner determination | I |
+| T-CHAL-07 | Race: two "first correct" winners | Challenge-level row lock serializes submissions and winner determination (concurrency test) | I |
 
 ### 4.8 Media (A9)
 

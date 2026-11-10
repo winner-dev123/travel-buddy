@@ -1351,6 +1351,62 @@ async def chat_policy(
     )
 
 
+@dataclass(frozen=True, slots=True)
+class MemberAccess:
+    """One member's standing in a group, for modules acting inside it (challenges)."""
+
+    role: str
+    permissions: frozenset[str]  # effective now (premium-gated tools drop after a lapse)
+    role_permissions: frozenset[str]  # what the role grants with premium active
+    premium_active: bool
+    group_active: bool
+    restricted: bool
+
+
+async def member_access(
+    session: AsyncSession, group_id: uuid.UUID, user_id: uuid.UUID, *, now: datetime
+) -> MemberAccess | None:
+    """``None`` when the user is not a member (or the group does not exist)."""
+    group = await session.get(TravelGroup, group_id)
+    membership = await session.scalar(
+        select(GroupMembership).where(
+            GroupMembership.group_id == group_id, GroupMembership.user_id == user_id
+        )
+    )
+    if group is None or membership is None or membership.status not in _MEMBER:
+        return None
+    settings = await session.get(GroupSettings, group_id)
+    status = await billing.group_premium(session, group.owner_id, at=now)
+    role = Role(membership.role)
+    invite = bool(settings and settings.members_can_invite)
+    return MemberAccess(
+        role=role.value,
+        permissions=frozenset(
+            p.value
+            for p in permissions(
+                role, members_can_invite=invite, premium_active=status.premium_features_active
+            )
+        ),
+        role_permissions=frozenset(
+            p.value for p in permissions(role, members_can_invite=invite, premium_active=True)
+        ),
+        premium_active=status.premium_features_active,
+        group_active=group.status == GroupStatus.ACTIVE,
+        restricted=membership.status == MembershipStatus.RESTRICTED
+        and (membership.restricted_until is None or membership.restricted_until > now),
+    )
+
+
+async def member_ids(session: AsyncSession, group_id: uuid.UUID) -> list[uuid.UUID]:
+    """Every current member (notifications to the whole group)."""
+    rows = await session.scalars(
+        select(GroupMembership.user_id).where(
+            GroupMembership.group_id == group_id, GroupMembership.status.in_(_MEMBER)
+        )
+    )
+    return list(rows)
+
+
 async def group_evidence(
     session: AsyncSession, group_id: uuid.UUID, reporter_id: uuid.UUID
 ) -> tuple[uuid.UUID | None, dict[str, Any]] | None:
