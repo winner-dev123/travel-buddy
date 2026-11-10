@@ -591,7 +591,8 @@
     "unverified": "Sugestão não verificada",
     "save": "Salvar como viagem",
     "again": "Planejar de novo",
-    "tripTitle": "Viagem para {{place}}"
+    "tripTitle": "Viagem para {{place}}",
+    "apply": "Aplicar à minha viagem"
   },
   "trips": {
     "title": "Minhas viagens",
@@ -600,6 +601,13 @@
     "dates": "{{start}} – {{end}}",
     "missing": "Esta viagem não está disponível.",
     "freeDay": "Nada planejado ainda.",
-    "aiSuggested": "Sugestão da IA"
+    "aiSuggested": "Sugestão da IA",
+    "replanTitle": "Mudar esta viagem com IA",
+    "replanPremium": "Mudar uma viagem com IA faz parte do Premium.",
+    "replanInstruction": "O que deve mudar? (por exemplo: chuva no dia 2, mais museus)",
+    "replanDays": "Dias para mudar (nenhum selecionado: todos)",
+    "replanSubmit": "Sugerir mudanças",
+    "replanConflict": "Esta viagem mudou enquanto isso. Recarregue e tente novamente.",
+    "dayShort": "Dia {{number}}"
   }
 }

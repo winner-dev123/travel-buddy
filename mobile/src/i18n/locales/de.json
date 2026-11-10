@@ -584,7 +584,8 @@
     "unverified": "Unbestätigter Vorschlag",
     "save": "Als Reise speichern",
     "again": "Neu planen",
-    "tripTitle": "Reise nach {{place}}"
+    "tripTitle": "Reise nach {{place}}",
+    "apply": "Auf meine Reise anwenden"
   },
   "trips": {
     "title": "Meine Reisen",
@@ -593,6 +594,13 @@
     "dates": "{{start}} – {{end}}",
     "missing": "Diese Reise ist nicht verfügbar.",
     "freeDay": "Noch nichts geplant.",
-    "aiSuggested": "KI-Vorschlag"
+    "aiSuggested": "KI-Vorschlag",
+    "replanTitle": "Diese Reise mit KI ändern",
+    "replanPremium": "Reisen mit KI zu ändern ist Teil von Premium.",
+    "replanInstruction": "Was soll sich ändern? (zum Beispiel: Regen an Tag 2, mehr Museen)",
+    "replanDays": "Zu ändernde Tage (keiner ausgewählt: alle)",
+    "replanSubmit": "Änderungen vorschlagen",
+    "replanConflict": "Diese Reise wurde inzwischen geändert. Lade sie neu und versuch es erneut.",
+    "dayShort": "Tag {{number}}"
   }
 }

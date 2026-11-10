@@ -584,7 +584,8 @@
     "unverified": "Unverified suggestion",
     "save": "Save as a trip",
     "again": "Plan again",
-    "tripTitle": "Trip to {{place}}"
+    "tripTitle": "Trip to {{place}}",
+    "apply": "Apply to my trip"
   },
   "trips": {
     "title": "My trips",
@@ -593,6 +594,13 @@
     "dates": "{{start}} – {{end}}",
     "missing": "This trip isn't available.",
     "freeDay": "Nothing planned yet.",
-    "aiSuggested": "AI suggestion"
+    "aiSuggested": "AI suggestion",
+    "replanTitle": "Change this trip with AI",
+    "replanPremium": "Changing a trip with AI is part of Premium.",
+    "replanInstruction": "What should change? (for example: rain on day 2, more museums)",
+    "replanDays": "Days to change (none selected: all days)",
+    "replanSubmit": "Suggest changes",
+    "replanConflict": "This trip changed meanwhile. Reload it and try again.",
+    "dayShort": "Day {{number}}"
   }
 }

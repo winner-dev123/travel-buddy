@@ -15,8 +15,10 @@ from app.modules.ai_assistant.domain import (
     DRAFT_SCHEMA,
     SYSTEM_PROMPT,
     Candidate,
+    CurrentItem,
     ItineraryContext,
     ItineraryDraft,
+    Replan,
     build_prompt,
     build_proposal,
     repair_feedback,
@@ -350,3 +352,44 @@ async def test_claude_adapter_maps_network_failures() -> None:
             schema=DRAFT_SCHEMA,
         )
     assert caught.value.retryable is True
+
+
+@pytest.mark.req("AI-005")
+def test_replan_checks_requested_days_kept_items_and_avoided_categories() -> None:
+    replan = Replan(
+        instruction="Rain on day two",
+        day_indexes=(1,),
+        current={
+            0: (CurrentItem("Tram 28", "activity", "10:00", 60, None),),
+            1: (CurrentItem("Fado night", "activity", "21:00", 90, None, keep=True),),
+        },
+        avoid_categories=("viewpoint",),
+    )
+    context = _context(replan=replan)
+    payload = json.loads(build_prompt(context).user)
+    assert payload["replan"]["days_to_replan"] == [1]
+    assert payload["replan"]["current_plan"][1]["items"][0]["keep"] is True
+    assert build_prompt(context).system != SYSTEM_PROMPT  # the replan prompt version
+
+    def draft(items: list[dict[str, Any]], index: int = 1) -> ItineraryDraft:
+        return ItineraryDraft.model_validate(
+            {
+                "days": [{"day_index": index, "theme": None, "items": items}],
+                "warnings": [],
+                "confidence": 0.6,
+            }
+        )
+
+    kept = _item(
+        title="Fado night",
+        suggested_start_time="21:00",
+        estimated_duration_minutes=90,
+        category=None,
+    )
+    assert semantic_errors(draft([kept, _item(category="museum")]), context) == []
+    wrong_day = semantic_errors(draft([kept], index=0), context)
+    assert wrong_day[0] == "days must be exactly day_index [1], in order"
+    [missing] = semantic_errors(draft([_item(category="museum")]), context)
+    assert "kept item 0 is missing" in missing
+    [avoided] = semantic_errors(draft([kept, _item(category="viewpoint")]), context)
+    assert "avoided category" in avoided

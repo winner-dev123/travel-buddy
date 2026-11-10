@@ -167,3 +167,58 @@ class TranslationOut(_Out):
     text: str
     machine_translated: Literal[True] = True
     provider_attribution: str | None
+
+
+class ReplanConstraints(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    keep_item_ids: list[uuid.UUID] = Field(default_factory=list, max_length=100)
+    avoid_categories: list[PlaceCategory] = Field(default_factory=list, max_length=13)
+    pace: Literal["relaxed", "moderate", "packed"] | None = None
+
+
+class ReplanTripRequest(BaseModel):
+    """Contract ``ReplanTripRequest`` (AI-005)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    instruction: str = Field(min_length=3, max_length=500)
+    base_version: int = Field(ge=1)
+    day_indexes: list[int] | None = Field(default=None, max_length=90)
+    constraints: ReplanConstraints = Field(default_factory=ReplanConstraints)
+
+    @field_validator("day_indexes")
+    @classmethod
+    def _indexes(cls, value: list[int] | None) -> list[int] | None:
+        if value is not None and any(i < 0 for i in value):
+            raise ValueError("day indexes start at 0")
+        return value
+
+
+class ReplanItem(BaseModel):
+    id: uuid.UUID
+    title: str
+    kind: str
+    start_time: str | None
+    duration_minutes: int | None
+    place_id: uuid.UUID | None
+
+
+class ReplanDay(BaseModel):
+    day_index: int
+    items: list[ReplanItem]
+
+
+class ReplanParams(BaseModel):
+    """What a replan generation stores until it is answered (the trip as it was requested)."""
+
+    trip_id: uuid.UUID
+    destination_id: uuid.UUID
+    start_date: date
+    end_date: date
+    instruction: str
+    day_indexes: list[int]
+    pace: Literal["relaxed", "moderate", "packed"]
+    avoid_categories: list[str]
+    keep_item_ids: list[uuid.UUID]
+    current: list[ReplanDay]

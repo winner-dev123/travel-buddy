@@ -226,6 +226,8 @@ def fake_itinerary(prompt: Prompt) -> str:
     """A plausible plan built from the prompt's own context: three slots a day, using catalog
     candidates in order and leaving the rest unverified."""
     context = json.loads(prompt.user)
+    if "replan" in context:
+        return _fake_replan(context)
     trip = context["trip"]
     start = date.fromisoformat(trip["start_date"])
     count = (date.fromisoformat(trip["end_date"]) - start).days + 1
@@ -255,6 +257,57 @@ def fake_itinerary(prompt: Prompt) -> str:
     return json.dumps({"days": days, "warnings": [], "confidence": 0.7})
 
 
+def _fake_replan(context: dict[str, Any]) -> str:
+    """Revise only the requested days: kept items come back unchanged, plus one new evening
+    suggestion after them, outside the avoided categories."""
+    replan = context["replan"]
+    avoid = set(replan["avoid_categories"])
+    current = {day["day_index"]: day["items"] for day in replan["current_plan"]}
+    category = next(c for c in ("viewpoint", "park", "museum", "other") if c not in avoid)
+    days = []
+    for index in replan["days_to_replan"]:
+        items = []
+        latest = 19 * 60
+        for item in current.get(index, []):
+            if not item["keep"]:
+                continue
+            duration = max(5, item["duration_minutes"] or 60)
+            if item["start_time"]:
+                hours, minutes = item["start_time"].split(":")
+                latest = max(latest, int(hours) * 60 + int(minutes) + duration)
+            items.append(
+                {
+                    "kind": item["kind"],
+                    "title": item["title"],
+                    "description": "",
+                    "place_id": item["place_id"],
+                    "suggested_start_time": item["start_time"],
+                    "estimated_duration_minutes": duration,
+                    "category": None,
+                    "confidence": 1.0,
+                    "rationale": "Kept as requested.",
+                    "social_opportunity": False,
+                }
+            )
+        if latest <= 22 * 60:
+            items.append(
+                {
+                    "kind": "activity",
+                    "title": f"New plan: {replan['instruction'][:60]}",
+                    "description": "A change for this day.",
+                    "place_id": None,
+                    "suggested_start_time": f"{latest // 60:02d}:{latest % 60:02d}",
+                    "estimated_duration_minutes": 90,
+                    "category": category,
+                    "confidence": 0.6,
+                    "rationale": "Follows the instruction.",
+                    "social_opportunity": False,
+                }
+            )
+        days.append({"day_index": index, "theme": "Revised", "items": items})
+    return json.dumps({"days": days, "warnings": [], "confidence": 0.6})
+
+
 def fake_translation(prompt: Prompt) -> str:
     """Development/test answer: the text, tagged with the target language."""
     payload = json.loads(prompt.user)
@@ -266,6 +319,7 @@ class FakeAIProvider:
     responders: dict[AITask, Responder] = field(
         default_factory=lambda: {
             AITask.ITINERARY_GENERATE: fake_itinerary,
+            AITask.TRIP_REPLAN: fake_itinerary,
             AITask.POST_TRANSLATE: fake_translation,
         }
     )

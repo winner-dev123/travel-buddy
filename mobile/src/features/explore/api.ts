@@ -238,3 +238,35 @@ export async function saveProposalAsTrip(
     ifMatchVersion: trip.version,
   });
 }
+
+export interface ReplanTrip {
+  instruction: string;
+  base_version: number;
+  day_indexes?: number[];
+}
+
+export function replanTrip(
+  client: ApiClient,
+  idempotencyKey: string,
+  tripId: string,
+  body: ReplanTrip,
+): Promise<AIGeneration> {
+  return client.post<AIGeneration>(`/v1/ai/trips/${tripId}/replan`, { body, idempotencyKey });
+}
+
+/** Replace the proposal's days in an existing trip (the trip's current version is required). */
+export async function applyProposalToTrip(
+  client: ApiClient,
+  tripId: string,
+  generation: AIGeneration,
+): Promise<Trip> {
+  const trip = await getTrip(client, tripId);
+  return client.post<Trip>(`/v1/trips/${tripId}/apply-itinerary`, {
+    body: {
+      generation_id: generation.id,
+      mode: 'replace',
+      day_indexes: generation.result!.itinerary.days.map((day) => day.day_index),
+    },
+    ifMatchVersion: trip.version,
+  });
+}

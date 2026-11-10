@@ -40,9 +40,12 @@ from app.modules.ai_assistant.domain import (
     DRAFT_SCHEMA,
     MAX_DAYS,
     PROMPT_VERSION,
+    REPLAN_PROMPT_VERSION,
     Candidate,
+    CurrentItem,
     ItineraryContext,
     ItineraryDraft,
+    Replan,
     build_prompt,
     build_proposal,
     repair_feedback,
@@ -62,16 +65,23 @@ from app.modules.ai_assistant.schemas import (
     AIGenerationOut,
     GenerateItineraryRequest,
     ItineraryProposal,
+    ReplanDay,
+    ReplanItem,
+    ReplanParams,
+    ReplanTripRequest,
     TranslationOut,
 )
 from app.modules.billing import service as billing
 from app.modules.billing.schemas import QuotaStatusOut
 from app.modules.destinations import service as destinations
+from app.modules.destinations.schemas import DestinationSummary
 from app.modules.identity import service as identity
 from app.modules.platform import service as platform
 from app.modules.social import service as social
+from app.modules.trips import service as trips
 
 GENERATE_ROUTE = "POST /v1/ai/itineraries/generate"
+REPLAN_ROUTE = "POST /v1/ai/trips/{id}/replan"
 REQUESTED_EVENT = "ai.generation_requested"
 COMPLETED_EVENT = "ai.generation_completed"
 JOB_KIND = "ai.generate"
@@ -314,54 +324,171 @@ class AIService:
                     return AIGenerationOut.model_validate(replay.body)
                 if not await destinations.is_active(session, request.destination_id):
                     raise _invalid("/destination_id", "Pick a destination from the list.")
-                provider = await self._guard(session, now)
-                await session.execute(
-                    select(func.pg_advisory_xact_lock(_LOCK_NAMESPACE, _lock_key(user_id)))
-                )
-                quota = await quota_status(session, user_id, task, now)
-                if quota.used >= quota.limit:
-                    raise AppError(
-                        ErrorCode.QUOTA_EXCEEDED,
-                        "You've used this month's itinerary generations.",
-                        status=HTTPStatus.CONFLICT,
-                        extensions={"feature_key": QUOTAS[task].value},
-                    )
-                config = self._tasks[task]
-                row = AIGeneration(
+                return await self._accept(
+                    session,
                     user_id=user_id,
-                    feature=task.value,
-                    provider=provider.name,
-                    model=config.model,
+                    task=task,
                     prompt_version=PROMPT_VERSION,
-                    status="pending",
-                    locale=locale,
                     params=request.model_dump(mode="json"),
-                    validation_errors=[],
-                    request_id=current_request_id(),
-                    created_at=now,
+                    locale=locale,
+                    idempotency_key=idempotency_key,
+                    now=now,
                 )
-                session.add(row)
-                await session.flush()
-                platform.record_event(
-                    session,
-                    aggregate_type="ai_generation",
-                    aggregate_id=row.id,
-                    event_type=REQUESTED_EVENT,
-                    payload={"generation_id": str(row.id)},
-                )
-                out = self._out(row, quota.model_copy(update={"used": quota.used + 1}))
-                await platform.idempotency.complete(
-                    session,
-                    user_id=user_id,
-                    key=idempotency_key,
-                    status=HTTPStatus.ACCEPTED,
-                    body=out.model_dump(mode="json"),
-                )
-                return out
         except AppError as exc:
             if exc.code is ErrorCode.QUOTA_EXCEEDED:
                 await self._record_denied(user_id, task, locale, now)
             raise
+
+    async def replan_trip(
+        self,
+        principal: Principal,
+        trip_id: uuid.UUID,
+        request: ReplanTripRequest,
+        *,
+        idempotency_key: uuid.UUID,
+        locale: str,
+    ) -> AIGenerationOut:
+        """Propose changes to an existing trip (AI-005, premium). Nothing changes until the client
+        applies the proposal with ``POST /v1/trips/{id}/apply-itinerary``."""
+        task = AITask.TRIP_REPLAN
+        user_id = principal.user_id
+        now = self._clock.now()
+        try:
+            async with self._sessionmaker() as session, session.begin():
+                replay = await platform.idempotency.claim(
+                    session,
+                    user_id=user_id,
+                    key=idempotency_key,
+                    route=REPLAN_ROUTE,
+                    payload={"trip_id": str(trip_id), **request.model_dump(mode="json")},
+                )
+                if replay is not None:
+                    return AIGenerationOut.model_validate(replay.body)
+                snapshot = await trips.replan_snapshot(session, trip_id, user_id)
+                feature = billing.Feature.AI_TRIP_REPLAN
+                if not await billing.has(session, user_id, feature, at=now):
+                    raise AppError(
+                        ErrorCode.ENTITLEMENT_REQUIRED,
+                        "Replanning trips is a premium feature.",
+                        extensions={"entitlement": feature.value},
+                    )
+                if snapshot.version != request.base_version:
+                    raise AppError(
+                        ErrorCode.CONFLICT,
+                        "The trip changed since you opened it. Reload it and try again.",
+                    )
+                if snapshot.destination_id is None:
+                    raise _invalid("/trip", "Add a destination to the trip first.")
+                existing = [day.day_index for day in snapshot.days]
+                indexes = sorted(set(request.day_indexes or existing))
+                if not indexes or any(index not in existing for index in indexes):
+                    raise _invalid("/day_indexes", "Pick days of this trip.")
+                if len(indexes) > MAX_DAYS:
+                    raise _invalid("/day_indexes", f"Replan up to {MAX_DAYS} days at a time.")
+                item_ids = {item.id for day in snapshot.days for item in day.items}
+                keep = request.constraints.keep_item_ids
+                if any(item_id not in item_ids for item_id in keep):
+                    raise _invalid("/constraints/keep_item_ids", "Keep items of this trip only.")
+                params = ReplanParams(
+                    trip_id=snapshot.id,
+                    destination_id=snapshot.destination_id,
+                    start_date=snapshot.start_date,
+                    end_date=snapshot.end_date,
+                    instruction=request.instruction.strip(),
+                    day_indexes=indexes,
+                    pace=request.constraints.pace or "moderate",
+                    avoid_categories=list(request.constraints.avoid_categories),
+                    keep_item_ids=list(keep),
+                    current=[
+                        ReplanDay(
+                            day_index=day.day_index,
+                            items=[
+                                ReplanItem(
+                                    id=item.id,
+                                    title=item.title,
+                                    kind=item.kind,
+                                    start_time=item.start_time,
+                                    duration_minutes=item.duration_minutes,
+                                    place_id=item.place_id,
+                                )
+                                for item in day.items
+                            ],
+                        )
+                        for day in snapshot.days
+                    ],
+                )
+                return await self._accept(
+                    session,
+                    user_id=user_id,
+                    task=task,
+                    prompt_version=REPLAN_PROMPT_VERSION,
+                    params=params.model_dump(mode="json"),
+                    locale=locale,
+                    idempotency_key=idempotency_key,
+                    now=now,
+                )
+        except AppError as exc:
+            if exc.code is ErrorCode.QUOTA_EXCEEDED:
+                await self._record_denied(user_id, task, locale, now)
+            raise
+
+    async def _accept(
+        self,
+        session: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        task: AITask,
+        prompt_version: str,
+        params: dict[str, Any],
+        locale: str,
+        idempotency_key: uuid.UUID,
+        now: datetime,
+    ) -> AIGenerationOut:
+        """Breakers, the user's monthly quota (serialized per user), then a ``pending``
+        generation with its request event; completes the idempotency key."""
+        provider = await self._guard(session, now)
+        await session.execute(
+            select(func.pg_advisory_xact_lock(_LOCK_NAMESPACE, _lock_key(user_id)))
+        )
+        quota = await quota_status(session, user_id, task, now)
+        if quota.used >= quota.limit:
+            raise AppError(
+                ErrorCode.QUOTA_EXCEEDED,
+                "You've used this month's AI plans.",
+                status=HTTPStatus.CONFLICT,
+                extensions={"feature_key": QUOTAS[task].value},
+            )
+        row = AIGeneration(
+            user_id=user_id,
+            feature=task.value,
+            provider=provider.name,
+            model=self._tasks[task].model,
+            prompt_version=prompt_version,
+            status="pending",
+            locale=locale,
+            params=params,
+            validation_errors=[],
+            request_id=current_request_id(),
+            created_at=now,
+        )
+        session.add(row)
+        await session.flush()
+        platform.record_event(
+            session,
+            aggregate_type="ai_generation",
+            aggregate_id=row.id,
+            event_type=REQUESTED_EVENT,
+            payload={"generation_id": str(row.id)},
+        )
+        out = self._out(row, quota.model_copy(update={"used": quota.used + 1}))
+        await platform.idempotency.complete(
+            session,
+            user_id=user_id,
+            key=idempotency_key,
+            status=HTTPStatus.ACCEPTED,
+            body=out.model_dump(mode="json"),
+        )
+        return out
 
     async def _record_denied(
         self, user_id: uuid.UUID, task: AITask, locale: str, now: datetime
@@ -539,50 +666,14 @@ class AIService:
                 self._close(row, "unavailable", now)
                 self._completed(session, row)
                 return
-            request = GenerateItineraryRequest.model_validate(row.params)
-            found = await destinations.planning_destination(
-                session, request.destination_id, [row.locale]
-            )
-            if found is None:  # the destination was retired meanwhile
+            task = AITask(row.feature)
+            config = self._tasks[task]
+            built = await self._context(session, row)
+            if built is None:  # the destination was retired meanwhile
                 self._close(row, "unavailable", now)
                 self._completed(session, row)
                 return
-            summary, time_zone = found
-            catalog = await destinations.place_candidates(
-                session, request.destination_id, [row.locale]
-            )
-            task = AITask(row.feature)
-            config = self._tasks[task]
-            context = ItineraryContext(
-                destination_name=summary.name,
-                destination_path=summary.path,
-                country_name=summary.country_name,
-                time_zone=time_zone,
-                start_date=request.start_date,
-                end_date=request.end_date,
-                interests=tuple(request.interests),
-                travel_styles=tuple(request.travel_styles),
-                pace=request.pace,
-                budget_level=request.budget_level,
-                adults=request.party.adults,
-                children=request.party.children,
-                preferences=request.preferences,
-                include_social_opportunities=request.include_social_opportunities,
-                locale=row.locale,
-                candidates=tuple(
-                    Candidate(
-                        id=str(place.summary.id),
-                        name=place.summary.name,
-                        category=place.summary.category,
-                        summary=place.summary.model_dump(mode="json"),
-                        provider=place.provider,
-                        license=place.license,
-                        attribution_url=place.attribution_url,
-                        data_freshness_at=place.data_freshness_at,
-                    )
-                    for place in catalog
-                ),
-            )
+            context, summary, destination_id = built
 
         run = _Run(model=config.model)
         failure: ProviderError | None = None
@@ -618,12 +709,115 @@ class AIService:
                     draft,
                     context,
                     destination=summary.model_dump(mode="json"),
-                    destination_id=str(request.destination_id),
+                    destination_id=str(destination_id),
                     generated_at=finished,
                 )
                 row.result = ItineraryProposal.model_validate(proposal).model_dump(mode="json")
             self._close(row, status, finished)
             self._completed(session, row)
+
+    async def _context(
+        self, session: AsyncSession, row: AIGeneration
+    ) -> tuple[ItineraryContext, DestinationSummary, uuid.UUID] | None:
+        """The typed prompt context of a pending generation (AI-008: trip parameters, the
+        trip's own items when replanning, and catalog places; nothing else)."""
+        assert row.params is not None
+        replan: Replan | None = None
+        if row.feature == AITask.TRIP_REPLAN.value:
+            plan = ReplanParams.model_validate(row.params)
+            destination_id, start, end = plan.destination_id, plan.start_date, plan.end_date
+            keep = set(plan.keep_item_ids)
+            replan = Replan(
+                instruction=plan.instruction,
+                day_indexes=tuple(plan.day_indexes),
+                current={
+                    day.day_index: tuple(
+                        CurrentItem(
+                            title=item.title,
+                            kind=item.kind,
+                            start_time=item.start_time,
+                            duration_minutes=item.duration_minutes,
+                            place_id=str(item.place_id) if item.place_id else None,
+                            keep=item.id in keep,
+                        )
+                        for item in day.items
+                    )
+                    for day in plan.current
+                },
+                avoid_categories=tuple(plan.avoid_categories),
+            )
+            fit: dict[str, Any] = {
+                "interests": (),
+                "travel_styles": (),
+                "pace": plan.pace,
+                "budget_level": "moderate",
+                "adults": 1,
+                "children": 0,
+                "preferences": None,
+                "include_social_opportunities": False,
+            }
+            referenced = [i.place_id for d in plan.current for i in d.items if i.place_id]
+        else:
+            request = GenerateItineraryRequest.model_validate(row.params)
+            destination_id, start, end = (
+                request.destination_id,
+                request.start_date,
+                request.end_date,
+            )
+            fit = {
+                "interests": tuple(request.interests),
+                "travel_styles": tuple(request.travel_styles),
+                "pace": request.pace,
+                "budget_level": request.budget_level,
+                "adults": request.party.adults,
+                "children": request.party.children,
+                "preferences": request.preferences,
+                "include_social_opportunities": request.include_social_opportunities,
+            }
+            referenced = []
+        found = await destinations.planning_destination(session, destination_id, [row.locale])
+        if found is None:
+            return None
+        summary, time_zone = found
+        catalog = await destinations.place_candidates(session, destination_id, [row.locale])
+        candidates = [
+            Candidate(
+                id=str(place.summary.id),
+                name=place.summary.name,
+                category=place.summary.category,
+                summary=place.summary.model_dump(mode="json"),
+                provider=place.provider,
+                license=place.license,
+                attribution_url=place.attribution_url,
+                data_freshness_at=place.data_freshness_at,
+            )
+            for place in catalog
+        ]
+        # Places the trip already uses stay valid references when replanning.
+        listed = {c.id for c in candidates}
+        extra = [place_id for place_id in referenced if str(place_id) not in listed]
+        for place in (await destinations.place_summaries(session, extra, [row.locale])).values():
+            candidates.append(
+                Candidate(
+                    id=str(place.id),
+                    name=place.name,
+                    category=place.category,
+                    summary=place.model_dump(mode="json"),
+                )
+            )
+        context = ItineraryContext(
+            destination_name=summary.name,
+            destination_path=summary.path,
+            country_name=summary.country_name,
+            time_zone=time_zone,
+            start_date=start,
+            end_date=end,
+            locale=row.locale,
+            candidates=tuple(candidates),
+            replan=replan,
+            **fit,
+        )
+        return context, summary, destination_id
 
     async def _generate(
         self,

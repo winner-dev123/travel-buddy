@@ -970,3 +970,103 @@ async def purge_expired(session: AsyncSession) -> int:
         session, ItineraryItem, ItineraryItem.deleted_at < platform.ago(days=90)
     )
     return trips + items
+
+
+@dataclass(frozen=True, slots=True)
+class SnapshotItem:
+    id: uuid.UUID
+    kind: str
+    title: str
+    start_time: str | None
+    duration_minutes: int | None
+    place_id: uuid.UUID | None
+
+
+@dataclass(frozen=True, slots=True)
+class SnapshotDay:
+    day_index: int
+    date: date | None
+    items: tuple[SnapshotItem, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class TripSnapshot:
+    """What AI replanning may see of a trip: its dates, destination and live items. No
+    collaborator or other personal data (AI-008)."""
+
+    id: uuid.UUID
+    version: int
+    start_date: date
+    end_date: date
+    destination_id: uuid.UUID | None
+    days: tuple[SnapshotDay, ...]
+
+
+async def replan_snapshot(
+    session: AsyncSession, trip_id: uuid.UUID, user_id: uuid.UUID
+) -> TripSnapshot:
+    """A trip the user may edit, as replanning sees it (404 when hidden, 403 when read-only)."""
+    trip = await session.get(Trip, trip_id)
+    if trip is None or trip.deleted_at is not None:
+        raise _not_found()
+    role = "owner" if trip.owner_id == user_id else None
+    if role is None:
+        role = await session.scalar(
+            select(TripCollaborator.role).where(
+                TripCollaborator.trip_id == trip_id, TripCollaborator.user_id == user_id
+            )
+        )
+    if role is None and trip.visibility != "public":
+        raise _not_found()
+    if role not in ("owner", "editor"):
+        raise AppError(ErrorCode.FORBIDDEN, "You can view this trip but not edit it.")
+    destination = await session.scalar(
+        select(TripDestination.destination_id)
+        .where(TripDestination.trip_id == trip_id)
+        .order_by(TripDestination.sort_order)
+        .limit(1)
+    )
+    days = list(
+        await session.scalars(
+            select(ItineraryDay)
+            .where(ItineraryDay.trip_id == trip_id)
+            .order_by(ItineraryDay.day_index)
+        )
+    )
+    items = (
+        list(
+            await session.scalars(
+                select(ItineraryItem)
+                .where(
+                    ItineraryItem.day_id.in_([d.id for d in days]),
+                    ItineraryItem.deleted_at.is_(None),
+                )
+                .order_by(ItineraryItem.sort_order)
+            )
+        )
+        if days
+        else []
+    )
+    by_day: dict[uuid.UUID, list[SnapshotItem]] = {d.id: [] for d in days}
+    for item in items:
+        by_day[item.day_id].append(
+            SnapshotItem(
+                id=item.id,
+                kind=item.kind,
+                title=item.title,
+                start_time=item.start_time.strftime("%H:%M") if item.start_time else None,
+                duration_minutes=item.duration_minutes,
+                place_id=item.place_id,
+            )
+        )
+    return TripSnapshot(
+        id=trip.id,
+        version=trip.version,
+        start_date=trip.start_date,
+        end_date=trip.end_date,
+        destination_id=destination
+        or next((d.destination_id for d in days if d.destination_id), None),
+        days=tuple(
+            SnapshotDay(day_index=d.day_index, date=d.date, items=tuple(by_day[d.id])) for d in days
+        ),
+    )

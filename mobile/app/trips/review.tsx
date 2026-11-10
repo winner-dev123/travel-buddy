@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getApiClient } from '@/api';
 import { Button, Notice } from '@/components/Form';
 import {
+  applyProposalToTrip,
   exploreKeys,
   getGeneration,
   saveProposalAsTrip,
@@ -24,7 +25,11 @@ export default function ReviewItineraryScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const key = useRef(getApiClient().newIdempotencyKey());
-  const { generation: id } = useLocalSearchParams<{ generation: string }>();
+  // `trip` is set when reviewing a replan of an existing trip (AI-005).
+  const { generation: id, trip: tripId } = useLocalSearchParams<{
+    generation: string;
+    trip?: string;
+  }>();
 
   const generation = useQuery({
     queryKey: exploreKeys.generation(id),
@@ -33,16 +38,19 @@ export default function ReviewItineraryScreen() {
   });
   const save = useMutation({
     mutationFn: () =>
-      saveProposalAsTrip(
-        getApiClient(),
-        key.current,
-        generation.data!,
-        t('planner.tripTitle', {
-          place: generation.data!.result!.itinerary.destination.name,
-        }),
-      ),
+      tripId
+        ? applyProposalToTrip(getApiClient(), tripId, generation.data!)
+        : saveProposalAsTrip(
+            getApiClient(),
+            key.current,
+            generation.data!,
+            t('planner.tripTitle', {
+              place: generation.data!.result!.itinerary.destination.name,
+            }),
+          ),
     onSuccess: (trip) => {
       void queryClient.invalidateQueries({ queryKey: exploreKeys.trips });
+      void queryClient.invalidateQueries({ queryKey: exploreKeys.trip(trip.id) });
       router.replace({ pathname: '/trips/[id]', params: { id: trip.id } });
     },
   });
@@ -109,7 +117,7 @@ export default function ReviewItineraryScreen() {
             ))}
             {save.isError ? <Notice tone="error">{t('user.actionFailed')}</Notice> : null}
             <Button
-              label={t('planner.save')}
+              label={tripId ? t('planner.apply') : t('planner.save')}
               onPress={() => save.mutate()}
               busy={save.isPending}
               testID="review-save"

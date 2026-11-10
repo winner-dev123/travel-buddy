@@ -438,3 +438,61 @@ describe('trips', () => {
     });
   });
 });
+
+describe('replanning a trip', () => {
+  it('offers premium travellers to change chosen days and opens the review', async () => {
+    useSessionStore.getState().setSignedIn({
+      ...me,
+      entitlements: { plan: 'premium', features: { 'ai.trip_replan': true } },
+    });
+    mockParams = { id: 't1' };
+    mockApi.get.mockResolvedValue(trip);
+    mockApi.post.mockResolvedValue(generation({ id: 'gen-2', status: 'pending', result: null }));
+    await renderUi(<TripScreen />);
+    await fireEvent.changeText(
+      await screen.findByTestId('trip-replan-instruction'),
+      'Rain all day, indoor ideas please',
+    );
+    await fireEvent.press(screen.getByTestId('trip-replan-day-0'));
+    await fireEvent.press(screen.getByTestId('trip-replan-submit'));
+    await waitFor(() =>
+      expect(mockApi.post).toHaveBeenCalledWith('/v1/ai/trips/t1/replan', {
+        idempotencyKey: 'key-1',
+        body: {
+          instruction: 'Rain all day, indoor ideas please',
+          base_version: 2,
+          day_indexes: [0],
+        },
+      }),
+    );
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/trips/review',
+      params: { generation: 'gen-2', trip: 't1' },
+    });
+  });
+
+  it('shows the premium note to free travellers', async () => {
+    mockParams = { id: 't1' };
+    mockApi.get.mockResolvedValue(trip);
+    await renderUi(<TripScreen />);
+    expect(await screen.findByText('Changing a trip with AI is part of Premium.')).toBeTruthy();
+    expect(screen.queryByTestId('trip-replan-submit')).toBeNull();
+  });
+
+  it('applies a reviewed replan to the existing trip at its current version', async () => {
+    mockParams = { generation: 'gen-1', trip: 't1' };
+    mockApi.get.mockImplementation(async (path: string) =>
+      path === '/v1/trips/t1' ? { ...trip, version: 5 } : generation(),
+    );
+    mockApi.post.mockResolvedValue(trip);
+    await renderUi(<Review />);
+    await fireEvent.press(await screen.findByText('Apply to my trip'));
+    await waitFor(() =>
+      expect(mockApi.post).toHaveBeenCalledWith('/v1/trips/t1/apply-itinerary', {
+        body: { generation_id: 'gen-1', mode: 'replace', day_indexes: [0] },
+        ifMatchVersion: 5,
+      }),
+    );
+    expect(mockApi.post).not.toHaveBeenCalledWith('/v1/trips', expect.anything());
+  });
+});
