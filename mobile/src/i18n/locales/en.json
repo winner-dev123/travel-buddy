@@ -351,7 +351,9 @@
     "translationFailed": "Translation didn't work.",
     "openPhoto": "Open photo {{number}}",
     "photoCount": "{{number}} of {{total}}",
-    "closePhoto": "Close photo"
+    "closePhoto": "Close photo",
+    "save": "Save story",
+    "unsave": "Remove from saved"
   },
   "compose": {
     "open": "Share a story",
@@ -1042,5 +1044,10 @@
     "decline": "Decline",
     "cancelOffer": "Cancel the offer",
     "stale": "Someone else changed these settings. They're up to date now; try again."
+  },
+  "bookmarks": {
+    "title": "Saved stories",
+    "empty": "Stories you save appear here. Only you can see them.",
+    "error": "We couldn't load your saved stories. Check your connection and try again."
   }
 }

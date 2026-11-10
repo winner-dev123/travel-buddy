@@ -351,7 +351,9 @@
     "translationFailed": "Die Übersetzung hat nicht funktioniert.",
     "openPhoto": "Foto {{number}} öffnen",
     "photoCount": "{{number}} von {{total}}",
-    "closePhoto": "Foto schließen"
+    "closePhoto": "Foto schließen",
+    "save": "Story speichern",
+    "unsave": "Aus Gespeichertem entfernen"
   },
   "compose": {
     "open": "Geschichte teilen",
@@ -1042,5 +1044,10 @@
     "decline": "Ablehnen",
     "cancelOffer": "Angebot zurückziehen",
     "stale": "Jemand anderes hat diese Einstellungen geändert. Sie sind jetzt aktuell; versuch es noch einmal."
+  },
+  "bookmarks": {
+    "title": "Gespeicherte Storys",
+    "empty": "Storys, die du speicherst, erscheinen hier. Nur du kannst sie sehen.",
+    "error": "Deine gespeicherten Storys konnten nicht geladen werden. Prüfe deine Verbindung und versuch es noch einmal."
   }
 }

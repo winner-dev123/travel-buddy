@@ -354,7 +354,9 @@
     "translationFailed": "La traduction n'a pas fonctionné.",
     "openPhoto": "Ouvrir la photo {{number}}",
     "photoCount": "{{number}} sur {{total}}",
-    "closePhoto": "Fermer la photo"
+    "closePhoto": "Fermer la photo",
+    "save": "Enregistrer l'histoire",
+    "unsave": "Retirer des enregistrements"
   },
   "compose": {
     "open": "Partager un récit",
@@ -1058,5 +1060,10 @@
     "decline": "Refuser",
     "cancelOffer": "Annuler la proposition",
     "stale": "Quelqu'un d'autre a modifié ces réglages. Ils sont à jour ; réessayez."
+  },
+  "bookmarks": {
+    "title": "Histoires enregistrées",
+    "empty": "Les histoires que vous enregistrez apparaissent ici. Vous seul pouvez les voir.",
+    "error": "Impossible de charger vos histoires enregistrées. Vérifiez votre connexion et réessayez."
   }
 }

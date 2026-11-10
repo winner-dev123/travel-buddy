@@ -194,6 +194,12 @@ function SignedInProfile({ me }: { me: Me }) {
             testID="profile-menu-saved"
           />
           <MenuRow
+            icon="albums-outline"
+            label={t('bookmarks.title')}
+            onPress={() => router.push('/bookmarks')}
+            testID="profile-menu-bookmarks"
+          />
+          <MenuRow
             icon="shield-outline"
             label={t('safetyCenter.title')}
             onPress={() => router.push('/settings/safety')}

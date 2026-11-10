@@ -354,7 +354,9 @@
     "translationFailed": "La traducción no funcionó.",
     "openPhoto": "Abrir la foto {{number}}",
     "photoCount": "{{number}} de {{total}}",
-    "closePhoto": "Cerrar foto"
+    "closePhoto": "Cerrar foto",
+    "save": "Guardar historia",
+    "unsave": "Quitar de guardados"
   },
   "compose": {
     "open": "Compartir una historia",
@@ -1058,5 +1060,10 @@
     "decline": "Rechazar",
     "cancelOffer": "Cancelar la oferta",
     "stale": "Otra persona cambió estos ajustes. Ya están actualizados; inténtalo de nuevo."
+  },
+  "bookmarks": {
+    "title": "Historias guardadas",
+    "empty": "Las historias que guardes aparecerán aquí. Solo tú puedes verlas.",
+    "error": "No pudimos cargar tus historias guardadas. Revisa tu conexión e inténtalo de nuevo."
   }
 }

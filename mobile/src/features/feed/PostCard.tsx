@@ -7,7 +7,7 @@ import { getApiClient } from '@/api';
 import { PhotoGallery } from '@/features/feed/PhotoGallery';
 import { useAppTheme } from '@/theme/useAppTheme';
 
-import { setReaction } from './api';
+import { setBookmark, setReaction } from './api';
 import { TranslatableBody } from './TranslatableBody';
 import type { Post, UserSummary } from './types';
 
@@ -45,6 +45,22 @@ export function PostCard({ post, onOpen, onOpenAuthor, interactive = true }: Pos
   const [liked, setLiked] = useState(Boolean(post.viewer?.reaction));
   const [count, setCount] = useState(post.counts.reactions);
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(Boolean(post.viewer?.bookmarked));
+  const [saving, setSaving] = useState(false);
+
+  const toggleSaved = async () => {
+    if (saving) return;
+    const next = !saved;
+    setSaving(true);
+    setSaved(next);
+    try {
+      await setBookmark(getApiClient(), post.id, next);
+    } catch {
+      setSaved(!next); // the server didn't change it
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const toggle = async () => {
     if (busy) return;
@@ -135,6 +151,23 @@ export function PostCard({ post, onOpen, onOpenAuthor, interactive = true }: Pos
             {post.counts.comments}
           </Text>
         </View>
+        {interactive ? (
+          <Pressable
+            onPress={toggleSaved}
+            accessibilityRole="button"
+            accessibilityState={{ selected: saved }}
+            accessibilityLabel={saved ? t('post.unsave') : t('post.save')}
+            hitSlop={8}
+            style={[styles.action, styles.end]}
+            testID={`post-save-${post.id}`}
+          >
+            <Ionicons
+              name={saved ? 'bookmark' : 'bookmark-outline'}
+              size={19}
+              color={saved ? theme.colors.primary : theme.colors.textSecondary}
+            />
+          </Pressable>
+        ) : null}
       </View>
     </Pressable>
   );
@@ -148,4 +181,5 @@ const styles = StyleSheet.create({
   media: { width: '100%', borderRadius: 8 },
   footer: { flexDirection: 'row', gap: 24 },
   action: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 32 },
+  end: { marginLeft: 'auto' },
 });

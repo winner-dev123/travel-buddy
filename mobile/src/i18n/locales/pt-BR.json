@@ -354,7 +354,9 @@
     "translationFailed": "A tradução não funcionou.",
     "openPhoto": "Abrir a foto {{number}}",
     "photoCount": "{{number}} de {{total}}",
-    "closePhoto": "Fechar foto"
+    "closePhoto": "Fechar foto",
+    "save": "Salvar história",
+    "unsave": "Remover dos salvos"
   },
   "compose": {
     "open": "Compartilhar uma história",
@@ -1058,5 +1060,10 @@
     "decline": "Recusar",
     "cancelOffer": "Cancelar a oferta",
     "stale": "Outra pessoa mudou essas configurações. Elas já foram atualizadas; tente de novo."
+  },
+  "bookmarks": {
+    "title": "Histórias salvas",
+    "empty": "As histórias que você salvar aparecem aqui. Só você pode vê-las.",
+    "error": "Não conseguimos carregar suas histórias salvas. Verifique sua conexão e tente de novo."
   }
 }

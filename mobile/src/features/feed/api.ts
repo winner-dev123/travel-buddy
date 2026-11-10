@@ -17,6 +17,7 @@ export const feedKeys = {
     ['feed', tab, ...rest] as const,
   post: (id: string) => ['post', id] as const,
   comments: (id: string) => ['post', id, 'comments'] as const,
+  bookmarks: ['me', 'bookmarks'] as const,
 };
 
 export interface FeedOptions {
@@ -74,6 +75,18 @@ export function setReaction(
   return reaction === null
     ? client.delete(`/v1/posts/${postId}/reactions/me`)
     : client.post(`/v1/posts/${postId}/reactions`, { body: { reaction } });
+}
+
+/** `PUT`/`DELETE /v1/posts/{id}/bookmark` (POST-005): private, only I see what I saved. */
+export function setBookmark(client: ApiClient, postId: string, on: boolean): Promise<unknown> {
+  return on
+    ? client.put(`/v1/posts/${postId}/bookmark`)
+    : client.delete(`/v1/posts/${postId}/bookmark`);
+}
+
+/** `GET /v1/users/me/bookmarks`: my saved stories, newest save first. */
+export function fetchBookmarks(client: ApiClient, cursor?: string): Promise<Page<Post>> {
+  return client.get<Page<Post>>('/v1/users/me/bookmarks', { query: { cursor, limit: 20 } });
 }
 
 export interface NewPost {
