@@ -376,7 +376,8 @@
     "cancelReply": "Antwort abbrechen",
     "hideReplies": "Antworten ausblenden",
     "viewReplies_one": "{{count}} Antwort ansehen",
-    "viewReplies_other": "{{count}} Antworten ansehen"
+    "viewReplies_other": "{{count}} Antworten ansehen",
+    "viewPlace": "📍 {{name}}"
   },
   "compose": {
     "open": "Geschichte teilen",

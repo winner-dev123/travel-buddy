@@ -380,7 +380,8 @@
     "hideReplies": "Ocultar respostas",
     "viewReplies_one": "Ver {{count}} resposta",
     "viewReplies_many": "Ver {{count}} respostas",
-    "viewReplies_other": "Ver {{count}} respostas"
+    "viewReplies_other": "Ver {{count}} respostas",
+    "viewPlace": "📍 {{name}}"
   },
   "compose": {
     "open": "Compartilhar uma história",

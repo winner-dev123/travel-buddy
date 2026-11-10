@@ -150,6 +150,19 @@ export default function PostDetailScreen() {
                       : undefined
                   }
                 />
+                {post.data.place ? (
+                  <Button
+                    label={t('post.viewPlace', { name: post.data.place.name })}
+                    variant="secondary"
+                    onPress={() =>
+                      router.push({
+                        pathname: '/places/[id]',
+                        params: { id: post.data.place?.id ?? '' },
+                      })
+                    }
+                    testID="post-place"
+                  />
+                ) : null}
                 {signedIn && post.data.viewer?.is_author ? <AuthorTools post={post.data} /> : null}
                 {signedIn && !post.data.viewer?.is_author ? (
                   <Button

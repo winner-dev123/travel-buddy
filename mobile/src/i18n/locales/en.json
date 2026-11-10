@@ -376,7 +376,8 @@
     "cancelReply": "Cancel reply",
     "hideReplies": "Hide replies",
     "viewReplies_one": "View {{count}} reply",
-    "viewReplies_other": "View {{count}} replies"
+    "viewReplies_other": "View {{count}} replies",
+    "viewPlace": "📍 {{name}}"
   },
   "compose": {
     "open": "Share a story",

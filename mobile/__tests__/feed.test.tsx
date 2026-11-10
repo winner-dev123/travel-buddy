@@ -318,6 +318,30 @@ describe('post detail', () => {
   });
 });
 
+describe('tagged places', () => {
+  // req: POST-002
+  it('shows the tagged spot on the card and opens its page from the story', async () => {
+    useSessionStore.getState().setSignedIn(me);
+    const tagged = {
+      ...post('p1'),
+      place: { id: 'pl-1', name: 'Pastéis de Belém', category: 'cafe', destination_id: 'd-lisbon' },
+    };
+    mockApi.get.mockImplementation(async (path: string) => {
+      if (path === '/v1/posts/p1') return tagged;
+      if (path === '/v1/posts/p1/comments')
+        return { data: [], page: { next_cursor: null, has_more: false } };
+      throw new Error(`unexpected GET ${path}`);
+    });
+    await renderScreen(<PostDetail />);
+    expect(await screen.findByText(/Pastéis de Belém ·/)).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('post-place'));
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/places/[id]',
+      params: { id: 'pl-1' },
+    });
+  });
+});
+
 describe('composer', () => {
   it('requires a place for recommendations and publishes with the destination', async () => {
     useSessionStore.getState().setSignedIn(me);

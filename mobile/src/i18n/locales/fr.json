@@ -380,7 +380,8 @@
     "hideReplies": "Masquer les réponses",
     "viewReplies_one": "Voir {{count}} réponse",
     "viewReplies_many": "Voir {{count}} réponses",
-    "viewReplies_other": "Voir {{count}} réponses"
+    "viewReplies_other": "Voir {{count}} réponses",
+    "viewPlace": "📍 {{name}}"
   },
   "compose": {
     "open": "Partager un récit",
