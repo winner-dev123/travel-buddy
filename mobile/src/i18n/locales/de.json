@@ -522,7 +522,17 @@
     "actionsHint": "Lange drücken für Optionen",
     "delete": "Für alle löschen",
     "report": "Nachricht melden",
-    "announcement": "Ankündigung"
+    "announcement": "Ankündigung",
+    "reply": "Antworten",
+    "replyingTo": "Antwort an {{name}}: {{text}}",
+    "cancelReply": "Antwort abbrechen",
+    "pin": "Anheften",
+    "unpin": "Lösen",
+    "pinnedCount_one": "{{count}} angeheftet",
+    "pinnedCount_other": "{{count}} angeheftet",
+    "memberRestricted": "Du kannst in dieser Gruppe gerade nicht schreiben. Ein Gruppenadmin hat dein Konto hier eingeschränkt.",
+    "adminsOnly": "Nur Admins können in diesem Chat schreiben.",
+    "archived": "Diese Gruppe ist archiviert. Ihr Chat ist schreibgeschützt."
   },
   "groups": {
     "title": "Gruppen",

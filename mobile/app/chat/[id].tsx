@@ -18,15 +18,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getApiClient } from '@/api';
 import { useSessionStore } from '@/auth/sessionStore';
 import { Button, Notice, TextField } from '@/components/Form';
+import { getGroup, groupKeys } from '@/features/groups/api';
 import {
   deleteMessage,
   getConversation,
   isHidden,
   listMessages,
+  listPins,
   markRead,
   messageKeys,
+  pinMessage,
   POLL_CHAT_MS,
   sendMessage,
+  unpinMessage,
   type Message,
   type MessageList,
 } from '@/features/messages/api';
@@ -41,6 +45,8 @@ export default function ChatScreen() {
   const queryClient = useQueryClient();
   const me = useSessionStore((state) => state.me?.account.id);
   const [draft, setDraft] = useState('');
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [showPins, setShowPins] = useState(false);
   // One client_message_id per message the user writes; a retry of that message reuses it, so a
   // send that reached the server before the connection dropped is never duplicated (DM-005).
   const pending = useRef<string>(getApiClient().newIdempotencyKey());
@@ -68,10 +74,38 @@ export default function ChatScreen() {
       .catch(() => undefined); // retried on the next refresh
   }, [id, newest, readThrough, queryClient]);
 
+  const groupId = conversation.data?.group_id ?? null;
+  const groupAccess = useQuery({
+    queryKey: groupKeys.detail(groupId ?? ''),
+    queryFn: () => getGroup(getApiClient(), groupId as string),
+    enabled: groupId !== null,
+  });
+  // Direct chats: either member may pin. Groups: only with `messages.pin` (DM-011, GCHAT-005).
+  const canPin =
+    conversation.data?.kind === 'direct' ||
+    (groupAccess.data?.my_membership?.permissions.includes('messages.pin') ?? false);
+  const pins = useQuery({
+    queryKey: messageKeys.pins(id),
+    queryFn: () => listPins(getApiClient(), id),
+    refetchInterval: POLL_CHAT_MS * 4,
+  });
+  const pin = useMutation({
+    mutationFn: ({ message, on }: { message: Message; on: boolean }) =>
+      on
+        ? pinMessage(getApiClient(), id, message.id)
+        : unpinMessage(getApiClient(), id, message.id),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: messageKeys.pins(id) });
+      void queryClient.invalidateQueries({ queryKey: messageKeys.history(id) });
+    },
+  });
+
   const send = useMutation({
-    mutationFn: (body: string) => sendMessage(getApiClient(), id, pending.current, body),
+    mutationFn: (body: string) =>
+      sendMessage(getApiClient(), id, pending.current, body, replyTo?.id),
     onSuccess: (message) => {
       setDraft('');
+      setReplyTo(null);
       pending.current = getApiClient().newIdempotencyKey();
       queryClient.setQueryData<MessageList>(messageKeys.history(id), (old) =>
         old && !old.data.some((m) => m.id === message.id)
@@ -91,13 +125,28 @@ export default function ChatScreen() {
 
   const actions = (message: Message) => {
     if (isHidden(message)) return;
+    const common = [
+      ...(conversation.data?.can_send
+        ? [{ text: t('messages.reply'), onPress: () => setReplyTo(message) }]
+        : []),
+      ...(canPin
+        ? [
+            {
+              text: message.pinned ? t('messages.unpin') : t('messages.pin'),
+              onPress: () => pin.mutate({ message, on: !message.pinned }),
+            },
+          ]
+        : []),
+    ];
     if (message.sender?.id === me) {
       Alert.alert(t('messages.actions'), undefined, [
+        ...common,
         { text: t('messages.delete'), style: 'destructive', onPress: () => remove.mutate(message) },
         { text: t('common.cancel'), style: 'cancel' },
       ]);
     } else {
       Alert.alert(t('messages.actions'), undefined, [
+        ...common,
         {
           text: t('messages.report'),
           onPress: () =>
@@ -121,10 +170,15 @@ export default function ChatScreen() {
   const lastMine = (history.data?.data ?? []).filter((m) => m.sender?.id === me).at(-1);
   const restriction =
     data && !data.can_send
-      ? data.send_restriction === 'blocked'
-        ? t('messages.blocked')
-        : t('messages.connectionRequired')
+      ? {
+          blocked: t('messages.blocked'),
+          connection_required: t('messages.connectionRequired'),
+          member_restricted: t('messages.memberRestricted'),
+          chat_admins_only: t('messages.adminsOnly'),
+          archived: t('messages.archived'),
+        }[data.send_restriction ?? 'connection_required']
       : null;
+  const pinned = pins.data?.data ?? [];
 
   return (
     <SafeAreaView
@@ -141,6 +195,53 @@ export default function ChatScreen() {
         style={styles.fill}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
+        {pinned.length > 0 ? (
+          <View
+            style={[styles.pins, { borderBottomColor: theme.colors.divider }]}
+            testID="chat-pins"
+          >
+            <Pressable
+              onPress={() => setShowPins((open) => !open)}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: showPins }}
+              testID="chat-pins-toggle"
+            >
+              <Text
+                numberOfLines={1}
+                style={[theme.typography.label, { color: theme.colors.textPrimary }]}
+              >
+                {`📌 ${t('messages.pinnedCount', { count: pinned.length })} · ${pinned[0]?.body ?? ''}`}
+              </Text>
+            </Pressable>
+            {showPins
+              ? pinned.map((message) => (
+                  <View key={message.id} style={styles.pinRow} testID={`pin-${message.id}`}>
+                    <Text
+                      style={[
+                        styles.fill,
+                        theme.typography.body,
+                        { color: theme.colors.textPrimary },
+                      ]}
+                    >
+                      {message.body}
+                    </Text>
+                    {canPin ? (
+                      <Pressable
+                        onPress={() => pin.mutate({ message, on: false })}
+                        accessibilityRole="button"
+                        testID={`unpin-${message.id}`}
+                      >
+                        <Text style={[theme.typography.label, { color: theme.colors.primary }]}>
+                          {t('messages.unpin')}
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                ))
+              : null}
+          </View>
+        ) : null}
+        {pin.isError ? <Notice tone="error">{t('user.actionFailed')}</Notice> : null}
         <FlatList<Message>
           inverted
           data={messages}
@@ -205,6 +306,19 @@ export default function ChatScreen() {
                     {item.sender?.display_name ?? t('messages.deletedUser')}
                   </Text>
                 ) : null}
+                {item.reply_to ? (
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      theme.typography.caption,
+                      styles.quote,
+                      { color: mine ? theme.colors.onPrimary : theme.colors.textSecondary },
+                    ]}
+                    testID={`reply-quote-${item.id}`}
+                  >
+                    {`↩ ${item.reply_to.deleted ? t('messages.deleted') : (item.reply_to.snippet ?? '')}`}
+                  </Text>
+                ) : null}
                 <Text
                   style={[
                     theme.typography.body,
@@ -253,6 +367,31 @@ export default function ChatScreen() {
           ) : (
             <>
               {send.isError ? <Notice tone="error">{t('messages.sendFailed')}</Notice> : null}
+              {replyTo ? (
+                <View style={styles.pinRow} testID="chat-replying">
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      styles.fill,
+                      theme.typography.caption,
+                      { color: theme.colors.textSecondary },
+                    ]}
+                  >
+                    {t('messages.replyingTo', {
+                      name: replyTo.sender?.display_name ?? t('messages.deletedUser'),
+                      text: replyTo.body ?? '',
+                    })}
+                  </Text>
+                  <Pressable
+                    onPress={() => setReplyTo(null)}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('messages.cancelReply')}
+                    testID="chat-cancel-reply"
+                  >
+                    <Text style={[theme.typography.label, { color: theme.colors.primary }]}>✕</Text>
+                  </Pressable>
+                </View>
+              ) : null}
               <TextField
                 label={t('messages.placeholder')}
                 value={draft}
@@ -283,4 +422,12 @@ const styles = StyleSheet.create({
   mine: { alignSelf: 'flex-end' },
   theirs: { alignSelf: 'flex-start' },
   composer: { borderTopWidth: StyleSheet.hairlineWidth, gap: 8 },
+  pins: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  pinRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  quote: { borderLeftWidth: 2, paddingLeft: 6, opacity: 0.9 },
 });

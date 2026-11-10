@@ -20,6 +20,7 @@ export interface Conversation {
   id: string;
   kind: 'direct' | 'group' | 'challenge_team';
   title: string | null;
+  group_id?: string | null;
   counterpart: UserSummary | null;
   last_message: MessagePreview | null;
   last_seq: number;
@@ -71,6 +72,7 @@ export const messageKeys = {
   inbox: ['messages', 'inbox'] as const,
   conversation: (id: string) => ['messages', 'conversation', id] as const,
   history: (id: string) => ['messages', 'history', id] as const,
+  pins: (id: string) => ['messages', 'pins', id] as const,
 };
 
 export function listConversations(client: ApiClient): Promise<Page<Conversation>> {
@@ -97,11 +99,29 @@ export function sendMessage(
   id: string,
   clientMessageId: string,
   body: string,
+  replyToId?: string,
 ): Promise<Message> {
   return client.post<Message>(`/v1/conversations/${id}/messages`, {
     idempotencyKey: clientMessageId,
-    body: { client_message_id: clientMessageId, body },
+    body: {
+      client_message_id: clientMessageId,
+      body,
+      ...(replyToId ? { reply_to_message_id: replyToId } : {}),
+    },
   });
+}
+
+/** SCR-084: pinned messages (at most 10, newest pin first). */
+export function listPins(client: ApiClient, id: string): Promise<MessageList> {
+  return client.get<MessageList>(`/v1/conversations/${id}/pins`);
+}
+
+export function pinMessage(client: ApiClient, id: string, messageId: string): Promise<unknown> {
+  return client.put(`/v1/conversations/${id}/pins/${messageId}`);
+}
+
+export function unpinMessage(client: ApiClient, id: string, messageId: string): Promise<unknown> {
+  return client.delete(`/v1/conversations/${id}/pins/${messageId}`);
 }
 
 export function markRead(client: ApiClient, id: string, seq: number): Promise<unknown> {

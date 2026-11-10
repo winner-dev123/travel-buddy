@@ -522,7 +522,17 @@
     "actionsHint": "Long press for options",
     "delete": "Delete for everyone",
     "report": "Report message",
-    "announcement": "Announcement"
+    "announcement": "Announcement",
+    "reply": "Reply",
+    "replyingTo": "Replying to {{name}}: {{text}}",
+    "cancelReply": "Cancel reply",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "pinnedCount_one": "{{count}} pinned",
+    "pinnedCount_other": "{{count}} pinned",
+    "memberRestricted": "You can't post in this group for now. A group admin restricted your account here.",
+    "adminsOnly": "Only admins can post in this chat.",
+    "archived": "This group is archived. Its chat is read-only."
   },
   "groups": {
     "title": "Groups",

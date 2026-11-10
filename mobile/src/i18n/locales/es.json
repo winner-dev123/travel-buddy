@@ -529,7 +529,18 @@
     "actionsHint": "Mantén pulsado para ver opciones",
     "delete": "Eliminar para todos",
     "report": "Denunciar mensaje",
-    "announcement": "Anuncio"
+    "announcement": "Anuncio",
+    "reply": "Responder",
+    "replyingTo": "Respondiendo a {{name}}: {{text}}",
+    "cancelReply": "Cancelar respuesta",
+    "pin": "Fijar",
+    "unpin": "Dejar de fijar",
+    "pinnedCount_one": "{{count}} fijado",
+    "pinnedCount_many": "{{count}} fijados",
+    "pinnedCount_other": "{{count}} fijados",
+    "memberRestricted": "No puedes escribir en este grupo por ahora. Un administrador del grupo restringió tu cuenta aquí.",
+    "adminsOnly": "Solo los administradores pueden escribir en este chat.",
+    "archived": "Este grupo está archivado. Su chat es de solo lectura."
   },
   "groups": {
     "title": "Grupos",
