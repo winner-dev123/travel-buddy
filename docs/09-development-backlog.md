@@ -112,7 +112,7 @@ Web-workstream items (Next.js app, BFF, web admin) are tracked by the web workst
 |---|---|---|---|---|
 | BL-3.01 | Billing module: products, Apple + Google adapters (verify, server notifications), DevBillingProvider | L | 0.13 | BILL-001..006 |
 | BL-3.02 | Entitlement materialization + Redis cache + entitlements endpoint | M | 3.01 | BILL-007 |
-| BL-3.03 | Conversations + messages persistence (seq, idempotency), REST endpoints | L | 2.04 | DM-001, DM-004, DM-005, DM-010, DM-011 |
+| BL-3.03 | Conversations + messages persistence (seq, idempotency), REST endpoints | L | 2.04 | DM-001, DM-004, DM-005, DM-010, DM-011 | ✅ Done: `/v1/conversations` (list, open direct, get, history and seq sync, send, edit within 15 min, delete as tombstone, reactions, threads, receipts, mute, clear, pins). Seq assigned under a conversation row lock; idempotent on `client_message_id`; authorization re-checked on every send (connection, blocks, `messaging_limited`); reciprocal read receipts; collapsed `new_message` notifications that respect mute and level and carry no bodies; message reports and staff removal; deleted accounts' messages tombstoned by retention |
 | BL-3.04 | Realtime gateway: auth frame, fanout via Redis, acks, sync, typing, receipts | L | 3.03, 1.09 | DM-003, DM-006..008 |
 | BL-3.05 | Private media for message attachments (signed URLs) | S | 1.08, 3.03 | DM-002 |
 | BL-3.06 | Push notifications (device registration, provider port, preferences, quiet hours) | M | 1.16 | DM-009, NOTIF-002..004 |

@@ -115,6 +115,7 @@ class PublicProfileService:
             counts=counts,
             follow_status=follow_status,
             relationship=relationship,  # type: ignore[arg-type]
+            can_message=relationship == "connected",
             can_request_connection=can_request,
         )
 

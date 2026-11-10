@@ -59,6 +59,25 @@ async def blocked_ids(session: AsyncSession, user_id: uuid.UUID) -> set[uuid.UUI
     return {blocked if blocker == user_id else blocker for blocker, blocked in rows.all()}
 
 
+async def blocks_of(
+    session: AsyncSession, user_id: uuid.UUID
+) -> tuple[set[uuid.UUID], set[uuid.UUID]]:
+    """(people this user blocked, people who blocked this user)."""
+    rows = await session.execute(
+        select(UserBlock.blocker_id, UserBlock.blocked_id).where(
+            or_(UserBlock.blocker_id == user_id, UserBlock.blocked_id == user_id)
+        )
+    )
+    mine: set[uuid.UUID] = set()
+    theirs: set[uuid.UUID] = set()
+    for blocker, blocked in rows.all():
+        if blocker == user_id:
+            mine.add(blocked)
+        else:
+            theirs.add(blocker)
+    return mine, theirs
+
+
 class BlockService:
     def __init__(
         self,

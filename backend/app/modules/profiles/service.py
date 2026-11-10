@@ -715,3 +715,18 @@ async def discovery_profiles(
         )
         for profile, privacy in rows.all()
     }
+
+
+async def read_receipts_enabled(
+    session: AsyncSession, user_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, bool]:
+    """Whether each user shares read receipts (DM-007; missing settings count as off)."""
+    if not user_ids:
+        return {}
+    rows = await session.execute(
+        select(UserPrivacySettings.user_id, UserPrivacySettings.read_receipts_enabled).where(
+            UserPrivacySettings.user_id.in_(set(user_ids))
+        )
+    )
+    found = {user: bool(enabled) for user, enabled in rows.all()}
+    return {user: found.get(user, False) for user in user_ids}

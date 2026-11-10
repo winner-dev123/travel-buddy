@@ -28,6 +28,7 @@ from app.modules.admin.schemas import (
     SuspendUserRequest,
 )
 from app.modules.identity import service as identity
+from app.modules.messaging import service as messaging
 from app.modules.observability import service as observability
 from app.modules.platform import service as platform
 from app.modules.profiles import service as profiles
@@ -267,7 +268,13 @@ class AdminService:
             )
         if action == "restrict" and target != "user":
             raise _invalid("/target_type", "'restrict' applies to users.")
-        if action in _CONTENT_STATES:
+        if action in _CONTENT_STATES and target == "message":
+            if action == "limit_visibility":
+                raise _invalid("/target_type", f"'{action}' does not apply to a {target}.")
+            affected = await messaging.moderate_message(
+                session, request.target_id, remove=action == "remove_content"
+            )
+        elif action in _CONTENT_STATES:
             if target not in ("post", "comment") or (
                 action == "limit_visibility" and target != "post"
             ):

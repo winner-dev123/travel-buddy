@@ -526,3 +526,26 @@ async def request_stats_since(
         .having(func.count() >= at_least)
     )
     return {requester: (sent, refused) for requester, sent, refused in rows.all()}
+
+
+async def connected_ids(
+    session: AsyncSession, user_id: uuid.UUID, others: Sequence[uuid.UUID]
+) -> set[uuid.UUID]:
+    """Which of ``others`` are connected with ``user_id`` (messaging re-checks on every send)."""
+    if not others:
+        return set()
+    rows = await session.execute(
+        select(UserConnection.user_low_id, UserConnection.user_high_id).where(
+            or_(
+                and_(
+                    UserConnection.user_low_id == user_id,
+                    UserConnection.user_high_id.in_(set(others)),
+                ),
+                and_(
+                    UserConnection.user_high_id == user_id,
+                    UserConnection.user_low_id.in_(set(others)),
+                ),
+            )
+        )
+    )
+    return {high if low == user_id else low for low, high in rows.all()}

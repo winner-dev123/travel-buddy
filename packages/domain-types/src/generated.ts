@@ -4556,6 +4556,16 @@ export interface components {
             read_through_seq: number;
             /** Format: int64 */
             delivered_through_seq: number;
+            /**
+             * Format: int64
+             * @description Direct only. The other member's read watermark, shared only when both have read receipts enabled (DM-007); otherwise null.
+             */
+            peer_read_through_seq?: number | null;
+            /**
+             * Format: int64
+             * @description Direct only. The other member's delivered watermark; null for group chats.
+             */
+            peer_delivered_through_seq?: number | null;
             muted_until: components["schemas"]["NullableTimestamp"];
             notification_level: components["schemas"]["NotificationLevel"];
             can_send: boolean;

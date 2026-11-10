@@ -66,6 +66,8 @@ from app.modules.media import service as media_service
 from app.modules.media.api import router as media_router
 from app.modules.media.config import MediaSettings
 from app.modules.media.storage import LocalStorage, ObjectStorage, S3Storage
+from app.modules.messaging import service as messaging_service
+from app.modules.messaging.api import router as messaging_router
 from app.modules.notifications import service as notifications_service
 from app.modules.notifications.api import router as notifications_router
 from app.modules.platform.api import AfterResponseTickMiddleware, internal_router
@@ -265,6 +267,9 @@ def create_app(
         storage=media_storage,
         max_pending=media_settings.media_max_pending_uploads,
     )
+    app.state.messaging_service = messaging_service.MessagingService(
+        sessionmaker=database.sessionmaker, cursors=cursor_codec
+    )
     app.state.notification_service = notifications_service.NotificationService(
         sessionmaker=database.sessionmaker, cursors=cursor_codec
     )
@@ -327,6 +332,7 @@ def create_app(
     app.include_router(connections_router)
     app.include_router(discovery_router)
     app.include_router(notifications_router)
+    app.include_router(messaging_router)
     app.include_router(media_router)
     app.include_router(admin_router)
     app.include_router(internal_router)
@@ -427,6 +433,7 @@ def build_job_runner(
         "notifications": notifications_service.purge_expired,
         "media": media_service.purge_expired,
         "connections": connections_service.purge_expired,
+        "messaging": messaging_service.purge_expired,
         "location": location_service.purge_expired,
     }
     periodic = [Periodic(f"retention.{name}", f"retention.{name}", DAILY) for name in purges]
@@ -484,4 +491,10 @@ def evidence_providers() -> dict[str, trust_safety_service.EvidenceProvider]:
         snapshot = await profiles_service.user_evidence(session, target_id)
         return trust_safety_service.Evidence(target_id, snapshot) if snapshot else None
 
-    return {"post": post, "comment": comment, "user": user}
+    async def message(
+        session: AsyncSession, target_id: uuid.UUID, reporter_id: uuid.UUID
+    ) -> trust_safety_service.Evidence | None:
+        found = await messaging_service.message_evidence(session, target_id, reporter_id)
+        return trust_safety_service.Evidence(*found) if found else None
+
+    return {"post": post, "comment": comment, "user": user, "message": message}

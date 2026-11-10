@@ -896,6 +896,16 @@ async def is_active(session: AsyncSession, user_id: uuid.UUID) -> bool:
     return status == UserStatus.ACTIVE
 
 
+async def active_ids(session: AsyncSession, user_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
+    """The given accounts that are active (visible to others)."""
+    if not user_ids:
+        return set()
+    rows = await session.scalars(
+        select(User.id).where(User.id.in_(set(user_ids)), User.status == UserStatus.ACTIVE)
+    )
+    return set(rows)
+
+
 async def ensure_system_account(
     session: AsyncSession, *, account_id: uuid.UUID, handle: str, display_name: str, bio: str
 ) -> bool:

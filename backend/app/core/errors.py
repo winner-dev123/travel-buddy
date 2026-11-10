@@ -56,6 +56,9 @@ class ErrorCode(StrEnum):
     ACCOUNT_RESTRICTED = "account_restricted"
     BLOCKED_RELATIONSHIP = "blocked_relationship"
     CONNECTION_REQUIRED = "connection_required"
+    MEMBER_RESTRICTED = "member_restricted"
+    CHAT_ADMINS_ONLY = "chat_admins_only"
+    MESSAGE_EDIT_WINDOW_EXPIRED = "message_edit_window_expired"
     CONNECTION_REQUEST_COOLDOWN = "connection_request_cooldown"
     CONNECTION_REQUEST_NOT_ALLOWED = "connection_request_not_allowed"
     ALREADY_CONNECTED = "already_connected"
@@ -102,6 +105,9 @@ _DEFAULT_STATUS: Mapping[ErrorCode, HTTPStatus] = {
     ErrorCode.ACCOUNT_RESTRICTED: HTTPStatus.FORBIDDEN,
     ErrorCode.BLOCKED_RELATIONSHIP: HTTPStatus.FORBIDDEN,
     ErrorCode.CONNECTION_REQUIRED: HTTPStatus.FORBIDDEN,
+    ErrorCode.MEMBER_RESTRICTED: HTTPStatus.FORBIDDEN,
+    ErrorCode.CHAT_ADMINS_ONLY: HTTPStatus.FORBIDDEN,
+    ErrorCode.MESSAGE_EDIT_WINDOW_EXPIRED: HTTPStatus.FORBIDDEN,
     ErrorCode.CONNECTION_REQUEST_COOLDOWN: HTTPStatus.CONFLICT,
     ErrorCode.CONNECTION_REQUEST_NOT_ALLOWED: HTTPStatus.FORBIDDEN,
     ErrorCode.ALREADY_CONNECTED: HTTPStatus.CONFLICT,

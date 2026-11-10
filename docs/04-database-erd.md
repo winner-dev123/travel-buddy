@@ -434,7 +434,7 @@ erDiagram
 | id | |
 | kind | `direct`, `group`, `challenge_team` |
 | direct_key | text NULL, `"{low_uuid}:{high_uuid}"`, `uq`. Exactly one DM conversation per pair |
-| group_id | FK→travel_groups CASCADE NULL, `uq WHERE kind='group'` |
+| group_id | FK→travel_groups CASCADE NULL, `uq WHERE kind='group'` (the FK is added with the groups migration, BL-3.07) |
 | challenge_team_id | FK→challenge_teams CASCADE NULL |
 | last_seq | bigint DEFAULT 0. Incremented under row lock to assign message order |
 | last_message_at | |
@@ -464,7 +464,7 @@ erDiagram
 `ix (conversation_id, seq DESC)` covers history and sync. `ix (thread_root_id, seq) WHERE thread_root_id IS NOT NULL`. **Scale plan:** range-partition by `created_at` (monthly) once the table exceeds roughly 200 M rows. The application already routes all queries by `conversation_id + seq`.
 
 ### message_attachments
-`id`, `message_id FK CASCADE`, `media_asset_id FK RESTRICT`, `sort_order`. Private bucket and signed URLs only.
+PK `(message_id, media_asset_id)`, `message_id FK CASCADE`, `media_asset_id FK CASCADE` (an account deletion removes the owner's media, and with it the attachment rows; deleting a message erases its assets explicitly), `sort_order`, `ix (media_asset_id)`. Private bucket and signed URLs only.
 
 ### message_receipts (watermarks, not per-message rows)
 `conversation_id`, `user_id`, `delivered_through_seq bigint`, `read_through_seq bigint`, `updated_at`. PK `(conversation_id, user_id)`. Updates are monotonic: `GREATEST(existing, new)`. Read state is exposed to others only if both parties have `read_receipts_enabled`.
@@ -830,7 +830,7 @@ erDiagram
 | audit_logs | 24 months (configurable per jurisdiction) | Partition drop |
 | ai_generations (metadata) | 13 months. Payload debug capture 30 days | Scheduler job |
 | billing_events, purchases, subscriptions | 7 years (accounting/tax; legal review). Pseudonymized on account deletion | Pseudonymization job |
-| Messages | Life of the conversation. On account deletion: bodies and attachments of the deleted user are erased, and the sender is shown as "Deleted user" | Deletion job |
+| Messages | Life of the conversation. On account deletion: bodies and attachments of the deleted user are erased, and the sender is shown as "Deleted user" | Hidden at read time as soon as the account is gone; the daily `retention.messaging` job turns them into tombstones and drops direct chats with no members left |
 | Posts, comments, media | Until deleted by the user, then hard-deleted after 30 days (undo window and moderation evidence). Removed-by-moderation content is kept as evidence per `content_reports` | Deletion job |
 | Account deletion | 30-day grace (`pending_deletion`, reversible by login), then irreversible deletion or anonymization across all modules through a `UserDeletionRequested` saga | Saga in `identity` + per-module handlers |
 

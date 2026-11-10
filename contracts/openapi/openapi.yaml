@@ -7531,6 +7531,16 @@ components:
         unread_count: { type: integer, minimum: 0 }
         read_through_seq: { type: integer, format: int64, minimum: 0 }
         delivered_through_seq: { type: integer, format: int64, minimum: 0 }
+        peer_read_through_seq:
+          type: [integer, 'null']
+          format: int64
+          minimum: 0
+          description: Direct only. The other member's read watermark, shared only when both have read receipts enabled (DM-007); otherwise null.
+        peer_delivered_through_seq:
+          type: [integer, 'null']
+          format: int64
+          minimum: 0
+          description: Direct only. The other member's delivered watermark; null for group chats.
         muted_until: { $ref: '#/components/schemas/NullableTimestamp' }
         notification_level: { $ref: '#/components/schemas/NotificationLevel' }
         can_send: { type: boolean }

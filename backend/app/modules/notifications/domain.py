@@ -92,6 +92,22 @@ _TEMPLATES: Final[dict[str, tuple[Text, Text]]] = {
             "de": "{actor} hat deine Kontaktanfrage angenommen.",
         },
     ),
+    "new_message": (
+        {
+            "en": "New message",
+            "es": "Nuevo mensaje",
+            "pt-BR": "Nova mensagem",
+            "fr": "Nouveau message",
+            "de": "Neue Nachricht",
+        },
+        {
+            "en": "{actor} sent you a message.",
+            "es": "{actor} te envió un mensaje.",
+            "pt-BR": "{actor} enviou uma mensagem para você.",
+            "fr": "{actor} vous a envoyé un message.",
+            "de": "{actor} hat dir eine Nachricht geschickt.",
+        },
+    ),
     "post_reaction": (
         {
             "en": "New reaction",
@@ -147,6 +163,22 @@ MODERATION_BODIES: Final[dict[str, Text]] = {
         "fr": "Un de vos commentaires a été supprimé car il enfreint nos règles de la communauté.",
         "de": "Einer deiner Kommentare wurde entfernt, weil er gegen unsere "
         "Community-Richtlinien verstößt.",
+    },
+    "removed_message": {
+        "en": "One of your messages was removed because it breaks our community guidelines.",
+        "es": "Se eliminó uno de tus mensajes porque incumple nuestras normas de la comunidad.",
+        "pt-BR": "Uma das suas mensagens foi removida porque viola nossas diretrizes da "
+        "comunidade.",
+        "fr": "Un de vos messages a été supprimé car il enfreint nos règles de la communauté.",
+        "de": "Eine deiner Nachrichten wurde entfernt, weil sie gegen unsere "
+        "Community-Richtlinien verstößt.",
+    },
+    "restored_message": {
+        "en": "One of your messages was reviewed and restored.",
+        "es": "Revisamos uno de tus mensajes y lo restablecimos.",
+        "pt-BR": "Uma das suas mensagens foi revisada e restaurada.",
+        "fr": "Un de vos messages a été examiné et rétabli.",
+        "de": "Eine deiner Nachrichten wurde überprüft und wiederhergestellt.",
     },
     "limited_post": {
         "en": "One of your posts will be shown to fewer people because of our community "
@@ -209,9 +241,9 @@ MODERATION_BODIES: Final[dict[str, Text]] = {
 def moderation_variant(action: str, target_type: str) -> str | None:
     """Which notice an action produces for the affected user; ``None`` = no notice (suspended
     and banned accounts can't sign in, and other actions have no user-facing effect)."""
-    if action == "remove_content" and target_type in ("post", "comment"):
+    if action == "remove_content" and target_type in ("post", "comment", "message"):
         return f"removed_{target_type}"
-    if action == "restore_content" and target_type in ("post", "comment"):
+    if action == "restore_content" and target_type in ("post", "comment", "message"):
         return f"restored_{target_type}"
     if action == "limit_visibility" and target_type == "post":
         return "limited_post"

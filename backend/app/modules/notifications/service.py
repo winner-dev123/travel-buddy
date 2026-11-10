@@ -134,6 +134,23 @@ async def notify_from_event(
             payload={"request_id": data.get("request_id")},
             dedupe_key=f"{kind}:{data.get('request_id') or event_id}",
         )
+    if event_type == "message.sent":
+        return await _new_message(session, data)
+    if event_type == "conversation.read":
+        user, conversation = _uuid(data.get("user_id")), _uuid(data.get("conversation_id"))
+        if user is None or conversation is None:
+            return False
+        await session.execute(
+            update(Notification)
+            .where(
+                Notification.user_id == user,
+                Notification.type == "new_message",
+                Notification.entity_id == conversation,
+                Notification.read_at.is_(None),
+            )
+            .values(read_at=func.now())
+        )
+        return False
     if event_type == "moderation.action_applied":
         affected = _uuid(data.get("user_id"))
         target_type = str(data.get("target_type"))
@@ -163,7 +180,47 @@ async def notify_from_event(
     return False
 
 
+async def _new_message(session: AsyncSession, data: Mapping[str, Any]) -> bool:
+    """One unread ``new_message`` per conversation and recipient: later messages don't stack
+    until the conversation is read. The sender listed who to notify (mute and level, DM-009);
+    no message body is stored."""
+    conversation, message = _uuid(data.get("conversation_id")), _uuid(data.get("message_id"))
+    sender = _uuid(data.get("sender_id"))
+    if conversation is None or message is None or sender is None:
+        return False
+    created = False
+    for raw in data.get("notify_user_ids") or []:
+        recipient = _uuid(raw)
+        if recipient is None:
+            continue
+        pending = await session.scalar(
+            select(func.count())
+            .select_from(Notification)
+            .where(
+                Notification.user_id == recipient,
+                Notification.type == "new_message",
+                Notification.entity_id == conversation,
+                Notification.read_at.is_(None),
+            )
+        )
+        if pending:
+            continue
+        created |= await notify(
+            session,
+            user_id=recipient,
+            kind="new_message",
+            actor_id=sender,
+            entity_type="conversation",
+            entity_id=conversation,
+            payload={"conversation_id": str(conversation), "seq": data.get("seq")},
+            dedupe_key=f"new_message:{message}",
+        )
+    return created
+
+
 EVENTS = (
+    "message.sent",
+    "conversation.read",
     "follow.requested",
     "follow.created",
     "post.reacted",
