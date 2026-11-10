@@ -852,5 +852,50 @@
     "guidelines": "Diretrizes da comunidade",
     "version": "Versão {{version}}",
     "error": "Não conseguimos carregar esta página. Verifique sua conexão e tente de novo."
+  },
+  "sessions": {
+    "title": "Dispositivos",
+    "explain": "Onde você está conectado ao Travel Buddy. Saia de qualquer dispositivo que você não reconheça; ele perde o acesso em até 15 minutos.",
+    "thisDevice": "Este dispositivo",
+    "lastActive": "Última atividade: {{when}}",
+    "version": "versão {{version}}",
+    "signOut": "Sair",
+    "confirmTitle": "Sair deste dispositivo?",
+    "confirmBody": "{{device}} vai precisar entrar de novo.",
+    "error": "Não conseguimos carregar seus dispositivos. Verifique sua conexão e tente de novo.",
+    "platform": {
+      "ios": "iPhone ou iPad",
+      "android": "Dispositivo Android",
+      "web": "Navegador"
+    }
+  },
+  "subscription": {
+    "title": "Assinatura",
+    "plan": {
+      "free": "Plano gratuito",
+      "premium": "Premium"
+    },
+    "renews": "Renova em {{date}}.",
+    "ends": "O Premium termina em {{date}}. Não será renovado.",
+    "promotion": "Premium de uma promoção até {{date}}.",
+    "noEnd": "O Premium está ativo.",
+    "billingIssue": "Seu último pagamento não foi concluído. Atualize a forma de pagamento na sua conta da loja para manter o Premium.",
+    "billingIssueUntil": "Seu último pagamento não foi concluído. Atualize a forma de pagamento na sua conta da loja antes de {{date}} para manter o Premium.",
+    "status": {
+      "expired": "Sua assinatura Premium terminou.",
+      "revoked": "A loja reembolsou ou cancelou sua assinatura Premium."
+    },
+    "manage": "Gerenciar assinatura",
+    "manageOnWeb": "Você assinou pelo site. Gerencie a assinatura pela sua conta lá.",
+    "usage": "Uso e limites",
+    "used": "{{used}} de {{limit}}",
+    "notIncluded": "Só Premium",
+    "quota": {
+      "ai_itinerary_generations": "Roteiros com IA",
+      "ai_trip_replans": "Replanejamento com IA",
+      "offline_packages": "Guias offline",
+      "groups_owned": "Grupos que você administra"
+    },
+    "error": "Não conseguimos carregar sua assinatura. Verifique sua conexão e tente de novo."
   }
 }

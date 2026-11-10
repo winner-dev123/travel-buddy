@@ -13,6 +13,8 @@ export const accountKeys = {
   connections: ['me', 'connections'] as const,
   posts: (id: string) => ['user', id, 'posts'] as const,
   dataRequests: ['me', 'data-requests'] as const,
+  sessions: ['me', 'sessions'] as const,
+  entitlements: ['me', 'entitlements'] as const,
 };
 
 /** Re-read `Me` after a settings change so every screen shows the saved state. */
@@ -242,4 +244,55 @@ export function respondToRequest(
 
 export function listConnections(client: ApiClient): Promise<Page<Connection>> {
   return client.get<Page<Connection>>('/v1/connections', { query: { limit: 100 } });
+}
+
+/** Contract `Session`: never carries IP addresses or tokens. */
+export interface DeviceSession {
+  id: string;
+  platform: 'ios' | 'android' | 'web';
+  device_name: string | null;
+  app_version: string | null;
+  created_at: string;
+  last_used_at: string;
+  is_current: boolean;
+}
+
+/** SCR-110: my signed-in devices. */
+export async function listSessions(client: ApiClient): Promise<DeviceSession[]> {
+  return (await client.get<{ data: DeviceSession[] }>('/v1/users/me/sessions')).data;
+}
+
+/** Signs that device out at its next token refresh. */
+export async function revokeSession(client: ApiClient, sessionId: string): Promise<void> {
+  await client.delete(`/v1/users/me/sessions/${sessionId}`);
+}
+
+export type QuotaKey =
+  'ai.itinerary_generations' | 'ai.trip_replans' | 'offline.packages' | 'groups.owned';
+
+export interface QuotaStatus {
+  limit: number;
+  used: number;
+  resets_at: string | null;
+}
+
+/** Contract `Entitlements` (docs/07): for display only, the server re-checks every action. */
+export interface Entitlements {
+  plan: 'free' | 'premium';
+  status:
+    'none' | 'active' | 'in_grace_period' | 'in_billing_retry' | 'paused' | 'expired' | 'revoked';
+  premium_until: string | null;
+  store_grace_until: string | null;
+  features: Record<string, boolean>;
+  quotas: Record<QuotaKey, QuotaStatus>;
+  active_subscription?: {
+    provider: 'apple' | 'google' | 'stripe' | 'dev';
+    product_id: string;
+    auto_renew: boolean;
+    management: 'app_store' | 'google_play' | 'stripe_portal';
+  } | null;
+}
+
+export function fetchEntitlements(client: ApiClient): Promise<Entitlements> {
+  return client.get<Entitlements>('/v1/billing/entitlements');
 }

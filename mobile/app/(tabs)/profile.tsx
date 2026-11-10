@@ -188,6 +188,18 @@ function SignedInProfile({ me }: { me: Me }) {
             testID="profile-menu-privacy"
           />
           <MenuRow
+            icon="phone-portrait-outline"
+            label={t('sessions.title')}
+            onPress={() => router.push('/settings/sessions')}
+            testID="profile-menu-sessions"
+          />
+          <MenuRow
+            icon="star-outline"
+            label={t('subscription.title')}
+            onPress={() => router.push('/settings/subscription')}
+            testID="profile-menu-subscription"
+          />
+          <MenuRow
             icon="ban-outline"
             label={t('account.blocked')}
             onPress={() => router.push('/settings/blocked')}

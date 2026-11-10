@@ -839,5 +839,50 @@
     "guidelines": "Community-Richtlinien",
     "version": "Version {{version}}",
     "error": "Diese Seite konnte nicht geladen werden. Prüfe deine Verbindung und versuch es noch einmal."
+  },
+  "sessions": {
+    "title": "Geräte",
+    "explain": "Hier bist du bei Travel Buddy angemeldet. Melde jedes Gerät ab, das du nicht kennst; es verliert den Zugriff innerhalb von 15 Minuten.",
+    "thisDevice": "Dieses Gerät",
+    "lastActive": "Zuletzt aktiv: {{when}}",
+    "version": "Version {{version}}",
+    "signOut": "Abmelden",
+    "confirmTitle": "Dieses Gerät abmelden?",
+    "confirmBody": "{{device}} muss sich erneut anmelden.",
+    "error": "Deine Geräte konnten nicht geladen werden. Prüfe deine Verbindung und versuch es noch einmal.",
+    "platform": {
+      "ios": "iPhone oder iPad",
+      "android": "Android-Gerät",
+      "web": "Webbrowser"
+    }
+  },
+  "subscription": {
+    "title": "Abo",
+    "plan": {
+      "free": "Kostenloser Tarif",
+      "premium": "Premium"
+    },
+    "renews": "Verlängert sich am {{date}}.",
+    "ends": "Premium endet am {{date}}. Es verlängert sich nicht.",
+    "promotion": "Premium aus einer Aktion bis {{date}}.",
+    "noEnd": "Premium ist aktiv.",
+    "billingIssue": "Deine letzte Zahlung ist fehlgeschlagen. Aktualisiere die Zahlungsmethode in deinem Store-Konto, um Premium zu behalten.",
+    "billingIssueUntil": "Deine letzte Zahlung ist fehlgeschlagen. Aktualisiere die Zahlungsmethode in deinem Store-Konto vor dem {{date}}, um Premium zu behalten.",
+    "status": {
+      "expired": "Dein Premium-Abo ist abgelaufen.",
+      "revoked": "Der Store hat dein Premium-Abo erstattet oder storniert."
+    },
+    "manage": "Abo verwalten",
+    "manageOnWeb": "Du hast auf der Website abonniert. Verwalte das Abo dort in deinem Konto.",
+    "usage": "Nutzung und Limits",
+    "used": "{{used}} von {{limit}}",
+    "notIncluded": "Nur mit Premium",
+    "quota": {
+      "ai_itinerary_generations": "KI-Reisepläne",
+      "ai_trip_replans": "KI-Umplanung",
+      "offline_packages": "Offline-Guides",
+      "groups_owned": "Deine Gruppen"
+    },
+    "error": "Dein Abo konnte nicht geladen werden. Prüfe deine Verbindung und versuch es noch einmal."
   }
 }

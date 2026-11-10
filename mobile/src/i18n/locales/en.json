@@ -839,5 +839,50 @@
     "guidelines": "Community guidelines",
     "version": "Version {{version}}",
     "error": "We couldn't load this page. Check your connection and try again."
+  },
+  "sessions": {
+    "title": "Devices",
+    "explain": "Where you're signed in to Travel Buddy. Sign out any device you don't recognise; it loses access within 15 minutes.",
+    "thisDevice": "This device",
+    "lastActive": "Last active {{when}}",
+    "version": "version {{version}}",
+    "signOut": "Sign out",
+    "confirmTitle": "Sign out this device?",
+    "confirmBody": "{{device}} will need to sign in again.",
+    "error": "We couldn't load your devices. Check your connection and try again.",
+    "platform": {
+      "ios": "iPhone or iPad",
+      "android": "Android device",
+      "web": "Web browser"
+    }
+  },
+  "subscription": {
+    "title": "Subscription",
+    "plan": {
+      "free": "Free plan",
+      "premium": "Premium"
+    },
+    "renews": "Renews on {{date}}.",
+    "ends": "Premium ends on {{date}}. It won't renew.",
+    "promotion": "Premium from a promotion until {{date}}.",
+    "noEnd": "Premium is active.",
+    "billingIssue": "Your last payment didn't go through. Update your payment method in your store account to keep Premium.",
+    "billingIssueUntil": "Your last payment didn't go through. Update your payment method in your store account before {{date}} to keep Premium.",
+    "status": {
+      "expired": "Your Premium subscription has ended.",
+      "revoked": "Your Premium subscription was refunded or cancelled by the store."
+    },
+    "manage": "Manage subscription",
+    "manageOnWeb": "You subscribed on the website. Manage it from your account there.",
+    "usage": "Usage and limits",
+    "used": "{{used}} of {{limit}}",
+    "notIncluded": "Premium only",
+    "quota": {
+      "ai_itinerary_generations": "AI trip plans",
+      "ai_trip_replans": "AI replanning",
+      "offline_packages": "Offline guides",
+      "groups_owned": "Groups you own"
+    },
+    "error": "We couldn't load your subscription. Check your connection and try again."
   }
 }

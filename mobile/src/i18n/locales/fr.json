@@ -852,5 +852,50 @@
     "guidelines": "Règles de la communauté",
     "version": "Version {{version}}",
     "error": "Impossible de charger cette page. Vérifiez votre connexion et réessayez."
+  },
+  "sessions": {
+    "title": "Appareils",
+    "explain": "Les appareils connectés à votre compte Travel Buddy. Déconnectez ceux que vous ne reconnaissez pas ; ils perdent l'accès sous 15 minutes.",
+    "thisDevice": "Cet appareil",
+    "lastActive": "Dernière activité : {{when}}",
+    "version": "version {{version}}",
+    "signOut": "Déconnecter",
+    "confirmTitle": "Déconnecter cet appareil ?",
+    "confirmBody": "{{device}} devra se reconnecter.",
+    "error": "Impossible de charger vos appareils. Vérifiez votre connexion et réessayez.",
+    "platform": {
+      "ios": "iPhone ou iPad",
+      "android": "Appareil Android",
+      "web": "Navigateur web"
+    }
+  },
+  "subscription": {
+    "title": "Abonnement",
+    "plan": {
+      "free": "Offre gratuite",
+      "premium": "Premium"
+    },
+    "renews": "Se renouvelle le {{date}}.",
+    "ends": "Premium se termine le {{date}}. Il ne sera pas renouvelé.",
+    "promotion": "Premium offert par une promotion jusqu'au {{date}}.",
+    "noEnd": "Premium est actif.",
+    "billingIssue": "Votre dernier paiement n'a pas abouti. Mettez à jour votre moyen de paiement dans votre compte de la boutique pour garder Premium.",
+    "billingIssueUntil": "Votre dernier paiement n'a pas abouti. Mettez à jour votre moyen de paiement dans votre compte de la boutique avant le {{date}} pour garder Premium.",
+    "status": {
+      "expired": "Votre abonnement Premium est terminé.",
+      "revoked": "La boutique a remboursé ou annulé votre abonnement Premium."
+    },
+    "manage": "Gérer l'abonnement",
+    "manageOnWeb": "Vous vous êtes abonné sur le site web. Gérez votre abonnement depuis votre compte sur le site.",
+    "usage": "Utilisation et limites",
+    "used": "{{used}} sur {{limit}}",
+    "notIncluded": "Premium uniquement",
+    "quota": {
+      "ai_itinerary_generations": "Plans de voyage par IA",
+      "ai_trip_replans": "Replanification par IA",
+      "offline_packages": "Guides hors ligne",
+      "groups_owned": "Groupes dont vous êtes propriétaire"
+    },
+    "error": "Impossible de charger votre abonnement. Vérifiez votre connexion et réessayez."
   }
 }

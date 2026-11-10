@@ -852,5 +852,50 @@
     "guidelines": "Normas de la comunidad",
     "version": "Versión {{version}}",
     "error": "No pudimos cargar esta página. Revisa tu conexión e inténtalo de nuevo."
+  },
+  "sessions": {
+    "title": "Dispositivos",
+    "explain": "Dónde tienes la sesión iniciada en Travel Buddy. Cierra la sesión en cualquier dispositivo que no reconozcas; perderá el acceso en 15 minutos.",
+    "thisDevice": "Este dispositivo",
+    "lastActive": "Última actividad: {{when}}",
+    "version": "versión {{version}}",
+    "signOut": "Cerrar sesión",
+    "confirmTitle": "¿Cerrar la sesión en este dispositivo?",
+    "confirmBody": "{{device}} tendrá que volver a iniciar sesión.",
+    "error": "No pudimos cargar tus dispositivos. Revisa tu conexión e inténtalo de nuevo.",
+    "platform": {
+      "ios": "iPhone o iPad",
+      "android": "Dispositivo Android",
+      "web": "Navegador web"
+    }
+  },
+  "subscription": {
+    "title": "Suscripción",
+    "plan": {
+      "free": "Plan gratuito",
+      "premium": "Premium"
+    },
+    "renews": "Se renueva el {{date}}.",
+    "ends": "Premium termina el {{date}}. No se renovará.",
+    "promotion": "Premium de una promoción hasta el {{date}}.",
+    "noEnd": "Premium está activo.",
+    "billingIssue": "Tu último pago no se completó. Actualiza tu método de pago en tu cuenta de la tienda para mantener Premium.",
+    "billingIssueUntil": "Tu último pago no se completó. Actualiza tu método de pago en tu cuenta de la tienda antes del {{date}} para mantener Premium.",
+    "status": {
+      "expired": "Tu suscripción Premium ha terminado.",
+      "revoked": "La tienda reembolsó o canceló tu suscripción Premium."
+    },
+    "manage": "Gestionar suscripción",
+    "manageOnWeb": "Te suscribiste en el sitio web. Gestiónala desde tu cuenta allí.",
+    "usage": "Uso y límites",
+    "used": "{{used}} de {{limit}}",
+    "notIncluded": "Solo Premium",
+    "quota": {
+      "ai_itinerary_generations": "Planes de viaje con IA",
+      "ai_trip_replans": "Replanificación con IA",
+      "offline_packages": "Guías sin conexión",
+      "groups_owned": "Grupos que administras"
+    },
+    "error": "No pudimos cargar tu suscripción. Revisa tu conexión e inténtalo de nuevo."
   }
 }
