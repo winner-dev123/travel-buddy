@@ -34,7 +34,7 @@ Legal review must confirm the bases, retention periods and transfer mechanisms b
 
 | Processor | Service | Location | Transfer mechanism |
 |---|---|---|---|
-| Google (Firebase, Google Cloud) | Authentication (Firebase Auth), Postgres (Cloud SQL), object storage (Cloud Storage), Android push (FCM) (ADR-0028) | `us-east1`; EU region to be decided (BL-6.11) | Google Cloud DPA, SCCs |
+| Google (Firebase, Google Cloud) | Authentication (Firebase Auth), Postgres (Cloud SQL), object storage (Cloud Storage), Android push (FCM) (ADR-0028) | `us-east4`; EU region to be decided (BL-6.11) | Google Cloud DPA, SCCs |
 | Railway | API and worker hosting (ADR-0028) | US East | DPA, SCCs |
 | Supabase | Postgres, auth, until the ADR-0028 cutover | `us-east-1` | DPA; SCCs if outside the EEA |
 | Vercel | API and web hosting, cron | Global edge, functions region-pinned | DPA, SCCs |

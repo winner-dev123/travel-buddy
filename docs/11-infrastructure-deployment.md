@@ -19,7 +19,7 @@
 
 The platform is moving from Supabase and Vercel (ADR-0018, 0019, 0020) to the owner's Firebase project and Railway. The code supports both until the cutover: set the Firebase variables and the backend trusts both issuers, and the apps choose their provider from build configuration.
 
-**Firebase console** (project on the **Blaze** plan; region `us-east1` throughout):
+**Firebase console** (project on the **Blaze** plan; region `us-east4` (Northern Virginia) throughout, next to Railway US East):
 
 1. **Authentication → Sign-in method:** enable *Email/Password*.
    * **Settings:** password policy at least 8 characters; *Email enumeration protection* on; add the web domain to *Authorized domains*.
@@ -30,7 +30,7 @@ The platform is moving from Supabase and Vercel (ADR-0018, 0019, 0020) to the ow
    * Add an Android app with the package name from `mobile/app.json` and download `google-services.json` (needed for FCM).
 3. **Cloud SQL** (Google Cloud console):
    * Enable the *Cloud SQL Admin API*.
-   * Create a PostgreSQL 16 instance in `us-east1`. Start with the smallest Enterprise shared-core tier; backups on; point-in-time recovery on before real users (NFR-004).
+   * Create a PostgreSQL 16 instance in `us-east4`. Start with the smallest Enterprise shared-core tier; backups on; point-in-time recovery on before real users (NFR-004).
    * Create database `travelbuddy` and user `travelbuddy` with a generated password.
    * Note the *instance connection name* (`project:region:instance`).
 4. **Service account** (IAM → Service accounts):
@@ -54,7 +54,7 @@ Railway's config-as-code files are deprecated (new services can't use them), so 
 
 * **Database:**
   * `DATABASE_URL=postgresql+asyncpg://travelbuddy:<password>@/travelbuddy`
-  * `DATABASE_CLOUD_SQL_INSTANCE=<project>:us-east1:<instance>`
+  * `DATABASE_CLOUD_SQL_INSTANCE=<project>:us-east4:<instance>`
   * `GOOGLE_SERVICE_ACCOUNT_JSON=<key JSON>`
 * **Identity:** `FIREBASE_PROJECT_ID`, `FIREBASE_WEB_API_KEY`.
 * **Media:**

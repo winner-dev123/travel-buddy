@@ -29,7 +29,7 @@ The owner chose Cloud SQL for PostgreSQL. Railway runs long-lived containers, so
    * **Connection.** The backend connects with SQLAlchemy and asyncpg through the **Cloud SQL Python Connector** when `DATABASE_CLOUD_SQL_INSTANCE` is set. The connector reaches the instance's public IP over TLS, with an ephemeral certificate issued to the service account (role Cloud SQL Client), so no IP allow-list is needed. Railway has no fixed egress address on every plan. The connector is the optional `gcp` extra, installed in the container image.
    * **Schema.** Migrations run through the same connection path. Data Connect's GraphQL layer is not used.
    * **Extensions and hardening.** The required extensions (PostGIS, `citext`, `pg_trgm`, `unaccent`) are available on Cloud SQL. The RLS hardening still runs; the Supabase role revocations are skipped automatically, because those roles don't exist there.
-   * **Region.** `us-east1`, next to Railway's US East region. The EU-region question for launch markets stays open (docs/11 §9).
+   * **Region.** `us-east4` (Northern Virginia), next to Railway's US East region (`us-east4-eqdc4a`). The EU-region question for launch markets stays open (docs/11 §9).
 3. **Media storage: Cloud Storage buckets in the same project**, through the existing S3-compatible port (ADR-0022), with configuration only.
    * **Endpoint.** Google's XML API accepts SigV4 with HMAC keys: `MEDIA_S3_ENDPOINT=https://storage.googleapis.com`, region `auto`, path-style URLs.
    * **Buckets.** The quarantine and private buckets stay private. The public bucket grants `allUsers` the Storage Object Viewer role, and `MEDIA_PUBLIC_BASE_URL=https://storage.googleapis.com/<public-bucket>`. Bucket names are global, so they get a project prefix.
