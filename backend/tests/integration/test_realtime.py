@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -17,7 +17,7 @@ from starlette.websockets import WebSocketDisconnect
 from app.core.time import FixedClock
 from app.main import create_app
 from tests.conftest import make_identity_settings, make_settings
-from tests.contract_schemas import assert_realtime_frame
+from tests.contract_schemas import assert_matches_contract, assert_realtime_frame
 from tests.integration.conftest import LiveApp
 from tests.integration.test_destinations import catalog  # noqa: F401 - module-scoped fixture
 from tests.integration.test_identity_flows import _auth
@@ -363,3 +363,49 @@ def test_block_stops_typing_and_sending_over_the_socket(rt: LiveApp) -> None:
             {"conversation_id": conversation, "client_message_id": str(uuid.uuid4()), "body": "x"},
         )
         assert bo_ws.expect("error")["data"]["code"] == "connection_required"
+
+
+@pytest.mark.req("DM-003", "AUTH-011")
+def test_browsers_authenticate_with_single_use_tickets(rt: LiveApp) -> None:
+    token, user_id = _user(rt)
+
+    def mint() -> str:
+        response = rt.client.post("/v1/realtime/tickets", headers=_auth(token))
+        assert response.status_code == 201, response.text
+        assert response.headers["cache-control"] == "no-store"
+        assert_matches_contract(response.json(), "RealtimeTicket")
+        ticket: str = response.json()["ticket"]
+        return ticket
+
+    ticket = mint()
+    with rt.client.websocket_connect(
+        "/v1/realtime", subprotocols=[PROTOCOL], headers={"origin": WEB}
+    ) as ws:
+        reader = Reader(ws)
+        reader.send("auth", {"ticket": ticket, "client": "web"})
+        ok = reader.expect("auth.ok")["data"]
+        assert ok["user_id"] == user_id
+        issued = datetime.fromisoformat(ok["server_time"].replace("Z", "+00:00"))
+        expires = datetime.fromisoformat(ok["auth_expires_at"].replace("Z", "+00:00"))
+        assert timedelta(minutes=14) < expires - issued <= timedelta(minutes=15)
+        reader.send("auth", {"ticket": mint(), "client": "web"})  # re-auth, same session
+        reader.expect("auth.ok")
+
+    with rt.client.websocket_connect("/v1/realtime", subprotocols=[PROTOCOL]) as ws:
+        reader = Reader(ws)
+        reader.send("auth", {"ticket": ticket})  # single use
+        assert reader.closed() == 4001
+        assert reader.pending[0]["data"]["code"] == "ticket_invalid"
+
+    # Revoking the session voids its outstanding tickets.
+    pending = mint()
+    sessions = rt.client.get("/v1/users/me/sessions", headers=_auth(token)).json()["data"]
+    [current] = [s for s in sessions if s["is_current"]]
+    assert (
+        rt.client.delete(f"/v1/users/me/sessions/{current['id']}", headers=_auth(token)).status_code
+        == 204
+    )
+    with rt.client.websocket_connect("/v1/realtime", subprotocols=[PROTOCOL]) as ws:
+        reader = Reader(ws)
+        reader.send("auth", {"ticket": pending})
+        assert reader.closed() == 4001

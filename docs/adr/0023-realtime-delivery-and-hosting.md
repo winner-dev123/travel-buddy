@@ -48,5 +48,5 @@ docs/06 specifies the WebSocket protocol: frames, auth, acks, sync and limits. I
 - Each delivered message costs one read per receiving connection. That is fine at v1 volumes. If
   it becomes hot, the publisher can include the rendered message and the connection can patch the
   per-viewer fields.
-- Web tickets (ADR-0013, BL-3.15) and `notification.new` frames are not implemented yet. A ticket
-  `auth` currently gets `auth.error {code: ticket_invalid}`.
+- Web tickets (ADR-0013) are implemented (BL-3.15) and stored hashed in PostgreSQL (no Redis
+  needed). `notification.new` frames are not implemented yet.

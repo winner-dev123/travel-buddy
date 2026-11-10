@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 from enum import StrEnum
+from typing import Any
 
 from sqlalchemy import (
     Boolean,
@@ -22,7 +23,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, CITEXT, INET
+from sqlalchemy.dialects.postgresql import ARRAY, CITEXT, INET, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, enum_check
@@ -305,3 +306,22 @@ class DevicePushToken(Base):
         DateTime(timezone=True), server_default=func.now()
     )
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class RealtimeTicket(Base):
+    """Single-use browser WebSocket ticket (ADR-0013): only the SHA-256 of the 256-bit value is
+    stored; 30 s to live; bound to the session that minted it (revoking it voids the ticket)."""
+
+    __tablename__ = "realtime_tickets"
+    __table_args__ = (Index("ix_realtime_tickets__expires_at", "expires_at"),)
+
+    token_hash: Mapped[bytes] = mapped_column(LargeBinary, primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("user_sessions.id", ondelete="CASCADE"), nullable=False
+    )
+    claims: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

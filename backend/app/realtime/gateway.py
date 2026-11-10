@@ -6,7 +6,8 @@ receipt and typing frame is re-authorized by the service. Events reach a connect
 user's channel on the realtime bus; message frames are loaded for the receiving user at delivery
 time, so access is checked again then.
 
-Not here yet: web tickets (``auth {ticket}``, BL-3.15) and ``notification.new`` frames.
+Browsers authenticate with single-use tickets (``auth {ticket}``, ADR-0013). Not here yet:
+``notification.new`` frames.
 """
 
 from __future__ import annotations
@@ -31,8 +32,9 @@ from app.core.ids import uuid7
 from app.core.ratelimit import RateLimiter
 from app.core.security.access_tokens import AccessTokenService
 from app.core.security.authn import principal_from_claims
-from app.core.security.principal import Principal
+from app.core.security.principal import AccountStatus, PlatformRole, Principal
 from app.core.time import Clock
+from app.modules.identity import service as identity
 from app.modules.messaging.schemas import UpdateReceiptsRequest
 from app.modules.messaging.service import MessagingService
 from app.realtime.bus import RealtimeBus, Subscription
@@ -65,6 +67,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 EXPIRY_NOTICE = timedelta(seconds=60)
+TICKET_REAUTH_AFTER = timedelta(minutes=15)
+_ROLES = frozenset(role.value for role in PlatformRole)
 
 
 @router.websocket("/v1/realtime")
@@ -226,19 +230,21 @@ class Connection:
         except ValidationError:
             await self._auth_error("unauthenticated", "Send an access token.", 4001, envelope.id)
             return False
-        if data.access_token is None:
-            # Browser tickets (ADR-0013) arrive with BL-3.15.
-            await self._auth_error(
-                "ticket_invalid", "Tickets aren't accepted yet.", 4001, envelope.id
-            )
-            return False
-        try:
-            claims = self.tokens.verify(data.access_token)
-        except AppError as exc:
-            code = "token_expired" if exc.code is ErrorCode.TOKEN_EXPIRED else "token_invalid"
-            await self._auth_error(code, "Sign in again.", 4001, envelope.id)
-            return False
-        principal = principal_from_claims(claims)
+        if data.ticket is not None:
+            authenticated = await self._from_ticket(data.ticket)
+            if authenticated is None:
+                await self._auth_error("ticket_invalid", "Get a new ticket.", 4001, envelope.id)
+                return False
+            principal, expires_at = authenticated
+        else:
+            assert data.access_token is not None
+            try:
+                claims = self.tokens.verify(data.access_token)
+            except AppError as exc:
+                code = "token_expired" if exc.code is ErrorCode.TOKEN_EXPIRED else "token_invalid"
+                await self._auth_error(code, "Sign in again.", 4001, envelope.id)
+                return False
+            principal, expires_at = principal_from_claims(claims), claims.expires_at
         if self.principal is not None and (
             principal.user_id != self.principal.user_id
             or principal.session_id != self.principal.session_id
@@ -248,7 +254,7 @@ class Connection:
             )
             return False
         self.principal = principal
-        self.expires_at = claims.expires_at
+        self.expires_at = expires_at
         await self._send(
             frame(
                 "auth.ok",
@@ -257,7 +263,7 @@ class Connection:
                     "session_id": str(principal.session_id),
                     "connection_id": str(self.connection_id),
                     "server_time": timestamp(self.clock.now()),
-                    "auth_expires_at": timestamp(claims.expires_at),
+                    "auth_expires_at": timestamp(expires_at),
                     "heartbeat_interval_s": HEARTBEAT_INTERVAL_S,
                     "limits": dict(LIMITS),
                 },
@@ -265,6 +271,28 @@ class Connection:
             )
         )
         return True
+
+    async def _from_ticket(self, ticket: str) -> tuple[Principal, datetime] | None:
+        """Browsers authenticate with a single-use ticket from the BFF (ADR-0013); the connection
+        must prove the session again 15 minutes after the ticket was issued (docs/06 §5.2)."""
+        async with self.ws.app.state.database.sessionmaker() as session, session.begin():
+            grant = await identity.consume_realtime_ticket(session, ticket, now=self.clock.now())
+        if grant is None:
+            return None
+        claims = grant.claims
+        principal = Principal(
+            user_id=grant.user_id,
+            session_id=grant.session_id,
+            account_status=AccountStatus.ACTIVE,
+            roles=frozenset(PlatformRole(r) for r in claims.get("roles", []) if r in _ROLES),
+            email_verified=bool(claims.get("email_verified")),
+            age_assured=bool(claims.get("age_assured")),
+            amr=frozenset(claims.get("amr", [])),
+            auth_time=datetime.fromisoformat(claims["auth_time"])
+            if claims.get("auth_time")
+            else None,
+        )
+        return principal, grant.issued_at + TICKET_REAUTH_AFTER
 
     async def _watch_expiry(self) -> None:
         """``auth.expiring`` 60 s before expiry; close ``4001`` if no re-auth arrives in time."""

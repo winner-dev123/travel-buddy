@@ -104,6 +104,7 @@ from app.modules.web_cache import service as web_cache_service
 from app.modules.web_cache.config import WebCacheSettings
 from app.realtime.bus import MemoryBus, RealtimeBus, RedisBus
 from app.realtime.gateway import router as realtime_router
+from app.realtime.tickets import router as realtime_tickets_router
 
 logger = logging.getLogger(__name__)
 
@@ -381,6 +382,7 @@ def create_app(
     app.include_router(groups_router)
     app.include_router(group_invitations_router)
     app.include_router(realtime_router)
+    app.include_router(realtime_tickets_router)
     app.include_router(media_router)
     app.include_router(admin_router)
     app.include_router(internal_router)

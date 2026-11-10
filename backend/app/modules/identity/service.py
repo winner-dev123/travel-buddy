@@ -10,12 +10,14 @@ Flows (architecture section 8, contract ``/v1/auth/*``):
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import secrets
 import uuid
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -50,6 +52,7 @@ from app.modules.identity.models import (
     DataSubjectRequest,
     DataSubjectRequestKind,
     DataSubjectRequestStatus,
+    RealtimeTicket,
     RetiredRefreshToken,
     RevokedReason,
     User,
@@ -828,13 +831,17 @@ async def purge_expired(session: AsyncSession) -> int:
         .where(UserSession.last_ip.is_not(None), UserSession.last_used_at < platform.ago(days=30))
         .values(last_ip=None)
     )
-    return await push_tokens.purge(session) + await platform.delete_batch(
-        session,
-        UserSession,
-        or_(
-            UserSession.revoked_at < platform.ago(days=90),
-            UserSession.expires_at < platform.ago(days=90),
-        ),
+    return (
+        await push_tokens.purge(session)
+        + await purge_realtime_tickets(session)
+        + await platform.delete_batch(
+            session,
+            UserSession,
+            or_(
+                UserSession.revoked_at < platform.ago(days=90),
+                UserSession.expires_at < platform.ago(days=90),
+            ),
+        )
     )
 
 
@@ -1000,3 +1007,83 @@ async def account_created_at(session: AsyncSession, user_id: uuid.UUID) -> datet
         select(User.created_at).where(User.id == user_id)
     )
     return created
+
+
+# ───────────────────────── realtime tickets (ADR-0013, BL-3.15) ─────────────────────────
+
+REALTIME_TICKET_TTL = timedelta(seconds=30)
+
+
+@dataclass(frozen=True, slots=True)
+class TicketGrant:
+    """What a consumed ticket proves: the user, the session and the claims at minting time."""
+
+    user_id: uuid.UUID
+    session_id: uuid.UUID
+    claims: dict[str, Any]
+    issued_at: datetime
+
+
+async def mint_realtime_ticket(
+    session: AsyncSession, principal: Principal, *, now: datetime
+) -> tuple[str, datetime]:
+    """A 256-bit single-use ticket; only its SHA-256 is stored. Returned once."""
+    ticket = secrets.token_urlsafe(32)  # 43 base64url characters
+    expires_at = now + REALTIME_TICKET_TTL
+    session.add(
+        RealtimeTicket(
+            token_hash=hashlib.sha256(ticket.encode()).digest(),
+            user_id=principal.user_id,
+            session_id=principal.session_id,
+            claims={
+                "roles": sorted(r.value for r in principal.roles),
+                "email_verified": principal.email_verified,
+                "age_assured": principal.age_assured,
+                "amr": sorted(principal.amr),
+                "auth_time": principal.auth_time.isoformat() if principal.auth_time else None,
+            },
+            issued_at=now,
+            expires_at=expires_at,
+        )
+    )
+    await session.flush()
+    return ticket, expires_at
+
+
+async def consume_realtime_ticket(
+    session: AsyncSession, ticket: str, *, now: datetime
+) -> TicketGrant | None:
+    """Atomically take a ticket (delete-returning, so it works once) if it is unexpired and its
+    session is still live."""
+    row = (
+        await session.execute(
+            delete(RealtimeTicket)
+            .where(
+                RealtimeTicket.token_hash == hashlib.sha256(ticket.encode()).digest(),
+                RealtimeTicket.expires_at > now,
+            )
+            .returning(
+                RealtimeTicket.user_id,
+                RealtimeTicket.session_id,
+                RealtimeTicket.claims,
+                RealtimeTicket.issued_at,
+            )
+        )
+    ).first()
+    if row is None:
+        return None
+    live = await session.scalar(
+        select(UserSession.id).where(
+            UserSession.id == row[1], UserSession.revoked_at.is_(None), UserSession.expires_at > now
+        )
+    )
+    if live is None:
+        return None
+    return TicketGrant(user_id=row[0], session_id=row[1], claims=dict(row[2]), issued_at=row[3])
+
+
+async def purge_realtime_tickets(session: AsyncSession) -> int:
+    result = await session.execute(
+        delete(RealtimeTicket).where(RealtimeTicket.expires_at < func.now())
+    )
+    return int(getattr(result, "rowcount", 0) or 0)
