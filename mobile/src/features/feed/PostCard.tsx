@@ -1,13 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 
 import { getApiClient } from '@/api';
 import { PhotoGallery } from '@/features/feed/PhotoGallery';
 import { useAppTheme } from '@/theme/useAppTheme';
 
-import { setBookmark, setReaction } from './api';
+import { type FeedFeedback, sendFeedFeedback, setBookmark, setReaction, shareLink } from './api';
 import { TranslatableBody } from './TranslatableBody';
 import type { Post, UserSummary } from './types';
 
@@ -48,6 +48,32 @@ export function PostCard({ post, onOpen, onOpenAuthor, interactive = true }: Pos
   const [saved, setSaved] = useState(Boolean(post.viewer?.bookmarked));
   const [saving, setSaving] = useState(false);
 
+  const [dismissed, setDismissed] = useState(false);
+  const isAuthor = post.viewer?.is_author ?? false;
+
+  const feedback = (kind: FeedFeedback) => {
+    setDismissed(true); // gone from this list at once; the feed learns from it
+    void sendFeedFeedback(getApiClient(), post.id, kind).catch(() => undefined);
+  };
+  const more = () =>
+    Alert.alert(t('post.moreTitle'), undefined, [
+      { text: t('post.hide'), onPress: () => feedback('hide') },
+      { text: t('post.notInterested'), onPress: () => feedback('not_interested') },
+      {
+        text: t('post.seeLessAuthor', { name: post.author.display_name }),
+        onPress: () => feedback('see_less_author'),
+      },
+      { text: t('common.cancel'), style: 'cancel' },
+    ]);
+  const share = async () => {
+    try {
+      const url = await shareLink(getApiClient(), post.id);
+      await Share.share({ message: t('post.shareMessage', { url }) });
+    } catch {
+      // nothing to undo: the share sheet was dismissed or the link couldn't be made
+    }
+  };
+
   const toggleSaved = async () => {
     if (saving) return;
     const next = !saved;
@@ -79,6 +105,21 @@ export function PostCard({ post, onOpen, onOpenAuthor, interactive = true }: Pos
   };
 
   const place = post.primary_destination?.name;
+  if (dismissed) {
+    return (
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: theme.colors.surface, borderColor: theme.colors.divider },
+        ]}
+        testID={`post-dismissed-${post.id}`}
+      >
+        <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+          {t('post.dismissed')}
+        </Text>
+      </View>
+    );
+  }
   return (
     <Pressable
       onPress={() => onOpen?.(post)}
@@ -151,6 +192,30 @@ export function PostCard({ post, onOpen, onOpenAuthor, interactive = true }: Pos
             {post.counts.comments}
           </Text>
         </View>
+        {interactive && post.visibility === 'public' ? (
+          <Pressable
+            onPress={() => void share()}
+            accessibilityRole="button"
+            accessibilityLabel={t('post.share')}
+            hitSlop={8}
+            style={styles.action}
+            testID={`post-share-${post.id}`}
+          >
+            <Ionicons name="share-outline" size={19} color={theme.colors.textSecondary} />
+          </Pressable>
+        ) : null}
+        {interactive && onOpen && !isAuthor ? (
+          <Pressable
+            onPress={more}
+            accessibilityRole="button"
+            accessibilityLabel={t('post.moreTitle')}
+            hitSlop={8}
+            style={styles.action}
+            testID={`post-more-${post.id}`}
+          >
+            <Ionicons name="ellipsis-horizontal" size={19} color={theme.colors.textSecondary} />
+          </Pressable>
+        ) : null}
         {interactive ? (
           <Pressable
             onPress={toggleSaved}

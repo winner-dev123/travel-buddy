@@ -360,7 +360,14 @@
     "commentActions": "Commentaire",
     "commentActionsHint": "Appui long pour les options",
     "deleteComment": "Supprimer le commentaire",
-    "reportComment": "Signaler le commentaire"
+    "reportComment": "Signaler le commentaire",
+    "moreTitle": "Plus d'options",
+    "hide": "Masquer cette histoire",
+    "notInterested": "Pas intéressé",
+    "seeLessAuthor": "Voir moins de {{name}}",
+    "dismissed": "Masquée. Vous verrez moins d'histoires de ce type.",
+    "share": "Partager",
+    "shareMessage": "Une histoire de voyage sur Travel Buddy : {{url}}"
   },
   "compose": {
     "open": "Partager un récit",

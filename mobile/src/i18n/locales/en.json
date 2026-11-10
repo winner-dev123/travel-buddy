@@ -357,7 +357,14 @@
     "commentActions": "Comment",
     "commentActionsHint": "Long press for options",
     "deleteComment": "Delete comment",
-    "reportComment": "Report comment"
+    "reportComment": "Report comment",
+    "moreTitle": "More options",
+    "hide": "Hide this story",
+    "notInterested": "Not interested",
+    "seeLessAuthor": "See less from {{name}}",
+    "dismissed": "Hidden. You'll see fewer stories like this.",
+    "share": "Share",
+    "shareMessage": "A travel story on Travel Buddy: {{url}}"
   },
   "compose": {
     "open": "Share a story",

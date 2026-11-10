@@ -96,6 +96,25 @@ export function deletePost(client: ApiClient, postId: string): Promise<void> {
   return client.delete(`/v1/posts/${postId}`);
 }
 
+export type FeedFeedback = 'hide' | 'not_interested' | 'see_less_author';
+
+/** `POST /v1/feed/feedback` (FEED-020 negative feedback): fewer stories like this one. */
+export async function sendFeedFeedback(
+  client: ApiClient,
+  postId: string,
+  kind: FeedFeedback,
+): Promise<void> {
+  await client.post('/v1/feed/feedback', { body: { post_id: postId, kind } });
+}
+
+/** `POST /v1/posts/{id}/shares`: a link to the public story (opens the guest preview). */
+export async function shareLink(client: ApiClient, postId: string): Promise<string> {
+  const link = await client.post<{ url: string }>(`/v1/posts/${postId}/shares`, {
+    body: { channel: 'system_share_sheet' },
+  });
+  return link.url;
+}
+
 /** `PUT`/`DELETE /v1/posts/{id}/bookmark` (POST-005): private, only I see what I saved. */
 export function setBookmark(client: ApiClient, postId: string, on: boolean): Promise<unknown> {
   return on
