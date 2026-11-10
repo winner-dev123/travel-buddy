@@ -138,6 +138,8 @@ export interface PublicProfile {
     'none' | 'request_pending' | 'request_received' | 'connected' | 'declined' | 'blocked';
   can_request_connection: boolean;
   can_message?: boolean;
+  /** Non-transferable badges from challenges and the platform (CHAL-012). */
+  badges?: { id: string; key: string; name: string }[];
 }
 
 export function fetchProfile(client: ApiClient, userId: string): Promise<PublicProfile> {

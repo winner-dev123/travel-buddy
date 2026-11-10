@@ -281,6 +281,7 @@ describe('safety', () => {
     expect(
       await screen.findByText('This account is private. Follow to see their stories.'),
     ).toBeTruthy();
+    expect(screen.queryByTestId('user-badges')).toBeNull(); // none earned
     await fireEvent.press(screen.getByTestId('user-follow'));
     await waitFor(() => expect(mockApi.put).toHaveBeenCalledWith('/v1/users/u2/follow'));
     expect(await screen.findByText('Requested')).toBeTruthy();
@@ -412,4 +413,26 @@ describe('connections', () => {
     );
     expect(await screen.findByTestId('user-request-sent')).toBeTruthy();
   });
+});
+
+it('shows the badges a traveller earned on their profile', async () => {
+  useSessionStore.getState().setSignedIn(makeMe());
+  mockParams = { id: 'u2' };
+  mockApi.get.mockImplementation(async (path: string) =>
+    path === '/v1/users/u2'
+      ? {
+          ...bo,
+          bio: null,
+          account_visibility: 'public',
+          is_restricted: false,
+          counts: { posts: 1, followers: 0, following: 0 },
+          follow_status: 'none',
+          badges: [{ id: 'b1', key: 'lisbon-quiz', name: 'Lisbon quiz winner', icon: null }],
+        }
+      : { data: [], page: { next_cursor: null, has_more: false } },
+  );
+  await renderScreen(<UserProfile />);
+  expect(await screen.findByTestId('user-badge-lisbon-quiz')).toHaveTextContent(
+    '🏅 Lisbon quiz winner',
+  );
 });

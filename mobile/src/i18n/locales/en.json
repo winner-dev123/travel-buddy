@@ -413,7 +413,8 @@
     "requestSent": "Connection request sent",
     "connect": "Connect",
     "connectNotAllowed": "This traveller isn't accepting connection requests from you.",
-    "message": "Message"
+    "message": "Message",
+    "badges": "Badges"
   },
   "report": {
     "title": "Report",

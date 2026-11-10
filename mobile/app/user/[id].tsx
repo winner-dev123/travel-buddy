@@ -108,6 +108,21 @@ export default function UserProfileScreen() {
           {t('user.counts', data.counts)}
         </Text>
       ) : null}
+      {data.badges?.length ? (
+        <View style={styles.badges} accessibilityLabel={t('user.badges')} testID="user-badges">
+          {data.badges.map((badge) => (
+            <View
+              key={badge.id}
+              style={[styles.badge, { borderColor: theme.colors.divider }]}
+              testID={`user-badge-${badge.key}`}
+            >
+              <Text style={[theme.typography.label, { color: theme.colors.textPrimary }]}>
+                {`🏅 ${badge.name}`}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
       {restricted ? <Notice tone="info">{t('user.private')}</Notice> : null}
       {!isMe ? (
         <View style={{ gap: theme.spacing[2] }}>
@@ -225,6 +240,8 @@ export default function UserProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  badge: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 4 },
   fill: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   actions: { flexDirection: 'row', gap: 8 },

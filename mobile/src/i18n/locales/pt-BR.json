@@ -419,7 +419,8 @@
     "requestSent": "Pedido de conexão enviado",
     "connect": "Conectar",
     "connectNotAllowed": "Esta pessoa não está aceitando pedidos de conexão seus.",
-    "message": "Mensagem"
+    "message": "Mensagem",
+    "badges": "Insígnias"
   },
   "report": {
     "title": "Denunciar",

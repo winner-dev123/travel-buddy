@@ -413,7 +413,8 @@
     "requestSent": "Kontaktanfrage gesendet",
     "connect": "Verbinden",
     "connectNotAllowed": "Diese Person nimmt keine Kontaktanfragen von dir an.",
-    "message": "Nachricht"
+    "message": "Nachricht",
+    "badges": "Abzeichen"
   },
   "report": {
     "title": "Melden",
