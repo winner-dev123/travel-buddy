@@ -591,7 +591,15 @@
     "clearTitle": "Limpar este chat?",
     "clearBody": "As mensagens até agora somem só para você. Os outros continuam vendo.",
     "photoTitle": "Enviar uma foto",
-    "sendPhoto": "Enviar uma foto"
+    "sendPhoto": "Enviar uma foto",
+    "replyInThread": "Responder na conversa",
+    "threadTitle": "Conversa",
+    "threadReplies_one": "{{count}} resposta",
+    "threadReplies_many": "{{count}} respostas",
+    "threadReplies_other": "{{count}} respostas",
+    "threadEmpty": "Ainda não há respostas. Comece a conversa.",
+    "threadRootMissing": "Respostas a uma mensagem anterior",
+    "threadInput": "Responder na conversa"
   },
   "groups": {
     "title": "Grupos",

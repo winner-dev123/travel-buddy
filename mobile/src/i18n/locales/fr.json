@@ -591,7 +591,15 @@
     "clearTitle": "Effacer ce chat ?",
     "clearBody": "Les messages échangés disparaissent pour vous seulement. Les autres les voient toujours.",
     "photoTitle": "Envoyer une photo",
-    "sendPhoto": "Envoyer une photo"
+    "sendPhoto": "Envoyer une photo",
+    "replyInThread": "Répondre dans le fil",
+    "threadTitle": "Fil",
+    "threadReplies_one": "{{count}} réponse",
+    "threadReplies_many": "{{count}} réponses",
+    "threadReplies_other": "{{count}} réponses",
+    "threadEmpty": "Pas encore de réponse. Lancez le fil.",
+    "threadRootMissing": "Réponses à un message précédent",
+    "threadInput": "Répondre dans le fil"
   },
   "groups": {
     "title": "Groupes",

@@ -245,6 +245,7 @@ it('offers pinning in a group chat only with the permission', async () => {
   expect(buttons.map((button) => button.text)).toEqual([
     'React',
     'Reply',
+    'Reply in thread',
     'Report message',
     'Cancel',
   ]);

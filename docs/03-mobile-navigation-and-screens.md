@@ -334,7 +334,7 @@ screen was folded into another one; ✅ built, ⚠️ partly, ⬜ not yet (reaso
 | SCR-071 join requests | ⬜ | Behind the `group_join_requests` flag (off) |
 | SCR-073 invitation landing | ⚠️ | Join by pasting a link or code in Groups; no deep-link handler yet |
 | SCR-080 inbox, SCR-081/082 chats | ✅ | `/(tabs)/messages`, `/chat/[id]` (photos, replies, reactions, pins, announcements, mute, clear for me) |
-| SCR-083 reply thread | ⚠️ | Replies are quoted in the chat; no separate thread view |
+| SCR-083 reply thread | ✅ | `/chat/thread` in group chats, opened from a message's reply count or "Reply in thread"; replies also stay quoted in the chat |
 | SCR-084 pinned messages | ✅ | Pinned bar in `/chat/[id]` |
 | SCR-085..090 challenges | ✅ | `/challenges`, `/challenges/[id]`, `/challenges/new`, `/challenges/review`, `/challenges/fulfillments`, `/rewards`; team threads in `/chat/[id]` |
 | SCR-100 my profile, SCR-106 settings home | ✅ | `/(tabs)/profile` (settings rows) |

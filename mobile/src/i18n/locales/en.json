@@ -581,7 +581,14 @@
     "clearTitle": "Clear this chat?",
     "clearBody": "The messages so far disappear for you only. Everyone else still sees them.",
     "photoTitle": "Send a photo",
-    "sendPhoto": "Send a photo"
+    "sendPhoto": "Send a photo",
+    "replyInThread": "Reply in thread",
+    "threadTitle": "Thread",
+    "threadReplies_one": "{{count}} reply",
+    "threadReplies_other": "{{count}} replies",
+    "threadEmpty": "No replies yet. Start the thread.",
+    "threadRootMissing": "Replies to an earlier message",
+    "threadInput": "Reply in thread"
   },
   "groups": {
     "title": "Groups",

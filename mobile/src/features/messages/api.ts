@@ -48,6 +48,9 @@ export interface Message {
   body: string | null;
   attachments: MediaRef[];
   reply_to: MessagePreview | null;
+  /** Group chats: the thread this message replies in, and how many replies it has itself. */
+  thread_root_id?: string | null;
+  thread_reply_count?: number;
   reactions: { emoji: string; count: number; reacted_by_me: boolean }[];
   pinned: boolean;
   moderation_state: 'visible' | 'removed_by_moderator' | 'removed_by_admin';
@@ -73,6 +76,7 @@ export const messageKeys = {
   conversation: (id: string) => ['messages', 'conversation', id] as const,
   history: (id: string) => ['messages', 'history', id] as const,
   pins: (id: string) => ['messages', 'pins', id] as const,
+  thread: (id: string, rootId: string) => ['messages', 'thread', id, rootId] as const,
 };
 
 export function listConversations(client: ApiClient): Promise<Page<Conversation>> {
@@ -110,6 +114,27 @@ export function sendMessage(
       ...(attachmentIds.length ? { kind: 'image', attachment_media_ids: attachmentIds } : {}),
       ...(replyToId ? { reply_to_message_id: replyToId } : {}),
     },
+  });
+}
+
+/** SCR-083: replies in a group chat thread, oldest first (GCHAT-004). */
+export function listThread(client: ApiClient, id: string, rootId: string): Promise<MessageList> {
+  return client.get<MessageList>(`/v1/conversations/${id}/threads/${rootId}`, {
+    query: { limit: 200 },
+  });
+}
+
+/** A reply in a thread; idempotent on `clientMessageId` like any send (DM-005). */
+export function sendThreadReply(
+  client: ApiClient,
+  id: string,
+  clientMessageId: string,
+  rootId: string,
+  body: string,
+): Promise<Message> {
+  return client.post<Message>(`/v1/conversations/${id}/messages`, {
+    idempotencyKey: clientMessageId,
+    body: { client_message_id: clientMessageId, body, thread_root_id: rootId },
   });
 }
 

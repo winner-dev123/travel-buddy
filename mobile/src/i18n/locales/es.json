@@ -591,7 +591,15 @@
     "clearTitle": "¿Vaciar este chat?",
     "clearBody": "Los mensajes hasta ahora desaparecen solo para ti. Los demás los siguen viendo.",
     "photoTitle": "Enviar una foto",
-    "sendPhoto": "Enviar una foto"
+    "sendPhoto": "Enviar una foto",
+    "replyInThread": "Responder en el hilo",
+    "threadTitle": "Hilo",
+    "threadReplies_one": "{{count}} respuesta",
+    "threadReplies_many": "{{count}} respuestas",
+    "threadReplies_other": "{{count}} respuestas",
+    "threadEmpty": "Todavía no hay respuestas. Empieza el hilo.",
+    "threadRootMissing": "Respuestas a un mensaje anterior",
+    "threadInput": "Responder en el hilo"
   },
   "groups": {
     "title": "Grupos",

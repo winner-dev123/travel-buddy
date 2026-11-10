@@ -248,12 +248,20 @@ export default function ChatScreen() {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: messageKeys.history(id) }),
   });
 
+  // SCR-083: group chats have reply threads (a reply can't start another thread).
+  const threaded = conversation.data !== undefined && conversation.data.kind !== 'direct';
+  const openThread = (message: Message) =>
+    router.push({ pathname: '/chat/thread', params: { id, root: message.id } });
+
   const actions = (message: Message) => {
     if (isHidden(message)) return;
     const common = [
       { text: t('messages.react'), onPress: () => chooseReaction(message) },
       ...(conversation.data?.can_send
         ? [{ text: t('messages.reply'), onPress: () => setReplyTo(message) }]
+        : []),
+      ...(threaded && !message.thread_root_id
+        ? [{ text: t('messages.replyInThread'), onPress: () => openThread(message) }]
         : []),
       ...(canPin
         ? [
@@ -522,6 +530,24 @@ export default function ChatScreen() {
                     {t('messages.edited')}
                   </Text>
                 ) : null}
+                {threaded && (item.thread_reply_count ?? 0) > 0 ? (
+                  <Pressable
+                    onPress={() => openThread(item)}
+                    accessibilityRole="link"
+                    hitSlop={6}
+                    testID={`thread-link-${item.id}`}
+                  >
+                    <Text
+                      style={[
+                        theme.typography.caption,
+                        styles.threadLink,
+                        { color: mine ? theme.colors.onPrimary : theme.colors.primary },
+                      ]}
+                    >
+                      {t('messages.threadReplies', { count: item.thread_reply_count ?? 0 })}
+                    </Text>
+                  </Pressable>
+                ) : null}
                 {item.reactions.length > 0 && !hidden ? (
                   <View style={styles.reactions}>
                     {item.reactions.map((reaction) => (
@@ -672,6 +698,7 @@ const styles = StyleSheet.create({
   pinRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   reactions: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 },
   attachments: { gap: 4, width: 220 },
+  threadLink: { fontWeight: '600', marginTop: 4 },
   sendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   photoButton: { paddingHorizontal: 4 },
   reaction: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 6, paddingVertical: 1 },

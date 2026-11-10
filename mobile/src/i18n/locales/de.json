@@ -581,7 +581,14 @@
     "clearTitle": "Diesen Chat leeren?",
     "clearBody": "Die bisherigen Nachrichten verschwinden nur für dich. Alle anderen sehen sie weiterhin.",
     "photoTitle": "Foto senden",
-    "sendPhoto": "Foto senden"
+    "sendPhoto": "Foto senden",
+    "replyInThread": "Im Thread antworten",
+    "threadTitle": "Thread",
+    "threadReplies_one": "{{count}} Antwort",
+    "threadReplies_other": "{{count}} Antworten",
+    "threadEmpty": "Noch keine Antworten. Starte den Thread.",
+    "threadRootMissing": "Antworten auf eine frühere Nachricht",
+    "threadInput": "Im Thread antworten"
   },
   "groups": {
     "title": "Gruppen",
