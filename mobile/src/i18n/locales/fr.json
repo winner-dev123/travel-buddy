@@ -929,5 +929,44 @@
       "note": "Note",
       "free_time": "Temps libre"
     }
+  },
+  "notificationSettings": {
+    "title": "Réglages des notifications",
+    "push": "Notifications push",
+    "groups": {
+      "messages": "Messages",
+      "people": "Demandes de connexion et abonnés",
+      "groups": "Invitations et annonces de groupes",
+      "challenges": "Défis et résultats",
+      "stories": "J'aime et commentaires sur vos histoires",
+      "planning": "Plans de voyage par IA prêts"
+    },
+    "alwaysOn": "Les avis liés au compte, à la sécurité et aux données sont toujours envoyés. Tout reste visible dans les notifications de l'app.",
+    "quietHours": "Heures calmes",
+    "quietHoursHint": "Aucune notification push pendant ces heures ({{zone}}). Elles vous attendent dans l'app.",
+    "from": "De",
+    "to": "À",
+    "quietInvalid": "Indiquez deux heures différentes au format 24 h, comme 22:00 et 07:00.",
+    "saveQuiet": "Enregistrer les heures calmes",
+    "error": "Impossible de charger vos réglages de notifications. Vérifiez votre connexion et réessayez."
+  },
+  "languageSettings": {
+    "title": "Langue et région",
+    "language": "Langue de l'app",
+    "timeZone": "Fuseau horaire",
+    "useDeviceZone": "Utiliser le fuseau de ce téléphone ({{zone}})",
+    "timeZoneHint": "Utilisé pour les heures calmes et les échéances des défis.",
+    "distance": "Distances",
+    "units": {
+      "km": "Kilomètres",
+      "mi": "Miles"
+    }
+  },
+  "update": {
+    "title": "Mettez à jour Travel Buddy",
+    "body": "Cette version n'est plus prise en charge. Mettez l'app à jour pour continuer à l'utiliser.",
+    "bodyVersion": "Cette version n'est plus prise en charge. Passez à la version {{version}} pour continuer à utiliser l'app.",
+    "action": "Mettre à jour",
+    "fromStore": "Mettez l'app à jour depuis votre boutique d'applications."
   }
 }

@@ -914,5 +914,44 @@
       "note": "Note",
       "free_time": "Free time"
     }
+  },
+  "notificationSettings": {
+    "title": "Notification settings",
+    "push": "Push notifications",
+    "groups": {
+      "messages": "Messages",
+      "people": "Connection requests and followers",
+      "groups": "Group invitations and announcements",
+      "challenges": "Challenges and results",
+      "stories": "Likes and comments on your stories",
+      "planning": "AI trip plans ready"
+    },
+    "alwaysOn": "Account, safety and data notices are always sent. Everything still appears in your in-app notifications.",
+    "quietHours": "Quiet hours",
+    "quietHoursHint": "No push notifications during these hours ({{zone}}). They wait in the app instead.",
+    "from": "From",
+    "to": "To",
+    "quietInvalid": "Use two different 24-hour times like 22:00 and 07:00.",
+    "saveQuiet": "Save quiet hours",
+    "error": "We couldn't load your notification settings. Check your connection and try again."
+  },
+  "languageSettings": {
+    "title": "Language and region",
+    "language": "App language",
+    "timeZone": "Time zone",
+    "useDeviceZone": "Use this phone's time zone ({{zone}})",
+    "timeZoneHint": "Used for quiet hours and challenge deadlines.",
+    "distance": "Distances",
+    "units": {
+      "km": "Kilometres",
+      "mi": "Miles"
+    }
+  },
+  "update": {
+    "title": "Update Travel Buddy",
+    "body": "This version is no longer supported. Update the app to keep using it.",
+    "bodyVersion": "This version is no longer supported. Update to version {{version}} to keep using the app.",
+    "action": "Update",
+    "fromStore": "Update the app from your app store."
   }
 }

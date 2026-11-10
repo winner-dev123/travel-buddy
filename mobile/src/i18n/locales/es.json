@@ -929,5 +929,44 @@
       "note": "Nota",
       "free_time": "Tiempo libre"
     }
+  },
+  "notificationSettings": {
+    "title": "Ajustes de notificaciones",
+    "push": "Notificaciones push",
+    "groups": {
+      "messages": "Mensajes",
+      "people": "Solicitudes de conexión y seguidores",
+      "groups": "Invitaciones y anuncios de grupos",
+      "challenges": "Retos y resultados",
+      "stories": "Me gusta y comentarios en tus historias",
+      "planning": "Planes de viaje con IA listos"
+    },
+    "alwaysOn": "Los avisos de cuenta, seguridad y datos siempre se envían. Todo sigue apareciendo en tus notificaciones de la app.",
+    "quietHours": "Horas de silencio",
+    "quietHoursHint": "Sin notificaciones push en este horario ({{zone}}). Te esperarán en la app.",
+    "from": "Desde",
+    "to": "Hasta",
+    "quietInvalid": "Usa dos horas distintas en formato 24 h, como 22:00 y 07:00.",
+    "saveQuiet": "Guardar horas de silencio",
+    "error": "No pudimos cargar tus ajustes de notificaciones. Revisa tu conexión e inténtalo de nuevo."
+  },
+  "languageSettings": {
+    "title": "Idioma y región",
+    "language": "Idioma de la app",
+    "timeZone": "Zona horaria",
+    "useDeviceZone": "Usar la zona horaria de este teléfono ({{zone}})",
+    "timeZoneHint": "Se usa para las horas de silencio y los plazos de los retos.",
+    "distance": "Distancias",
+    "units": {
+      "km": "Kilómetros",
+      "mi": "Millas"
+    }
+  },
+  "update": {
+    "title": "Actualiza Travel Buddy",
+    "body": "Esta versión ya no es compatible. Actualiza la app para seguir usándola.",
+    "bodyVersion": "Esta versión ya no es compatible. Actualiza a la versión {{version}} para seguir usando la app.",
+    "action": "Actualizar",
+    "fromStore": "Actualiza la app desde tu tienda de aplicaciones."
   }
 }

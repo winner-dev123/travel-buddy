@@ -188,6 +188,18 @@ function SignedInProfile({ me }: { me: Me }) {
             testID="profile-menu-privacy"
           />
           <MenuRow
+            icon="options-outline"
+            label={t('notificationSettings.title')}
+            onPress={() => router.push('/settings/notifications')}
+            testID="profile-menu-notification-settings"
+          />
+          <MenuRow
+            icon="language-outline"
+            label={t('languageSettings.title')}
+            onPress={() => router.push('/settings/language')}
+            testID="profile-menu-language"
+          />
+          <MenuRow
             icon="phone-portrait-outline"
             label={t('sessions.title')}
             onPress={() => router.push('/settings/sessions')}

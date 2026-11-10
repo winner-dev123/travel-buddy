@@ -9,7 +9,8 @@ import { getApiClient, setAccessTokenRefresher } from '@/api';
 import { refreshAccessToken, restoreSession } from '@/auth/session';
 import { useSessionStore } from '@/auth/sessionStore';
 import { usePush } from '@/features/push/usePush';
-import { i18n } from '@/i18n';
+import { UpdateGate } from '@/features/update/UpdateGate';
+import { i18n, SUPPORTED_LOCALES, type SupportedLocale } from '@/i18n';
 import { resolveSupportedLocale } from '@/i18n/resolveLocale';
 import { bindQueryOnlineManager } from '@/offline/connectivity';
 import { createQueryClient } from '@/query/queryClient';
@@ -20,6 +21,11 @@ export default function RootLayout() {
   const [queryClient] = useState(createQueryClient);
   const theme = useAppTheme();
   const localeOverride = useSettingsStore((state) => state.localeOverride);
+  // The language saved to the account (I18N-002) wins over the device's after a restart.
+  const accountLocale = useSessionStore((state) => state.me?.preferences.ui_locale);
+  const savedLocale = SUPPORTED_LOCALES.includes(accountLocale as SupportedLocale)
+    ? (accountLocale as SupportedLocale)
+    : null;
   // Re-renders when the OS language changes while the app is running.
   const deviceLocales = useLocales();
   const deviceLocale = resolveSupportedLocale(deviceLocales.map((locale) => locale.languageTag));
@@ -38,36 +44,38 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    const target = localeOverride ?? deviceLocale;
+    const target = localeOverride ?? savedLocale ?? deviceLocale;
     if (i18n.language !== target) {
       void i18n.changeLanguage(target);
     }
-  }, [localeOverride, deviceLocale]);
+  }, [localeOverride, savedLocale, deviceLocale]);
 
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: theme.colors.background },
-          }}
-        >
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="(auth)" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="(onboarding)" />
-          <Stack.Screen name="post/[id]" />
-          <Stack.Screen name="compose" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="report" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="notifications" />
-          <Stack.Screen name="user/[id]" />
-          <Stack.Screen name="settings/profile" />
-          <Stack.Screen name="settings/privacy" />
-          <Stack.Screen name="settings/blocked" />
-          <Stack.Screen name="settings/delete-account" />
-          <Stack.Screen name="discovery/consent" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="+not-found" />
-        </Stack>
+        <UpdateGate>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: theme.colors.background },
+            }}
+          >
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="(auth)" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="(onboarding)" />
+            <Stack.Screen name="post/[id]" />
+            <Stack.Screen name="compose" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="report" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="notifications" />
+            <Stack.Screen name="user/[id]" />
+            <Stack.Screen name="settings/profile" />
+            <Stack.Screen name="settings/privacy" />
+            <Stack.Screen name="settings/blocked" />
+            <Stack.Screen name="settings/delete-account" />
+            <Stack.Screen name="discovery/consent" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="+not-found" />
+          </Stack>
+        </UpdateGate>
         <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       </QueryClientProvider>
     </SafeAreaProvider>

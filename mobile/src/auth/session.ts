@@ -188,10 +188,19 @@ export async function signOut(client: ApiClient): Promise<void> {
   }
 }
 
-/** The parts of `GET /v1/client-config` the app shows: legal documents and the support contact. */
-export function fetchAppInfo(
-  client: ApiClient,
-): Promise<{ legal: LegalDocuments; support: SupportContact }> {
+/** The parts of `GET /v1/client-config` the app uses: legal documents, the support contact and
+ * the version policy (SCR-151). */
+export interface AppInfo {
+  legal: LegalDocuments;
+  support: SupportContact;
+  update_required: boolean;
+  min_supported_version: string;
+  latest_version?: string;
+}
+
+export const APP_INFO_KEY = ['client-config', 'app-info'] as const;
+
+export function fetchAppInfo(client: ApiClient): Promise<AppInfo> {
   return client.get('/v1/client-config', {
     query: { platform: clientPlatform(), app_version: APP_VERSION },
   });

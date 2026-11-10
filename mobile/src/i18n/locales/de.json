@@ -914,5 +914,44 @@
       "note": "Notiz",
       "free_time": "Freizeit"
     }
+  },
+  "notificationSettings": {
+    "title": "Benachrichtigungseinstellungen",
+    "push": "Push-Benachrichtigungen",
+    "groups": {
+      "messages": "Nachrichten",
+      "people": "Kontaktanfragen und Follower",
+      "groups": "Gruppeneinladungen und Ankündigungen",
+      "challenges": "Challenges und Ergebnisse",
+      "stories": "Likes und Kommentare zu deinen Storys",
+      "planning": "KI-Reisepläne fertig"
+    },
+    "alwaysOn": "Hinweise zu Konto, Sicherheit und Daten werden immer gesendet. Alles erscheint weiterhin in deinen Benachrichtigungen in der App.",
+    "quietHours": "Ruhezeiten",
+    "quietHoursHint": "Keine Push-Benachrichtigungen in dieser Zeit ({{zone}}). Sie warten in der App auf dich.",
+    "from": "Von",
+    "to": "Bis",
+    "quietInvalid": "Gib zwei verschiedene Uhrzeiten im 24-Stunden-Format an, z. B. 22:00 und 07:00.",
+    "saveQuiet": "Ruhezeiten speichern",
+    "error": "Deine Benachrichtigungseinstellungen konnten nicht geladen werden. Prüfe deine Verbindung und versuch es noch einmal."
+  },
+  "languageSettings": {
+    "title": "Sprache und Region",
+    "language": "App-Sprache",
+    "timeZone": "Zeitzone",
+    "useDeviceZone": "Zeitzone dieses Telefons verwenden ({{zone}})",
+    "timeZoneHint": "Wird für Ruhezeiten und Challenge-Fristen verwendet.",
+    "distance": "Entfernungen",
+    "units": {
+      "km": "Kilometer",
+      "mi": "Meilen"
+    }
+  },
+  "update": {
+    "title": "Travel Buddy aktualisieren",
+    "body": "Diese Version wird nicht mehr unterstützt. Aktualisiere die App, um sie weiter zu nutzen.",
+    "bodyVersion": "Diese Version wird nicht mehr unterstützt. Aktualisiere auf Version {{version}}, um die App weiter zu nutzen.",
+    "action": "Aktualisieren",
+    "fromStore": "Aktualisiere die App über deinen App-Store."
   }
 }

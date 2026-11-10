@@ -14,12 +14,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getApiClient } from '@/api';
-import { APP_VERSION, fetchAppInfo } from '@/auth/session';
+import { APP_INFO_KEY, APP_VERSION, fetchAppInfo } from '@/auth/session';
 import { Notice } from '@/components/Form';
 import { MenuRow } from '@/components/MenuRow';
 import { useAppTheme } from '@/theme/useAppTheme';
-
-const APP_INFO_KEY = ['client-config', 'app-info'] as const;
 
 /** Help & legal (store readiness: a support contact inside the app, App Store 1.5). The mail
  * draft names the app version and platform only, never account details. */
