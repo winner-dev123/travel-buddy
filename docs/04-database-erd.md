@@ -613,7 +613,7 @@ erDiagram
 `id`, `challenge_id`, `sort_order`, `body ≤ 500`, `release_at NULL` (NULL = visible at start), `uq (challenge_id, sort_order)`. Hints with `release_at > now()` are filtered server-side.
 
 ### challenge_teams
-`id`, `challenge_id FK CASCADE`, `name`, `captain_id FK SET NULL` (the authorized submitter), `conversation_id FK→conversations SET NULL` (team thread), `created_at`. `uq (challenge_id, name)`.
+`id`, `challenge_id FK CASCADE`, `name` (2–40 chars), `captain_id FK SET NULL` (the authorized submitter), `conversation_id FK→conversations SET NULL` (team thread), `attempts_used smallint`, `last_attempt_at` (attempts and cooldown count per team), `created_at`. `uq (challenge_id, name)`. `conversations.challenge_team_id` points back (`FK CASCADE`, created after both tables).
 
 ### challenge_participants
 `challenge_id`, `user_id`, `team_id NULL FK`, `joined_at`, `attempts_used smallint`, `last_attempt_at`, `status` (`active`, `disqualified`, `withdrawn`). PK `(challenge_id, user_id)`.

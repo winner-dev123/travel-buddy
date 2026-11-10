@@ -160,7 +160,7 @@ Verification column: **U** = unit test, **I** = integration test, **S** = securi
 | T-CHAL-01 | Answer disclosure to members | Answers in a separate table. Member schemas omit them. Judge-only endpoint audited | S |
 | T-CHAL-02 | Brute-force answers | Max attempts, cooldown, rate limits, team-captain-only submission, only correct/incorrect feedback | S |
 | T-CHAL-03 | Multi-account cheating | One participation per account. Accounts must be group members before challenge start (configurable). Abuse signals (same device ID across accounts) | R, O |
-| T-CHAL-04 | Admin collusion or unfair judging | All judging audited. Rules versioned and frozen once active. Disputes escalate to platform | R |
+| T-CHAL-04 | Admin collusion or unfair judging | All judging audited. Judges can't judge their own answers, and organizers (who can read the answers) can't take part. Rules versioned and frozen once active. Disputes escalate to platform | R |
 | T-CHAL-05 | AI judge manipulation (prompt injection in answer text) | Answer passed as quoted data with a strict output schema. AI never final for real-world rewards | U |
 | T-CHAL-06 | Illegal lottery or prize structures | Reward types restricted. Monetary-pattern review. Legal review per jurisdiction | R, O |
 | T-CHAL-07 | Race: two "first correct" winners | Challenge-level row lock serializes submissions and winner determination (concurrency test) | I |

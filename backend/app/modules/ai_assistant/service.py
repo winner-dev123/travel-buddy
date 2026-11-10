@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
@@ -35,7 +35,7 @@ from app.core.errors import AppError, ErrorCode, FieldError, build_problem
 from app.core.request_context import current_request_id
 from app.core.security.principal import Principal
 from app.core.time import Clock
-from app.modules.ai_assistant import translation
+from app.modules.ai_assistant import judging, translation
 from app.modules.ai_assistant.domain import (
     DRAFT_SCHEMA,
     MAX_DAYS,
@@ -52,6 +52,7 @@ from app.modules.ai_assistant.domain import (
     schema_errors,
     semantic_errors,
 )
+from app.modules.ai_assistant.judging import AnswerVerdict
 from app.modules.ai_assistant.models import AIGeneration, PostTranslation
 from app.modules.ai_assistant.provider import (
     AIProvider,
@@ -117,6 +118,11 @@ _TRANSLATION_FAILURES: Mapping[str, tuple[ErrorCode, str]] = {
         ErrorCode.AI_UNAVAILABLE,
         "Translation isn't available right now. Try again later.",
     ),
+}
+_JUDGE_FAILURES: Mapping[str, ErrorCode] = {
+    "validation_failed": ErrorCode.AI_OUTPUT_INVALID,
+    "refused": ErrorCode.AI_OUTPUT_INVALID,
+    "provider_error": ErrorCode.AI_UNAVAILABLE,
 }
 _FAILURE_STATUS: Mapping[ErrorCode, int] = {
     ErrorCode.AI_OUTPUT_INVALID: HTTPStatus.BAD_GATEWAY,
@@ -628,6 +634,84 @@ class AIService:
             code, detail = _TRANSLATION_FAILURES[status]
             raise AppError(code, detail)
         return _translation(post_id, source, target, result, run.model)
+
+    async def judge_answer(
+        self,
+        *,
+        user_id: uuid.UUID | None,
+        title: str,
+        description: str,
+        accepted_answers: Sequence[str],
+        answer: str,
+    ) -> AnswerVerdict | None:
+        """An advisory verdict on a riddle answer (CHAL-006), or ``None`` when the model is
+        unavailable, refuses or answers outside the schema; the caller then routes the answer to
+        a human. The answer is quoted data under a strict schema (T-CHAL-05)."""
+        now = self._clock.now()
+        async with self._sessionmaker() as session:
+            try:
+                provider = await self._guard(session, now)
+            except AppError:
+                return None
+        config = self._tasks[AITask.CHALLENGE_JUDGE]
+        run = _Run(model=config.model)
+        status, verdict = "provider_error", None
+        started = time.monotonic()
+        try:
+            completion = await provider.complete(
+                task=AITask.CHALLENGE_JUDGE,
+                config=config,
+                prompt=judging.build_prompt(
+                    title=title,
+                    description=description,
+                    accepted_answers=accepted_answers,
+                    answer=answer,
+                ),
+                schema=judging.SCHEMA,
+            )
+            run.attempts, run.usage, run.model = 1, completion.usage, completion.model
+            run.provider_request_id = completion.provider_request_id
+            status = "refused" if completion.refused else "validation_failed"
+            if not completion.refused:
+                try:
+                    draft = judging.VerdictDraft.model_validate_json(completion.text or "")
+                except ValidationError:
+                    pass
+                else:
+                    status = "succeeded"
+                    verdict = AnswerVerdict(
+                        matches=draft.matches,
+                        confidence=draft.confidence,
+                        rationale=draft.rationale,
+                    )
+        except ProviderError:
+            status = "provider_error"
+        latency_ms = int((time.monotonic() - started) * 1000)
+        async with self._sessionmaker() as session, session.begin():
+            session.add(
+                AIGeneration(
+                    user_id=user_id,
+                    feature=AITask.CHALLENGE_JUDGE.value,
+                    provider=provider.name,
+                    model=run.model,
+                    prompt_version=judging.PROMPT_VERSION,
+                    status=status,
+                    input_tokens=run.usage.input_tokens,
+                    output_tokens=run.usage.output_tokens,
+                    cache_read_tokens=run.usage.cache_read_tokens,
+                    cache_write_tokens=run.usage.cache_write_tokens,
+                    cost_micros=cost_micros(run.model, run.usage),
+                    latency_ms=latency_ms,
+                    attempts=run.attempts,
+                    error_code=None if verdict else _JUDGE_FAILURES[status].value,
+                    validation_errors=[],
+                    request_id=current_request_id(),
+                    provider_request_id=run.provider_request_id,
+                    created_at=now,
+                    completed_at=self._clock.now(),
+                )
+            )
+        return verdict
 
     # ─────────────────────────────── the job ───────────────────────────────
 

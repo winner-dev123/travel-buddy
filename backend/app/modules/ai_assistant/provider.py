@@ -32,6 +32,7 @@ class AITask(StrEnum):
     ITINERARY_GENERATE = "itinerary_generate"
     TRIP_REPLAN = "trip_replan"
     POST_TRANSLATE = "post_translate"
+    CHALLENGE_JUDGE = "challenge_judge"
 
 
 @dataclass(frozen=True, slots=True)
@@ -314,6 +315,18 @@ def fake_translation(prompt: Prompt) -> str:
     return json.dumps({"text": f"[{payload['target_language']}] {payload['text']}"})
 
 
+def fake_judgement(prompt: Prompt) -> str:
+    """Development/test verdict: an accepted answer inside the answer (case-insensitive) matches;
+    answers containing "maybe" come back unsure."""
+    payload = json.loads(prompt.user)
+    answer = str(payload["answer"]).casefold()
+    matches = any(str(a).casefold() in answer for a in payload["accepted_answers"])
+    confidence = 0.4 if "maybe" in answer else 0.9
+    return json.dumps(
+        {"matches": matches, "confidence": confidence, "rationale": "Fake judge verdict."}
+    )
+
+
 @dataclass
 class FakeAIProvider:
     responders: dict[AITask, Responder] = field(
@@ -321,6 +334,7 @@ class FakeAIProvider:
             AITask.ITINERARY_GENERATE: fake_itinerary,
             AITask.TRIP_REPLAN: fake_itinerary,
             AITask.POST_TRANSLATE: fake_translation,
+            AITask.CHALLENGE_JUDGE: fake_judgement,
         }
     )
     calls: list[Prompt] = field(default_factory=list)

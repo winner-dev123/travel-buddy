@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 
@@ -550,6 +550,37 @@ class GroupChatRooms:
         await messaging_service.remove_group_member(session, conversation_id, user_id)
 
 
+def challenge_answer_judge(
+    ai: ai_service.AIService | None,
+) -> challenges_service.AnswerJudge | None:
+    """The AI judge for ``ai_assisted`` challenges (ai_assistant → challenges, same layer)."""
+    if ai is None:
+        return None
+
+    async def judge(
+        *,
+        user_id: uuid.UUID | None,
+        title: str,
+        description: str,
+        accepted_answers: Sequence[str],
+        answer: str,
+    ) -> challenges_service.AIVerdict | None:
+        verdict = await ai.judge_answer(
+            user_id=user_id,
+            title=title,
+            description=description,
+            accepted_answers=accepted_answers,
+            answer=answer,
+        )
+        if verdict is None:
+            return None
+        return challenges_service.AIVerdict(
+            matches=verdict.matches, confidence=verdict.confidence, rationale=verdict.rationale
+        )
+
+    return judge
+
+
 async def group_chat_policy(
     session: AsyncSession, group_id: uuid.UUID, user_id: uuid.UUID, now: datetime
 ) -> groups_service.ChatPolicy:
@@ -611,6 +642,12 @@ def build_ai_service(
                 model=settings.ai_translation_model,
                 max_tokens=8000,
                 effort=settings.ai_translation_effort,
+                timeout_seconds=min(settings.ai_timeout_seconds, 60.0),
+            ),
+            AITask.CHALLENGE_JUDGE: TaskConfig(
+                model=settings.ai_judge_model,
+                max_tokens=2048,
+                effort=settings.ai_judge_effort,
                 timeout_seconds=min(settings.ai_timeout_seconds, 60.0),
             ),
         },
@@ -719,7 +756,12 @@ def build_job_runner(
     )
     handlers.update(abuse_signals.make_handlers(database.sessionmaker))
     handlers.update(groups_service.make_handlers(database.sessionmaker, clock))
-    handlers.update(challenges_service.make_handlers(database.sessionmaker, clock))
+    challenges_service.subscribe(router)
+    handlers.update(
+        challenges_service.make_handlers(
+            database.sessionmaker, clock, judge=challenge_answer_judge(ai)
+        )
+    )
     handlers.update(
         media_service.make_handlers(
             database.sessionmaker, media_storage, media_service.NoopScanner()

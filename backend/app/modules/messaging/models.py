@@ -60,8 +60,10 @@ class Conversation(Base):
     group_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("travel_groups.id", ondelete="CASCADE")
     )
-    # The foreign key to challenge_teams arrives with challenges.
-    challenge_team_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    # challenge_teams also points here (team thread); use_alter breaks the cycle.
+    challenge_team_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("challenge_teams.id", ondelete="CASCADE", use_alter=True)
+    )
     last_seq: Mapped[int] = mapped_column(BigInteger, server_default=text("0"))
     last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

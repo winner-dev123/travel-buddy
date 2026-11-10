@@ -127,6 +127,8 @@ class Settings(BaseSettings):
     ai_timeout_seconds: float = Field(default=180.0, gt=0, le=600)
     ai_translation_model: str = "claude-opus-5-5"
     ai_translation_effort: Literal["low", "medium", "high", "xhigh", "max"] = "low"
+    ai_judge_model: str = "claude-opus-5-5"
+    ai_judge_effort: Literal["low", "medium", "high", "xhigh", "max"] = "low"
     # Server-side refusal fallback (`fallbacks: "default"`, Claude API only; off for proxies).
     ai_refusal_fallback: bool = True
     # Global spend circuit breaker (AI-009): new generations stop once today's spend (UTC) reaches

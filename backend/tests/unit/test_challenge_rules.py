@@ -3,18 +3,22 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from app.modules.challenges.domain import (
+    AIVerdict,
     Normalization,
     RewardInput,
+    ai_outcome,
     attempt_block,
     first_evaluation,
     matches,
     next_attempt_at,
     normalize,
+    pick_winners,
     prohibited_prize,
     reward_problems,
     status_at,
@@ -148,3 +152,28 @@ def test_winner_slots_follow_the_policy() -> None:
     assert winner_slots("first_n_correct", 3) == 3
     assert winner_slots("all_correct", 1) is None
     assert winner_slots("admin_selects", 3) == 0
+
+
+@pytest.mark.req("CHAL-007", "T-CHAL-05")
+def test_ai_verdicts_settle_only_confident_badge_level_answers() -> None:
+    sure_yes = AIVerdict(matches=True, confidence=0.9, rationale="Same tower.")
+    sure_no = AIVerdict(matches=False, confidence=0.95, rationale="Different place.")
+    unsure = AIVerdict(matches=True, confidence=0.5, rationale="Could be.")
+    assert ai_outcome(sure_yes, badge_only=True) == "correct"
+    assert ai_outcome(sure_yes, badge_only=False) == "needs_review"  # real rewards: a human
+    assert ai_outcome(sure_no, badge_only=False) == "incorrect"
+    assert ai_outcome(unsure, badge_only=True) == "needs_review"
+    assert ai_outcome(None, badge_only=True) == "needs_review"  # no verdict: a human decides
+
+
+@pytest.mark.req("CHAL-009", "CHAL-010")
+def test_winners_follow_submission_order_and_judges_decisions() -> None:
+    a, b, c, d = (("user", uuid.uuid4()) for _ in range(4))
+    s = [uuid.uuid4() for _ in range(5)]
+    correct = [(a, s[0]), (b, s[1]), (a, s[2]), (c, s[3]), (d, s[4])]
+    assert pick_winners(correct, slots=2) == [(a, s[0]), (b, s[1])]  # first correct per person
+    assert pick_winners(correct, slots=None) == [(a, s[0]), (b, s[1]), (c, s[3]), (d, s[4])]
+    assert pick_winners(correct, slots=2, revoked=frozenset({b})) == [(a, s[0]), (c, s[3])]
+    # A confirmed winner keeps a slot wherever they are in the order.
+    assert pick_winners(correct, slots=2, confirmed=frozenset({d})) == [(a, s[0]), (d, s[4])]
+    assert pick_winners([], slots=1) == []

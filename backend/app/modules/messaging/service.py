@@ -1433,10 +1433,24 @@ async def create_group_conversation(
     return conversation.id
 
 
+async def create_team_conversation(
+    session: AsyncSession, team_id: uuid.UUID, captain_id: uuid.UUID
+) -> uuid.UUID:
+    """A challenge team's thread (CHAL-004), created with the team. Members join and leave it
+    through ``add_group_member`` / ``remove_group_member``."""
+    conversation = Conversation(kind=ConversationKind.CHALLENGE_TEAM, challenge_team_id=team_id)
+    session.add(conversation)
+    await session.flush()
+    session.add(ConversationMember(conversation_id=conversation.id, user_id=captain_id))
+    await session.flush()
+    return conversation.id
+
+
 async def add_group_member(
     session: AsyncSession, conversation_id: uuid.UUID, user_id: uuid.UUID, *, from_join: bool
 ) -> None:
-    """Join (or rejoin) the chat; with ``from_join`` history starts at the join (GCHAT-006)."""
+    """Join (or rejoin) a group or team chat; with ``from_join`` history starts at the join
+    (GCHAT-006)."""
     conversation = await session.get(Conversation, conversation_id, with_for_update=True)
     if conversation is None:
         return

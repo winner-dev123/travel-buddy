@@ -208,6 +208,25 @@ class ChallengePage(_Out):
     page: PageInfo
 
 
+class CreateTeamRequest(_Request):
+    name: str = Field(min_length=2, max_length=40)
+
+
+class ChallengeTeamOut(_Out):
+    id: uuid.UUID
+    challenge_id: uuid.UUID
+    name: str
+    captain: UserSummary | None
+    members: list[UserSummary]
+    conversation_id: uuid.UUID | None
+    created_at: datetime
+
+
+class ChallengeTeamPage(_Out):
+    data: list[ChallengeTeamOut]
+    page: PageInfo
+
+
 class SubmitAnswerRequest(_Request):
     answer: str = Field(min_length=1, max_length=500)
     team_id: uuid.UUID | None = None
@@ -240,6 +259,21 @@ class ChallengeSubmissionOut(_Out):
     rules_version: int
     submitted_at: datetime
     evaluated_at: datetime | None
+
+
+class JudgeSubmissionRequest(_Request):
+    evaluation_status: Literal["correct", "incorrect", "void"]
+    note: str | None = Field(default=None, max_length=500)
+
+
+class AcceptedAnswerOut(_Out):
+    id: uuid.UUID
+    answer_display: str
+    answer_normalized: str
+
+
+class AcceptedAnswerList(_Out):
+    data: list[AcceptedAnswerOut]
 
 
 class ChallengeSubmissionPage(_Out):

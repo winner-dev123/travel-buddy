@@ -1,10 +1,12 @@
-"""Challenge rules (pure): answer normalization, reward policy, lifecycle, attempts and winner
-slots (BL-5.01..5.03; CHAL-002, CHAL-003, CHAL-005, CHAL-006, CHAL-010, CHAL-012..014)."""
+"""Challenge rules (pure): answer normalization, reward policy, lifecycle, attempts, AI verdicts
+and winner selection (BL-5.01..5.05; CHAL-002, CHAL-003, CHAL-005..007, CHAL-009, CHAL-010,
+CHAL-012..014)."""
 
 from __future__ import annotations
 
 import re
 import unicodedata
+import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -174,6 +176,61 @@ def winner_slots(policy: str, max_winners: int) -> int | None:
     if policy == "all_correct":
         return None
     return 0
+
+
+# An AI verdict settles an answer only at this confidence or above (CHAL-007).
+AI_SURE: Final = 0.8
+
+
+@dataclass(frozen=True, slots=True)
+class AIVerdict:
+    matches: bool
+    confidence: float
+    rationale: str
+
+
+def ai_outcome(verdict: AIVerdict | None, *, badge_only: bool) -> str:
+    """The evaluation an AI verdict leads to (CHAL-007). A confident match decides alone only when
+    every reward is a badge; a confident mismatch is incorrect; anything else (no verdict, low
+    confidence, real-world rewards) goes to the judges as ``needs_review``."""
+    if verdict is None or verdict.confidence < AI_SURE:
+        return "needs_review"
+    if verdict.matches:
+        return "correct" if badge_only else "needs_review"
+    return "incorrect"
+
+
+Recipient = tuple[str, uuid.UUID]  # ("user", id) or ("team", id)
+
+
+def pick_winners(
+    correct: Sequence[tuple[Recipient, uuid.UUID]],
+    *,
+    slots: int | None,
+    confirmed: frozenset[Recipient] = frozenset(),
+    revoked: frozenset[Recipient] = frozenset(),
+) -> list[tuple[Recipient, uuid.UUID]]:
+    """Winners from correct submissions in submission order (CHAL-009, CHAL-010): each
+    recipient's first correct submission counts; confirmed winners keep their place and use a
+    slot; revoked ones stay out; provisional winners fill the remaining slots in order, so an
+    earlier answer judged later still wins ahead of a later one."""
+    firsts: list[tuple[Recipient, uuid.UUID]] = []
+    seen: set[Recipient] = set()
+    for recipient, submission_id in correct:
+        if recipient in seen or recipient in revoked:
+            continue
+        seen.add(recipient)
+        firsts.append((recipient, submission_id))
+    budget = None if slots is None else slots - sum(1 for r, _ in firsts if r in confirmed)
+    chosen: list[tuple[Recipient, uuid.UUID]] = []
+    for recipient, submission_id in firsts:
+        if recipient not in confirmed:
+            if budget is not None and budget <= 0:
+                continue
+            if budget is not None:
+                budget -= 1
+        chosen.append((recipient, submission_id))
+    return chosen
 
 
 def status_at(status: str, starts_at: datetime, ends_at: datetime, now: datetime) -> str:

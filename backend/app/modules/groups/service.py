@@ -809,6 +809,13 @@ class GroupService:
             membership.status = MembershipStatus.LEFT
             membership.removed_at = self._clock.now()
             await self._chat.remove_member(session, context.group.conversation_id, user_id)  # type: ignore[arg-type]
+            platform.record_event(
+                session,
+                aggregate_type="group",
+                aggregate_id=group_id,
+                event_type="group.member_left",
+                payload={"group_id": str(group_id), "user_id": str(user_id)},
+            )
             group = context.group
         await self._membership_changed(group, user_id, "left")
 

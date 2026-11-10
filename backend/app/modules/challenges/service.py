@@ -12,6 +12,14 @@ CHAL-001..003, CHAL-005, CHAL-006, CHAL-008..010, CHAL-012..014).
 * Prizes: cash, cash equivalents, paid entry, wagers and random draws are rejected
   (``reward_not_permitted``); discount and promotional rewards need platform review before
   publishing (CHAL-013, CHAL-014).
+* Team mode (CHAL-004): members create or join one team per challenge; the creator is the
+  captain and the only submitter, attempts count per team, and every team gets a thread in
+  messaging. Leaving the group takes a member out of their teams (captaincy passes on).
+* Judging (CHAL-006, CHAL-007): judges decide any answer until results are published (audited,
+  never their own); ``ai_assisted`` answers that don't match exactly go to the AI judge, whose
+  verdict settles only confident, badge-only cases; the rest wait as ``needs_review``. Winners
+  are re-derived after every decision, in submission order.
+* Organizers (``challenges.judge`` holders, who can read the answers) don't take part.
 * Submissions (CHAL-005, CHAL-009, CHAL-010) are idempotent and append-only. Each one locks the
   challenge row, so submissions to a challenge are serialized and first-correct order is commit
   order. Attempts and the cooldown are checked under that lock. A normalized exact match is
@@ -23,11 +31,13 @@ from __future__ import annotations
 
 import math
 import uuid
+from collections import defaultdict
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any
+from decimal import Decimal
+from typing import Any, Protocol
 
-from sqlalchemy import delete, func, literal, select, tuple_
+from sqlalchemy import delete, func, literal, or_, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.errors import AppError, ErrorCode, FieldError
@@ -38,15 +48,21 @@ from app.modules.challenges.domain import (
     EDITABLE,
     REVIEWED_REWARDS,
     Normalization,
+    Recipient,
     RewardInput,
+    ai_outcome,
     attempt_block,
     first_evaluation,
     next_attempt_at,
     normalize,
+    pick_winners,
     prohibited_prize,
     reward_problems,
     status_at,
     winner_slots,
+)
+from app.modules.challenges.domain import (
+    AIVerdict as AIVerdict,  # re-exported for the composition root
 )
 from app.modules.challenges.models import (
     Badge,
@@ -55,10 +71,13 @@ from app.modules.challenges.models import (
     ChallengeParticipant,
     ChallengeReward,
     ChallengeSubmission,
+    ChallengeTeam,
     ChallengeWinner,
     GroupChallenge,
 )
 from app.modules.challenges.schemas import (
+    AcceptedAnswerList,
+    AcceptedAnswerOut,
     AnswerNormalization,
     BadgeSummary,
     ChallengeHintOut,
@@ -68,9 +87,13 @@ from app.modules.challenges.schemas import (
     ChallengeResults,
     ChallengeSubmissionOut,
     ChallengeSubmissionPage,
+    ChallengeTeamOut,
+    ChallengeTeamPage,
     ChallengeWinnerOut,
     CreateChallengeRequest,
+    CreateTeamRequest,
     HintList,
+    JudgeSubmissionRequest,
     ManagedHint,
     Participation,
     RewardDetail,
@@ -78,11 +101,15 @@ from app.modules.challenges.schemas import (
     SubmissionResult,
     SubmitAnswerRequest,
     UpdateChallengeRequest,
+    WinnerTeam,
 )
 from app.modules.groups import service as groups
 from app.modules.media import service as media
+from app.modules.messaging import service as messaging
+from app.modules.observability import service as observability
 from app.modules.platform import service as platform
 from app.modules.profiles import service as profiles
+from app.modules.profiles.schemas import UserSummary
 
 CREATE_ROUTE = "POST /v1/groups/{id}/challenges"
 SUBMIT_ROUTE = "POST /v1/challenges/{id}/submissions"
@@ -91,6 +118,10 @@ JUDGE = "challenges.judge"
 STARTED_EVENT = "challenge.started"
 CANCELLED_EVENT = "challenge.cancelled"
 LIFECYCLE_JOB = "challenges.lifecycle"
+MEMBER_GONE_JOB = "challenges.member_gone"
+AI_JUDGE_JOB = "challenges.ai_judge"
+MEMBER_GONE_EVENTS = ("group.member_left", "group.member_removed")
+TEAMS_OPEN = frozenset({"scheduled", "active"})
 _RULE_FIELDS = frozenset(
     {
         "accepted_answers",
@@ -103,6 +134,20 @@ _RULE_FIELDS = frozenset(
         "max_winners",
     }
 )
+
+
+class AnswerJudge(Protocol):
+    """The AI judge (ai_assistant, same layer), injected by the composition root."""
+
+    async def __call__(
+        self,
+        *,
+        user_id: uuid.UUID | None,
+        title: str,
+        description: str,
+        accepted_answers: Sequence[str],
+        answer: str,
+    ) -> AIVerdict | None: ...
 
 
 def _not_found() -> AppError:
@@ -220,14 +265,20 @@ class ChallengeService:
         participant = await session.get(ChallengeParticipant, (row.id, user_id))
         participation = None
         if participant is not None:
+            team = (
+                await session.get(ChallengeTeam, participant.team_id)
+                if participant.team_id
+                else None
+            )
+            holder: ChallengeTeam | ChallengeParticipant = team or participant
             participation = Participation(
-                attempts_used=participant.attempts_used,
-                attempts_remaining=max(0, row.max_attempts - participant.attempts_used),
+                attempts_used=holder.attempts_used,
+                attempts_remaining=max(0, row.max_attempts - holder.attempts_used),
                 next_attempt_at=next_attempt_at(
-                    participant.last_attempt_at, row.attempt_cooldown_seconds, now
+                    holder.last_attempt_at, row.attempt_cooldown_seconds, now
                 ),
                 team_id=participant.team_id,
-                is_captain=False,
+                is_captain=team is not None and team.captain_id == user_id,
                 status=participant.status,  # type: ignore[arg-type]
             )
         refs = await media.refs(session, [row.media_asset_id] if row.media_asset_id else [])
@@ -686,6 +737,177 @@ class ChallengeService:
         )
         return ChallengePage(data=data, page=PageInfo(next_cursor=next_cursor))
 
+    # ─────────────────────────────── teams ───────────────────────────────
+
+    async def _teams_out(
+        self, session: AsyncSession, teams: Sequence[ChallengeTeam]
+    ) -> list[ChallengeTeamOut]:
+        if not teams:
+            return []
+        members = (
+            await session.execute(
+                select(ChallengeParticipant.team_id, ChallengeParticipant.user_id)
+                .where(
+                    ChallengeParticipant.team_id.in_([t.id for t in teams]),
+                    ChallengeParticipant.status == "active",
+                )
+                .order_by(ChallengeParticipant.joined_at, ChallengeParticipant.user_id)
+            )
+        ).all()
+        users = await profiles.authors(
+            session, list({u for _, u in members} | {t.captain_id for t in teams if t.captain_id})
+        )
+        by_team: dict[uuid.UUID, list[UserSummary]] = defaultdict(list)
+        for team_id, member_id in members:
+            if member_id in users:
+                by_team[team_id].append(profiles.user_summary(users[member_id]))
+        return [
+            ChallengeTeamOut(
+                id=t.id,
+                challenge_id=t.challenge_id,
+                name=t.name,
+                captain=profiles.user_summary(users[t.captain_id])
+                if t.captain_id in users
+                else None,
+                members=by_team[t.id],
+                conversation_id=t.conversation_id,
+                created_at=t.created_at,
+            )
+            for t in teams
+        ]
+
+    async def list_teams(
+        self, user_id: uuid.UUID, challenge_id: uuid.UUID, *, cursor: str | None, limit: int
+    ) -> ChallengeTeamPage:
+        async with self._sessionmaker() as session:
+            row, _ = await self._challenge(session, challenge_id, user_id, lock=False)
+            conditions: list[Any] = [ChallengeTeam.challenge_id == row.id]
+            filters = {"c": str(row.id)}
+            if cursor is not None:
+                decoded = self._cursors.decode(cursor, scope="challenge-teams")
+                if decoded.get("f") != filters:
+                    raise AppError(ErrorCode.INVALID_CURSOR, "The cursor belongs to another query.")
+                conditions.append(
+                    tuple_(ChallengeTeam.created_at, ChallengeTeam.id)
+                    > tuple_(
+                        literal(datetime.fromisoformat(decoded["t"])),
+                        literal(uuid.UUID(decoded["i"])),
+                    )
+                )
+            teams = list(
+                (
+                    await session.scalars(
+                        select(ChallengeTeam)
+                        .where(*conditions)
+                        .order_by(ChallengeTeam.created_at, ChallengeTeam.id)
+                        .limit(limit + 1)
+                    )
+                ).all()
+            )
+            more = len(teams) > limit
+            teams = teams[:limit]
+            data = await self._teams_out(session, teams)
+        next_cursor = (
+            self._cursors.encode(
+                {"f": filters, "t": teams[-1].created_at.isoformat(), "i": str(teams[-1].id)},
+                scope="challenge-teams",
+            )
+            if more and teams
+            else None
+        )
+        return ChallengeTeamPage(data=data, page=PageInfo(next_cursor=next_cursor))
+
+    async def create_team(
+        self, user_id: uuid.UUID, challenge_id: uuid.UUID, request: CreateTeamRequest
+    ) -> ChallengeTeamOut:
+        """The creator becomes the captain, the only one who submits (CHAL-004)."""
+        async with self._sessionmaker() as session, session.begin():
+            row, _ = await self._challenge(session, challenge_id, user_id, lock=True)
+            _require_open_teams(row)
+            participant = await self._teamless(session, row, user_id)
+            name = " ".join(request.name.split())
+            if len(name) < 2:
+                raise _invalid("/name", "Give the team a name.")
+            taken = await session.scalar(
+                select(ChallengeTeam.id).where(
+                    ChallengeTeam.challenge_id == row.id,
+                    func.lower(ChallengeTeam.name) == name.lower(),
+                )
+            )
+            if taken is not None:
+                raise AppError(ErrorCode.CONFLICT, "Another team already uses that name.")
+            now = self._clock.now()
+            team = ChallengeTeam(challenge_id=row.id, name=name, captain_id=user_id, created_at=now)
+            session.add(team)
+            await session.flush()
+            team.conversation_id = await messaging.create_team_conversation(
+                session, team.id, user_id
+            )
+            self._enrol(session, row, user_id, participant, team, now)
+            await session.flush()
+            [out] = await self._teams_out(session, [team])
+            return out
+
+    async def join_team(
+        self, user_id: uuid.UUID, challenge_id: uuid.UUID, team_id: uuid.UUID
+    ) -> ChallengeTeamOut:
+        """One team per participant per challenge; joining your own team again is a no-op."""
+        async with self._sessionmaker() as session, session.begin():
+            row, _ = await self._challenge(session, challenge_id, user_id, lock=True)
+            team = await session.get(ChallengeTeam, team_id, with_for_update=True)
+            if team is None or team.challenge_id != row.id:
+                raise AppError(ErrorCode.NOT_FOUND, "Team not found.")
+            current = await session.get(ChallengeParticipant, (row.id, user_id))
+            if current is None or current.team_id != team.id:
+                _require_open_teams(row)
+                participant = await self._teamless(session, row, user_id)
+                self._enrol(session, row, user_id, participant, team, self._clock.now())
+                if team.captain_id is None:  # a team whose captain left gets one back
+                    team.captain_id = user_id
+                if team.conversation_id is not None:
+                    await messaging.add_group_member(
+                        session, team.conversation_id, user_id, from_join=False
+                    )
+                await session.flush()
+            [out] = await self._teams_out(session, [team])
+            return out
+
+    @staticmethod
+    async def _teamless(
+        session: AsyncSession, row: GroupChallenge, user_id: uuid.UUID
+    ) -> ChallengeParticipant | None:
+        participant = await session.get(
+            ChallengeParticipant, (row.id, user_id), with_for_update=True
+        )
+        if participant is not None and participant.status != "active":
+            raise AppError(ErrorCode.FORBIDDEN, "You can't take part in this challenge.")
+        if participant is not None and participant.team_id is not None:
+            raise AppError(ErrorCode.CONFLICT, "You're already in a team for this challenge.")
+        return participant
+
+    @staticmethod
+    def _enrol(
+        session: AsyncSession,
+        row: GroupChallenge,
+        user_id: uuid.UUID,
+        participant: ChallengeParticipant | None,
+        team: ChallengeTeam,
+        now: datetime,
+    ) -> None:
+        if participant is None:
+            session.add(
+                ChallengeParticipant(
+                    challenge_id=row.id,
+                    user_id=user_id,
+                    team_id=team.id,
+                    joined_at=now,
+                    attempts_used=0,
+                    status="active",
+                )
+            )
+        else:
+            participant.team_id = team.id
+
     # ─────────────────────────────── submissions ───────────────────────────────
 
     async def submit(
@@ -707,7 +929,11 @@ class ChallengeService:
             if replay is not None:
                 return SubmissionResult.model_validate(replay.body)
             # The row lock serializes submissions to this challenge (CHAL-009).
-            row, _ = await self._challenge(session, challenge_id, user_id, lock=True)
+            row, access = await self._challenge(session, challenge_id, user_id, lock=True)
+            if JUDGE in access.role_permissions:
+                raise AppError(
+                    ErrorCode.FORBIDDEN, "Organizers can't take part in their own challenge."
+                )
             now = self._clock.now()
             if row.status != "active" or not row.starts_at <= now < row.ends_at:
                 raise AppError(
@@ -719,15 +945,18 @@ class ChallengeService:
                         "ends_at": row.ends_at.isoformat(),
                     },
                 )
-            if row.solving_mode == "team":
-                raise AppError(ErrorCode.NOT_TEAM_CAPTAIN, "Only a team captain can submit.")
             normalized = normalize(request.answer, Normalization.from_json(row.normalization))
             if not normalized:
                 raise _invalid("/answer", "Type an answer.")
             participant = await session.get(
                 ChallengeParticipant, (row.id, user_id), with_for_update=True
             )
-            if participant is None:
+            if participant is not None and participant.status != "active":
+                raise AppError(ErrorCode.FORBIDDEN, "You can't take part in this challenge.")
+            team: ChallengeTeam | None = None
+            if row.solving_mode == "team":
+                team = await _captain_team(session, participant, user_id, request.team_id)
+            elif participant is None:
                 participant = ChallengeParticipant(
                     challenge_id=row.id,
                     user_id=user_id,
@@ -736,20 +965,23 @@ class ChallengeService:
                     status="active",
                 )
                 session.add(participant)
-            elif participant.status != "active":
-                raise AppError(ErrorCode.FORBIDDEN, "You can't take part in this challenge.")
+            holder: ChallengeTeam | ChallengeParticipant = team or participant  # type: ignore[assignment]
             solved = await session.scalar(
                 select(ChallengeSubmission.id)
                 .where(
                     ChallengeSubmission.challenge_id == row.id,
-                    ChallengeSubmission.submitted_by == user_id,
+                    (
+                        ChallengeSubmission.team_id == team.id
+                        if team is not None
+                        else ChallengeSubmission.submitted_by == user_id
+                    ),
                     ChallengeSubmission.evaluation_status == "correct",
                 )
                 .limit(1)
             )
             if solved is not None:
                 raise AppError(ErrorCode.CONFLICT, "You already solved this challenge.")
-            _check_attempt(row, participant, now)
+            _check_attempt(row, holder, now)
             accepted = set(
                 await session.scalars(
                     select(ChallengeAnswer.answer_normalized).where(
@@ -758,12 +990,13 @@ class ChallengeService:
                 )
             )
             evaluation, evaluator = first_evaluation(row.validation_method, normalized in accepted)
-            participant.attempts_used += 1
-            participant.last_attempt_at = now
+            holder.attempts_used += 1
+            holder.last_attempt_at = now
             submission = ChallengeSubmission(
                 challenge_id=row.id,
                 submitted_by=user_id,
-                attempt_no=participant.attempts_used,
+                team_id=team.id if team is not None else None,
+                attempt_no=holder.attempts_used,
                 answer_text=request.answer.strip(),
                 answer_normalized=normalized,
                 idempotency_key=idempotency_key,
@@ -775,8 +1008,29 @@ class ChallengeService:
             )
             session.add(submission)
             await session.flush()
-            won = evaluation == "correct" and await _award(session, row, submission, now)
-            remaining = max(0, row.max_attempts - participant.attempts_used)
+            if evaluation == "pending" and row.validation_method == "ai_assisted":
+                await platform.enqueue(
+                    session,
+                    queue="default",
+                    kind=AI_JUDGE_JOB,
+                    payload={"submission_id": str(submission.id)},
+                    dedupe_key=f"{AI_JUDGE_JOB}:{submission.id}",
+                )
+            won = False
+            if evaluation == "correct":
+                await _sync_winners(session, row, now)
+                won = (
+                    await session.scalar(
+                        select(func.count())
+                        .select_from(ChallengeWinner)
+                        .where(
+                            ChallengeWinner.submission_id == submission.id,
+                            ChallengeWinner.status != "revoked",
+                        )
+                    )
+                    or 0
+                ) > 0
+            remaining = max(0, row.max_attempts - holder.attempts_used)
             out = SubmissionResult(
                 submission_id=submission.id,
                 attempt_no=submission.attempt_no,
@@ -798,6 +1052,36 @@ class ChallengeService:
             )
             return out
 
+    async def _submissions_out(
+        self, session: AsyncSession, rows: Sequence[ChallengeSubmission], *, judge: bool
+    ) -> list[ChallengeSubmissionOut]:
+        """AI confidence and rationale are for judges only (CHAL-008)."""
+        users = await profiles.authors(session, [r.submitted_by for r in rows if r.submitted_by])
+        return [
+            ChallengeSubmissionOut(
+                id=r.id,
+                challenge_id=r.challenge_id,
+                submitted_by=(
+                    profiles.user_summary(users[r.submitted_by])
+                    if r.submitted_by in users
+                    else None
+                ),
+                team_id=r.team_id,
+                attempt_no=r.attempt_no,
+                answer_text=r.answer_text,
+                evaluation_status=r.evaluation_status,  # type: ignore[arg-type]
+                evaluator=r.evaluator,  # type: ignore[arg-type]
+                ai_confidence=(
+                    float(r.ai_confidence) if judge and r.ai_confidence is not None else None
+                ),
+                ai_rationale=r.ai_rationale if judge else None,
+                rules_version=r.rules_version,
+                submitted_at=r.submitted_at,
+                evaluated_at=r.evaluated_at,
+            )
+            for r in rows
+        ]
+
     async def submissions(
         self,
         user_id: uuid.UUID,
@@ -815,7 +1099,15 @@ class ChallengeService:
                 raise AppError(ErrorCode.FORBIDDEN, "Only judges can see every submission.")
             conditions: list[Any] = [ChallengeSubmission.challenge_id == row.id]
             if scope == "mine":
-                conditions.append(ChallengeSubmission.submitted_by == user_id)
+                mine = await session.get(ChallengeParticipant, (row.id, user_id))
+                conditions.append(
+                    or_(
+                        ChallengeSubmission.submitted_by == user_id,
+                        ChallengeSubmission.team_id == mine.team_id,
+                    )
+                    if mine is not None and mine.team_id is not None
+                    else ChallengeSubmission.submitted_by == user_id
+                )
             if evaluation_status is not None:
                 conditions.append(ChallengeSubmission.evaluation_status == evaluation_status)
             filters = {"c": str(row.id), "s": scope, "e": evaluation_status}
@@ -842,33 +1134,7 @@ class ChallengeService:
             )
             more = len(rows) > limit
             rows = rows[:limit]
-            users = await profiles.authors(
-                session, [r.submitted_by for r in rows if r.submitted_by]
-            )
-        data = [
-            ChallengeSubmissionOut(
-                id=r.id,
-                challenge_id=r.challenge_id,
-                submitted_by=(
-                    profiles.user_summary(users[r.submitted_by])
-                    if r.submitted_by in users
-                    else None
-                ),
-                team_id=r.team_id,
-                attempt_no=r.attempt_no,
-                answer_text=r.answer_text,
-                evaluation_status=r.evaluation_status,  # type: ignore[arg-type]
-                evaluator=r.evaluator,  # type: ignore[arg-type]
-                ai_confidence=(
-                    float(r.ai_confidence) if judge and r.ai_confidence is not None else None
-                ),
-                ai_rationale=r.ai_rationale if judge else None,
-                rules_version=r.rules_version,
-                submitted_at=r.submitted_at,
-                evaluated_at=r.evaluated_at,
-            )
-            for r in rows
-        ]
+            data = await self._submissions_out(session, rows, judge=judge)
         next_cursor = (
             self._cursors.encode(
                 {"f": filters, "t": rows[-1].submitted_at.isoformat(), "i": str(rows[-1].id)},
@@ -878,6 +1144,91 @@ class ChallengeService:
             else None
         )
         return ChallengeSubmissionPage(data=data, page=PageInfo(next_cursor=next_cursor))
+
+    # ─────────────────────────────── judging ───────────────────────────────
+
+    async def judge_submission(
+        self,
+        user_id: uuid.UUID,
+        challenge_id: uuid.UUID,
+        submission_id: uuid.UUID,
+        request: JudgeSubmissionRequest,
+    ) -> ChallengeSubmissionOut:
+        """A judge's decision on any submission until results are published; audited, never on
+        one's own (or one's team's) answer (CHAL-006, CHAL-009, T-CHAL-04)."""
+        async with self._sessionmaker() as session, session.begin():
+            row, access = await self._challenge(session, challenge_id, user_id, lock=True)
+            if JUDGE not in access.permissions:
+                raise AppError(ErrorCode.FORBIDDEN, "Only judges can judge answers.")
+            if row.results_published_at is not None or row.status in ("completed", "cancelled"):
+                raise AppError(ErrorCode.CONFLICT, "Results are final. Raise a dispute instead.")
+            submission = await session.get(ChallengeSubmission, submission_id, with_for_update=True)
+            if submission is None or submission.challenge_id != row.id:
+                raise AppError(ErrorCode.NOT_FOUND, "Submission not found.")
+            mine = await session.get(ChallengeParticipant, (row.id, user_id))
+            if submission.submitted_by == user_id or (
+                submission.team_id is not None
+                and mine is not None
+                and mine.team_id == submission.team_id
+            ):
+                raise AppError(ErrorCode.FORBIDDEN, "You can't judge your own answer.")
+            before = submission.evaluation_status
+            now = self._clock.now()
+            submission.evaluation_status = request.evaluation_status
+            submission.evaluator = "admin"
+            submission.evaluated_by = user_id
+            submission.evaluated_at = now
+            observability.audit(
+                session,
+                actor_id=user_id,
+                actor_type="user",
+                action="challenge.submission_judged",
+                resource_type="challenge_submission",
+                resource_id=submission.id,
+                metadata={
+                    "challenge_id": str(row.id),
+                    "from": before,
+                    "to": request.evaluation_status,
+                    "note": request.note,
+                },
+            )
+            await session.flush()
+            if "correct" in (before, request.evaluation_status):
+                await _sync_winners(session, row, now)
+            [out] = await self._submissions_out(session, [submission], judge=True)
+            return out
+
+    async def answers(self, user_id: uuid.UUID, challenge_id: uuid.UUID) -> AcceptedAnswerList:
+        """Accepted answers for judges only; every read is audited (CHAL-008)."""
+        async with self._sessionmaker() as session, session.begin():
+            row, access = await self._challenge(session, challenge_id, user_id, lock=False)
+            if JUDGE not in access.permissions:
+                raise AppError(ErrorCode.FORBIDDEN, "Only judges can see the answers.")
+            rows = (
+                await session.scalars(
+                    select(ChallengeAnswer)
+                    .where(ChallengeAnswer.challenge_id == row.id)
+                    .order_by(ChallengeAnswer.created_at, ChallengeAnswer.id)
+                )
+            ).all()
+            observability.audit(
+                session,
+                actor_id=user_id,
+                actor_type="user",
+                action="challenge.answers_viewed",
+                resource_type="challenge",
+                resource_id=row.id,
+            )
+            return AcceptedAnswerList(
+                data=[
+                    AcceptedAnswerOut(
+                        id=a.id,
+                        answer_display=a.answer_display,
+                        answer_normalized=a.answer_normalized,
+                    )
+                    for a in rows
+                ]
+            )
 
     async def results(self, user_id: uuid.UUID, challenge_id: uuid.UUID) -> ChallengeResults:
         """Members see confirmed winners once results are published; judges see provisional and
@@ -904,6 +1255,15 @@ class ChallengeService:
                 .where(ChallengeParticipant.challenge_id == row.id)
             )
             users = await profiles.authors(session, [w.user_id for w in winners if w.user_id])
+            team_ids = [w.team_id for w in winners if w.team_id]
+            teams = {
+                t.id: t
+                for t in (
+                    await session.scalars(
+                        select(ChallengeTeam).where(ChallengeTeam.id.in_(team_ids))
+                    )
+                ).all()
+            }
         return ChallengeResults(
             challenge_id=row.id,
             status=row.status,  # type: ignore[arg-type]
@@ -915,7 +1275,11 @@ class ChallengeService:
                     id=w.id,
                     rank=w.rank,
                     user=profiles.user_summary(users[w.user_id]) if w.user_id in users else None,
-                    team=None,
+                    team=(
+                        WinnerTeam(id=teams[w.team_id].id, name=teams[w.team_id].name)
+                        if w.team_id in teams
+                        else None
+                    ),
                     status=w.status,  # type: ignore[arg-type]
                     determined_by=w.determined_by,  # type: ignore[arg-type]
                     determined_at=w.determined_at,
@@ -925,13 +1289,41 @@ class ChallengeService:
         )
 
 
-def _check_attempt(row: GroupChallenge, participant: ChallengeParticipant, now: datetime) -> None:
-    """Attempt limit and cooldown (CHAL-005)."""
+def _require_open_teams(row: GroupChallenge) -> None:
+    if row.solving_mode != "team":
+        raise AppError(ErrorCode.CONFLICT, "This challenge is solved individually.")
+    if row.status not in TEAMS_OPEN:
+        raise AppError(
+            ErrorCode.CHALLENGE_NOT_ACTIVE, "Teams can change only until the challenge ends."
+        )
+
+
+async def _captain_team(
+    session: AsyncSession,
+    participant: ChallengeParticipant | None,
+    user_id: uuid.UUID,
+    team_id: uuid.UUID | None,
+) -> ChallengeTeam:
+    """Team mode: only the captain submits, for their own team (CHAL-004)."""
+    if participant is None or participant.team_id is None:
+        raise AppError(ErrorCode.NOT_TEAM_CAPTAIN, "Join a team first; its captain submits.")
+    if team_id is not None and team_id != participant.team_id:
+        raise AppError(ErrorCode.NOT_TEAM_CAPTAIN, "You can only submit for your own team.")
+    team = await session.get(ChallengeTeam, participant.team_id, with_for_update=True)
+    if team is None or team.captain_id != user_id:
+        raise AppError(ErrorCode.NOT_TEAM_CAPTAIN, "Only your team captain can submit.")
+    return team
+
+
+def _check_attempt(
+    row: GroupChallenge, holder: ChallengeTeam | ChallengeParticipant, now: datetime
+) -> None:
+    """Attempt limit and cooldown (CHAL-005); per team in team mode."""
     blocked = attempt_block(
         max_attempts=row.max_attempts,
         cooldown_seconds=row.attempt_cooldown_seconds,
-        attempts_used=participant.attempts_used,
-        last_attempt_at=participant.last_attempt_at,
+        attempts_used=holder.attempts_used,
+        last_attempt_at=holder.last_attempt_at,
         now=now,
     )
     if blocked is None:
@@ -948,41 +1340,155 @@ def _check_attempt(row: GroupChallenge, participant: ChallengeParticipant, now: 
     )
 
 
-async def _award(
-    session: AsyncSession, row: GroupChallenge, submission: ChallengeSubmission, now: datetime
-) -> bool:
-    """A correct answer becomes a provisional winner while the policy has slots (CHAL-010).
-    Runs under the challenge row lock, so ranks follow submission order."""
+async def _sync_winners(session: AsyncSession, row: GroupChallenge, now: datetime) -> None:
+    """Make the provisional winners match the policy (CHAL-009, CHAL-010): the first correct
+    submissions in submission order, whatever order they were judged in. Confirmed winners stay;
+    revoked ones stay out. Runs under the challenge row lock."""
     slots = winner_slots(row.winner_policy, row.max_winners)
     if slots == 0:
-        return False
-    live = ChallengeWinner.status != "revoked"
-    taken = await session.scalar(
-        select(func.count())
-        .select_from(ChallengeWinner)
-        .where(ChallengeWinner.challenge_id == row.id, live)
+        return  # admin_selects: the judges pick
+
+    def recipient(user_id: uuid.UUID | None, team_id: uuid.UUID | None) -> Recipient | None:
+        if team_id is not None:
+            return ("team", team_id)
+        return ("user", user_id) if user_id is not None else None
+
+    winners = list(
+        (
+            await session.scalars(
+                select(ChallengeWinner).where(ChallengeWinner.challenge_id == row.id)
+            )
+        ).all()
     )
-    if slots is not None and int(taken or 0) >= slots:
-        return False
-    top = await session.scalar(
-        select(func.coalesce(func.max(ChallengeWinner.rank), 0)).where(
-            ChallengeWinner.challenge_id == row.id, live
+    correct = []
+    for submission_id, user_id, team_id in (
+        await session.execute(
+            select(
+                ChallengeSubmission.id,
+                ChallengeSubmission.submitted_by,
+                ChallengeSubmission.team_id,
+            )
+            .where(
+                ChallengeSubmission.challenge_id == row.id,
+                ChallengeSubmission.evaluation_status == "correct",
+            )
+            .order_by(ChallengeSubmission.submitted_at, ChallengeSubmission.id)
         )
+    ).all():
+        key = recipient(user_id, team_id)
+        if key is not None:
+            correct.append((key, submission_id))
+    live: dict[Recipient, ChallengeWinner] = {}
+    revoked: set[Recipient] = set()
+    for winner in winners:
+        key = recipient(winner.user_id, winner.team_id)
+        if key is None:
+            continue
+        if winner.status == "revoked":
+            revoked.add(key)
+        else:
+            live[key] = winner
+    chosen = pick_winners(
+        correct,
+        slots=slots,
+        confirmed=frozenset(k for k, w in live.items() if w.status == "confirmed"),
+        revoked=frozenset(revoked),
     )
-    session.add(
-        ChallengeWinner(
-            challenge_id=row.id,
-            user_id=None if submission.team_id else submission.submitted_by,
-            team_id=submission.team_id,
-            submission_id=submission.id,
-            rank=int(top or 0) + 1,
-            status="provisional",
-            determined_by="system",
-            determined_at=now,
-        )
-    )
+    chosen_keys = {key for key, _ in chosen}
+    for key, winner in list(live.items()):
+        if winner.status == "provisional" and key not in chosen_keys:
+            await session.delete(winner)
+            del live[key]
     await session.flush()
-    return True
+    for offset, winner in enumerate(live.values()):  # park live ranks clear of the unique index
+        winner.rank = 1000 + offset
+    await session.flush()
+    rank = 0
+    for key, submission_id in chosen:
+        rank += 1
+        existing = live.get(key)
+        if existing is None:
+            session.add(
+                ChallengeWinner(
+                    challenge_id=row.id,
+                    user_id=key[1] if key[0] == "user" else None,
+                    team_id=key[1] if key[0] == "team" else None,
+                    submission_id=submission_id,
+                    rank=rank,
+                    status="provisional",
+                    determined_by="system",
+                    determined_at=now,
+                )
+            )
+        else:
+            existing.rank = rank
+            if existing.status == "provisional":
+                existing.submission_id = submission_id
+    for key, winner in live.items():
+        if key not in chosen_keys:  # confirmed, but the answer no longer counts: until revoked
+            rank += 1
+            winner.rank = rank
+    await session.flush()
+
+
+async def ai_judgement(
+    sessionmaker: async_sessionmaker[AsyncSession],
+    clock: Clock,
+    judge: AnswerJudge | None,
+    submission_id: uuid.UUID,
+) -> str | None:
+    """The AI judge's pass over a pending ``ai_assisted`` answer (CHAL-006, CHAL-007). The model
+    call happens outside any transaction; the verdict applies only if no judge decided first."""
+    async with sessionmaker() as session:
+        submission = await session.get(ChallengeSubmission, submission_id)
+        if submission is None or submission.evaluation_status != "pending":
+            return None
+        row = await session.get(GroupChallenge, submission.challenge_id)
+        if row is None or row.validation_method != "ai_assisted" or row.status == "cancelled":
+            return None
+        accepted = list(
+            await session.scalars(
+                select(ChallengeAnswer.answer_display)
+                .where(ChallengeAnswer.challenge_id == row.id)
+                .order_by(ChallengeAnswer.created_at, ChallengeAnswer.id)
+            )
+        )
+        reward_types = list(
+            await session.scalars(
+                select(ChallengeReward.reward_type).where(ChallengeReward.challenge_id == row.id)
+            )
+        )
+        challenge_id, title, description = row.id, row.title, row.description
+        answer, submitter = submission.answer_text, submission.submitted_by
+    verdict = (
+        await judge(
+            user_id=submitter,
+            title=title,
+            description=description,
+            accepted_answers=accepted,
+            answer=answer,
+        )
+        if judge is not None and accepted
+        else None
+    )
+    outcome = ai_outcome(verdict, badge_only=all(t == "badge" for t in reward_types))
+    async with sessionmaker() as session, session.begin():
+        locked = await session.get(GroupChallenge, challenge_id, with_for_update=True)
+        current = await session.get(ChallengeSubmission, submission_id, with_for_update=True)
+        if locked is None or current is None or current.evaluation_status != "pending":
+            return None  # a judge got there first
+        now = clock.now()
+        current.evaluation_status = outcome
+        if verdict is not None:
+            current.evaluator = "ai"
+            current.ai_confidence = Decimal(str(round(verdict.confidence, 3)))
+            current.ai_rationale = verdict.rationale
+        if outcome in ("correct", "incorrect"):
+            current.evaluated_at = now
+        await session.flush()
+        if outcome == "correct":
+            await _sync_winners(session, locked, now)
+    return outcome
 
 
 async def advance_lifecycle(session: AsyncSession, *, now: datetime) -> int:
@@ -1033,11 +1539,71 @@ async def _record_started(session: AsyncSession, row: GroupChallenge) -> None:
     )
 
 
+async def leave_teams(session: AsyncSession, *, group_id: uuid.UUID, user_id: uuid.UUID) -> int:
+    """A member who leaves (or is removed from) the group leaves their teams in its unfinished
+    challenges: out of the team thread, and a captain hands over to the longest-standing
+    teammate (CHAL-004). Their submissions stay with the team."""
+    rows = (
+        await session.execute(
+            select(ChallengeParticipant, ChallengeTeam)
+            .join(ChallengeTeam, ChallengeTeam.id == ChallengeParticipant.team_id)
+            .join(GroupChallenge, GroupChallenge.id == ChallengeParticipant.challenge_id)
+            .where(
+                GroupChallenge.group_id == group_id,
+                GroupChallenge.status.not_in(("completed", "cancelled")),
+                ChallengeParticipant.user_id == user_id,
+            )
+            .with_for_update(of=ChallengeTeam)
+        )
+    ).all()
+    for participant, team in rows:
+        participant.team_id = None
+        if team.conversation_id is not None:
+            await messaging.remove_group_member(session, team.conversation_id, user_id)
+        if team.captain_id == user_id:
+            team.captain_id = await session.scalar(
+                select(ChallengeParticipant.user_id)
+                .where(
+                    ChallengeParticipant.team_id == team.id,
+                    ChallengeParticipant.status == "active",
+                    ChallengeParticipant.user_id != user_id,
+                )
+                .order_by(ChallengeParticipant.joined_at, ChallengeParticipant.user_id)
+                .limit(1)
+            )
+    await session.flush()
+    return len(rows)
+
+
+def subscribe(router: platform.EventRouter) -> None:
+    for event in MEMBER_GONE_EVENTS:
+        router.subscribe(event, queue="default", kind=MEMBER_GONE_JOB)
+
+
 def make_handlers(
-    sessionmaker: async_sessionmaker[AsyncSession], clock: Clock
+    sessionmaker: async_sessionmaker[AsyncSession],
+    clock: Clock,
+    *,
+    judge: AnswerJudge | None = None,
 ) -> dict[str, platform.JobHandler]:
     async def lifecycle(job: platform.Job) -> None:
         async with sessionmaker() as session, session.begin():
             await advance_lifecycle(session, now=clock.now())
 
-    return {LIFECYCLE_JOB: lifecycle}
+    async def member_gone(job: platform.Job) -> None:
+        data = job.payload.get("data") or {}
+        async with sessionmaker() as session, session.begin():
+            await leave_teams(
+                session,
+                group_id=uuid.UUID(str(data["group_id"])),
+                user_id=uuid.UUID(str(data["user_id"])),
+            )
+
+    async def judge_answer(job: platform.Job) -> None:
+        await ai_judgement(sessionmaker, clock, judge, uuid.UUID(str(job.payload["submission_id"])))
+
+    return {
+        LIFECYCLE_JOB: lifecycle,
+        MEMBER_GONE_JOB: member_gone,
+        AI_JUDGE_JOB: judge_answer,
+    }

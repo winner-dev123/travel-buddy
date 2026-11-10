@@ -82,7 +82,10 @@ def _create_all(url: str) -> None:
                 # alters existing tables). Only ever runs against a local test database.
                 # PostGIS-only tables are skipped: this path runs only without PostGIS.
                 tables = [t for t in Base.metadata.sorted_tables if not _needs_postgis(t)]
-                await conn.run_sync(lambda sync: Base.metadata.drop_all(sync, tables=tables))
+                # DROP … CASCADE rather than drop_all: foreign-key cycles (use_alter) would make
+                # drop_all drop constraints an older local schema never had.
+                for table in reversed(tables):
+                    await conn.execute(text(f'DROP TABLE IF EXISTS "{table.name}" CASCADE'))
                 await conn.run_sync(lambda sync: Base.metadata.create_all(sync, tables=tables))
                 # Same hardening the migration environment applies after every run.
                 await conn.execute(text(SECURE_PUBLIC_SCHEMA_SQL))

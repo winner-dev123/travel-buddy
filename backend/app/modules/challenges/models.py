@@ -17,6 +17,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     Numeric,
     PrimaryKeyConstraint,
     SmallInteger,
@@ -43,6 +44,8 @@ EVALUATIONS = ("pending", "correct", "incorrect", "needs_review", "void")
 EVALUATORS = ("exact", "ai", "admin")
 PARTICIPANT_STATUSES = ("active", "disqualified", "withdrawn")
 WINNER_STATUSES = ("provisional", "confirmed", "revoked")
+FULFILLMENT_STATUSES = ("pending", "issued", "delivered", "failed", "cancelled", "disputed")
+DISPUTE_STATUSES = ("open", "upheld", "rejected")
 
 
 class GroupChallenge(Base):
@@ -197,11 +200,37 @@ class ChallengeReward(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class ChallengeTeam(Base):
+    """Team mode (CHAL-004): only the captain submits; attempts count per team."""
+
+    __tablename__ = "challenge_teams"
+    __table_args__ = (
+        UniqueConstraint("challenge_id", "name"),
+        CheckConstraint("char_length(name) BETWEEN 2 AND 40", name="name_length"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
+    challenge_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("group_challenges.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(Text)
+    captain_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="SET NULL")
+    )
+    conversation_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("conversations.id", ondelete="SET NULL")
+    )
+    attempts_used: Mapped[int] = mapped_column(SmallInteger, server_default=text("0"))
+    last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class ChallengeParticipant(Base):
     __tablename__ = "challenge_participants"
     __table_args__ = (
         PrimaryKeyConstraint("challenge_id", "user_id"),
         enum_check("status", PARTICIPANT_STATUSES, "status_enum"),
+        Index("ix_challenge_participants__team_id", "team_id"),
     )
 
     challenge_id: Mapped[uuid.UUID] = mapped_column(
@@ -210,7 +239,9 @@ class ChallengeParticipant(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    team_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    team_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("challenge_teams.id", ondelete="SET NULL")
+    )
     joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     attempts_used: Mapped[int] = mapped_column(SmallInteger, server_default=text("0"))
     last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -241,7 +272,9 @@ class ChallengeSubmission(Base):
     submitted_by: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("users.id", ondelete="SET NULL")
     )
-    team_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    team_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("challenge_teams.id", ondelete="SET NULL")
+    )
     attempt_no: Mapped[int] = mapped_column(SmallInteger)
     answer_text: Mapped[str] = mapped_column(Text)
     answer_normalized: Mapped[str] = mapped_column(Text)
@@ -282,7 +315,9 @@ class ChallengeWinner(Base):
     user_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("users.id", ondelete="SET NULL")
     )
-    team_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    team_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("challenge_teams.id", ondelete="CASCADE")
+    )
     submission_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("challenge_submissions.id", ondelete="CASCADE"), nullable=False
     )
@@ -295,3 +330,70 @@ class ChallengeWinner(Base):
     confirmed_by: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("users.id", ondelete="SET NULL")
     )
+
+
+class RewardFulfillment(Base):
+    """A real-world reward on its way to a winner (CHAL-015). The secret (a discount code) is
+    encrypted at rest and shown only to the recipient; every transition is audited."""
+
+    __tablename__ = "reward_fulfillments"
+    __table_args__ = (
+        UniqueConstraint("challenge_reward_id", "winner_id"),
+        enum_check("status", FULFILLMENT_STATUSES, "status_enum"),
+        Index("ix_reward_fulfillments__recipient", "recipient_user_id", "created_at"),
+        Index("ix_reward_fulfillments__challenge", "challenge_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
+    challenge_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("group_challenges.id", ondelete="CASCADE"), nullable=False
+    )
+    challenge_reward_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("challenge_rewards.id", ondelete="CASCADE"), nullable=False
+    )
+    winner_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("challenge_winners.id", ondelete="CASCADE"), nullable=False
+    )
+    recipient_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="SET NULL")
+    )
+    status: Mapped[str] = mapped_column(Text, server_default=text("'pending'"))
+    secret_ciphertext: Mapped[bytes | None] = mapped_column(LargeBinary)
+    issued_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="SET NULL")
+    )
+    issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ChallengeDispute(Base):
+    """Raised by participants, resolved by judges (audited), escalated via reports (CHAL-016)."""
+
+    __tablename__ = "challenge_disputes"
+    __table_args__ = (
+        enum_check("status", DISPUTE_STATUSES, "status_enum"),
+        CheckConstraint("char_length(reason) BETWEEN 10 AND 1000", name="reason_length"),
+        Index("ix_challenge_disputes__challenge", "challenge_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
+    challenge_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("group_challenges.id", ondelete="CASCADE"), nullable=False
+    )
+    raised_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="SET NULL")
+    )
+    submission_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("challenge_submissions.id", ondelete="SET NULL")
+    )
+    reason: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, server_default=text("'open'"))
+    resolved_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="SET NULL")
+    )
+    resolution_note: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

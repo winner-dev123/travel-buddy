@@ -1,4 +1,4 @@
-"""``/v1/groups/{id}/challenges`` and ``/v1/challenges/{id}/…`` (BL-5.01..5.03)."""
+"""``/v1/groups/{id}/challenges`` and ``/v1/challenges/{id}/…`` (BL-5.01..5.04)."""
 
 from __future__ import annotations
 
@@ -14,15 +14,21 @@ from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
 from app.modules.challenges.domain import STATUSES
 from app.modules.challenges.schemas import (
+    AcceptedAnswerList,
     CancelRequest,
     ChallengeManagerView,
     ChallengeOut,
     ChallengePage,
     ChallengeResults,
+    ChallengeSubmissionOut,
     ChallengeSubmissionPage,
+    ChallengeTeamOut,
+    ChallengeTeamPage,
     CreateChallengeRequest,
+    CreateTeamRequest,
     EvaluationStatus,
     HintList,
+    JudgeSubmissionRequest,
     SubmissionResult,
     SubmitAnswerRequest,
     UpdateChallengeRequest,
@@ -142,6 +148,37 @@ async def list_challenge_hints(
     return await _service(request).hints(principal.user_id, challenge_id)
 
 
+@router.get("/v1/challenges/{challenge_id}/teams", response_model=ChallengeTeamPage)
+async def list_challenge_teams(
+    challenge_id: uuid.UUID,
+    request: Request,
+    principal: CurrentPrincipal,
+    cursor: Annotated[str | None, Query(max_length=1024)] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> ChallengeTeamPage:
+    return await _service(request).list_teams(
+        principal.user_id, challenge_id, cursor=cursor, limit=limit
+    )
+
+
+@router.post(
+    "/v1/challenges/{challenge_id}/teams",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ChallengeTeamOut,
+)
+async def create_challenge_team(
+    challenge_id: uuid.UUID, body: CreateTeamRequest, request: Request, principal: CurrentPrincipal
+) -> ChallengeTeamOut:
+    return await _service(request).create_team(principal.user_id, challenge_id, body)
+
+
+@router.post("/v1/challenges/{challenge_id}/teams/{team_id}/join", response_model=ChallengeTeamOut)
+async def join_challenge_team(
+    challenge_id: uuid.UUID, team_id: uuid.UUID, request: Request, principal: CurrentPrincipal
+) -> ChallengeTeamOut:
+    return await _service(request).join_team(principal.user_id, challenge_id, team_id)
+
+
 @router.get("/v1/challenges/{challenge_id}/submissions", response_model=ChallengeSubmissionPage)
 async def list_challenge_submissions(
     challenge_id: uuid.UUID,
@@ -178,6 +215,34 @@ async def submit_challenge_answer(
     return await _service(request).submit(
         principal.user_id, challenge_id, body, idempotency_key=idempotency_key
     )
+
+
+@router.post(
+    "/v1/challenges/{challenge_id}/submissions/{submission_id}/judgement",
+    response_model=ChallengeSubmissionOut,
+)
+async def judge_challenge_submission(
+    challenge_id: uuid.UUID,
+    submission_id: uuid.UUID,
+    body: JudgeSubmissionRequest,
+    request: Request,
+    principal: CurrentPrincipal,
+) -> ChallengeSubmissionOut:
+    return await _service(request).judge_submission(
+        principal.user_id, challenge_id, submission_id, body
+    )
+
+
+@router.get(
+    "/v1/challenges/{challenge_id}/answers",
+    response_model=AcceptedAnswerList,
+    openapi_extra=rate_limited("sensitive"),
+)
+async def get_challenge_answers(
+    challenge_id: uuid.UUID, request: Request, principal: CurrentPrincipal
+) -> JSONResponse:
+    answers = await _service(request).answers(principal.user_id, challenge_id)
+    return JSONResponse(answers.model_dump(mode="json"), headers={"Cache-Control": "no-store"})
 
 
 @router.get("/v1/challenges/{challenge_id}/results", response_model=ChallengeResults)
