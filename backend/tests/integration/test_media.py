@@ -7,7 +7,7 @@ import hashlib
 import io
 import uuid
 from collections.abc import Iterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -23,6 +23,7 @@ from tests.conftest import make_identity_settings, make_settings
 from tests.contract_schemas import assert_matches_contract
 from tests.integration.conftest import LiveApp, _truncate_users, db_scalar
 from tests.integration.test_identity_flows import _auth
+from tests.integration.test_messaging import _connect
 from tests.integration.test_posts import CRON, _problem, _tick, _user
 from tests.unit.test_media_processing import jpeg_with_gps
 
@@ -399,3 +400,59 @@ def test_avatars_appear_everywhere_and_replacing_one_erases_the_old(media: LiveA
     assert (
         media.client.get("/v1/users/me", headers=_auth(token)).json()["profile"]["avatar"] is None
     )
+
+
+@pytest.mark.security
+@pytest.mark.req("DM-002")
+def test_message_photos_are_private_and_served_through_short_lived_urls(media: LiveApp) -> None:
+    ana, ana_id = _user(media)
+    bo, bo_id = _user(media)
+    _connect(media, ana_id, bo_id)
+    conversation = media.client.post(
+        "/v1/conversations", headers=_auth(ana), json={"kind": "direct", "user_id": bo_id}
+    ).json()["id"]
+    media_id = _upload(media, ana, jpeg_with_gps(), purpose="message")
+    assert _finalize(media, ana, media_id).status_code == 202
+    _tick(media)
+
+    sent = media.client.post(
+        f"/v1/conversations/{conversation}/messages",
+        headers={**_auth(ana), "Idempotency-Key": str(uuid.uuid4())},
+        json={
+            "client_message_id": str(uuid.uuid4()),
+            "kind": "image",
+            "attachment_media_ids": [media_id],
+        },
+    )
+    assert sent.status_code == 201, sent.text
+    history = media.client.get(
+        f"/v1/conversations/{conversation}/messages", headers=_auth(bo)
+    ).json()
+    [attachment] = history["data"][0]["attachments"]
+    assert attachment["status"] == "ready"
+    assert "/_dev/storage/private/" in attachment["url"]
+    assert attachment["url_expires_at"] is not None
+    served = media.client.get(attachment["url"])
+    assert served.status_code == 200
+    assert served.headers["content-type"] == "image/webp"
+    assert "private" in served.headers["cache-control"]
+
+    # Nothing reaches the public bucket, and a tampered or expired URL is refused.
+    assert not any(key.startswith(f"m/{ana_id}/{media_id}") for key in _local(media).public)
+    assert media.client.get(attachment["url"][:-4] + "beef").status_code == 403
+    media.clock.set(media.clock.now() + timedelta(minutes=6))
+    assert media.client.get(attachment["url"]).status_code == 403
+
+    # Deleting the message erases the stored photo.
+    message_id = sent.json()["id"]
+    deleted = media.client.delete(
+        f"/v1/conversations/{conversation}/messages/{message_id}", headers=_auth(ana)
+    )
+    assert deleted.status_code == 204
+    _tick(media)
+    assert not any(media_id in key for key in _local(media).private)
+
+
+def _local(live: LiveApp) -> Any:
+    storage = live.client.app.state.media_storage  # type: ignore[attr-defined]
+    return storage

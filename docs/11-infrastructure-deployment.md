@@ -45,7 +45,7 @@ Without storage settings, uploads answer `503` and everything else works. To ena
 
 1. Storage → create bucket `media-quarantine` (**private**, file size limit 25 MB, allowed types `image/jpeg,image/png,image/webp`) and bucket `media-public` (**public**).
 2. Storage → S3 connection → create an access key pair.
-3. Set on the API project: `MEDIA_S3_ENDPOINT=https://<ref>.supabase.co/storage/v1/s3`, `MEDIA_S3_REGION=<project region>`, `MEDIA_S3_ACCESS_KEY_ID`, `MEDIA_S3_SECRET_ACCESS_KEY`, `MEDIA_PUBLIC_BASE_URL=https://<ref>.supabase.co/storage/v1/object/public/media-public`.
+3. Set on the API project: `MEDIA_S3_ENDPOINT=https://<ref>.supabase.co/storage/v1/s3`, `MEDIA_S3_REGION=<project region>`, `MEDIA_S3_ACCESS_KEY_ID`, `MEDIA_S3_SECRET_ACCESS_KEY`, `MEDIA_PUBLIC_BASE_URL=https://<ref>.supabase.co/storage/v1/object/public/media-public`. Message photos are stored privately in the quarantine bucket under `pm/` (or in `MEDIA_PRIVATE_BUCKET` if set; keep it private) and served through 5-minute presigned URLs.
 
 Processing runs as a job (worker, cron tick or after-response tick).
 

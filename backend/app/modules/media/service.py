@@ -15,8 +15,8 @@ from __future__ import annotations
 
 import logging
 import uuid
-from collections.abc import Mapping, Sequence
-from datetime import timedelta
+from collections.abc import Callable, Mapping, Sequence
+from datetime import datetime, timedelta
 from typing import Protocol
 
 from sqlalchemy import delete, func, select, update
@@ -72,10 +72,37 @@ class NoopScanner:
         return True
 
 
-def _ref(asset: MediaAsset) -> MediaRef:
+# Mints a short-lived URL for a private object: (url, expires_at). Supplied by the composition
+# root from the storage adapter; only call it after authorizing the viewer.
+Signer = Callable[[str], tuple[str, datetime]]
+
+# Purposes whose processed variants are private and served through signed URLs (BL-3.05, DM-002).
+PRIVATE_PURPOSES = frozenset({MediaPurpose.MESSAGE})
+
+
+def private_signer(storage: ObjectStorage | None) -> Signer | None:
+    return storage.presign_get if storage is not None else None
+
+
+def _keys(assets: Sequence[MediaAsset]) -> tuple[list[str], list[str]]:
+    """Stored variant keys split into (public, private)."""
+    public = [str(v["key"]) for a in assets for v in (a.variants or []) if not v.get("private")]
+    private = [str(v["key"]) for a in assets for v in (a.variants or []) if v.get("private")]
+    return public, private
+
+
+def _ref(asset: MediaAsset, sign: Signer | None = None) -> MediaRef:
     variants = asset.variants or []
     ready = asset.status == MediaStatus.READY and bool(variants)
     largest = variants[0] if variants else None
+    url: str | None = None
+    expires_at: datetime | None = None
+    if ready and largest:
+        if largest.get("private"):
+            if sign is not None:
+                url, expires_at = sign(str(largest["key"]))
+        else:
+            url = str(largest["url"])
     return MediaRef(
         id=asset.id,
         kind="video" if asset.mime_type in VIDEOS else "image",
@@ -84,14 +111,15 @@ def _ref(asset: MediaAsset) -> MediaRef:
         else "processing"
         if asset.status in (MediaStatus.PENDING_UPLOAD, MediaStatus.SCANNING)
         else "unavailable",
-        url=str(largest["url"]) if ready and largest else None,
+        url=url,
+        url_expires_at=expires_at,
         width=int(largest["width"]) if ready and largest else None,
         height=int(largest["height"]) if ready and largest else None,
         alt_text=asset.alt_text,
     )
 
 
-def _out(asset: MediaAsset) -> MediaAssetOut:
+def _out(asset: MediaAsset, sign: Signer | None = None) -> MediaAssetOut:
     return MediaAssetOut.model_validate(
         {
             "id": asset.id,
@@ -103,7 +131,7 @@ def _out(asset: MediaAsset) -> MediaAssetOut:
             "height": asset.height,
             "duration_ms": asset.duration_ms,
             "rejection_reason": asset.rejection_reason,
-            "ref": _ref(asset) if asset.status != MediaStatus.DELETED else None,
+            "ref": _ref(asset, sign) if asset.status != MediaStatus.DELETED else None,
             "created_at": asset.created_at,
         }
     )
@@ -213,7 +241,7 @@ class MediaService:
             asset = await session.get(MediaAsset, media_id)
             if asset is None or asset.owner_id != owner_id:
                 raise AppError(ErrorCode.NOT_FOUND, "Media not found.")
-            return _out(asset)
+            return _out(asset, private_signer(self._storage))
 
     async def finalize(self, owner_id: uuid.UUID, media_id: uuid.UUID) -> MediaAssetOut:
         storage = self._store()
@@ -253,6 +281,7 @@ async def process(
         if asset is None or asset.status != MediaStatus.SCANNING:
             return asset.status if asset else "missing"
         key, owner, declared = asset.quarantine_key, asset.owner_id, asset.mime_type
+        private = asset.purpose in PRIVATE_PURPOSES
         expected_bytes, expected_sha = asset.bytes, asset.sha256
     reason: str | None = None
     variants: list[dict[str, object]] = []
@@ -272,6 +301,18 @@ async def process(
         processed = process_image(data)
         width, height = processed.width, processed.height
         for variant in processed.variants:
+            if private:  # message attachments: never in the public bucket (BL-3.05)
+                private_key = f"pm/{owner}/{media_id}/{variant.width}.webp"
+                await storage.write_private(private_key, variant.data, "image/webp")
+                variants.append(
+                    {
+                        "width": variant.width,
+                        "height": variant.height,
+                        "key": private_key,
+                        "private": True,
+                    }
+                )
+                continue
             public_key = f"m/{owner}/{media_id}/{variant.width}.webp"
             await storage.write_public(public_key, variant.data, "image/webp")
             variants.append(
@@ -312,7 +353,10 @@ async def process(
         )
     if reason is not None:
         for written in variants:  # a rejection after partial writes leaves nothing reachable
-            await storage.delete_public(str(written["key"]))
+            if written.get("private"):
+                await storage.delete_private(str(written["key"]))
+            else:
+                await storage.delete_public(str(written["key"]))
         logger.info("media rejected", extra={"reason": reason})
     return MediaStatus.READY if reason is None else MediaStatus.REJECTED
 
@@ -332,6 +376,8 @@ def make_handlers(
             raise platform.PermanentJobError("media storage is not configured")
         for key in job.payload.get("public_keys") or []:
             await storage.delete_public(str(key))
+        for key in job.payload.get("private_keys") or []:
+            await storage.delete_private(str(key))
         for key in job.payload.get("quarantine_keys") or []:
             await storage.delete_quarantine(str(key))
 
@@ -344,15 +390,16 @@ async def schedule_owner_erasure(session: AsyncSession, owner_id: uuid.UUID) -> 
     assets = (
         await session.scalars(select(MediaAsset).where(MediaAsset.owner_id == owner_id))
     ).all()
-    public = [str(v["key"]) for a in assets for v in (a.variants or [])]
+    public, private = _keys(assets)
     quarantine = [a.quarantine_key for a in assets if a.status != MediaStatus.READY]
-    for start in range(0, max(len(public), len(quarantine)), 200):
+    for start in range(0, max(len(public), len(private), len(quarantine)), 200):
         await platform.enqueue(
             session,
             queue="default",
             kind=DELETE_OBJECTS_JOB,
             payload={
                 "public_keys": public[start : start + 200],
+                "private_keys": private[start : start + 200],
                 "quarantine_keys": quarantine[start : start + 200],
             },
         )
@@ -362,11 +409,15 @@ async def schedule_owner_erasure(session: AsyncSession, owner_id: uuid.UUID) -> 
 # ─────────────────────────────── for other modules ───────────────────────────────
 
 
-async def refs(session: AsyncSession, media_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, MediaRef]:
+async def refs(
+    session: AsyncSession, media_ids: Sequence[uuid.UUID], *, sign: Signer | None = None
+) -> dict[uuid.UUID, MediaRef]:
+    """Renderable refs. Private media get a signed URL only when ``sign`` is given: pass it only
+    after authorizing the viewer for the content that references the media."""
     if not media_ids:
         return {}
     rows = await session.scalars(select(MediaAsset).where(MediaAsset.id.in_(set(media_ids))))
-    return {row.id: _ref(row) for row in rows}
+    return {row.id: _ref(row, sign) for row in rows}
 
 
 async def erase_assets(session: AsyncSession, media_ids: Sequence[uuid.UUID]) -> None:
@@ -377,14 +428,18 @@ async def erase_assets(session: AsyncSession, media_ids: Sequence[uuid.UUID]) ->
     assets = (
         await session.scalars(select(MediaAsset).where(MediaAsset.id.in_(set(media_ids))))
     ).all()
-    public = [str(v["key"]) for a in assets for v in (a.variants or [])]
+    public, private = _keys(assets)
     quarantine = [a.quarantine_key for a in assets if a.status != MediaStatus.READY]
-    if public or quarantine:
+    if public or private or quarantine:
         await platform.enqueue(
             session,
             queue="default",
             kind=DELETE_OBJECTS_JOB,
-            payload={"public_keys": public, "quarantine_keys": quarantine},
+            payload={
+                "public_keys": public,
+                "private_keys": private,
+                "quarantine_keys": quarantine,
+            },
         )
     await session.execute(delete(MediaAsset).where(MediaAsset.id.in_(set(media_ids))))
 

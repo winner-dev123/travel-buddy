@@ -1,7 +1,10 @@
 """Object storage port and adapters (docs/02 §11).
 
 Two buckets: *quarantine* receives client uploads through short-lived presigned PUTs and is never
-served; *public* holds processed, metadata-free variants served through the CDN.
+served; *public* holds processed, metadata-free variants served through the CDN. Processed variants
+of private media (message attachments, BL-3.05) go to a *private* bucket (by default the quarantine
+bucket, under ``pm/``) and are only reachable through short-lived presigned GETs, minted after the
+owning module has authorized the viewer.
 ``LocalStorage`` keeps both in process memory and serves them from a dev-only ASGI app mounted at
 ``/_dev/storage`` (development and tests; it emulates the external store, so it is not part of the
 API contract).
@@ -29,7 +32,9 @@ from app.core.time import Clock
 from app.modules.media import sigv4
 
 UPLOAD_TTL = timedelta(minutes=5)
+PRIVATE_URL_TTL = timedelta(minutes=5)
 PUBLIC_CACHE_CONTROL = "public, max-age=31536000, immutable"
+PRIVATE_CACHE_CONTROL = "private, max-age=300"
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +67,12 @@ class ObjectStorage(Protocol):
 
     def public_url(self, key: str) -> str: ...
 
+    async def write_private(self, key: str, data: bytes, content_type: str) -> None: ...
+
+    async def delete_private(self, key: str) -> None: ...
+
+    def presign_get(self, key: str) -> tuple[str, datetime]: ...
+
 
 # ─────────────────────────────── S3-compatible ───────────────────────────────
 
@@ -79,11 +90,13 @@ class S3Storage:
         public_base_url: str,
         http: httpx.AsyncClient,
         clock: Clock,
+        private_bucket: str | None = None,
     ) -> None:
         parts = urlsplit(endpoint.rstrip("/"))
         self._scheme, self._host, self._base_path = parts.scheme, parts.netloc, parts.path
         self._region, self._key, self._secret = region, access_key, secret
         self._quarantine, self._public = quarantine_bucket, public_bucket
+        self._private = private_bucket or quarantine_bucket
         self._public_base = public_base_url.rstrip("/")
         self._http, self._clock = http, clock
 
@@ -181,6 +194,35 @@ class S3Storage:
     def public_url(self, key: str) -> str:
         return f"{self._public_base}/{key}"
 
+    async def write_private(self, key: str, data: bytes, content_type: str) -> None:
+        response = await self._send(
+            "PUT",
+            self._private,
+            key,
+            body=data,
+            extra={"Content-Type": content_type, "Cache-Control": PRIVATE_CACHE_CONTROL},
+        )
+        if response.status_code not in (200, 201):
+            raise StorageError(f"PUT answered {response.status_code}")
+
+    async def delete_private(self, key: str) -> None:
+        await self._delete(self._private, key)
+
+    def presign_get(self, key: str) -> tuple[str, datetime]:
+        now = self._clock.now()
+        url = sigv4.presign_url(
+            method="GET",
+            scheme=self._scheme,
+            host=self._host,
+            path=self._path(self._private, key),
+            access_key=self._key,
+            secret=self._secret,
+            region=self._region,
+            expires_seconds=int(PRIVATE_URL_TTL.total_seconds()),
+            at=now,
+        )
+        return url, now + PRIVATE_URL_TTL
+
 
 # ─────────────────────────────── in-process (development, tests) ───────────────────────────────
 
@@ -194,6 +236,7 @@ class LocalStorage:
         self._secret = secrets.token_bytes(32)
         self.quarantine: dict[str, tuple[bytes, str]] = {}
         self.public: dict[str, tuple[bytes, str]] = {}
+        self.private: dict[str, tuple[bytes, str]] = {}
 
     def _token(self, claims: dict[str, object]) -> str:
         body = base64.urlsafe_b64encode(json.dumps(claims, sort_keys=True).encode()).decode()
@@ -248,10 +291,25 @@ class LocalStorage:
     def public_url(self, key: str) -> str:
         return f"{self._base}/public/{key}"
 
+    async def write_private(self, key: str, data: bytes, content_type: str) -> None:
+        self.private[key] = (data, content_type)
+
+    async def delete_private(self, key: str) -> None:
+        self.private.pop(key, None)
+
+    def presign_get(self, key: str) -> tuple[str, datetime]:
+        expires_at = self._clock.now() + PRIVATE_URL_TTL
+        token = self._token({"key": key, "exp": expires_at.timestamp(), "op": "get"})
+        return f"{self._base}/private/{token}", expires_at
+
     def asgi_app(self) -> Starlette:
         async def upload(request: Request) -> Response:
             claims = self._claims(request.path_params["token"])
-            if claims is None or float(str(claims["exp"])) < self._clock.now().timestamp():
+            if (
+                claims is None
+                or "type" not in claims
+                or float(str(claims["exp"])) < self._clock.now().timestamp()
+            ):
                 return Response("signature expired or invalid", status_code=403)
             if request.headers.get("content-type") != claims["type"]:
                 return Response("content-type mismatch", status_code=403)
@@ -269,9 +327,25 @@ class LocalStorage:
                 found[0], media_type=found[1], headers={"Cache-Control": PUBLIC_CACHE_CONTROL}
             )
 
+        async def serve_private(request: Request) -> Response:
+            claims = self._claims(request.path_params["token"])
+            if (
+                claims is None
+                or claims.get("op") != "get"
+                or float(str(claims["exp"])) < self._clock.now().timestamp()
+            ):
+                return Response("signature expired or invalid", status_code=403)
+            found = self.private.get(str(claims["key"]))
+            if found is None:
+                return Response(status_code=404)
+            return Response(
+                found[0], media_type=found[1], headers={"Cache-Control": PRIVATE_CACHE_CONTROL}
+            )
+
         return Starlette(
             routes=[
                 Route("/upload/{token}", upload, methods=["PUT"]),
                 Route("/public/{key:path}", serve, methods=["GET"]),
+                Route("/private/{token}", serve_private, methods=["GET"]),
             ]
         )

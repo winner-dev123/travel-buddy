@@ -379,7 +379,10 @@ async def _messages_out(
     user_id: uuid.UUID,
     member: ConversationMember,
     rows: Sequence[Message],
+    sign: media.Signer | None = None,
 ) -> list[MessageOut]:
+    """Messages as ``user_id`` sees them. Callers have checked membership, so private
+    attachments get short-lived signed URLs (BL-3.05)."""
     if not rows:
         return []
     ids = [m.id for m in rows]
@@ -416,7 +419,9 @@ async def _messages_out(
             reactions[message_id].append(
                 ReactionSummary(emoji=emoji, count=int(count), reacted_by_me=bool(mine))
             )
-    refs = await media.refs(session, [i for media_ids in attachments.values() for i in media_ids])
+    refs = await media.refs(
+        session, [i for media_ids in attachments.values() for i in media_ids], sign=sign
+    )
     pinned = set(
         await session.scalars(
             select(ConversationPin.message_id).where(ConversationPin.message_id.in_(ids))
@@ -516,10 +521,12 @@ class MessagingService:
         sessionmaker: async_sessionmaker[AsyncSession],
         cursors: CursorCodec,
         publish: Publish | None = None,
+        sign: media.Signer | None = None,
     ) -> None:
         self._sessionmaker = sessionmaker
         self._cursors = cursors
         self._publish = publish
+        self._sign = sign
 
     async def _emit(self, users: Sequence[uuid.UUID], event: Mapping[str, Any]) -> None:
         """Best effort: the database is the record, and clients catch up by seq (docs/06 §1)."""
@@ -765,7 +772,7 @@ class MessagingService:
                 )
                 has_more = len(found) > limit
                 rows = list(reversed(found[:limit]))
-            data = await _messages_out(session, user_id, member, rows)
+            data = await _messages_out(session, user_id, member, rows, self._sign)
         return MessageList(
             data=data,
             page=SeqPageInfo(
@@ -790,7 +797,7 @@ class MessagingService:
                 )
             )
             if existing is not None:
-                [out] = await _messages_out(session, me, member, [existing])
+                [out] = await _messages_out(session, me, member, [existing], self._sign)
                 return out, True
             await trust_safety.ensure_not_restricted(
                 session,
@@ -896,7 +903,7 @@ class MessagingService:
                     "notify_user_ids": notify,
                 },
             )
-            [out] = await _messages_out(session, me, member, [message])
+            [out] = await _messages_out(session, me, member, [message], self._sign)
         await self._emit(recipients, _message_event("message.new", out.conversation_id, out.id))
         return out, False
 
@@ -933,7 +940,7 @@ class MessagingService:
                 },
             )
             await session.flush()
-            [out] = await _messages_out(session, user_id, member, [message])
+            [out] = await _messages_out(session, user_id, member, [message], self._sign)
             recipients = await _active_members(session, conversation.id)
         await self._emit(
             recipients, _message_event("message.updated", out.conversation_id, out.id, "edited")
@@ -1054,7 +1061,7 @@ class MessagingService:
                 )
             )
             rows = found[:limit]
-            data = await _messages_out(session, user_id, member, rows)
+            data = await _messages_out(session, user_id, member, rows, self._sign)
         return MessageList(
             data=data,
             page=SeqPageInfo(
@@ -1078,7 +1085,7 @@ class MessagingService:
                     .limit(MAX_PINS)
                 )
             )
-            data = await _messages_out(session, user_id, member, rows)
+            data = await _messages_out(session, user_id, member, rows, self._sign)
         seqs = [m.seq for m in rows]
         return MessageList(
             data=data,
@@ -1140,7 +1147,7 @@ class MessagingService:
         async with self._sessionmaker() as session:
             conversation, member = await _access(session, conversation_id, user_id)
             message = await _message_in(session, conversation, member, message_id)
-            [out] = await _messages_out(session, user_id, member, [message])
+            [out] = await _messages_out(session, user_id, member, [message], self._sign)
         return out
 
     async def sync(

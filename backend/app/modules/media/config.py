@@ -25,6 +25,8 @@ class MediaSettings(BaseSettings):
     media_s3_secret_access_key: SecretStr | None = None
     media_quarantine_bucket: str = Field(default="media-quarantine", pattern=r"^[a-z0-9.-]{3,63}$")
     media_public_bucket: str = Field(default="media-public", pattern=r"^[a-z0-9.-]{3,63}$")
+    # Processed private media (message attachments); defaults to the quarantine bucket.
+    media_private_bucket: str | None = Field(default=None, pattern=r"^[a-z0-9.-]{3,63}$")
     # Where processed public media is served from (CDN or the bucket's public URL), e.g.
     # https://<ref>.supabase.co/storage/v1/object/public/media-public
     media_public_base_url: HttpUrl | None = None

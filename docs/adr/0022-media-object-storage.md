@@ -42,6 +42,12 @@ staging, which runs on Vercel serverless, and a way to develop and test without 
    hash matching are required before launch (SAFE-004, T-MED-03).
 5. **No storage configured → uploads answer `503`.** Everything else keeps working, so staging
    boots before the buckets exist.
+6. **Private media (BL-3.05, added 2026-11-09).** Message attachments (purpose `message`) are
+   processed the same way, but their variants go to a private bucket (`MEDIA_PRIVATE_BUCKET`,
+   defaulting to the quarantine bucket, under `pm/`) and never to the public one. The owning module
+   authorizes the viewer first (messaging checks membership), then the API returns a presigned GET
+   that lives 5 minutes (`MediaRef.url_expires_at`). Deleting the message or the account deletes
+   the private objects.
 
 ## Consequences
 

@@ -272,7 +272,10 @@ def create_app(
     realtime_bus = build_realtime_bus(settings, redis)
     app.state.realtime_bus = realtime_bus
     app.state.messaging_service = messaging_service.MessagingService(
-        sessionmaker=database.sessionmaker, cursors=cursor_codec, publish=realtime_bus.publish
+        sessionmaker=database.sessionmaker,
+        cursors=cursor_codec,
+        publish=realtime_bus.publish,
+        sign=media_service.private_signer(media_storage),
     )
     app.state.notification_service = notifications_service.NotificationService(
         sessionmaker=database.sessionmaker, cursors=cursor_codec
@@ -366,6 +369,7 @@ def build_media_storage(
             secret=settings.media_s3_secret_access_key.get_secret_value(),
             quarantine_bucket=settings.media_quarantine_bucket,
             public_bucket=settings.media_public_bucket,
+            private_bucket=settings.media_private_bucket,
             public_base_url=str(settings.media_public_base_url),
             http=http_client,
             clock=clock,
