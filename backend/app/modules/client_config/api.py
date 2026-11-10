@@ -42,7 +42,7 @@ class ClientConfig(BaseModel):
     feature_flags: dict[str, bool]
     legal: LegalDocuments
     minimum_age: int
-    web_push_vapid_public_key: str | None = None  # Web Push lands with BL-3.16
+    web_push_vapid_public_key: str | None = None
 
 
 def _version(value: str) -> tuple[int, int, int]:
@@ -60,6 +60,7 @@ async def get_client_config(
     flags: FeatureFlags = request.app.state.feature_flags
     identity: IdentityService = request.app.state.identity_service
     legal = identity.legal_requirements()
+    vapid = getattr(request.app.state, "web_push_vapid", None)
     site = settings.public_site_url.rstrip("/")
     # The web is always deployed at the current version; only native apps can be outdated.
     outdated = platform != "web" and _version(app_version) < _version(
@@ -80,4 +81,5 @@ async def get_client_config(
             community_guidelines_url=f"{site}/legal/community-guidelines",
         ),
         minimum_age=legal.minimum_age,
+        web_push_vapid_public_key=vapid.public_key if vapid is not None else None,
     )

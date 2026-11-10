@@ -2,18 +2,27 @@
 
 from __future__ import annotations
 
+import json
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
+import httpx
 import pytest
+from fastapi.testclient import TestClient
+from pydantic import SecretStr
 
+from app.core.time import FixedClock
+from app.main import create_app
 from app.modules.notifications.push import RecordingPushSender
+from app.modules.notifications.webpush import _point, b64url
+from tests.conftest import make_identity_settings, make_settings
 from tests.contract_schemas import assert_matches_contract
 from tests.integration.conftest import LiveApp, db_scalar
 from tests.integration.test_destinations import catalog  # noqa: F401 - module-scoped fixture
 from tests.integration.test_identity_flows import _auth
 from tests.integration.test_messaging import _pair, _sent
-from tests.integration.test_posts import _problem, _tick, _user, app  # noqa: F401
+from tests.integration.test_posts import CRON, _problem, _tick, _user, app  # noqa: F401
 
 pytestmark = pytest.mark.integration
 
@@ -225,3 +234,64 @@ def test_tokens_the_provider_reports_gone_are_disabled(app: LiveApp) -> None:  #
     _sent(app, ana, conversation, "Again")
     _deliver(app)
     assert len(_pushes_to(app, push_token)) == 1  # the first attempt only; disabled since
+
+
+@pytest.mark.req("NOTIF-005")
+def test_browsers_receive_encrypted_web_push(catalog: str) -> None:  # noqa: F811
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    from tests.unit.test_webpush import browser_subscription, decrypt
+
+    vapid = ec.generate_private_key(ec.SECP256R1())
+    scalar = b64url(vapid.private_numbers().private_value.to_bytes(32, "big"))
+    delivered: list[httpx.Request] = []
+
+    def network(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "push.example":
+            delivered.append(request)
+            return httpx.Response(201)
+        return httpx.Response(200, json={"data": []})  # Expo
+
+    async def ok() -> bool:
+        return True
+
+    application = create_app(
+        make_settings(
+            database_url=catalog,
+            dev_idp_enabled=True,
+            cron_secret=SecretStr(CRON),
+            push_provider="expo",
+            web_push_vapid_private_key=SecretStr(scalar),
+        ),
+        identity_settings=make_identity_settings(),
+        readiness_checks={"db": ok},
+        clock=FixedClock(datetime.now(tz=UTC).replace(microsecond=0)),
+        http_transport=httpx.MockTransport(network),
+    )
+    with TestClient(application, raise_server_exceptions=False) as client:
+        live = LiveApp(client=client, clock=FixedClock(datetime.now(tz=UTC)), db_url=catalog)
+        config = client.get("/v1/client-config", params={"platform": "web", "app_version": "1.0.0"})
+        assert config.json()["web_push_vapid_public_key"] == b64url(_point(vapid.public_key()))
+
+        ana, _ = _user(live)
+        bo, bo_id = _user(live)
+        receiver, p256dh, auth = browser_subscription()
+        registered = client.post(
+            "/v1/users/me/devices",
+            headers=_auth(bo),
+            json={
+                "provider": "webpush",
+                "device_id": "browser-0042",
+                "subscription": {
+                    "endpoint": "https://push.example/sub/bo",
+                    "keys": {"p256dh": p256dh, "auth": auth},
+                },
+            },
+        )
+        assert registered.status_code == 201, registered.text
+        assert client.put(f"/v1/users/{bo_id}/follow", headers=_auth(ana)).status_code in (200, 201)
+        _deliver(live)
+        [request] = delivered
+        payload = json.loads(decrypt(request.content, receiver, auth))
+        assert payload["data"]["type"] == "new_follower"
+        assert request.headers["authorization"].startswith("vapid t=")

@@ -177,16 +177,6 @@ async def deliver(
     return len(targets) - len(gone)
 
 
-def build_sender(
-    provider: str, http: httpx.AsyncClient, access_token: str | None
-) -> PushSender | None:
-    if provider == "expo":
-        return ExpoPushSender(http, access_token)
-    if provider == "log":
-        return RecordingPushSender()
-    return None
-
-
 def make_handler(
     sessionmaker: async_sessionmaker[AsyncSession],
     sender: PushSender | None,

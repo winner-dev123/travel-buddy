@@ -79,7 +79,8 @@ from app.modules.messaging.api import router as messaging_router
 from app.modules.notifications import service as notifications_service
 from app.modules.notifications.api import router as notifications_router
 from app.modules.notifications.push import PushSender
-from app.modules.notifications.push import build_sender as build_push_sender
+from app.modules.notifications.webpush import Vapid
+from app.modules.notifications.webpush import build_sender as build_push_sender
 from app.modules.platform.api import AfterResponseTickMiddleware, internal_router
 from app.modules.platform.service import (
     DAILY,
@@ -199,10 +200,14 @@ def create_app(
     )
 
     media_storage = build_media_storage(media_settings, http_client, clock)
+    web_push_vapid = build_vapid(settings)
     push_sender = build_push_sender(
         settings.resolved_push_provider,
         http_client,
-        settings.expo_access_token.get_secret_value() if settings.expo_access_token else None,
+        expo_access_token=(
+            settings.expo_access_token.get_secret_value() if settings.expo_access_token else None
+        ),
+        vapid=web_push_vapid,
     )
     job_runner = build_job_runner(
         database=database,
@@ -282,6 +287,7 @@ def create_app(
     )
     app.state.media_storage = media_storage
     app.state.push_sender = push_sender
+    app.state.web_push_vapid = web_push_vapid
     app.state.media_service = media_service.MediaService(
         sessionmaker=database.sessionmaker,
         storage=media_storage,
@@ -492,6 +498,15 @@ async def group_chat_policy(
 ) -> groups_service.ChatPolicy:
     """Send rights in a group chat come from the group (groups → messaging, same layer)."""
     return await groups_service.chat_policy(session, group_id, user_id, now=now)
+
+
+def build_vapid(settings: Settings) -> Vapid | None:
+    """The Web Push application server key, when configured (BL-3.16)."""
+    if settings.web_push_vapid_private_key is None:
+        return None
+    return Vapid(
+        settings.web_push_vapid_private_key.get_secret_value(), settings.web_push_vapid_subject
+    )
 
 
 def build_realtime_bus(settings: Settings, redis: Redis | None) -> RealtimeBus:

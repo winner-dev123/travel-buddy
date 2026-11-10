@@ -107,6 +107,9 @@ class Settings(BaseSettings):
     # push security in the Expo dashboard).
     push_provider: Literal["auto", "expo", "log", "disabled"] = "auto"
     expo_access_token: SecretStr | None = None
+    # Web Push (BL-3.16, NOTIF-005): VAPID private key (base64url scalar or PEM) and contact.
+    web_push_vapid_private_key: SecretStr | None = None
+    web_push_vapid_subject: str = "mailto:support@travelbuddy.app"
 
     # Stripe for web purchases (BL-3.14, ADR-0012). Unset: checkout, portal and webhooks give 503.
     stripe_secret_key: SecretStr | None = None

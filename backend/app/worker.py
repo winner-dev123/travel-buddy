@@ -18,10 +18,10 @@ from app.core.config import get_settings
 from app.core.db import Database
 from app.core.logging import configure_logging
 from app.core.time import SystemClock
-from app.main import build_job_runner, build_media_storage
+from app.main import build_job_runner, build_media_storage, build_vapid
 from app.modules.identity.config import IdentitySettings
 from app.modules.media.config import MediaSettings
-from app.modules.notifications.push import build_sender as build_push_sender
+from app.modules.notifications.webpush import build_sender as build_push_sender
 from app.modules.web_cache.config import WebCacheSettings
 
 logger = logging.getLogger("app.worker")
@@ -61,9 +61,12 @@ async def run(*, once: bool, idle_sleep_seconds: float) -> None:
             push_sender=build_push_sender(
                 settings.resolved_push_provider,
                 http_client,
-                settings.expo_access_token.get_secret_value()
-                if settings.expo_access_token
-                else None,
+                expo_access_token=(
+                    settings.expo_access_token.get_secret_value()
+                    if settings.expo_access_token
+                    else None
+                ),
+                vapid=build_vapid(settings),
             ),
         )
         try:
