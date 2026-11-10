@@ -1,7 +1,8 @@
 {
   "common": {
     "appName": "Travel Buddy",
-    "retry": "Erneut versuchen"
+    "retry": "Erneut versuchen",
+    "cancel": "Abbrechen"
   },
   "tabs": {
     "home": "Start",
@@ -356,7 +357,8 @@
     "respondToRequest": "Auf die Anfrage antworten",
     "requestSent": "Kontaktanfrage gesendet",
     "connect": "Verbinden",
-    "connectNotAllowed": "Diese Person nimmt keine Kontaktanfragen von dir an."
+    "connectNotAllowed": "Diese Person nimmt keine Kontaktanfragen von dir an.",
+    "message": "Nachricht"
   },
   "report": {
     "title": "Melden",
@@ -366,7 +368,8 @@
     "question": {
       "post": "Was stimmt mit dieser Geschichte nicht?",
       "comment": "Was stimmt mit diesem Kommentar nicht?",
-      "user": "Was stimmt mit diesem Konto nicht?"
+      "user": "Was stimmt mit diesem Konto nicht?",
+      "message": "Was stimmt mit dieser Nachricht nicht?"
     },
     "urgent": "Wenn jemand in akuter Gefahr ist, wende dich zuerst an den örtlichen Notruf.",
     "details": "Sollten wir noch etwas wissen? (optional)",
@@ -438,5 +441,30 @@
       "low": "Andere Interessen"
     },
     "shared": "Gemeinsam: {{items}}"
+  },
+  "messages": {
+    "title": "Nachrichten",
+    "empty": "Noch keine Unterhaltungen. Verbinde dich mit Reisenden und schreib ihnen über ihr Profil.",
+    "loadFailed": "Deine Nachrichten konnten nicht geladen werden. Zum Aktualisieren ziehen.",
+    "you": "Du: {{text}}",
+    "photo": "Foto",
+    "deleted": "Nachricht gelöscht",
+    "deletedUser": "Gelöschtes Konto",
+    "unread_one": "{{count}} ungelesene Nachricht",
+    "unread_other": "{{count}} ungelesene Nachrichten",
+    "chatTitle": "Chat",
+    "placeholder": "Nachricht",
+    "send": "Senden",
+    "sendFailed": "Senden fehlgeschlagen. Tippe auf Senden, um es erneut zu versuchen.",
+    "edited": "bearbeitet",
+    "read": "Gelesen",
+    "noMessages": "Sag Hallo und plant etwas zusammen.",
+    "notEncrypted": "Nachrichten sind privat in dieser Unterhaltung, aber nicht Ende-zu-Ende-verschlüsselt.",
+    "blocked": "Du hast diese Person blockiert. Hebe die Blockierung auf, um Nachrichten zu senden.",
+    "connectionRequired": "Du kannst nur Personen schreiben, mit denen du verbunden bist.",
+    "actions": "Nachrichtenoptionen",
+    "actionsHint": "Lange drücken für Optionen",
+    "delete": "Für alle löschen",
+    "report": "Nachricht melden"
   }
 }

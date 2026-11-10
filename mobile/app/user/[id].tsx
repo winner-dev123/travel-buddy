@@ -17,6 +17,7 @@ import {
   setFollowing,
 } from '@/features/account/api';
 import { feedKeys } from '@/features/feed/api';
+import { openDirect } from '@/features/messages/api';
 import { Avatar, PostCard } from '@/features/feed/PostCard';
 import type { Post } from '@/features/feed/types';
 import { useAppTheme } from '@/theme/useAppTheme';
@@ -47,6 +48,11 @@ export default function UserProfileScreen() {
       );
       void queryClient.invalidateQueries({ queryKey: accountKeys.profile(id) });
     },
+  });
+  const message = useMutation({
+    mutationFn: () => openDirect(getApiClient(), id),
+    onSuccess: (conversation) =>
+      router.push({ pathname: '/chat/[id]', params: { id: conversation.id } }),
   });
   const connectKey = useRef(getApiClient().newIdempotencyKey());
   const connect = useMutation({
@@ -119,9 +125,20 @@ export default function UserProfileScreen() {
             testID="user-follow"
           />
           {data.relationship === 'connected' ? (
-            <Notice tone="success" testID="user-connected">
-              {t('user.connected')}
-            </Notice>
+            <>
+              <Notice tone="success" testID="user-connected">
+                {t('user.connected')}
+              </Notice>
+              {data.can_message ? (
+                <Button
+                  label={t('user.message')}
+                  onPress={() => message.mutate()}
+                  busy={message.isPending}
+                  testID="user-message"
+                />
+              ) : null}
+              {message.isError ? <Notice tone="error">{t('user.actionFailed')}</Notice> : null}
+            </>
           ) : data.relationship === 'request_received' ? (
             <Button
               label={t('user.respondToRequest')}

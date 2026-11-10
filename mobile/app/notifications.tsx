@@ -48,6 +48,8 @@ export default function NotificationsScreen() {
       router.push({ pathname: '/post/[id]', params: { id: item.entity_id } });
     } else if (item.entity_type === 'user' && item.entity_id) {
       router.push({ pathname: '/user/[id]', params: { id: item.entity_id } });
+    } else if (item.entity_type === 'conversation' && item.entity_id) {
+      router.push({ pathname: '/chat/[id]', params: { id: item.entity_id } });
     }
   };
 

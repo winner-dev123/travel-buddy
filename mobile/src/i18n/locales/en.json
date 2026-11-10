@@ -1,7 +1,8 @@
 {
   "common": {
     "appName": "Travel Buddy",
-    "retry": "Try again"
+    "retry": "Try again",
+    "cancel": "Cancel"
   },
   "tabs": {
     "home": "Home",
@@ -356,7 +357,8 @@
     "respondToRequest": "Respond to their request",
     "requestSent": "Connection request sent",
     "connect": "Connect",
-    "connectNotAllowed": "This traveller isn't accepting connection requests from you."
+    "connectNotAllowed": "This traveller isn't accepting connection requests from you.",
+    "message": "Message"
   },
   "report": {
     "title": "Report",
@@ -366,7 +368,8 @@
     "question": {
       "post": "What's wrong with this story?",
       "comment": "What's wrong with this comment?",
-      "user": "What's wrong with this account?"
+      "user": "What's wrong with this account?",
+      "message": "What's wrong with this message?"
     },
     "urgent": "If someone is in immediate danger, contact local emergency services first.",
     "details": "Anything else we should know? (optional)",
@@ -438,5 +441,30 @@
       "low": "Different interests"
     },
     "shared": "In common: {{items}}"
+  },
+  "messages": {
+    "title": "Messages",
+    "empty": "No conversations yet. Connect with travellers, then message them from their profile.",
+    "loadFailed": "Couldn't load your messages. Pull to try again.",
+    "you": "You: {{text}}",
+    "photo": "Photo",
+    "deleted": "Message deleted",
+    "deletedUser": "Deleted user",
+    "unread_one": "{{count}} unread message",
+    "unread_other": "{{count}} unread messages",
+    "chatTitle": "Chat",
+    "placeholder": "Message",
+    "send": "Send",
+    "sendFailed": "Couldn't send. Tap Send to try again.",
+    "edited": "edited",
+    "read": "Read",
+    "noMessages": "Say hello and plan something together.",
+    "notEncrypted": "Messages are private to this conversation but aren't end-to-end encrypted.",
+    "blocked": "You blocked this person. Unblock them to send messages.",
+    "connectionRequired": "You can only message people you're connected with.",
+    "actions": "Message options",
+    "actionsHint": "Long press for options",
+    "delete": "Delete for everyone",
+    "report": "Report message"
   }
 }

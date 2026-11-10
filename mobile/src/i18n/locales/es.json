@@ -1,7 +1,8 @@
 {
   "common": {
     "appName": "Travel Buddy",
-    "retry": "Reintentar"
+    "retry": "Reintentar",
+    "cancel": "Cancelar"
   },
   "tabs": {
     "home": "Inicio",
@@ -361,7 +362,8 @@
     "respondToRequest": "Responder a su solicitud",
     "requestSent": "Solicitud de conexión enviada",
     "connect": "Conectar",
-    "connectNotAllowed": "Esta persona no acepta solicitudes de conexión tuyas."
+    "connectNotAllowed": "Esta persona no acepta solicitudes de conexión tuyas.",
+    "message": "Mensaje"
   },
   "report": {
     "title": "Denunciar",
@@ -371,7 +373,8 @@
     "question": {
       "post": "¿Qué problema tiene esta historia?",
       "comment": "¿Qué problema tiene este comentario?",
-      "user": "¿Qué problema tiene esta cuenta?"
+      "user": "¿Qué problema tiene esta cuenta?",
+      "message": "¿Qué problema tiene este mensaje?"
     },
     "urgent": "Si alguien está en peligro inmediato, contacta primero con los servicios de emergencia locales.",
     "details": "¿Algo más que debamos saber? (opcional)",
@@ -443,5 +446,31 @@
       "low": "Intereses distintos"
     },
     "shared": "En común: {{items}}"
+  },
+  "messages": {
+    "title": "Mensajes",
+    "empty": "Aún no tienes conversaciones. Conecta con viajeros y escríbeles desde su perfil.",
+    "loadFailed": "No pudimos cargar tus mensajes. Desliza para reintentar.",
+    "you": "Tú: {{text}}",
+    "photo": "Foto",
+    "deleted": "Mensaje eliminado",
+    "deletedUser": "Usuario eliminado",
+    "unread_one": "{{count}} mensaje sin leer",
+    "unread_many": "{{count}} mensajes sin leer",
+    "unread_other": "{{count}} mensajes sin leer",
+    "chatTitle": "Chat",
+    "placeholder": "Mensaje",
+    "send": "Enviar",
+    "sendFailed": "No se pudo enviar. Pulsa Enviar para reintentar.",
+    "edited": "editado",
+    "read": "Leído",
+    "noMessages": "Saluda y planead algo juntos.",
+    "notEncrypted": "Los mensajes son privados de esta conversación, pero no tienen cifrado de extremo a extremo.",
+    "blocked": "Bloqueaste a esta persona. Desbloquéala para enviar mensajes.",
+    "connectionRequired": "Solo puedes escribir a personas con las que estás conectado.",
+    "actions": "Opciones del mensaje",
+    "actionsHint": "Mantén pulsado para ver opciones",
+    "delete": "Eliminar para todos",
+    "report": "Denunciar mensaje"
   }
 }

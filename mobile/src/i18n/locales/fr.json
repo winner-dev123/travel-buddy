@@ -1,7 +1,8 @@
 {
   "common": {
     "appName": "Travel Buddy",
-    "retry": "Réessayer"
+    "retry": "Réessayer",
+    "cancel": "Annuler"
   },
   "tabs": {
     "home": "Accueil",
@@ -361,7 +362,8 @@
     "respondToRequest": "Répondre à sa demande",
     "requestSent": "Demande de connexion envoyée",
     "connect": "Se connecter",
-    "connectNotAllowed": "Cette personne n'accepte pas vos demandes de connexion."
+    "connectNotAllowed": "Cette personne n'accepte pas vos demandes de connexion.",
+    "message": "Message"
   },
   "report": {
     "title": "Signaler",
@@ -371,7 +373,8 @@
     "question": {
       "post": "Quel est le problème avec ce récit ?",
       "comment": "Quel est le problème avec ce commentaire ?",
-      "user": "Quel est le problème avec ce compte ?"
+      "user": "Quel est le problème avec ce compte ?",
+      "message": "Quel est le problème avec ce message ?"
     },
     "urgent": "Si quelqu'un est en danger immédiat, contactez d'abord les services d'urgence locaux.",
     "details": "Autre chose à nous dire ? (facultatif)",
@@ -443,5 +446,31 @@
       "low": "Centres d'intérêt différents"
     },
     "shared": "En commun : {{items}}"
+  },
+  "messages": {
+    "title": "Messages",
+    "empty": "Aucune conversation pour l'instant. Connectez-vous avec des voyageurs, puis écrivez-leur depuis leur profil.",
+    "loadFailed": "Impossible de charger vos messages. Tirez pour réessayer.",
+    "you": "Vous : {{text}}",
+    "photo": "Photo",
+    "deleted": "Message supprimé",
+    "deletedUser": "Utilisateur supprimé",
+    "unread_one": "{{count}} message non lu",
+    "unread_many": "{{count}} messages non lus",
+    "unread_other": "{{count}} messages non lus",
+    "chatTitle": "Discussion",
+    "placeholder": "Message",
+    "send": "Envoyer",
+    "sendFailed": "Envoi impossible. Appuyez sur Envoyer pour réessayer.",
+    "edited": "modifié",
+    "read": "Lu",
+    "noMessages": "Dites bonjour et prévoyez quelque chose ensemble.",
+    "notEncrypted": "Les messages sont privés à cette conversation, mais ne sont pas chiffrés de bout en bout.",
+    "blocked": "Vous avez bloqué cette personne. Débloquez-la pour envoyer des messages.",
+    "connectionRequired": "Vous ne pouvez écrire qu'aux personnes avec qui vous êtes connecté.",
+    "actions": "Options du message",
+    "actionsHint": "Appui long pour les options",
+    "delete": "Supprimer pour tout le monde",
+    "report": "Signaler le message"
   }
 }

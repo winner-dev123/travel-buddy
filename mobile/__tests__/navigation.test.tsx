@@ -76,9 +76,9 @@ describe('app navigation shell', () => {
 
   it('applies the user locale override over the device locale', async () => {
     useSettingsStore.getState().setLocaleOverride('pt-BR');
-    await renderRouter(routes, { initialUrl: '/messages' });
+    await renderRouter(routes, { initialUrl: '/explore' });
 
-    expect(screen.getAllByText('Mensagens').length).toBeGreaterThan(0);
-    expect(screen.getByText('Disponível na fase 3')).toBeTruthy();
+    expect(screen.getAllByText('Mensagens').length).toBeGreaterThan(0); // tab label
+    expect(screen.getByText('Disponível na fase 4')).toBeTruthy();
   });
 });

@@ -115,6 +115,7 @@ export interface PublicProfile {
   relationship:
     'none' | 'request_pending' | 'request_received' | 'connected' | 'declined' | 'blocked';
   can_request_connection: boolean;
+  can_message?: boolean;
 }
 
 export function fetchProfile(client: ApiClient, userId: string): Promise<PublicProfile> {
@@ -138,7 +139,7 @@ export async function setFollowing(
     .status;
 }
 
-export type ReportTarget = 'post' | 'comment' | 'user';
+export type ReportTarget = 'post' | 'comment' | 'user' | 'message';
 export const REPORT_REASONS = [
   'spam',
   'harassment',

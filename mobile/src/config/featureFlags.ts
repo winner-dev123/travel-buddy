@@ -90,7 +90,7 @@ export const FEATURES: Readonly<Record<FeatureKey, FeatureDefinition>> = {
   },
   messaging: {
     phase: 3,
-    released: false,
+    released: true,
     requiresNetwork: true,
     plannedCapabilities: [
       'features.messaging.capabilities.direct',

@@ -120,7 +120,7 @@ Web-workstream items (Next.js app, BFF, web admin) are tracked by the web workst
 | BL-3.08 | Invitations: direct + link (hashed tokens, max uses, expiry, revoke), redemption | M | 3.07 | GRP-005, GRP-008, T-GRP-01/02 |
 | BL-3.09 | Group chat: announcements, threads, pins, mentions, moderation (remove, restrict), history policy | L | 3.03, 3.07 | GCHAT-001..007 |
 | BL-3.10 | Owner lapse handling, admin grace, ownership transfer | M | 3.02, 3.07 | GRP-009..011, BILL-008 |
-| BL-3.11 | Mobile: messages tab, DM screen, group chat, group management, paywall + purchase flow | L | 3.03..3.10 | DM-*, GRP-*, BILL-002/004 |
+| BL-3.11 | Mobile: messages tab, DM screen, group chat, group management, paywall + purchase flow | L | 3.03..3.10 | DM-*, GRP-*, BILL-002/004 | 🟡 Direct messages done (messages tab with previews and unread counts, chat screen with polling per ADR-0023, idempotent send, read marks and reciprocal "Read", tombstones, delete/report from a long press, block restriction notice, "Message" on connected profiles, new-message notifications open the chat). Pending: group chat and management, paywall, push registration (needs `expo-notifications` and Firebase credentials for Android) |
 | BL-3.12 | Security tests: IDOR on messages, cross-group leakage, subscription bypass, invitation reuse | M | 3.09 | T-AZ-*, T-BILL-*, T-GRP-* |
 | BL-3.13 | E2E: connection → DM, premium purchase (sandbox) → group, invitation → group chat | M | 3.11 | — |
 | BL-3.14 | Stripe adapter for web: checkout and portal sessions, signed webhooks, `billing_customers` (ADR-0012) | M | 3.01 | BILL-002..006 |

@@ -1,7 +1,8 @@
 {
   "common": {
     "appName": "Travel Buddy",
-    "retry": "Tentar novamente"
+    "retry": "Tentar novamente",
+    "cancel": "Cancelar"
   },
   "tabs": {
     "home": "Início",
@@ -361,7 +362,8 @@
     "respondToRequest": "Responder ao pedido",
     "requestSent": "Pedido de conexão enviado",
     "connect": "Conectar",
-    "connectNotAllowed": "Esta pessoa não está aceitando pedidos de conexão seus."
+    "connectNotAllowed": "Esta pessoa não está aceitando pedidos de conexão seus.",
+    "message": "Mensagem"
   },
   "report": {
     "title": "Denunciar",
@@ -371,7 +373,8 @@
     "question": {
       "post": "Qual é o problema com esta história?",
       "comment": "Qual é o problema com este comentário?",
-      "user": "Qual é o problema com esta conta?"
+      "user": "Qual é o problema com esta conta?",
+      "message": "Qual é o problema com esta mensagem?"
     },
     "urgent": "Se alguém estiver em perigo imediato, entre em contato primeiro com os serviços de emergência locais.",
     "details": "Mais alguma coisa que devemos saber? (opcional)",
@@ -443,5 +446,31 @@
       "low": "Interesses diferentes"
     },
     "shared": "Em comum: {{items}}"
+  },
+  "messages": {
+    "title": "Mensagens",
+    "empty": "Nenhuma conversa ainda. Conecte-se com viajantes e envie mensagens pelo perfil deles.",
+    "loadFailed": "Não foi possível carregar suas mensagens. Puxe para tentar de novo.",
+    "you": "Você: {{text}}",
+    "photo": "Foto",
+    "deleted": "Mensagem apagada",
+    "deletedUser": "Usuário excluído",
+    "unread_one": "{{count}} mensagem não lida",
+    "unread_many": "{{count}} mensagens não lidas",
+    "unread_other": "{{count}} mensagens não lidas",
+    "chatTitle": "Conversa",
+    "placeholder": "Mensagem",
+    "send": "Enviar",
+    "sendFailed": "Não foi possível enviar. Toque em Enviar para tentar de novo.",
+    "edited": "editada",
+    "read": "Lida",
+    "noMessages": "Diga oi e planejem algo juntos.",
+    "notEncrypted": "As mensagens são privadas desta conversa, mas não têm criptografia de ponta a ponta.",
+    "blocked": "Você bloqueou esta pessoa. Desbloqueie para enviar mensagens.",
+    "connectionRequired": "Você só pode enviar mensagens para pessoas com quem está conectado.",
+    "actions": "Opções da mensagem",
+    "actionsHint": "Toque e segure para ver opções",
+    "delete": "Apagar para todos",
+    "report": "Denunciar mensagem"
   }
 }

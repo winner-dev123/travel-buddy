@@ -12,16 +12,16 @@ beforeEach(async () => {
 });
 
 describe('feature flags', () => {
-  it('releases only the features that are built (feed, onboarding, companions)', () => {
-    const released = new Set<FeatureKey>(['feed', 'onboarding', 'companions']);
+  it('releases only the features that are built (feed, onboarding, companions, messaging)', () => {
+    const released = new Set<FeatureKey>(['feed', 'onboarding', 'companions', 'messaging']);
     for (const key of Object.keys(FEATURES) as FeatureKey[]) {
       expect(isFeatureEnabled(key, [])).toBe(released.has(key));
     }
   });
 
   it('honours development overrides', () => {
-    expect(isFeatureEnabled('messaging', ['messaging'])).toBe(true);
-    expect(isFeatureEnabled('explore', ['messaging'])).toBe(false);
+    expect(isFeatureEnabled('explore', ['explore'])).toBe(true);
+    expect(isFeatureEnabled('explore', ['groups'])).toBe(false);
   });
 
   it('every planned capability key resolves to a translation', () => {
@@ -41,17 +41,17 @@ describe('feature flags', () => {
 describe('FeatureGate', () => {
   it('shows the phase placeholder when the feature is not released', async () => {
     await render(
-      <FeatureGate feature="messaging" overrides={[]}>
+      <FeatureGate feature="explore" overrides={[]}>
         <Text>real screen</Text>
       </FeatureGate>,
     );
-    expect(screen.getByText('Coming in Phase 3')).toBeTruthy();
+    expect(screen.getByText('Coming in Phase 4')).toBeTruthy();
     expect(screen.queryByText('real screen')).toBeNull();
   });
 
   it('renders the implementation when force-enabled', async () => {
     await render(
-      <FeatureGate feature="messaging" overrides={['messaging']}>
+      <FeatureGate feature="explore" overrides={['explore']}>
         <Text>real screen</Text>
       </FeatureGate>,
     );
