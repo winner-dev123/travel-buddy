@@ -11,6 +11,7 @@ import { mintDevIdToken } from '@/auth/devIdp';
 import { describeAuthError } from '@/auth/errors';
 import { OAuthCancelled, signInWithProvider } from '@/auth/oauth';
 import { APP_INFO_KEY, exchangeIdToken, fetchAppInfo } from '@/auth/session';
+import { takeHomeRoute } from '@/auth/sessionStore';
 import { type OAuthProvider, SupabaseAuthClient, SupabaseAuthError } from '@/auth/supabaseAuth';
 import { Button, Notice, TextField } from '@/components/Form';
 import { getIdentityProviderKind, getSupabaseConfig } from '@/config/env';
@@ -67,7 +68,7 @@ export default function SignInScreen() {
       router.replace('/complete-registration');
     } else {
       // PROF-002: straight to the feed, unless setup was never finished.
-      router.replace(outcome.me.onboarding_completed ? '/' : '/onboarding');
+      router.replace(outcome.me.onboarding_completed ? takeHomeRoute() : '/onboarding');
     }
   }
 

@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getApiClient } from '@/api';
 import { describeAuthError } from '@/auth/errors';
-import { useSessionStore } from '@/auth/sessionStore';
+import { takeHomeRoute, useSessionStore } from '@/auth/sessionStore';
 import { FeatureGate } from '@/components/FeatureGate';
 import { Button, Notice, TextField } from '@/components/Form';
 import { refreshMe, updateProfile } from '@/features/account/api';
@@ -145,7 +145,7 @@ function OnboardingWizard() {
         await client.post('/v1/users/me/onboarding/complete');
         await refreshMe(client);
       },
-      () => router.replace('/'),
+      () => router.replace(takeHomeRoute()),
     );
 
   const onNext = () => {

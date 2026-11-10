@@ -638,7 +638,8 @@
     "sendAnnouncement": "Post announcement",
     "announcementSent": "Announcement posted in the group chat.",
     "inviteTitle": "Group invitation",
-    "notNow": "Not now"
+    "notNow": "Not now",
+    "inviteSignIn": "Sign in to see this group and join it."
   },
   "explore": {
     "plan": "Plan a trip with AI",

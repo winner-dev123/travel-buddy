@@ -4,6 +4,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ApiProblem } from '@/api';
+import { takeHomeRoute, useSessionStore } from '@/auth/sessionStore';
+import type { Me } from '@/auth/types';
 import { i18n } from '@/i18n';
 
 import Invite from '../app/invite';
@@ -55,8 +57,14 @@ async function renderInvite() {
   );
 }
 
+const me = {
+  account: { id: 'u9', email: 'me@example.com', email_verified: true, status: 'active' },
+  onboarding_completed: true,
+} as unknown as Me;
+
 beforeEach(async () => {
   jest.clearAllMocks();
+  useSessionStore.getState().setSignedIn(me);
   await i18n.changeLanguage('en');
 });
 
@@ -100,4 +108,21 @@ it('explains a full group', async () => {
   );
   await renderInvite();
   expect(await screen.findByTestId('invite-invalid')).toHaveTextContent('This group is full.');
+});
+
+it('asks a signed-out traveller to sign in and brings them back afterwards', async () => {
+  useSessionStore.getState().setSignedOut();
+  mockUrl = `travelbuddy://invite#t=${TOKEN}`;
+  await renderInvite();
+  expect(screen.getByTestId('invite-sign-in-note')).toHaveTextContent(
+    'Sign in to see this group and join it.',
+  );
+  expect(screen.queryByTestId('invite-invalid')).toBeNull();
+  expect(mockApi.post).not.toHaveBeenCalled(); // the preview needs an account
+
+  await fireEvent.press(screen.getByTestId('invite-sign-in'));
+  expect(mockRouter.push).toHaveBeenCalledWith('/sign-in');
+  useSessionStore.getState().setSignedIn(me);
+  expect(takeHomeRoute()).toEqual({ pathname: '/invite', params: { t: TOKEN } });
+  expect(takeHomeRoute()).toBe('/'); // used once
 });

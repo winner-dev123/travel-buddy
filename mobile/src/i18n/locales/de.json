@@ -638,7 +638,8 @@
     "sendAnnouncement": "Ankündigung posten",
     "announcementSent": "Ankündigung im Gruppenchat gepostet.",
     "inviteTitle": "Gruppeneinladung",
-    "notNow": "Nicht jetzt"
+    "notNow": "Nicht jetzt",
+    "inviteSignIn": "Melde dich an, um diese Gruppe zu sehen und beizutreten."
   },
   "explore": {
     "plan": "Reise mit KI planen",

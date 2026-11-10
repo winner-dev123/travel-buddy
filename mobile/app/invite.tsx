@@ -6,6 +6,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ApiProblem, getApiClient } from '@/api';
+import { useSessionStore } from '@/auth/sessionStore';
 import { Button, Notice } from '@/components/Form';
 import { previewInvitation, redeemInvitation, tokenFrom } from '@/features/groups/api';
 import { useAppTheme } from '@/theme/useAppTheme';
@@ -26,11 +27,13 @@ export default function InviteScreen() {
   const params = useLocalSearchParams<{ t?: string }>();
   const candidate = params.t ?? (url ? tokenFrom(url) : '');
   const token = TOKEN.test(candidate) ? candidate : null;
+  const status = useSessionStore((state) => state.status);
+  const signedOut = status === 'signed_out';
 
   const preview = useQuery({
     queryKey: ['groups', 'invite-preview', token],
     queryFn: () => previewInvitation(getApiClient(), token as string),
-    enabled: token !== null,
+    enabled: token !== null && status === 'signed_in',
     retry: false,
     gcTime: 0,
   });
@@ -65,6 +68,22 @@ export default function InviteScreen() {
           <Notice tone="error" testID="invite-invalid">
             {message}
           </Notice>
+        ) : null}
+        {signedOut && token ? (
+          <>
+            <Notice tone="info" testID="invite-sign-in-note">
+              {t('groups.inviteSignIn')}
+            </Notice>
+            <Button
+              label={t('account.goToSignIn')}
+              onPress={() => {
+                // Back to this invitation once signed in (an existing account).
+                useSessionStore.getState().setPendingInvite(token);
+                router.push('/sign-in');
+              }}
+              testID="invite-sign-in"
+            />
+          </>
         ) : null}
         {group && preview.data ? (
           <View

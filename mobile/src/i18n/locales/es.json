@@ -650,7 +650,8 @@
     "sendAnnouncement": "Publicar anuncio",
     "announcementSent": "Anuncio publicado en el chat del grupo.",
     "inviteTitle": "Invitación a un grupo",
-    "notNow": "Ahora no"
+    "notNow": "Ahora no",
+    "inviteSignIn": "Inicia sesión para ver este grupo y unirte."
   },
   "explore": {
     "plan": "Planifica un viaje con IA",
