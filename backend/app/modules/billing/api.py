@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import uuid
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Body, Depends, Header, Request
+from fastapi import APIRouter, Body, Depends, Header, Request, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -187,6 +187,22 @@ async def receive_apple_notification(
     """App Store Server Notifications v2; verified against the pinned Apple root."""
     outcome = await _service(request).apple_webhook(body.signedPayload)
     return {"status": outcome}
+
+
+@router.post(
+    "/webhooks/google",
+    status_code=status.HTTP_204_NO_CONTENT,
+    openapi_extra=rate_limited("webhook"),
+)
+async def receive_google_notification(
+    body: dict[str, Any],
+    request: Request,
+    authorization: Annotated[str | None, Header(max_length=4096)] = None,
+) -> Response:
+    """Play Real-time Developer Notifications via Pub/Sub push; the push OIDC token is verified
+    before the message is read."""
+    await _service(request).google_webhook(body, authorization)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/webhooks/stripe", openapi_extra=rate_limited("webhook"))

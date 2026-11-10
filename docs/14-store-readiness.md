@@ -31,7 +31,7 @@ the first submission, close the gaps listed in [§6](#6-gaps-before-the-first-su
 
 | Requirement | Where it lives | Status |
 |---|---|---|
-| Digital goods through store billing (App Store 3.1.1, Play Payments policy) | Premium and paid guides through StoreKit / Play Billing; verification server-side (ADR-0017) | ✅ App Store (needs `APPLE_BUNDLE_ID`, `APPLE_ROOT_CA_SHA256`) · ⚠️ Google Play verification needs a Play service account |
+| Digital goods through store billing (App Store 3.1.1, Play Payments policy) | Premium and paid guides through StoreKit / Play Billing; verification server-side (ADR-0017) | ✅ App Store (needs `APPLE_BUNDLE_ID`, `APPLE_ROOT_CA_SHA256`) · ✅ Google Play (needs the Play service account key and the RTDN Pub/Sub push settings, `GOOGLE_*`) |
 | No steering to web purchases inside the app | Stripe Checkout exists for the web only; the app shows no web price or link | ✅ keep it that way |
 | Restore purchases | `POST /v1/billing/purchases/restore`; paywall has a restore action | ✅ |
 | Challenge prizes | No cash, cash equivalents, raffles, wagers or paid entry (CHAL-013); sponsored rewards reviewed by staff (CHAL-014) | ✅ |
@@ -84,8 +84,10 @@ today. If one is added, update this table and the label.
    Review and Play review in the submission notes.
 6. **Store listings:** screenshots in five locales, age rating questionnaires (user-generated
    content, unrestricted messaging between users), privacy policy URL.
-7. **Google Play billing:** Play Developer API service account for purchase verification and Real-time
-   Developer Notifications (BL-6.01).
+7. **Google Play billing:** the code is ready (verification, acknowledgement, RTDN). Still needed:
+   a service account with Play Developer API access, a Pub/Sub topic linked in Play Console with
+   an authenticated push subscription to `/v1/billing/webhooks/google`, and the four `GOOGLE_*`
+   settings (BL-6.01).
 
 ## 7. Device permissions
 

@@ -31,11 +31,7 @@ CONTRACT_PATH = REPO_ROOT / "contracts" / "openapi" / "openapi.yaml"
 # Contract operations up to this phase must all be implemented (later phases may be partial),
 # except the known gaps below, each tracked in docs/09. Remove an entry when it lands.
 DELIVERED_PHASE = 5
-PENDING_OPERATIONS = frozenset(
-    {
-        "POST /v1/billing/webhooks/google",
-    }
-)
+PENDING_OPERATIONS: frozenset[str] = frozenset()
 REALTIME_DIR = REPO_ROOT / "contracts" / "realtime"
 
 # Property names that must never appear in schemas describing another user.

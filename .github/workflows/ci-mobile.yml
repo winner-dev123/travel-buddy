@@ -42,3 +42,5 @@ jobs:
       - run: npm run test:ci
       - name: Expo dependency compatibility
         run: npx expo install --check
+      - name: Dependency audit (high and critical fail the build)
+        run: npm audit --omit=dev --audit-level=high

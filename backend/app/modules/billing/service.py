@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import uuid
 from collections.abc import Awaitable, Callable, Mapping, Sequence
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -55,6 +56,15 @@ from app.modules.billing.entitlements import (
     QuotaRule,
     evaluate,
     group_premium_status,
+)
+from app.modules.billing.google import (
+    REVOKING_NOTIFICATIONS,
+    GoogleAuthError,
+    GooglePlayError,
+    GooglePlayProvider,
+    PlaySubscription,
+    PushVerifier,
+    parse_push,
 )
 from app.modules.billing.models import (
     BillingCustomer,
@@ -307,12 +317,16 @@ class BillingService:
         web_origin: str = "http://localhost:3000",
         usage: QuotaUsage | None = None,
         apple: AppleJWSVerifier | None = None,
+        google: GooglePlayProvider | None = None,
+        google_push: PushVerifier | None = None,
     ) -> None:
         self._sessionmaker = sessionmaker
         self._clock = clock
         self._providers = dict(providers)
         self._stripe = stripe
         self._apple = apple
+        self._google = google
+        self._google_push = google_push
         self._web_origin = web_origin.rstrip("/")
         self._usage = usage
 
@@ -341,11 +355,29 @@ class BillingService:
             raise AppError(ErrorCode.SERVICE_UNAVAILABLE, "Purchases can't be verified yet.")
         return provider
 
+    async def _with_kind(self, claim: PurchaseClaim) -> PurchaseClaim:
+        """Google answers subscriptions and one-time products on different APIs: tell it which
+        one this SKU is, from the catalog."""
+        if claim.store != "google":
+            return claim
+        async with self._sessionmaker() as session:
+            kind = await session.scalar(
+                select(Product.kind).where(
+                    Product.platform == "android",
+                    Product.sku == claim.sku,
+                    Product.active.is_(True),
+                )
+            )
+        if kind is None:
+            raise AppError(ErrorCode.PURCHASE_INVALID, "This product isn't sold here.")
+        return replace(claim, product_kind=str(kind))
+
     async def verify(
         self, principal: Principal, claim: PurchaseClaim, *, idempotency_key: uuid.UUID
     ) -> VerifyPurchaseResult:
         now = self._clock.now()
-        transaction = self._provider(claim.store).verify(claim, now=now)
+        claim = await self._with_kind(claim)
+        transaction = await self._provider(claim.store).verify(claim, now=now)
         async with self._sessionmaker() as session, session.begin():
             replay = await platform.idempotency.claim(
                 session,
@@ -375,7 +407,9 @@ class BillingService:
     ) -> Entitlements:
         """Re-verify each transaction; ones bound to another account are skipped (docs/07 §6)."""
         now = self._clock.now()
-        verified = [self._provider(c.store).verify(c, now=now) for c in claims]
+        verified = [
+            await self._provider(c.store).verify(await self._with_kind(c), now=now) for c in claims
+        ]
         async with self._sessionmaker() as session, session.begin():
             replay = await platform.idempotency.claim(
                 session,
@@ -494,7 +528,7 @@ class BillingService:
                 status=transaction.status,
                 auto_renew_enabled=transaction.auto_renew,
                 current_period_start=transaction.purchased_at,
-                current_period_end=transaction.purchased_at + period,
+                current_period_end=transaction.expires_at or transaction.purchased_at + period,
                 environment=transaction.environment,
                 last_event_at=now,
             )
@@ -505,13 +539,15 @@ class BillingService:
             subscription.product_id = product.id
             subscription.status = transaction.status
             subscription.auto_renew_enabled = transaction.auto_renew
-            if (subscription.current_period_end or now) <= now:
+            if transaction.expires_at is not None:
+                subscription.current_period_end = transaction.expires_at
+            elif (subscription.current_period_end or now) <= now:
                 subscription.current_period_start = transaction.purchased_at
                 subscription.current_period_end = transaction.purchased_at + period
             subscription.last_event_at = now
             await session.flush()
         if transaction.status == SubscriptionStatus.IN_GRACE_PERIOD:
-            subscription.grace_period_ends_at = now + GRACE
+            subscription.grace_period_ends_at = transaction.expires_at or now + GRACE
         await _materialize(session, subscription, product, now=now)
         return subscription
 
@@ -648,6 +684,166 @@ class BillingService:
                 "environment": data.get("environment"),
             },
         )
+
+    # ─────────────────────────── Google Play notifications (BL-6.01) ───────────────────────────
+
+    async def google_webhook(self, body: Mapping[str, Any], authorization: str | None) -> str:
+        """Real-time Developer Notifications through Pub/Sub push (BILL-007, BILL-008). The push
+        OIDC token is checked first; each message is stored once by ``messageId``; the state is
+        re-read from the Play Developer API. A Play API failure answers ``503`` so Pub/Sub retries
+        (nothing is stored in that case)."""
+        if self._google is None or self._google_push is None:
+            raise AppError(
+                ErrorCode.SERVICE_UNAVAILABLE,
+                "Google Play notifications aren't set up yet.",
+                headers={"Retry-After": "3600"},
+            )
+        try:
+            await self._google_push.verify(authorization)
+        except GoogleAuthError:
+            raise AppError(ErrorCode.UNAUTHENTICATED, "Not a Pub/Sub push for this app.") from None
+        try:
+            note = parse_push(body)
+        except ValueError:
+            raise AppError(ErrorCode.BAD_REQUEST, "The push message isn't readable.") from None
+        now = self._clock.now()
+        handled = note.package_name == self._google.package_name and note.kind in (
+            "subscription",
+            "voided",
+        )
+        async with self._sessionmaker() as session, session.begin():
+            stored = await session.execute(
+                insert(BillingEvent)
+                .values(
+                    provider="google",
+                    provider_event_id=note.message_id,
+                    event_type=f"{note.kind}:{note.notification_type or 0}",
+                    signed_date=min(note.published_at or now, now),
+                    payload={
+                        "kind": note.kind,
+                        "notification_type": note.notification_type,
+                        "sku": note.sku,
+                        "package_name": note.package_name,
+                    },
+                )
+                .on_conflict_do_nothing(
+                    index_elements=[BillingEvent.provider, BillingEvent.provider_event_id]
+                )
+                .returning(BillingEvent.id)
+            )
+            event_id = stored.scalar_one_or_none()
+            if event_id is None:
+                return "duplicate"
+            row_id: uuid.UUID | None = None
+            outcome = "ignored"
+            if handled and note.purchase_token:
+                if note.kind == "voided":
+                    row_id, outcome = await self._void_google(
+                        session, note.purchase_token, note.order_id, now
+                    )
+                else:
+                    try:
+                        fresh: PlaySubscription | None = await self._google.subscription_state(
+                            note.purchase_token
+                        )
+                    except GooglePlayError:
+                        raise AppError(
+                            ErrorCode.SERVICE_UNAVAILABLE,
+                            "Google Play is unavailable; the notification will be retried.",
+                            headers={"Retry-After": "60"},
+                        ) from None
+                    except AppError as exc:  # Play doesn't know the token: nothing to apply
+                        if exc.code is not ErrorCode.PURCHASE_INVALID:
+                            raise
+                        fresh = None
+                    if fresh is not None:
+                        revoke = note.notification_type in REVOKING_NOTIFICATIONS
+                        row_id = await self._apply_google(session, fresh, revoke=revoke, now=now)
+                    outcome = "processed" if row_id else "ignored"
+            await session.execute(
+                update(BillingEvent)
+                .where(BillingEvent.id == event_id)
+                .values(
+                    subscription_id=row_id,
+                    processing_status=outcome,
+                    processed_at=func.now(),
+                    attempts=1,
+                )
+            )
+        return outcome
+
+    async def _apply_google(
+        self, session: AsyncSession, fresh: PlaySubscription, *, revoke: bool, now: datetime
+    ) -> uuid.UUID | None:
+        """Mirror the Play state onto the subscription the purchase token belongs to. Unknown
+        tokens (not verified by the app yet) are ignored: verification reads the same state."""
+        subscription = await session.scalar(
+            select(Subscription)
+            .where(
+                Subscription.provider == "google",
+                Subscription.original_transaction_id == fresh.purchase_token,
+            )
+            .with_for_update()
+        )
+        if subscription is None:
+            return None
+        product = await session.get(Product, subscription.product_id)
+        assert product is not None
+        if revoke:
+            subscription.status = SubscriptionStatus.REVOKED
+            subscription.revoked_at = now
+        elif subscription.status != SubscriptionStatus.REVOKED and fresh.status is not None:
+            subscription.status = fresh.status
+        subscription.auto_renew_enabled = fresh.auto_renew
+        subscription.cancelled_at = None if fresh.auto_renew else subscription.cancelled_at or now
+        if fresh.expires_at is not None:
+            subscription.current_period_end = fresh.expires_at
+        subscription.grace_period_ends_at = (
+            fresh.expires_at if subscription.status == SubscriptionStatus.IN_GRACE_PERIOD else None
+        )
+        if subscription.status == SubscriptionStatus.EXPIRED and subscription.expired_at is None:
+            subscription.expired_at = now
+        subscription.last_event_at = now
+        await session.flush()
+        await session.refresh(subscription)
+        await _materialize(session, subscription, product, now=now)
+        return subscription.id
+
+    async def _void_google(
+        self, session: AsyncSession, token: str, order_id: str | None, now: datetime
+    ) -> tuple[uuid.UUID | None, str]:
+        """A refunded or charged-back Play purchase ends its access at once: the subscription,
+        or the content a one-time purchase unlocked."""
+        subscription = await session.scalar(
+            select(Subscription)
+            .where(Subscription.provider == "google", Subscription.original_transaction_id == token)
+            .with_for_update()
+        )
+        if subscription is not None:
+            subscription.status = SubscriptionStatus.REVOKED
+            subscription.revoked_at = now
+            subscription.last_event_at = now
+            product = await session.get(Product, subscription.product_id)
+            assert product is not None
+            await session.flush()
+            await _materialize(session, subscription, product, now=now)
+            return subscription.id, "processed"
+        if order_id is None:
+            return None, "ignored"
+        revoked = await session.execute(
+            update(SubscriptionEntitlement)
+            .where(
+                SubscriptionEntitlement.source_type == GrantSource.PURCHASE,
+                SubscriptionEntitlement.source_id.in_(
+                    select(Purchase.id).where(
+                        Purchase.provider == "google", Purchase.transaction_id == order_id
+                    )
+                ),
+                SubscriptionEntitlement.revoked_at.is_(None),
+            )
+            .values(revoked_at=now)
+        )
+        return None, "processed" if revoked.rowcount else "ignored"  # type: ignore[attr-defined]
 
     # ─────────────────────────── web: Stripe (BL-3.14, ADR-0012) ───────────────────────────
 

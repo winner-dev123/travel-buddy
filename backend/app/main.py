@@ -53,6 +53,13 @@ from app.modules.billing import service as billing_service
 from app.modules.billing.api import dev_router as dev_billing_router
 from app.modules.billing.api import router as billing_router
 from app.modules.billing.apple import AppleJWSVerifier, AppleStoreProvider
+from app.modules.billing.google import (
+    GoogleCerts,
+    GooglePlayApi,
+    GooglePlayProvider,
+    PushVerifier,
+    ServiceAccount,
+)
 from app.modules.billing.providers import BillingProvider, DevBillingProvider, UnconfiguredStore
 from app.modules.billing.stripe import StripeClient
 from app.modules.challenges import service as challenges_service
@@ -366,6 +373,7 @@ def create_app(
     app.state.ai_provider = ai_provider
     app.state.ai_service = ai
     apple_verifier = build_apple_verifier(settings)
+    google_play, google_push = build_google_play(settings, http_client)
     app.state.billing_service = billing_service.BillingService(
         sessionmaker=database.sessionmaker,
         clock=clock,
@@ -385,8 +393,10 @@ def create_app(
         ),
         web_origin=settings.public_site_url,
         usage=quota_usage,
-        providers=billing_providers(settings, apple_verifier),
+        providers=billing_providers(settings, apple_verifier, google_play),
         apple=apple_verifier,
+        google=google_play,
+        google_push=google_push,
     )
     realtime_bus = build_realtime_bus(settings, redis)
     app.state.realtime_bus = realtime_bus
@@ -554,14 +564,37 @@ def build_apple_verifier(settings: Settings) -> AppleJWSVerifier | None:
     )
 
 
+def build_google_play(
+    settings: Settings, http_client: httpx.AsyncClient
+) -> tuple[GooglePlayProvider | None, PushVerifier | None]:
+    """Play purchases need the package name and a service account key; RTDN pushes also need
+    the push subscription's audience and service account (BL-6.01)."""
+    key = settings.google_play_service_account_json
+    if not settings.google_play_package_name or key is None:
+        return None, None
+    api = GooglePlayApi(
+        ServiceAccount.from_json(key.get_secret_value()),
+        settings.google_play_package_name,
+        http_client,
+    )
+    push = None
+    if settings.google_pubsub_audience and settings.google_pubsub_service_account:
+        push = PushVerifier(
+            GoogleCerts(http_client),
+            audience=settings.google_pubsub_audience,
+            service_account=settings.google_pubsub_service_account,
+        )
+    return GooglePlayProvider(api, settings.google_play_package_name), push
+
+
 def billing_providers(
-    settings: Settings, apple: AppleJWSVerifier | None
+    settings: Settings, apple: AppleJWSVerifier | None, google: GooglePlayProvider | None = None
 ) -> dict[str, BillingProvider]:
     if settings.dev_billing_enabled:
         return {"apple": DevBillingProvider(), "google": DevBillingProvider()}
     return {
         "apple": AppleStoreProvider(apple) if apple else UnconfiguredStore("the App Store"),
-        "google": UnconfiguredStore("Google Play"),
+        "google": google if google else UnconfiguredStore("Google Play"),
     }
 
 

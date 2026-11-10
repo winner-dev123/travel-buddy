@@ -27,6 +27,8 @@ class StoreTransaction:
     status: SubscriptionStatus
     auto_renew: bool = True
     environment: str = "production"
+    # The store's own period end when it reports one (Google); otherwise derived from the plan.
+    expires_at: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,10 +39,12 @@ class PurchaseClaim:
     payload: str
     sku: str | None = None
     package_name: str | None = None
+    # Resolved by the service from the catalog (Google needs to know which API to ask).
+    product_kind: str | None = None
 
 
 class BillingProvider(Protocol):
-    def verify(self, claim: PurchaseClaim, *, now: datetime) -> StoreTransaction: ...
+    async def verify(self, claim: PurchaseClaim, *, now: datetime) -> StoreTransaction: ...
 
 
 class UnconfiguredStore:
@@ -49,7 +53,7 @@ class UnconfiguredStore:
     def __init__(self, store: str) -> None:
         self._store = store
 
-    def verify(self, claim: PurchaseClaim, *, now: datetime) -> StoreTransaction:
+    async def verify(self, claim: PurchaseClaim, *, now: datetime) -> StoreTransaction:
         raise AppError(
             ErrorCode.SERVICE_UNAVAILABLE,
             f"Purchases through {self._store} can't be verified yet. Try again later.",
@@ -62,7 +66,7 @@ class DevBillingProvider:
     (Apple ``signed_transaction`` or Google ``purchase_token``), optionally ``:<status>`` to start
     in another state; later store events are simulated through ``/v1/dev/billing/events``."""
 
-    def verify(self, claim: PurchaseClaim, *, now: datetime) -> StoreTransaction:
+    async def verify(self, claim: PurchaseClaim, *, now: datetime) -> StoreTransaction:
         parts = claim.payload.split(":")
         if len(parts) < 3 or parts[0] != "dev" or not parts[1] or not parts[2]:
             raise AppError(ErrorCode.PURCHASE_INVALID, "This purchase couldn't be verified.")

@@ -121,6 +121,13 @@ class Settings(BaseSettings):
     # transactions and App Store Server Notifications; without them Apple answers 503.
     apple_bundle_id: str | None = None
     apple_root_ca_sha256: str | None = None
+    # Google Play (BL-6.01): the app's package name and a service account JSON key with access
+    # to the Play Developer API verify purchases; RTDN pushes also need the push subscription's
+    # OIDC audience (this API's webhook URL) and its service account email. Unset: 503.
+    google_play_package_name: str | None = None
+    google_play_service_account_json: SecretStr | None = None
+    google_pubsub_audience: str | None = None
+    google_pubsub_service_account: str | None = None
     stripe_secret_key: SecretStr | None = None
     stripe_webhook_secret: SecretStr | None = None
     stripe_api_base: str = "https://api.stripe.com"

@@ -131,7 +131,7 @@ class AppleStoreProvider:
     def __init__(self, verifier: AppleJWSVerifier) -> None:
         self._verifier = verifier
 
-    def verify(self, claim: PurchaseClaim, *, now: datetime) -> StoreTransaction:
+    async def verify(self, claim: PurchaseClaim, *, now: datetime) -> StoreTransaction:
         try:
             payload = self._verifier.decode(claim.payload, now=now)
         except AppleSignatureError:

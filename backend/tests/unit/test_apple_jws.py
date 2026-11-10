@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -36,8 +37,10 @@ def test_a_genuine_transaction_verifies_and_maps_to_a_store_transaction() -> Non
     )
     payload = _verifier(chain).decode(signed, now=_now())
     assert payload["productId"] == "premium.monthly"
-    tx = AppleStoreProvider(_verifier(chain)).verify(
-        PurchaseClaim(store="apple", payload=signed), now=_now()
+    tx = asyncio.run(
+        AppleStoreProvider(_verifier(chain)).verify(
+            PurchaseClaim(store="apple", payload=signed), now=_now()
+        )
     )
     assert (tx.provider, tx.sku, tx.original_transaction_id) == ("apple", "premium.monthly", "1000")
     assert (tx.status, tx.environment) == (SubscriptionStatus.ACTIVE, "sandbox")
@@ -59,8 +62,10 @@ def test_states_follow_expiry_and_revocation() -> None:
         transaction(bundle_id=BUNDLE, product_id="p", original_transaction_id="2", revoked=True)
     )
     claim = lambda jws: PurchaseClaim(store="apple", payload=jws)  # noqa: E731
-    assert provider.verify(claim(expired), now=_now()).status is SubscriptionStatus.EXPIRED
-    assert provider.verify(claim(revoked), now=_now()).status is SubscriptionStatus.REVOKED
+    expired_tx = asyncio.run(provider.verify(claim(expired), now=_now()))
+    revoked_tx = asyncio.run(provider.verify(claim(revoked), now=_now()))
+    assert expired_tx.status is SubscriptionStatus.EXPIRED
+    assert revoked_tx.status is SubscriptionStatus.REVOKED
 
 
 @pytest.mark.req("BILL-003", "BILL-007")
@@ -95,8 +100,10 @@ def test_forgeries_are_rejected() -> None:
         transaction(bundle_id="com.other", product_id="p", original_transaction_id="1")
     )
     with pytest.raises(AppError):
-        AppleStoreProvider(_verifier(chain)).verify(
-            PurchaseClaim(store="apple", payload=other_app), now=_now()
+        asyncio.run(
+            AppleStoreProvider(_verifier(chain)).verify(
+                PurchaseClaim(store="apple", payload=other_app), now=_now()
+            )
         )
 
 
