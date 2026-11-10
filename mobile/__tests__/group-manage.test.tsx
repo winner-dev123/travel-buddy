@@ -2,7 +2,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
-import { Alert } from 'react-native';
+import { Alert, type AlertButton } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useSessionStore } from '@/auth/sessionStore';
@@ -16,6 +16,7 @@ import ManageGroup from '../app/groups/manage';
 const mockApi = {
   get: jest.fn(),
   post: jest.fn(),
+  put: jest.fn(),
   patch: jest.fn(),
   delete: jest.fn(),
   newIdempotencyKey: jest.fn(() => 'key-1'),
@@ -293,5 +294,55 @@ describe('ownership offers on the group page', () => {
     expect(await screen.findByTestId('group-summary')).toBeTruthy();
     expect(screen.queryByTestId('group-transfer-offer')).toBeNull();
     expect(screen.queryByTestId('group-manage')).toBeNull();
+  });
+});
+
+describe('restricting members', () => {
+  it('restricts for a chosen time and lifts a restriction', async () => {
+    useSessionStore.getState().setSignedIn(me('cy'));
+    const restricted = { ...member(dee, 'member'), status: 'restricted' as const };
+    mockApi.get.mockImplementation(async (path: string) => {
+      if (path === '/v1/groups/g1')
+        return group('moderator', ['members.remove', 'members.restrict']);
+      if (path === '/v1/groups/g1/members')
+        return {
+          data: [
+            ...MEMBERS.filter((m) => m.user.id !== 'dee'),
+            restricted,
+            member(user('eve', 'Eve'), 'member'),
+          ],
+          page: { next_cursor: null, has_more: false },
+        };
+      throw new Error(`unexpected ${path}`);
+    });
+    mockApi.put.mockResolvedValue(restricted);
+    mockApi.delete.mockResolvedValue(undefined);
+    let buttons: AlertButton[] = [];
+    jest.spyOn(Alert, 'alert').mockImplementation((_title, _body, given) => {
+      buttons = given ?? [];
+    });
+    await renderUi(<ManageGroup />);
+
+    await fireEvent.press(await screen.findByTestId('restrict-eve'));
+    expect(buttons.map((b) => b.text)).toEqual([
+      'For 1 hour',
+      'For 24 hours',
+      'For 7 days',
+      'Cancel',
+    ]);
+    const before = Date.now();
+    buttons[1]?.onPress?.();
+    await waitFor(() => expect(mockApi.put).toHaveBeenCalled());
+    const [path, options] = mockApi.put.mock.calls[0];
+    expect(path).toBe('/v1/groups/g1/members/eve/restriction');
+    const until = Date.parse(options.body.until);
+    expect(until - before).toBeGreaterThanOrEqual(24 * 3_600_000 - 1000);
+    expect(until - before).toBeLessThanOrEqual(24 * 3_600_000 + 5000);
+
+    await fireEvent.press(screen.getByTestId('lift-dee'));
+    await waitFor(() =>
+      expect(mockApi.delete).toHaveBeenCalledWith('/v1/groups/g1/members/dee/restriction'),
+    );
+    jest.restoreAllMocks();
   });
 });

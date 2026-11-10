@@ -219,3 +219,19 @@ export function answerTransfer(
     `/v1/groups/${groupId}/ownership-transfers/${transferId}/${action}`,
   );
 }
+
+/** Stop a member posting until a time (`members.restrict`, never paywalled; GCHAT-004). */
+export function restrictMember(
+  client: ApiClient,
+  groupId: string,
+  userId: string,
+  until: Date,
+): Promise<GroupMember> {
+  return client.put<GroupMember>(`/v1/groups/${groupId}/members/${userId}/restriction`, {
+    body: { until: until.toISOString() },
+  });
+}
+
+export function liftRestriction(client: ApiClient, groupId: string, userId: string): Promise<void> {
+  return client.delete(`/v1/groups/${groupId}/members/${userId}/restriction`);
+}

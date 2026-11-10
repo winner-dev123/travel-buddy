@@ -1063,7 +1063,16 @@
     "accept": "Aceptar",
     "decline": "Rechazar",
     "cancelOffer": "Cancelar la oferta",
-    "stale": "Otra persona cambió estos ajustes. Ya están actualizados; inténtalo de nuevo."
+    "stale": "Otra persona cambió estos ajustes. Ya están actualizados; inténtalo de nuevo.",
+    "restrict": "Restringir",
+    "lift": "Quitar restricción",
+    "restrictTitle": "¿Restringir a {{name}}?",
+    "restrictBody": "Sigue en el grupo y puede leer, pero no podrá escribir hasta que termine la restricción.",
+    "restrictFor": {
+      "1": "Durante 1 hora",
+      "24": "Durante 24 horas",
+      "168": "Durante 7 días"
+    }
   },
   "bookmarks": {
     "title": "Historias guardadas",
@@ -1076,5 +1085,12 @@
     "save": "Guardar cambios",
     "deleteTitle": "¿Eliminar esta historia?",
     "deleteBody": "Desaparecerá al instante de los feeds y de tu perfil, con sus comentarios y reacciones."
+  },
+  "followRequests": {
+    "title": "Solicitudes de seguimiento",
+    "approve": "Aprobar",
+    "decline": "Rechazar",
+    "empty": "No hay nadie esperando. Aquí aparecerán quienes pidan seguir tu cuenta privada.",
+    "error": "No pudimos cargar las solicitudes. Revisa tu conexión e inténtalo de nuevo."
   }
 }

@@ -22,16 +22,23 @@ import {
   getGroupSettings,
   groupKeys,
   type GroupMember,
+  liftRestriction,
   type GroupSettings,
   listMembers,
   offerTransfer,
   removeMember,
+  restrictMember,
   ROLE_RANK,
   updateGroupSettings,
 } from '@/features/groups/api';
 import { useAppTheme } from '@/theme/useAppTheme';
 
 const ROLES: AssignableRole[] = ['admin', 'moderator', 'member'];
+const RESTRICT_FOR = [
+  { hours: 1, label: 'manageGroup.restrictFor.1' },
+  { hours: 24, label: 'manageGroup.restrictFor.24' },
+  { hours: 168, label: 'manageGroup.restrictFor.168' },
+] as const;
 
 /** SCR-072 Manage group: chat and invitation settings, member roles, removal, and offering
  * ownership to another member (GRP-005..009). Each control shows only with its permission;
@@ -75,6 +82,14 @@ export default function ManageGroupScreen() {
     mutationFn: (userId: string) => removeMember(getApiClient(), id, userId),
     onSuccess: refresh,
   });
+  const restrict = useMutation({
+    mutationFn: async ({ userId, hours }: { userId: string; hours: number | null }) => {
+      if (hours === null) await liftRestriction(getApiClient(), id, userId);
+      else
+        await restrictMember(getApiClient(), id, userId, new Date(Date.now() + hours * 3_600_000));
+    },
+    onSuccess: refresh,
+  });
   const transfer = useMutation({
     mutationFn: (userId: string) => offerTransfer(getApiClient(), id, userId),
     onSuccess: refresh,
@@ -87,7 +102,8 @@ export default function ManageGroupScreen() {
   const canAssign = permissions.includes('roles.assign');
   const canRemove = permissions.includes('members.remove');
   const canTransfer = permissions.includes('group.transfer');
-  const failed = [saveSettings, role, remove, transfer].find((m) => m.isError)?.error;
+  const canRestrict = permissions.includes('members.restrict');
+  const failed = [saveSettings, role, remove, restrict, transfer].find((m) => m.isError)?.error;
   const error =
     failed instanceof ApiProblem && failed.code === 'precondition_failed'
       ? t('manageGroup.stale')
@@ -107,6 +123,18 @@ export default function ManageGroupScreen() {
           style: 'destructive',
           onPress: () => remove.mutate(member.user.id),
         },
+      ],
+    );
+  const chooseRestriction = (member: GroupMember) =>
+    Alert.alert(
+      t('manageGroup.restrictTitle', { name: member.user.display_name }),
+      t('manageGroup.restrictBody'),
+      [
+        ...RESTRICT_FOR.map(({ hours, label }) => ({
+          text: t(label),
+          onPress: () => restrict.mutate({ userId: member.user.id, hours }),
+        })),
+        { text: t('common.cancel'), style: 'cancel' as const },
       ],
     );
   const confirmTransfer = (member: GroupMember) =>
@@ -238,6 +266,29 @@ export default function ManageGroupScreen() {
                       {t('manageGroup.makeOwner')}
                     </Text>
                   </Pressable>
+                ) : null}
+                {canRestrict ? (
+                  member.status === 'restricted' ? (
+                    <Pressable
+                      onPress={() => restrict.mutate({ userId: member.user.id, hours: null })}
+                      accessibilityRole="button"
+                      testID={`lift-${member.user.id}`}
+                    >
+                      <Text style={[theme.typography.label, { color: theme.colors.primary }]}>
+                        {t('manageGroup.lift')}
+                      </Text>
+                    </Pressable>
+                  ) : (
+                    <Pressable
+                      onPress={() => chooseRestriction(member)}
+                      accessibilityRole="button"
+                      testID={`restrict-${member.user.id}`}
+                    >
+                      <Text style={[theme.typography.label, { color: theme.colors.textSecondary }]}>
+                        {t('manageGroup.restrict')}
+                      </Text>
+                    </Pressable>
+                  )
                 ) : null}
                 {canRemove ? (
                   <Pressable

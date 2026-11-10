@@ -1047,7 +1047,16 @@
     "accept": "Accept",
     "decline": "Decline",
     "cancelOffer": "Cancel the offer",
-    "stale": "Someone else changed these settings. They're up to date now; try again."
+    "stale": "Someone else changed these settings. They're up to date now; try again.",
+    "restrict": "Restrict",
+    "lift": "Lift restriction",
+    "restrictTitle": "Restrict {{name}}?",
+    "restrictBody": "They stay in the group and can read, but can't post until the restriction ends.",
+    "restrictFor": {
+      "1": "For 1 hour",
+      "24": "For 24 hours",
+      "168": "For 7 days"
+    }
   },
   "bookmarks": {
     "title": "Saved stories",
@@ -1060,5 +1069,12 @@
     "save": "Save changes",
     "deleteTitle": "Delete this story?",
     "deleteBody": "It disappears from feeds and your profile at once, with its comments and reactions."
+  },
+  "followRequests": {
+    "title": "Follow requests",
+    "approve": "Approve",
+    "decline": "Decline",
+    "empty": "No one is waiting. People who ask to follow your private account appear here.",
+    "error": "We couldn't load follow requests. Check your connection and try again."
   }
 }

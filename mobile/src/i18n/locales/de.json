@@ -1047,7 +1047,16 @@
     "accept": "Annehmen",
     "decline": "Ablehnen",
     "cancelOffer": "Angebot zurückziehen",
-    "stale": "Jemand anderes hat diese Einstellungen geändert. Sie sind jetzt aktuell; versuch es noch einmal."
+    "stale": "Jemand anderes hat diese Einstellungen geändert. Sie sind jetzt aktuell; versuch es noch einmal.",
+    "restrict": "Einschränken",
+    "lift": "Einschränkung aufheben",
+    "restrictTitle": "{{name}} einschränken?",
+    "restrictBody": "Die Person bleibt in der Gruppe und kann lesen, aber bis zum Ende der Einschränkung nicht schreiben.",
+    "restrictFor": {
+      "1": "Für 1 Stunde",
+      "24": "Für 24 Stunden",
+      "168": "Für 7 Tage"
+    }
   },
   "bookmarks": {
     "title": "Gespeicherte Storys",
@@ -1060,5 +1069,12 @@
     "save": "Änderungen speichern",
     "deleteTitle": "Diese Story löschen?",
     "deleteBody": "Sie verschwindet sofort aus Feeds und deinem Profil, mit ihren Kommentaren und Reaktionen."
+  },
+  "followRequests": {
+    "title": "Follower-Anfragen",
+    "approve": "Annehmen",
+    "decline": "Ablehnen",
+    "empty": "Niemand wartet. Wer deinem privaten Konto folgen möchte, erscheint hier.",
+    "error": "Die Anfragen konnten nicht geladen werden. Prüfe deine Verbindung und versuch es noch einmal."
   }
 }

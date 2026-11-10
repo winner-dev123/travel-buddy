@@ -181,6 +181,14 @@ function SignedInProfile({ me }: { me: Me }) {
             onPress={() => router.push('/settings/profile')}
             testID="profile-menu-edit"
           />
+          {me.profile.account_visibility === 'private' ? (
+            <MenuRow
+              icon="person-add-outline"
+              label={t('followRequests.title')}
+              onPress={() => router.push('/settings/follow-requests')}
+              testID="profile-menu-follow-requests"
+            />
+          ) : null}
           <MenuRow
             icon="lock-closed-outline"
             label={t('account.privacyHeading')}

@@ -1,4 +1,4 @@
-// req: AUTH-006, BILL-005
+// req: AUTH-006, BILL-005, PROF-007
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
@@ -8,13 +8,17 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { Entitlements } from '@/features/account/api';
 import { i18n } from '@/i18n';
 
+import FollowRequests from '../app/settings/follow-requests';
 import Sessions from '../app/settings/sessions';
 import Subscription from '../app/settings/subscription';
 
-const mockApi = { get: jest.fn(), delete: jest.fn() };
+const mockApi = { get: jest.fn(), delete: jest.fn(), post: jest.fn() };
 
 jest.mock('@/api', () => ({ ...jest.requireActual('@/api'), getApiClient: () => mockApi }));
-jest.mock('expo-router', () => ({ Stack: { Screen: () => null } }));
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ push: jest.fn() }),
+  Stack: { Screen: () => null },
+}));
 jest.mock('expo-constants', () => ({
   __esModule: true,
   default: { expoConfig: { android: { package: 'com.travelbuddy.app' } } },
@@ -212,5 +216,37 @@ describe('subscription', () => {
     expect(await screen.findByTestId('subscription-web')).toBeTruthy();
     expect(screen.getByTestId('subscription-summary')).toHaveTextContent(/won't renew/);
     expect(screen.queryByTestId('subscription-manage')).toBeNull();
+  });
+});
+
+describe('follow requests', () => {
+  it('approves and declines requests to a private account', async () => {
+    mockApi.post.mockReset();
+    mockApi.get.mockResolvedValue({
+      data: [
+        { id: 'u2', handle: 'bo', display_name: 'Bo', avatar: null },
+        { id: 'u3', handle: 'cy', display_name: 'Cy', avatar: null },
+      ],
+      page: { next_cursor: null, has_more: false },
+    });
+    mockApi.post.mockResolvedValue(undefined);
+    await renderScreen(<FollowRequests />);
+    await fireEvent.press(await screen.findByTestId('follow-approve-u2'));
+    await waitFor(() =>
+      expect(mockApi.post).toHaveBeenCalledWith('/v1/users/me/follow-requests/u2/approve'),
+    );
+    await fireEvent.press(screen.getByTestId('follow-decline-u3'));
+    await waitFor(() =>
+      expect(mockApi.post).toHaveBeenCalledWith('/v1/users/me/follow-requests/u3/decline'),
+    );
+    expect(mockApi.get).toHaveBeenCalledWith('/v1/users/me/follow-requests', {
+      query: { limit: 50 },
+    });
+  });
+
+  it('says when nobody is waiting', async () => {
+    mockApi.get.mockResolvedValue({ data: [], page: { next_cursor: null, has_more: false } });
+    await renderScreen(<FollowRequests />);
+    expect(await screen.findByTestId('follow-requests-empty')).toBeTruthy();
   });
 });

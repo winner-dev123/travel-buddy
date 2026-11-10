@@ -1063,7 +1063,16 @@
     "accept": "Aceitar",
     "decline": "Recusar",
     "cancelOffer": "Cancelar a oferta",
-    "stale": "Outra pessoa mudou essas configurações. Elas já foram atualizadas; tente de novo."
+    "stale": "Outra pessoa mudou essas configurações. Elas já foram atualizadas; tente de novo.",
+    "restrict": "Restringir",
+    "lift": "Remover restrição",
+    "restrictTitle": "Restringir {{name}}?",
+    "restrictBody": "A pessoa continua no grupo e pode ler, mas não pode escrever até a restrição acabar.",
+    "restrictFor": {
+      "1": "Por 1 hora",
+      "24": "Por 24 horas",
+      "168": "Por 7 dias"
+    }
   },
   "bookmarks": {
     "title": "Histórias salvas",
@@ -1076,5 +1085,12 @@
     "save": "Salvar alterações",
     "deleteTitle": "Excluir esta história?",
     "deleteBody": "Ela some na hora dos feeds e do seu perfil, com os comentários e reações."
+  },
+  "followRequests": {
+    "title": "Pedidos para seguir",
+    "approve": "Aprovar",
+    "decline": "Recusar",
+    "empty": "Ninguém esperando. Quem pedir para seguir sua conta privada aparece aqui.",
+    "error": "Não conseguimos carregar os pedidos. Verifique sua conexão e tente de novo."
   }
 }

@@ -1063,7 +1063,16 @@
     "accept": "Accepter",
     "decline": "Refuser",
     "cancelOffer": "Annuler la proposition",
-    "stale": "Quelqu'un d'autre a modifié ces réglages. Ils sont à jour ; réessayez."
+    "stale": "Quelqu'un d'autre a modifié ces réglages. Ils sont à jour ; réessayez.",
+    "restrict": "Restreindre",
+    "lift": "Lever la restriction",
+    "restrictTitle": "Restreindre {{name}} ?",
+    "restrictBody": "Cette personne reste dans le groupe et peut lire, mais ne peut plus écrire jusqu'à la fin de la restriction.",
+    "restrictFor": {
+      "1": "Pendant 1 heure",
+      "24": "Pendant 24 heures",
+      "168": "Pendant 7 jours"
+    }
   },
   "bookmarks": {
     "title": "Histoires enregistrées",
@@ -1076,5 +1085,12 @@
     "save": "Enregistrer",
     "deleteTitle": "Supprimer cette histoire ?",
     "deleteBody": "Elle disparaît immédiatement des fils et de votre profil, avec ses commentaires et réactions."
+  },
+  "followRequests": {
+    "title": "Demandes d'abonnement",
+    "approve": "Accepter",
+    "decline": "Refuser",
+    "empty": "Personne n'attend. Les personnes qui demandent à suivre votre compte privé apparaissent ici.",
+    "error": "Impossible de charger les demandes. Vérifiez votre connexion et réessayez."
   }
 }
