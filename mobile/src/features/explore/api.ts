@@ -170,7 +170,7 @@ export async function featuredDestinations(client: ApiClient): Promise<Destinati
   ).data;
 }
 
-/** Neighbourhoods and districts of a city (DEST-001). */
+/** Neighbourhoods and districts of a city (LOC-002, localized per DEST-002). */
 export async function destinationChildren(
   client: ApiClient,
   id: string,
