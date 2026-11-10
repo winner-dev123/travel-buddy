@@ -1088,7 +1088,15 @@
       "1": "For 1 hour",
       "24": "For 24 hours",
       "168": "For 7 days"
-    }
+    },
+    "invitations": "Active invitations",
+    "invited": "Invited {{name}}",
+    "link": "Link · used {{used}} of {{max}}",
+    "revoke": "Revoke",
+    "archive": "Archive group",
+    "archiveTitle": "Archive this group?",
+    "archiveBody": "Members can still read it, but the chat becomes read-only and nobody can join.",
+    "archived": "This group is archived. Members can read it; nobody can post or join."
   },
   "bookmarks": {
     "title": "Saved stories",

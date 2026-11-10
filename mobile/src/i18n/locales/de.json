@@ -1088,7 +1088,15 @@
       "1": "Für 1 Stunde",
       "24": "Für 24 Stunden",
       "168": "Für 7 Tage"
-    }
+    },
+    "invitations": "Aktive Einladungen",
+    "invited": "{{name}} eingeladen",
+    "link": "Link · {{used}} von {{max}} genutzt",
+    "revoke": "Widerrufen",
+    "archive": "Gruppe archivieren",
+    "archiveTitle": "Diese Gruppe archivieren?",
+    "archiveBody": "Mitglieder können sie weiter lesen, aber der Chat wird schreibgeschützt und niemand kann beitreten.",
+    "archived": "Diese Gruppe ist archiviert. Mitglieder können sie lesen; niemand kann schreiben oder beitreten."
   },
   "bookmarks": {
     "title": "Gespeicherte Storys",

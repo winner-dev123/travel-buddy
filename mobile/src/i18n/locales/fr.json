@@ -1105,7 +1105,15 @@
       "1": "Pendant 1 heure",
       "24": "Pendant 24 heures",
       "168": "Pendant 7 jours"
-    }
+    },
+    "invitations": "Invitations actives",
+    "invited": "Invitation pour {{name}}",
+    "link": "Lien · utilisé {{used}} sur {{max}}",
+    "revoke": "Révoquer",
+    "archive": "Archiver le groupe",
+    "archiveTitle": "Archiver ce groupe ?",
+    "archiveBody": "Les membres peuvent toujours le lire, mais le chat passe en lecture seule et personne ne peut rejoindre.",
+    "archived": "Ce groupe est archivé. Les membres peuvent le lire ; personne ne peut écrire ni rejoindre."
   },
   "bookmarks": {
     "title": "Histoires enregistrées",

@@ -118,6 +118,23 @@ function serve(current: Group) {
     if (path === '/v1/groups/g1') return current;
     if (path === '/v1/groups/g1/members')
       return { data: MEMBERS, page: { next_cursor: null, has_more: false } };
+    if (path === '/v1/groups/g1/invitations')
+      return {
+        data: [
+          {
+            id: 'inv1',
+            group: { id: 'g1' },
+            kind: 'link',
+            invitee: null,
+            created_by: ana,
+            max_uses: 5,
+            use_count: 2,
+            expires_at: '2026-11-17T10:00:00Z',
+            status: 'active',
+          },
+        ],
+        page: { next_cursor: null, has_more: false },
+      };
     if (path === '/v1/groups/g1/settings')
       return {
         members_can_invite: false,
@@ -372,5 +389,44 @@ describe('announcements', () => {
     await renderUi(<GroupScreen />);
     await screen.findByTestId('group-summary');
     expect(screen.queryByTestId('group-announce')).toBeNull();
+  });
+});
+
+describe('invitations and archiving', () => {
+  it('revokes an active invitation link', async () => {
+    useSessionStore.getState().setSignedIn(me('ana'));
+    serve(group('owner', OWNER_PERMISSIONS));
+    mockApi.delete.mockResolvedValue(undefined);
+    await renderUi(<ManageGroup />);
+    expect(await screen.findByTestId('invitation-inv1')).toHaveTextContent(/Link · used 2 of 5/);
+    await fireEvent.press(screen.getByTestId('revoke-inv1'));
+    await waitFor(() =>
+      expect(mockApi.delete).toHaveBeenCalledWith('/v1/groups/g1/invitations/inv1'),
+    );
+  });
+
+  it('lets the owner archive the group after confirming', async () => {
+    useSessionStore.getState().setSignedIn(me('ana'));
+    serve(group('owner', OWNER_PERMISSIONS));
+    mockApi.post.mockResolvedValue(group('owner', OWNER_PERMISSIONS, { status: 'archived' }));
+    const alert = confirmAlerts();
+    await renderUi(<ManageGroup />);
+    await fireEvent.press(await screen.findByTestId('manage-archive'));
+    expect(alert).toHaveBeenCalledWith(
+      'Archive this group?',
+      expect.any(String),
+      expect.any(Array),
+    );
+    await waitFor(() => expect(mockApi.post).toHaveBeenCalledWith('/v1/groups/g1/archive'));
+    expect(await screen.findByTestId('manage-archived')).toBeTruthy();
+    alert.mockRestore();
+  });
+
+  it('offers archiving to the owner only', async () => {
+    useSessionStore.getState().setSignedIn(me('bo'));
+    serve(group('admin', ['group.edit', 'members.invite', 'members.remove', 'roles.assign']));
+    await renderUi(<ManageGroup />);
+    await screen.findByTestId('invitation-inv1');
+    expect(screen.queryByTestId('manage-archive')).toBeNull();
   });
 });

@@ -50,7 +50,10 @@ export interface GroupInvitation {
   id: string;
   group: GroupSummary;
   kind: 'direct' | 'link';
+  invitee?: UserSummary | null;
   created_by: UserSummary | null;
+  max_uses?: number | null;
+  use_count?: number;
   expires_at: string;
   status: string;
 }
@@ -74,6 +77,7 @@ export const groupKeys = {
   detail: (id: string) => ['groups', 'detail', id] as const,
   members: (id: string) => ['groups', 'members', id] as const,
   settings: (id: string) => ['groups', 'settings', id] as const,
+  sentInvitations: (id: string) => ['groups', 'sent-invitations', id] as const,
 };
 
 /** Link invitations carry the token after `#t=`; people may paste the whole link or the code. */
@@ -249,4 +253,27 @@ export async function postAnnouncement(
     idempotencyKey: clientMessageId,
     body: { client_message_id: clientMessageId, body, pin },
   });
+}
+
+/** A group's active invitations (`members.invite`). */
+export function listGroupInvitations(
+  client: ApiClient,
+  groupId: string,
+): Promise<Page<GroupInvitation>> {
+  return client.get<Page<GroupInvitation>>(`/v1/groups/${groupId}/invitations`, {
+    query: { status: 'active', limit: 50 },
+  });
+}
+
+export function revokeInvitation(
+  client: ApiClient,
+  groupId: string,
+  invitationId: string,
+): Promise<void> {
+  return client.delete(`/v1/groups/${groupId}/invitations/${invitationId}`);
+}
+
+/** The owner archives the group: members keep reading, the chat becomes read-only. */
+export function archiveGroup(client: ApiClient, groupId: string): Promise<Group> {
+  return client.post<Group>(`/v1/groups/${groupId}/archive`);
 }

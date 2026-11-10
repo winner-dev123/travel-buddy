@@ -1105,7 +1105,15 @@
       "1": "Por 1 hora",
       "24": "Por 24 horas",
       "168": "Por 7 dias"
-    }
+    },
+    "invitations": "Convites ativos",
+    "invited": "Convite para {{name}}",
+    "link": "Link · usado {{used}} de {{max}}",
+    "revoke": "Revogar",
+    "archive": "Arquivar grupo",
+    "archiveTitle": "Arquivar este grupo?",
+    "archiveBody": "Os membros ainda podem ler, mas o chat fica só para leitura e ninguém pode entrar.",
+    "archived": "Este grupo está arquivado. Os membros podem ler; ninguém pode escrever nem entrar."
   },
   "bookmarks": {
     "title": "Histórias salvas",

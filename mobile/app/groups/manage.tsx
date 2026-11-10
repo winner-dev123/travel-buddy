@@ -16,6 +16,7 @@ import { ApiProblem, getApiClient } from '@/api';
 import { Notice, SwitchRow } from '@/components/Form';
 import { Avatar } from '@/features/feed/PostCard';
 import {
+  archiveGroup,
   type AssignableRole,
   changeMemberRole,
   getGroup,
@@ -24,10 +25,12 @@ import {
   type GroupMember,
   liftRestriction,
   type GroupSettings,
+  listGroupInvitations,
   listMembers,
   offerTransfer,
   removeMember,
   restrictMember,
+  revokeInvitation,
   ROLE_RANK,
   updateGroupSettings,
 } from '@/features/groups/api';
@@ -62,6 +65,24 @@ export default function ManageGroupScreen() {
     queryKey: groupKeys.settings(id),
     queryFn: () => getGroupSettings(getApiClient(), id),
     enabled: canEdit,
+  });
+  const canInvite = permissions.includes('members.invite');
+  const invitations = useQuery({
+    queryKey: groupKeys.sentInvitations(id),
+    queryFn: () => listGroupInvitations(getApiClient(), id),
+    enabled: canInvite,
+  });
+  const revoke = useMutation({
+    mutationFn: (invitationId: string) => revokeInvitation(getApiClient(), id, invitationId),
+    onSuccess: () =>
+      void queryClient.invalidateQueries({ queryKey: groupKeys.sentInvitations(id) }),
+  });
+  const archive = useMutation({
+    mutationFn: () => archiveGroup(getApiClient(), id),
+    onSuccess: (archived) => {
+      queryClient.setQueryData(groupKeys.detail(id), archived);
+      void queryClient.invalidateQueries({ queryKey: groupKeys.mine });
+    },
   });
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: groupKeys.members(id) });
@@ -103,7 +124,9 @@ export default function ManageGroupScreen() {
   const canRemove = permissions.includes('members.remove');
   const canTransfer = permissions.includes('group.transfer');
   const canRestrict = permissions.includes('members.restrict');
-  const failed = [saveSettings, role, remove, restrict, transfer].find((m) => m.isError)?.error;
+  const failed = [saveSettings, role, remove, restrict, transfer, revoke, archive].find(
+    (m) => m.isError,
+  )?.error;
   const error =
     failed instanceof ApiProblem && failed.code === 'precondition_failed'
       ? t('manageGroup.stale')
@@ -137,6 +160,11 @@ export default function ManageGroupScreen() {
         { text: t('common.cancel'), style: 'cancel' as const },
       ],
     );
+  const confirmArchive = () =>
+    Alert.alert(t('manageGroup.archiveTitle'), t('manageGroup.archiveBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('manageGroup.archive'), style: 'destructive', onPress: () => archive.mutate() },
+    ]);
   const confirmTransfer = (member: GroupMember) =>
     Alert.alert(
       t('manageGroup.transferTitle', { name: member.user.display_name }),
@@ -305,6 +333,56 @@ export default function ManageGroupScreen() {
             ) : null}
           </View>
         ))}
+        {canInvite && (invitations.data?.data ?? []).length > 0 ? (
+          <View style={{ gap: theme.spacing[2] }} testID="manage-invitations">
+            <Text
+              accessibilityRole="header"
+              style={[theme.typography.title3, { color: theme.colors.textPrimary }]}
+            >
+              {t('manageGroup.invitations')}
+            </Text>
+            {(invitations.data?.data ?? []).map((invitation) => (
+              <View key={invitation.id} style={styles.row} testID={`invitation-${invitation.id}`}>
+                <Text
+                  style={[styles.fill, theme.typography.body, { color: theme.colors.textPrimary }]}
+                >
+                  {invitation.kind === 'direct' && invitation.invitee
+                    ? t('manageGroup.invited', { name: invitation.invitee.display_name })
+                    : t('manageGroup.link', {
+                        used: invitation.use_count ?? 0,
+                        max: invitation.max_uses ?? '∞',
+                      })}
+                </Text>
+                <Pressable
+                  onPress={() => revoke.mutate(invitation.id)}
+                  accessibilityRole="button"
+                  testID={`revoke-${invitation.id}`}
+                >
+                  <Text style={[theme.typography.label, { color: theme.colors.danger }]}>
+                    {t('manageGroup.revoke')}
+                  </Text>
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        ) : null}
+        {myRole === 'owner' && group.data.status === 'active' ? (
+          <Pressable
+            onPress={confirmArchive}
+            accessibilityRole="button"
+            style={styles.archive}
+            testID="manage-archive"
+          >
+            <Text style={[theme.typography.label, { color: theme.colors.danger }]}>
+              {t('manageGroup.archive')}
+            </Text>
+          </Pressable>
+        ) : null}
+        {group.data.status === 'archived' ? (
+          <Notice tone="info" testID="manage-archived">
+            {t('manageGroup.archived')}
+          </Notice>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -323,4 +401,5 @@ const styles = StyleSheet.create({
     paddingLeft: 44,
   },
   chip: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 4 },
+  archive: { paddingVertical: 12 },
 });
