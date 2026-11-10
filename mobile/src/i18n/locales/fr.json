@@ -1023,5 +1023,26 @@
     "remove": "Retirer",
     "removeA11y": "Retirer {{name}} des lieux enregistrés",
     "error": "Impossible de charger vos lieux enregistrés. Vérifiez votre connexion et réessayez."
+  },
+  "manageGroup": {
+    "title": "Gérer le groupe",
+    "settings": "Réglages",
+    "membersCanInvite": "Les membres peuvent inviter",
+    "adminsOnly": "Seuls les administrateurs écrivent dans le chat",
+    "fullHistory": "Les nouveaux membres voient les messages précédents",
+    "remove": "Retirer",
+    "removeTitle": "Retirer {{name}} ?",
+    "removeBody": "Cette personne quitte le groupe et son chat immédiatement. Elle ne pourra revenir que par une invitation.",
+    "makeOwner": "Nommer propriétaire",
+    "transfer": "Proposer la propriété",
+    "transferTitle": "Nommer {{name}} propriétaire ?",
+    "transferBody": "Cette personne devient propriétaire quand elle accepte, et vous devenez administrateur.",
+    "transferSent": "{{name}} peut accepter la propriété depuis la page du groupe.",
+    "offerReceived": "{{name}} souhaite vous confier la propriété de ce groupe.",
+    "offerPending": "En attente de l'acceptation de {{name}}.",
+    "accept": "Accepter",
+    "decline": "Refuser",
+    "cancelOffer": "Annuler la proposition",
+    "stale": "Quelqu'un d'autre a modifié ces réglages. Ils sont à jour ; réessayez."
   }
 }

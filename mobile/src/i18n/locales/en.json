@@ -1008,5 +1008,26 @@
     "remove": "Remove",
     "removeA11y": "Remove {{name}} from saved places",
     "error": "We couldn't load your saved places. Check your connection and try again."
+  },
+  "manageGroup": {
+    "title": "Manage group",
+    "settings": "Settings",
+    "membersCanInvite": "Members can invite people",
+    "adminsOnly": "Only admins can post in the chat",
+    "fullHistory": "New members see earlier messages",
+    "remove": "Remove",
+    "removeTitle": "Remove {{name}}?",
+    "removeBody": "They leave the group and its chat at once. They can come back only through an invitation.",
+    "makeOwner": "Make owner",
+    "transfer": "Offer ownership",
+    "transferTitle": "Make {{name}} the owner?",
+    "transferBody": "They become the owner when they accept, and you become an admin.",
+    "transferSent": "{{name}} can accept ownership from the group page.",
+    "offerReceived": "{{name}} wants to make you the owner of this group.",
+    "offerPending": "Waiting for {{name}} to accept ownership.",
+    "accept": "Accept",
+    "decline": "Decline",
+    "cancelOffer": "Cancel the offer",
+    "stale": "Someone else changed these settings. They're up to date now; try again."
   }
 }

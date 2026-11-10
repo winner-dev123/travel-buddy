@@ -1008,5 +1008,26 @@
     "remove": "Entfernen",
     "removeA11y": "{{name}} aus gespeicherten Orten entfernen",
     "error": "Deine gespeicherten Orte konnten nicht geladen werden. Prüfe deine Verbindung und versuch es noch einmal."
+  },
+  "manageGroup": {
+    "title": "Gruppe verwalten",
+    "settings": "Einstellungen",
+    "membersCanInvite": "Mitglieder dürfen einladen",
+    "adminsOnly": "Nur Admins schreiben im Chat",
+    "fullHistory": "Neue Mitglieder sehen frühere Nachrichten",
+    "remove": "Entfernen",
+    "removeTitle": "{{name}} entfernen?",
+    "removeBody": "Die Person verlässt die Gruppe und ihren Chat sofort. Sie kann nur über eine Einladung zurückkehren.",
+    "makeOwner": "Zum Eigentümer machen",
+    "transfer": "Eigentum anbieten",
+    "transferTitle": "{{name}} zum Eigentümer machen?",
+    "transferBody": "Die Person wird Eigentümer, sobald sie annimmt, und du wirst Admin.",
+    "transferSent": "{{name}} kann das Eigentum auf der Gruppenseite annehmen.",
+    "offerReceived": "{{name}} möchte dich zum Eigentümer dieser Gruppe machen.",
+    "offerPending": "Warte darauf, dass {{name}} das Eigentum annimmt.",
+    "accept": "Annehmen",
+    "decline": "Ablehnen",
+    "cancelOffer": "Angebot zurückziehen",
+    "stale": "Jemand anderes hat diese Einstellungen geändert. Sie sind jetzt aktuell; versuch es noch einmal."
   }
 }

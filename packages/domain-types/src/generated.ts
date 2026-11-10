@@ -5004,6 +5004,8 @@ export interface components {
             version: number;
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
+            /** @description The pending ownership transfer the viewer offered or was offered; null for everyone else. The recipient answers it with `/ownership-transfers/{transferId}/accept|decline`. */
+            pending_transfer?: components["schemas"]["OwnershipTransfer"] | null;
         };
         GroupPage: {
             data: components["schemas"]["Group"][];

@@ -1023,5 +1023,26 @@
     "remove": "Remover",
     "removeA11y": "Remover {{name}} dos lugares salvos",
     "error": "Não conseguimos carregar seus lugares salvos. Verifique sua conexão e tente de novo."
+  },
+  "manageGroup": {
+    "title": "Gerenciar grupo",
+    "settings": "Configurações",
+    "membersCanInvite": "Membros podem convidar pessoas",
+    "adminsOnly": "Só administradores escrevem no chat",
+    "fullHistory": "Novos membros veem as mensagens anteriores",
+    "remove": "Remover",
+    "removeTitle": "Remover {{name}}?",
+    "removeBody": "A pessoa sai do grupo e do chat na hora. Só pode voltar por meio de um convite.",
+    "makeOwner": "Tornar dono",
+    "transfer": "Oferecer a propriedade",
+    "transferTitle": "Tornar {{name}} dono do grupo?",
+    "transferBody": "A pessoa vira dona quando aceitar, e você passa a ser administrador.",
+    "transferSent": "{{name}} pode aceitar a propriedade na página do grupo.",
+    "offerReceived": "{{name}} quer que você seja o dono deste grupo.",
+    "offerPending": "Aguardando {{name}} aceitar a propriedade.",
+    "accept": "Aceitar",
+    "decline": "Recusar",
+    "cancelOffer": "Cancelar a oferta",
+    "stale": "Outra pessoa mudou essas configurações. Elas já foram atualizadas; tente de novo."
   }
 }

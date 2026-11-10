@@ -25,6 +25,8 @@ export interface Group {
     restricted_until: string | null;
   } | null;
   version: number;
+  /** The pending ownership transfer I offered or was offered (null for everyone else). */
+  pending_transfer?: OwnershipTransfer | null;
 }
 
 export interface GroupSummary {
@@ -71,6 +73,7 @@ export const groupKeys = {
   invitations: ['groups', 'invitations'] as const,
   detail: (id: string) => ['groups', 'detail', id] as const,
   members: (id: string) => ['groups', 'members', id] as const,
+  settings: (id: string) => ['groups', 'settings', id] as const,
 };
 
 /** Link invitations carry the token after `#t=`; people may paste the whole link or the code. */
@@ -135,4 +138,84 @@ export function createInviteLink(client: ApiClient, groupId: string): Promise<Cr
 
 export function leaveGroup(client: ApiClient, groupId: string): Promise<void> {
   return client.post(`/v1/groups/${groupId}/leave`);
+}
+
+/** Contract `OwnershipTransfer`. */
+export interface OwnershipTransfer {
+  id: string;
+  group_id: string;
+  from_user: UserSummary;
+  to_user: UserSummary;
+  status: 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired';
+  created_at: string;
+  expires_at: string;
+  responded_at: string | null;
+}
+
+/** Contract `GroupSettings`. */
+export interface GroupSettings {
+  members_can_invite: boolean;
+  chat_mode: 'everyone' | 'admins_only';
+  new_member_history: 'full' | 'from_join';
+  version: number;
+}
+
+export type AssignableRole = 'admin' | 'moderator' | 'member';
+
+/** Role ranks (docs/02 groups): nobody assigns a rank at or above their own. */
+export const ROLE_RANK: Record<GroupRole, number> = {
+  owner: 100,
+  admin: 80,
+  moderator: 50,
+  member: 10,
+};
+
+export function getGroupSettings(client: ApiClient, groupId: string): Promise<GroupSettings> {
+  return client.get<GroupSettings>(`/v1/groups/${groupId}/settings`);
+}
+
+export function updateGroupSettings(
+  client: ApiClient,
+  groupId: string,
+  version: number,
+  changes: Partial<Omit<GroupSettings, 'version'>>,
+): Promise<GroupSettings> {
+  return client.patch<GroupSettings>(`/v1/groups/${groupId}/settings`, {
+    body: changes,
+    ifMatchVersion: version,
+  });
+}
+
+export function changeMemberRole(
+  client: ApiClient,
+  groupId: string,
+  userId: string,
+  role: AssignableRole,
+): Promise<GroupMember> {
+  return client.patch<GroupMember>(`/v1/groups/${groupId}/members/${userId}`, { body: { role } });
+}
+
+export function removeMember(client: ApiClient, groupId: string, userId: string): Promise<void> {
+  return client.delete(`/v1/groups/${groupId}/members/${userId}`);
+}
+
+export function offerTransfer(
+  client: ApiClient,
+  groupId: string,
+  toUserId: string,
+): Promise<OwnershipTransfer> {
+  return client.post<OwnershipTransfer>(`/v1/groups/${groupId}/ownership-transfers`, {
+    body: { to_user_id: toUserId },
+  });
+}
+
+export function answerTransfer(
+  client: ApiClient,
+  groupId: string,
+  transferId: string,
+  action: 'accept' | 'decline' | 'cancel',
+): Promise<OwnershipTransfer> {
+  return client.post<OwnershipTransfer>(
+    `/v1/groups/${groupId}/ownership-transfers/${transferId}/${action}`,
+  );
 }

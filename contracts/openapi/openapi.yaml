@@ -8257,6 +8257,11 @@ components:
         version: { type: integer, minimum: 1 }
         created_at: { $ref: '#/components/schemas/Timestamp' }
         updated_at: { $ref: '#/components/schemas/Timestamp' }
+        pending_transfer:
+          description: The pending ownership transfer the viewer offered or was offered; null for everyone else. The recipient answers it with `/ownership-transfers/{transferId}/accept|decline`.
+          anyOf:
+            - { $ref: '#/components/schemas/OwnershipTransfer' }
+            - { type: 'null' }
     GroupPage:
       type: object
       required: [data, page]

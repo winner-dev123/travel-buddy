@@ -1023,5 +1023,26 @@
     "remove": "Quitar",
     "removeA11y": "Quitar {{name}} de los lugares guardados",
     "error": "No pudimos cargar tus lugares guardados. Revisa tu conexión e inténtalo de nuevo."
+  },
+  "manageGroup": {
+    "title": "Gestionar grupo",
+    "settings": "Ajustes",
+    "membersCanInvite": "Los miembros pueden invitar",
+    "adminsOnly": "Solo los administradores escriben en el chat",
+    "fullHistory": "Los nuevos miembros ven los mensajes anteriores",
+    "remove": "Quitar",
+    "removeTitle": "¿Quitar a {{name}}?",
+    "removeBody": "Saldrá del grupo y de su chat al instante. Solo podrá volver mediante una invitación.",
+    "makeOwner": "Hacer propietario",
+    "transfer": "Ofrecer la propiedad",
+    "transferTitle": "¿Hacer propietario a {{name}}?",
+    "transferBody": "Será el propietario cuando acepte, y tú pasarás a ser administrador.",
+    "transferSent": "{{name}} puede aceptar la propiedad desde la página del grupo.",
+    "offerReceived": "{{name}} quiere que seas el propietario de este grupo.",
+    "offerPending": "Esperando a que {{name}} acepte la propiedad.",
+    "accept": "Aceptar",
+    "decline": "Rechazar",
+    "cancelOffer": "Cancelar la oferta",
+    "stale": "Otra persona cambió estos ajustes. Ya están actualizados; inténtalo de nuevo."
   }
 }

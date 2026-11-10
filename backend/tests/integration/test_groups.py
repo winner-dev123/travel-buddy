@@ -402,12 +402,20 @@ def test_owner_lapse_keeps_safety_tools_and_transfer(store: LiveApp) -> None:  #
     )
     assert offer.status_code == 201, offer.text
     assert_matches_contract(offer.json(), "OwnershipTransfer")
+    # The heir finds the offer on the group; other members don't see it.
+    seen = store.client.get(f"/v1/groups/{gid}", headers=_auth(heir)).json()
+    assert_matches_contract(seen, "Group")
+    assert seen["pending_transfer"]["id"] == offer.json()["id"]
+    assert seen["pending_transfer"]["to_user"]["id"] == heir_id
+    mine = store.client.get(f"/v1/groups/{gid}", headers=_auth(owner)).json()
+    assert mine["pending_transfer"]["id"] == offer.json()["id"]
     accepted = store.client.post(
         f"/v1/groups/{gid}/ownership-transfers/{offer.json()['id']}/accept", headers=_auth(heir)
     )
     assert accepted.status_code == 200, accepted.text
     assert accepted.json()["status"] == "accepted"
     now = store.client.get(f"/v1/groups/{gid}", headers=_auth(heir)).json()
+    assert now["pending_transfer"] is None  # answered
     assert now["owner"]["id"] == heir_id
     assert now["my_membership"]["role"] == "owner"
     members = store.client.get(f"/v1/groups/{gid}/members", headers=_auth(heir)).json()

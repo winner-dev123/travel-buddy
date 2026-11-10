@@ -142,6 +142,8 @@ class GroupOut(_Response):
     premium_grace_until: datetime | None
     my_membership: MyGroupMembership | None
     version: int
+    # The pending ownership transfer the viewer offered or was offered (only those two see it).
+    pending_transfer: OwnershipTransferOut | None = None
     created_at: datetime
     updated_at: datetime
 

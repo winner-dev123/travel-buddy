@@ -316,6 +316,20 @@ class GroupService:
         owners = await profiles.authors(session, [group.owner_id] if group.owner_id else [])
         owner = owners.get(group.owner_id) if group.owner_id else None
         membership = context.membership
+        pending = None
+        if membership is not None:
+            row = await session.scalar(
+                select(GroupOwnershipTransfer).where(
+                    GroupOwnershipTransfer.group_id == group.id,
+                    GroupOwnershipTransfer.status == TransferStatus.PENDING,
+                    GroupOwnershipTransfer.expires_at > self._clock.now(),
+                    or_(
+                        GroupOwnershipTransfer.from_user_id == membership.user_id,
+                        GroupOwnershipTransfer.to_user_id == membership.user_id,
+                    ),
+                )
+            )
+            pending = await self._transfer_out(session, row) if row is not None else None
         return GroupOut(
             id=group.id,
             name=group.name,
@@ -349,6 +363,7 @@ class GroupService:
             version=group.version,
             created_at=group.created_at,
             updated_at=group.updated_at,
+            pending_transfer=pending,
         )
 
     async def _members_out(

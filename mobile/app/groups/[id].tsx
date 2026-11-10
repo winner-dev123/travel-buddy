@@ -5,9 +5,11 @@ import { ActivityIndicator, ScrollView, Share, StyleSheet, Text, View } from 're
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ApiProblem, getApiClient } from '@/api';
+import { useSessionStore } from '@/auth/sessionStore';
 import { Button, Notice } from '@/components/Form';
 import { Avatar } from '@/features/feed/PostCard';
 import {
+  answerTransfer,
   createInviteLink,
   getGroup,
   groupKeys,
@@ -39,6 +41,20 @@ export default function GroupScreen() {
       }
     },
   });
+  const meId = useSessionStore((state) => state.me?.account.id);
+  const answer = useMutation({
+    mutationFn: ({
+      transferId,
+      action,
+    }: {
+      transferId: string;
+      action: 'accept' | 'decline' | 'cancel';
+    }) => answerTransfer(getApiClient(), id, transferId, action),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: groupKeys.detail(id) });
+      void queryClient.invalidateQueries({ queryKey: groupKeys.members(id) });
+    },
+  });
   const leave = useMutation({
     mutationFn: () => leaveGroup(getApiClient(), id),
     onSuccess: () => {
@@ -57,6 +73,10 @@ export default function GroupScreen() {
   const permissions = data.my_membership?.permissions ?? [];
   const canInvite = permissions.includes('members.invite');
   const isOwner = data.my_membership?.role === 'owner';
+  const canManage = ['group.edit', 'roles.assign', 'members.remove'].some((p) =>
+    permissions.includes(p),
+  );
+  const pending = data.pending_transfer ?? null;
   const inviteError =
     invite.error instanceof ApiProblem && invite.error.code === 'entitlement_required'
       ? t('groups.inviteLapsed')
@@ -98,6 +118,53 @@ export default function GroupScreen() {
           }
           testID="group-open-chat"
         />
+        {pending && pending.to_user.id === meId ? (
+          <View style={{ gap: theme.spacing[2] }} testID="group-transfer-offer">
+            <Notice tone="info">
+              {t('manageGroup.offerReceived', { name: pending.from_user.display_name })}
+            </Notice>
+            <View style={styles.row}>
+              <View style={styles.fill}>
+                <Button
+                  label={t('manageGroup.accept')}
+                  onPress={() => answer.mutate({ transferId: pending.id, action: 'accept' })}
+                  busy={answer.isPending}
+                  testID="group-transfer-accept"
+                />
+              </View>
+              <View style={styles.fill}>
+                <Button
+                  label={t('manageGroup.decline')}
+                  variant="secondary"
+                  onPress={() => answer.mutate({ transferId: pending.id, action: 'decline' })}
+                  testID="group-transfer-decline"
+                />
+              </View>
+            </View>
+          </View>
+        ) : null}
+        {pending && pending.from_user.id === meId ? (
+          <View style={{ gap: theme.spacing[2] }} testID="group-transfer-sent">
+            <Notice tone="info">
+              {t('manageGroup.offerPending', { name: pending.to_user.display_name })}
+            </Notice>
+            <Button
+              label={t('manageGroup.cancelOffer')}
+              variant="secondary"
+              onPress={() => answer.mutate({ transferId: pending.id, action: 'cancel' })}
+              testID="group-transfer-cancel"
+            />
+          </View>
+        ) : null}
+        {answer.isError ? <Notice tone="error">{t('user.actionFailed')}</Notice> : null}
+        {canManage && data.status === 'active' ? (
+          <Button
+            label={t('manageGroup.title')}
+            variant="secondary"
+            onPress={() => router.push({ pathname: '/groups/manage', params: { id: data.id } })}
+            testID="group-manage"
+          />
+        ) : null}
         <Button
           label={t('groups.challenges')}
           variant="secondary"
