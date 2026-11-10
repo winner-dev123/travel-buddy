@@ -52,7 +52,16 @@ it('maps notification targets to screens', () => {
     params: { id: 'c1' },
   });
   expect(notificationRoute('conversation', 'v1')?.pathname).toBe('/chat/[id]');
-  expect(notificationRoute('data_request', 'x')).toBeNull();
+  expect(notificationRoute('group', 'g1')).toEqual({
+    pathname: '/groups/[id]',
+    params: { id: 'g1' },
+  });
+  expect(notificationRoute('ai_generation', 'gen1')).toEqual({
+    pathname: '/trips/review',
+    params: { generation: 'gen1' },
+  });
+  expect(notificationRoute('data_request', 'x')).toEqual({ pathname: '/settings/data' });
+  expect(notificationRoute('mystery', 'x')).toBeNull();
   expect(notificationRoute(null, null)).toBeNull();
 });
 

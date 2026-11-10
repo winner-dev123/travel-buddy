@@ -5,24 +5,34 @@ import { Platform } from 'react-native';
 import type { ApiClient } from '@/api';
 
 /** Where a notification leads (the same mapping for the inbox and for push taps). */
-export type NotificationRoute = {
-  pathname: '/post/[id]' | '/user/[id]' | '/chat/[id]' | '/challenges/[id]';
-  params: { id: string };
-} | null;
+export type NotificationRoute =
+  | {
+      pathname: '/post/[id]' | '/user/[id]' | '/chat/[id]' | '/challenges/[id]' | '/groups/[id]';
+      params: { id: string };
+    }
+  | { pathname: '/trips/review'; params: { generation: string } }
+  | { pathname: '/settings/data' }
+  | null;
 
 export function notificationRoute(
   entityType: string | null | undefined,
   entityId: string | null | undefined,
 ): NotificationRoute {
-  if (!entityType || !entityId) return null;
+  if (!entityType) return null;
+  if (entityType === 'data_request') return { pathname: '/settings/data' }; // export ready
+  if (!entityId) return null;
+  if (entityType === 'ai_generation') {
+    return { pathname: '/trips/review', params: { generation: entityId } };
+  }
   const pathname = (
     {
       post: '/post/[id]',
       user: '/user/[id]',
       conversation: '/chat/[id]',
       challenge: '/challenges/[id]',
+      group: '/groups/[id]',
     } as const
-  )[entityType as 'post' | 'user' | 'conversation' | 'challenge'];
+  )[entityType as 'post' | 'user' | 'conversation' | 'challenge' | 'group'];
   return pathname ? { pathname, params: { id: entityId } } : null;
 }
 
