@@ -166,7 +166,7 @@ def test_license_verify_and_download_a_package(store: LiveApp) -> None:  # noqa:
     assert _license(store, token, portuguese["id"]).status_code == 201  # quota freed
 
 
-@pytest.mark.req("DISC-011", "TRIP-001", "OFF-001")
+@pytest.mark.req("DISC-011", "TRIP-001", "OFF-001", "NFR-007", "NFR-010")
 def test_the_travel_guide_works_without_ever_enabling_discovery(store: LiveApp) -> None:  # noqa: F811
     _build(store, read_document(DEFAULT_FILE), ("en",))
     token, user_id = _user(store)

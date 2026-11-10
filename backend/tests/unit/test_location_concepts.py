@@ -12,7 +12,7 @@ import pytest
 import app.main  # noqa: F401 - registers every model
 from app.core.db import Base
 
-pytestmark = pytest.mark.req("LOC-001")
+pytestmark = pytest.mark.req("LOC-001", "NFR-007")
 
 TABLES = Base.metadata.tables
 

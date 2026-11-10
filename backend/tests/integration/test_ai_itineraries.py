@@ -278,7 +278,7 @@ def test_invalid_output_is_repaired_once_then_fails_typed(app: LiveApp) -> None:
     assert _row(app, down["id"], "status") == "provider_error"
 
 
-@pytest.mark.req("AI-009")
+@pytest.mark.req("AI-009", "NFR-015")
 def test_circuit_breakers_refuse_new_work(app: LiveApp) -> None:  # noqa: F811
     token, _ = _user(app)
     accepted = _accepted(app, token)

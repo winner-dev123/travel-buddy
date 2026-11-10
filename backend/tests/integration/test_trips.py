@@ -202,7 +202,7 @@ def test_public_trips_are_read_only_and_collaborators_edit(app: LiveApp) -> None
     _problem(app.client.get(f"/v1/trips/{trip['id']}", headers=_auth(token)), 404, "not_found")
 
 
-@pytest.mark.req("TRIP-004")
+@pytest.mark.req("TRIP-004", "NFR-010")
 def test_offline_sync_merges_and_surfaces_conflicts(app: LiveApp) -> None:  # noqa: F811
     token, _ = _user(app)
     trip = _trip(app, token)

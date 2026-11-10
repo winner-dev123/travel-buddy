@@ -143,6 +143,7 @@ def test_modules_use_only_public_interfaces_of_other_modules() -> None:
     assert not offenders, offenders
 
 
+@pytest.mark.req("NFR-012")
 def test_module_dependencies_point_strictly_downward() -> None:
     offenders = [
         f"{own} (L{LAYERS[own]}) -> {other} (L{LAYERS.get(other, '?')})"
