@@ -279,7 +279,8 @@ class GroupService:
     async def _out(self, session: AsyncSession, context: _Context, locale: str = "en") -> GroupOut:
         group = context.group
         summary = (await self._summaries(session, [group], locale))[group.id]
-        owner = (await profiles.authors(session, [group.owner_id]))[group.owner_id]
+        owners = await profiles.authors(session, [group.owner_id] if group.owner_id else [])
+        owner = owners.get(group.owner_id) if group.owner_id else None
         membership = context.membership
         return GroupOut(
             id=group.id,
@@ -295,7 +296,7 @@ class GroupService:
             member_capacity=group.member_capacity,
             member_count=summary.member_count,
             interests=list(group.interests),
-            owner=profiles.user_summary(owner),
+            owner=profiles.user_summary(owner) if owner else None,
             status=group.status,  # type: ignore[arg-type]
             conversation_id=group.conversation_id,  # type: ignore[arg-type]
             premium_features_active=context.premium_active,
@@ -1314,6 +1315,59 @@ async def is_group_member(session: AsyncSession, group_id: uuid.UUID, user_id: u
         )
     )
     return status in _MEMBER
+
+
+async def hand_over_owned_groups(session: AsyncSession, owner_id: uuid.UUID) -> None:
+    """Before an owner's account is erased (docs/07 §5): each group passes to its longest-tenured
+    admin, then moderator, then member; a group nobody is left in is archived, never deleted."""
+    groups = (
+        await session.scalars(
+            select(TravelGroup).where(TravelGroup.owner_id == owner_id).with_for_update()
+        )
+    ).all()
+    for group in groups:
+        candidates = (
+            await session.scalars(
+                select(GroupMembership).where(
+                    GroupMembership.group_id == group.id,
+                    GroupMembership.user_id != owner_id,
+                    GroupMembership.status.in_(_MEMBER),
+                )
+            )
+        ).all()
+        heir = min(
+            candidates,
+            key=lambda m: (-RANK[Role(m.role)], m.joined_at),
+            default=None,
+        )
+        old = await session.scalar(
+            select(GroupMembership).where(
+                GroupMembership.group_id == group.id, GroupMembership.user_id == owner_id
+            )
+        )
+        if old is not None:
+            old.role = Role.ADMIN  # the row goes with the account; frees the one-owner index
+            await session.flush()
+        if heir is None:
+            group.status = GroupStatus.ARCHIVED
+            group.archived_at = func.now()
+        else:
+            heir.role = Role.OWNER
+            group.owner_id = heir.user_id
+            platform.record_event(
+                session,
+                aggregate_type="group",
+                aggregate_id=group.id,
+                event_type="group.ownership_transferred",
+                payload={
+                    "group_id": str(group.id),
+                    "from_user_id": str(owner_id),
+                    "to_user_id": str(heir.user_id),
+                    "reason": "owner_account_deleted",
+                },
+            )
+        group.version += 1
+        await session.flush()
 
 
 async def purge_expired(session: AsyncSession) -> int:

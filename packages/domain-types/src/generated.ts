@@ -4717,7 +4717,8 @@ export interface components {
             member_capacity: number;
             member_count: number;
             interests: string[];
-            owner: components["schemas"]["UserSummary"];
+            /** @description Null only for an archived group nobody was left in after its owner's account was erased. */
+            owner: components["schemas"]["UserSummary"] | null;
             /** @enum {string} */
             status: "active" | "archived" | "suspended";
             conversation_id: components["schemas"]["Uuid"];

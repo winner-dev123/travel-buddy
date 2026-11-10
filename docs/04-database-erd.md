@@ -510,7 +510,7 @@ erDiagram
 | join_policy | `invite_only` (v1), `request_to_join` |
 | member_capacity | int, 2–`max_group_capacity` (config, default 50) |
 | interests | text[] |
-| owner_id FK→users RESTRICT | Ownership must be transferred before the owner's account is deleted. Otherwise the deletion job auto-transfers to the longest-tenured admin, or archives the group |
+| owner_id FK→users SET NULL | Before the owner's account is erased the deletion job hands the group to the longest-tenured admin, then moderator, then member; a group nobody is left in is archived (`owner_id` NULL) |
 | created_by FK SET NULL | |
 | status | `active`, `archived`, `suspended` |
 | version | int, optimistic concurrency |
@@ -743,7 +743,7 @@ erDiagram
 | Column | Notes |
 |---|---|
 | id | |
-| user_id FK RESTRICT | Billing records outlive soft account deletion (legal retention) and are then pseudonymized |
+| user_id FK SET NULL | Billing records outlive the account (legal retention), pseudonymized: the erasure sets `user_id` to NULL (migration 0027); `billing_customers` rows go with the user |
 | provider | `apple`, `google`, `stripe` (web, ADR-0012), `dev` (development-only, rejected in production) |
 | product_id FK | |
 | original_transaction_id | Apple `originalTransactionId` / Google `purchaseToken` lineage / Stripe subscription ID. `uq (provider, original_transaction_id)` |

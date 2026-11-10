@@ -111,10 +111,12 @@ async def has(session: AsyncSession, user_id: uuid.UUID, feature: Feature, *, at
 
 
 async def group_premium(
-    session: AsyncSession, owner_id: uuid.UUID, *, at: datetime
+    session: AsyncSession, owner_id: uuid.UUID | None, *, at: datetime
 ) -> GroupPremiumStatus:
-    """A group's premium status from its owner's grants, with the admin grace (docs/07 §5)."""
-    return group_premium_status(await _load_grants(session, owner_id), at=at)
+    """A group's premium status from its owner's grants, with the admin grace (docs/07 §5). A
+    group without an owner (archived after the owner's account was erased) has none."""
+    grants = await _load_grants(session, owner_id) if owner_id is not None else []
+    return group_premium_status(grants, at=at)
 
 
 async def quota_limit(

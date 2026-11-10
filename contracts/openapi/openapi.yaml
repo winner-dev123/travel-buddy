@@ -7747,7 +7747,11 @@ components:
         member_capacity: { type: integer, minimum: 2 }
         member_count: { type: integer, minimum: 0 }
         interests: { type: array, items: { type: string } }
-        owner: { $ref: '#/components/schemas/UserSummary' }
+        owner:
+          description: Null only for an archived group nobody was left in after its owner's account was erased.
+          anyOf:
+            - { $ref: '#/components/schemas/UserSummary' }
+            - { type: 'null' }
         status: { type: string, enum: [active, archived, suspended] }
         conversation_id: { $ref: '#/components/schemas/Uuid' }
         premium_features_active:

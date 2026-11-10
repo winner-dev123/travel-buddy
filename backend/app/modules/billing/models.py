@@ -61,9 +61,9 @@ class Subscription(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
-    # RESTRICT: billing records outlive the account (legal retention), then are pseudonymized.
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    # SET NULL: billing records outlive the account for legal retention, pseudonymized.
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="SET NULL")
     )
     provider: Mapped[str] = mapped_column(Text)
     product_id: Mapped[uuid.UUID] = mapped_column(
@@ -98,8 +98,9 @@ class Purchase(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    # SET NULL: billing records outlive the account for legal retention, pseudonymized.
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="SET NULL")
     )
     provider: Mapped[str] = mapped_column(Text)
     product_id: Mapped[uuid.UUID] = mapped_column(
@@ -136,8 +137,9 @@ class SubscriptionEntitlement(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    # SET NULL: billing records outlive the account for legal retention, pseudonymized.
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="SET NULL")
     )
     entitlement_key: Mapped[str] = mapped_column(Text)
     source_type: Mapped[str] = mapped_column(Text)
@@ -191,7 +193,7 @@ class BillingCustomer(Base):
     )
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     provider: Mapped[str] = mapped_column(Text, server_default=text("'stripe'"))
     provider_customer_id: Mapped[str] = mapped_column(Text)

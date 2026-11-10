@@ -135,7 +135,7 @@ class GroupOut(_Response):
     member_capacity: int
     member_count: int
     interests: list[str]
-    owner: UserSummary
+    owner: UserSummary | None
     status: Literal["active", "archived", "suspended"]
     conversation_id: uuid.UUID
     premium_features_active: bool

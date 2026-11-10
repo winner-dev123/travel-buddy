@@ -888,7 +888,13 @@ async def _cancel_deletion(session: AsyncSession, user: User) -> None:
     )
 
 
-async def delete_due_accounts(session: AsyncSession, *, limit: int = 25) -> int:
+# Runs in the deletion transaction before the ``users`` row goes (e.g. group handover).
+BeforeDelete = Callable[[AsyncSession, uuid.UUID], Awaitable[None]]
+
+
+async def delete_due_accounts(
+    session: AsyncSession, *, limit: int = 25, before_delete: Sequence[BeforeDelete] = ()
+) -> int:
     """Erase accounts whose grace period ended (the deletion saga, docs/04 §14).
 
     Deleting the ``users`` row cascades through every module's data (posts, comments, reactions,
@@ -942,17 +948,22 @@ async def delete_due_accounts(session: AsyncSession, *, limit: int = 25) -> int:
             )
             .values(status=DataSubjectRequestStatus.COMPLETED, completed_at=func.now())
         )
+        for hook in before_delete:
+            await hook(session, user.id)
         await session.execute(delete(User).where(User.id == user.id))
     return len(due)
 
 
 def make_handlers(
-    sessionmaker: async_sessionmaker[AsyncSession], deleter: IdpAccountDeleter | None
+    sessionmaker: async_sessionmaker[AsyncSession],
+    deleter: IdpAccountDeleter | None,
+    *,
+    before_delete: Sequence[BeforeDelete] = (),
 ) -> dict[str, platform.JobHandler]:
     async def account_deletions(job: platform.Job) -> None:
         while True:
             async with sessionmaker() as session, session.begin():
-                deleted = await delete_due_accounts(session)
+                deleted = await delete_due_accounts(session, before_delete=before_delete)
             if deleted:
                 logger.info("accounts deleted", extra={"count": deleted})
             if deleted < 25:

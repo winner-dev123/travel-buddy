@@ -547,7 +547,9 @@ def build_job_runner(
     )
     handlers.update(
         identity_module.make_handlers(
-            database.sessionmaker, build_idp_deleter(identity_settings, http_client)
+            database.sessionmaker,
+            build_idp_deleter(identity_settings, http_client),
+            before_delete=[groups_service.hand_over_owned_groups],
         )
     )
     handlers.update(abuse_signals.make_handlers(database.sessionmaker))

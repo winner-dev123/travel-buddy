@@ -70,8 +70,9 @@ class TravelGroup(Base):
     join_policy: Mapped[str] = mapped_column(Text, server_default=text("'invite_only'"))
     member_capacity: Mapped[int] = mapped_column(Integer, server_default=text("20"))
     interests: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default=text("'{}'"))
-    owner_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    # Handed over before the owner's account is erased; NULL only for groups nobody was left in.
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="SET NULL")
     )
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("users.id", ondelete="SET NULL")

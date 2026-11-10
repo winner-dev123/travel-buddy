@@ -13,7 +13,7 @@ from tests.integration.conftest import LiveApp, db_scalar
 from tests.integration.test_billing import MONTHLY, _event, _verify, store  # noqa: F401
 from tests.integration.test_destinations import catalog  # noqa: F401 - module-scoped fixture
 from tests.integration.test_identity_flows import _auth
-from tests.integration.test_posts import _destination, _problem, _user
+from tests.integration.test_posts import _destination, _problem, _tick, _user
 
 pytestmark = pytest.mark.integration
 
@@ -427,3 +427,57 @@ def test_owner_lapse_keeps_safety_tools_and_transfer(store: LiveApp) -> None:  #
         == 200
     )
     assert troll
+
+
+@pytest.mark.req("AUTH-010", "GRP-011")
+def test_erasing_an_owner_hands_groups_over_and_keeps_billing_records(store: LiveApp) -> None:  # noqa: F811
+    owner, owner_id, transaction = _premium(store)
+    shared = _group(store, owner, name="Shared trip")
+    lonely = _group(store, owner, name="Solo plans")
+    member, _ = _join(store, owner, shared["id"])
+    admin, admin_id = _join(store, owner, shared["id"])
+    promoted = store.client.patch(
+        f"/v1/groups/{shared['id']}/members/{admin_id}",
+        headers=_auth(owner),
+        json={"role": "admin"},
+    )
+    assert promoted.status_code == 200
+    requested = store.client.post(
+        "/v1/users/me/deletion",
+        headers={**_auth(owner), "Idempotency-Key": str(uuid.uuid4())},
+        json={"confirm": True},
+    )
+    assert requested.status_code in (200, 201, 202), requested.text
+    db_scalar(
+        store.db_url,
+        "UPDATE users SET deletion_requested_at = now() - interval '31 days' "
+        "WHERE id = :u RETURNING 1",
+        u=uuid.UUID(owner_id),
+    )
+    db_scalar(
+        store.db_url,
+        "UPDATE periodic_tasks SET next_run_at = now() - interval '1 second' RETURNING 1",
+    )
+    _tick(store)
+    _tick(store)
+    assert (
+        db_scalar(store.db_url, "SELECT count(*) FROM users WHERE id = :u", u=uuid.UUID(owner_id))
+        == 0
+    )
+
+    heir = store.client.get(f"/v1/groups/{shared['id']}", headers=_auth(admin)).json()
+    assert heir["owner"]["id"] == admin_id  # the longest-serving admin inherits
+    assert heir["my_membership"]["role"] == "owner"
+    assert store.client.get(f"/v1/groups/{shared['id']}", headers=_auth(member)).status_code == 200
+    status = db_scalar(
+        store.db_url,
+        "SELECT status || ':' || (owner_id IS NULL) FROM travel_groups WHERE id = :g",
+        g=uuid.UUID(lonely["id"]),
+    )
+    assert status == "archived:true"  # never deleted (GRP-011)
+    kept = db_scalar(
+        store.db_url,
+        "SELECT count(*) FROM subscriptions WHERE original_transaction_id = :t AND user_id IS NULL",
+        t=transaction,
+    )
+    assert kept == 1  # billing records are kept, pseudonymized
