@@ -158,6 +158,10 @@ export async function restoreSession(client: ApiClient): Promise<void> {
 export async function refreshAccessToken(client: ApiClient): Promise<boolean> {
   const refreshToken = await tokenStore.getRefreshToken().catch(() => null);
   if (!refreshToken) {
+    // Nothing to refresh with (unreadable keystore, cleared storage): the session is over, so
+    // the app shows sign-in instead of failing every request with an expired token.
+    await tokenStore.clear().catch(() => undefined);
+    useSessionStore.getState().setSignedOut();
     return false;
   }
   try {

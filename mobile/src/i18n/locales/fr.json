@@ -699,7 +699,8 @@
       "transit_hub": "Gare",
       "other": "Autre"
     },
-    "neighbourhoods": "Quartiers de {{place}}"
+    "neighbourhoods": "Quartiers de {{place}}",
+    "destinationChosen": "Destination : {{place}} (touchez pour changer)"
   },
   "planner": {
     "title": "Planifier un voyage",

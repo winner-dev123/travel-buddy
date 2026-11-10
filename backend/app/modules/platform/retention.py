@@ -81,6 +81,7 @@ def retention_handler(
             total += removed
             if removed == 0:
                 break
-        logger.info("retention purge", extra={"module": name, "removed": total})
+        # "module" is a LogRecord attribute: passing it in `extra` raises once INFO is enabled.
+        logger.info("retention purge", extra={"purge_module": name, "removed": total})
 
     return handle

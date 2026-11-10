@@ -699,7 +699,8 @@
       "transit_hub": "Estación",
       "other": "Otro"
     },
-    "neighbourhoods": "Barrios de {{place}}"
+    "neighbourhoods": "Barrios de {{place}}",
+    "destinationChosen": "Destino: {{place}} (toca para cambiar)"
   },
   "planner": {
     "title": "Planifica un viaje",

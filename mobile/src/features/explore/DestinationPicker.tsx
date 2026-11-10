@@ -14,10 +14,13 @@ export function DestinationPicker({
   value,
   onChange,
   testID,
+  variant = 'places',
 }: {
   value: DestinationSummary | null;
   onChange: (destination: DestinationSummary | null) => void;
   testID: string;
+  /** "Places in Lisbon" in Explore; "Destination: Lisbon" where the city itself is chosen. */
+  variant?: 'places' | 'destination';
 }) {
   const { t } = useTranslation();
   const theme = useAppTheme();
@@ -36,7 +39,9 @@ export function DestinationPicker({
         testID={`${testID}-chosen`}
       >
         <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>
-          {t('explore.where', { place: value.name })}
+          {variant === 'places'
+            ? t('explore.where', { place: value.name })
+            : t('explore.destinationChosen', { place: value.name })}
         </Text>
       </Pressable>
     );

@@ -1,7 +1,7 @@
 import { ApiClient } from '@/api';
 import { assertPublishableKey, ConfigurationError } from '@/config/env';
 
-import { exchangeIdToken, register, restoreSession, signOut } from '../session';
+import { exchangeIdToken, refreshAccessToken, register, restoreSession, signOut } from '../session';
 import { useSessionStore } from '../sessionStore';
 import { SupabaseAuthClient, SupabaseAuthError } from '../supabaseAuth';
 import { tokenStore } from '../tokenStore';
@@ -230,6 +230,18 @@ describe('platform session', () => {
     await restoreSession(api);
     expect(useSessionStore.getState().status).toBe('signed_out');
     await expect(tokenStore.getRefreshToken()).resolves.toBeNull();
+  });
+
+  it('ends the session when no refresh token can be read', async () => {
+    useSessionStore.getState().setSignedIn(ME as never);
+    tokenStore.setAccessToken('expired-access');
+    jest.spyOn(tokenStore, 'getRefreshToken').mockRejectedValueOnce(new Error('Keystore failed'));
+    const fetchImpl = jest.fn();
+    const { api } = client(fetchImpl);
+    await expect(refreshAccessToken(api)).resolves.toBe(false);
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(useSessionStore.getState().status).toBe('signed_out');
+    expect(tokenStore.getAccessToken()).toBeNull();
   });
 
   it('signs out locally even when the server call fails', async () => {

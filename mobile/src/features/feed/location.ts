@@ -13,6 +13,20 @@ export type CoarsePosition =
   | { status: 'unavailable' };
 
 const RECENT_MS = 10 * 60_000;
+/** A device without a fix (indoors, emulators) can wait forever: give up and say so instead. */
+export const LOCATE_TIMEOUT_MS = 15_000;
+
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), ms);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 /** The API refuses fixes older than 15 minutes (LOC-007); the app locates again a minute before. */
 export const FIX_MAX_AGE_MS = 14 * 60_000;
 
@@ -28,7 +42,10 @@ export async function getCoarsePosition(): Promise<CoarsePosition> {
   try {
     const position =
       (await Location.getLastKnownPositionAsync({ maxAge: RECENT_MS })) ??
-      (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }));
+      (await withTimeout(
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }),
+        LOCATE_TIMEOUT_MS,
+      ));
     if (!position) {
       return { status: 'unavailable' };
     }

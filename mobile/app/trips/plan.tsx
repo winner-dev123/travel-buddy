@@ -81,6 +81,7 @@ export default function PlanTripScreen() {
           value={destination}
           onChange={setDestination}
           testID="plan-destination"
+          variant="destination"
         />
         <TextField
           label={t('planner.start')}

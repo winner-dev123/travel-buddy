@@ -687,7 +687,8 @@
       "transit_hub": "Verkehrsknoten",
       "other": "Sonstiges"
     },
-    "neighbourhoods": "Stadtteile von {{place}}"
+    "neighbourhoods": "Stadtteile von {{place}}",
+    "destinationChosen": "Reiseziel: {{place}} (zum Ändern tippen)"
   },
   "planner": {
     "title": "Reise planen",

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 
 import pytest
@@ -43,7 +44,12 @@ def _count(live: LiveApp, table: str, where: str, **params: object) -> int:
     return int(_sql(live, f"SELECT count(*) FROM {table} WHERE {where}", **params))  # type: ignore[call-overload]  # noqa: S608
 
 
-def test_periodic_tasks_are_enqueued_once_per_interval(app: LiveApp) -> None:  # noqa: F811
+def test_periodic_tasks_are_enqueued_once_per_interval(
+    app: LiveApp,  # noqa: F811
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # Production logs at INFO: a bad `extra` key fails only when the record is actually built.
+    caplog.set_level(logging.INFO, logger="app")
     tasks = _retention_tasks(app)
     assert tasks >= REQUIRED_TASKS
     _tick(app)

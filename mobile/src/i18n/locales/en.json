@@ -687,7 +687,8 @@
       "transit_hub": "Transport hub",
       "other": "Other"
     },
-    "neighbourhoods": "Neighbourhoods in {{place}}"
+    "neighbourhoods": "Neighbourhoods in {{place}}",
+    "destinationChosen": "Destination: {{place}} (tap to change)"
   },
   "planner": {
     "title": "Plan a trip",
