@@ -465,7 +465,11 @@ def create_app(
             ],
         )
     # Outermost: every response (including CORS preflight and errors) carries X-Request-ID.
-    app.add_middleware(RequestContextMiddleware, error_type_base_url=settings.error_type_base_url)
+    app.add_middleware(
+        RequestContextMiddleware,
+        error_type_base_url=settings.error_type_base_url,
+        hsts=settings.is_production_like,
+    )
 
     install_error_handlers(app)
     app.include_router(health_router)

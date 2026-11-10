@@ -97,7 +97,7 @@ Verification column: **U** = unit test, **I** = integration test, **S** = securi
 |---|---|---|---|
 | T-AUTH-01 | Spoofing with a forged IdP token | Verify signature with JWKS (cached, rotated), `iss`, `aud`, `exp`, `iat` skew, `nonce`. Allowed algorithms pinned (no `none`, no HS*) | U, S |
 | T-AUTH-02 | Refresh token theft and replay | Rotation with reuse detection (family revocation). Hashed at rest. Bound to `device_id`. Secure storage on device (Keychain/Keystore) | I, S |
-| T-AUTH-03 | Access token theft | 15-min lifetime. Not placed in URLs (WebSocket uses first-frame auth). TLS only. HSTS on web | S |
+| T-AUTH-03 | Access token theft | 15-min lifetime. Not placed in URLs (WebSocket uses first-frame auth). TLS only. HSTS on web and API | S |
 | T-AUTH-04 | Account enumeration | Login and registration errors uniform. IdP handles credential flows | S |
 | T-AUTH-05 | Credential stuffing | IdP brute-force protection + breached-password detection. Platform rate limits on token exchange | O |
 | T-AUTH-06 | Session fixation or stale sessions after password change | Password-change event (IdP webhook or `auth_time` check) revokes sessions | I |
@@ -124,7 +124,7 @@ Verification column: **U** = unit test, **I** = integration test, **S** = securi
 
 | ID | Threat | Mitigation | Verify |
 |---|---|---|---|
-| T-MSG-01 | Message tampering in transit | TLS 1.2+ everywhere | O |
+| T-MSG-01 | Message tampering in transit | TLS 1.2+ everywhere (terminated by the host); the API sends HSTS (two years, subdomains) outside development, so clients never fall back to plain HTTP (DM-013); database connections use TLS; storage is encrypted at rest by the providers | S |
 | T-MSG-02 | Replay or duplication | `client_message_id` uniqueness. Seq ordering | I |
 | T-MSG-03 | Spam floods | Per-user send rate (e.g., 30/min DM, 60/min group). Keyword filter for direct messages and edits from connections younger than 7 days (staff-managed list, whole-word match after case, accent and punctuation folding; refused with `message_filtered`, SAFE-006). Link limits and URL reputation: not yet | S |
 | T-MSG-04 | Attachment URL leakage | Private bucket. Signed URLs ≤ 5 min, issued per request after an authz check. No public listing | S |

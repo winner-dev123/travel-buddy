@@ -32,16 +32,26 @@ def resolve_request_id(incoming: str | None) -> str:
     return str(uuid7())
 
 
+HSTS_VALUE = "max-age=63072000; includeSubDomains"
+
+
 class RequestContextMiddleware:
     """Sets the correlation ID, writes the redacted access log, adds baseline security headers,
     and renders unexpected exceptions as problem+json *with* the request ID.
     """
 
     def __init__(
-        self, app: ASGIApp, *, error_type_base_url: str = "https://errors.travelbuddy.app/"
+        self,
+        app: ASGIApp,
+        *,
+        error_type_base_url: str = "https://errors.travelbuddy.app/",
+        hsts: bool = False,
     ) -> None:
         self.app = app
         self.error_type_base_url = error_type_base_url
+        # HTTPS only, for two years, on the API host and its subdomains (DM-013, encryption in
+        # transit). Browsers ignore it over plain HTTP, so local development is unaffected.
+        self.hsts = hsts
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] not in ("http", "websocket"):
@@ -65,6 +75,8 @@ class RequestContextMiddleware:
                 headers[REQUEST_ID_HEADER] = request_id
                 headers.setdefault("x-content-type-options", "nosniff")
                 headers.setdefault("referrer-policy", "no-referrer")
+                if self.hsts:
+                    headers.setdefault("strict-transport-security", HSTS_VALUE)
             await send(message)
 
         try:
