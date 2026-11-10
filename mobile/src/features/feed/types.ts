@@ -49,6 +49,8 @@ export interface Post {
   language: string;
   visibility: string;
   primary_destination: DestinationSummary | null;
+  /** A public place tagged with the 'place' precision (POST-002); null when none or taken down. */
+  place?: { id: string; name: string; category: string; destination_id: string } | null;
   tags: string[];
   media: MediaRef[];
   published_at: string;

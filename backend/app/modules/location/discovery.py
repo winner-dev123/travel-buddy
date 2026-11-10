@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -169,6 +169,9 @@ class DiscoverySessionService:
                     headers={"Retry-After": "3600"},
                 )
             if isinstance(request, DiscoveryByGpsRequest):
+                destinations.ensure_fresh_fix(
+                    request.point.captured_at, datetime.now(tz=UTC), field="/point/captured_at"
+                )
                 resolved = await destinations.resolve_point(
                     session, request.point.lat, request.point.lng
                 )
@@ -179,7 +182,9 @@ class DiscoverySessionService:
                     )
                 city = await destinations.city_of(session, resolved)
                 is_area = await destinations.kind_of(session, resolved) == "neighborhood"
-                area = resolved if resolved != city and is_area else None
+                # A coarse reading can't place anyone in a neighbourhood (LOC-008).
+                precise = not destinations.city_level_only(request.point.accuracy_m)
+                area = resolved if resolved != city and is_area and precise else None
                 source = DiscoverySource.GPS_RESOLVED
             else:
                 kind = await destinations.kind_of(session, request.destination_id)

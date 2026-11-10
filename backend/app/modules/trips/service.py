@@ -1103,6 +1103,16 @@ class TripService:
         return None
 
 
+async def owns_trip(session: AsyncSession, user_id: uuid.UUID, trip_id: uuid.UUID) -> bool:
+    """The user owns this (not deleted) trip: they may publish its summary (TRIP-006)."""
+    found = await session.scalar(
+        select(Trip.id).where(
+            Trip.id == trip_id, Trip.owner_id == user_id, Trip.deleted_at.is_(None)
+        )
+    )
+    return found is not None
+
+
 async def purge_expired(session: AsyncSession) -> int:
     """Deleted trips after 30 days; item tombstones after 90 days (clients have synced)."""
     trips = await platform.delete_batch(session, Trip, Trip.deleted_at < platform.ago(days=30))

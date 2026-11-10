@@ -344,7 +344,7 @@ screen was folded into another one; ✅ built, ⚠️ partly, ⬜ not yet (reaso
 | SCR-105 downloads | ✅ | `/downloads` |
 | SCR-108..114, SCR-116 settings | ✅ | `/settings/language`, `/settings/notifications`, `/settings/sessions`, `/settings/subscription` (read-only until the purchase SDK), `/settings/blocked`, `/settings/delete-account`, `/settings/data`, `/settings/safety`, `/settings/help` |
 | SCR-115 badges | ✅ | On profiles; rewards at `/rewards` |
-| SCR-130 compose, SCR-131 report | ✅ | `/compose` (up to ten photos), `/report` |
+| SCR-130 compose, SCR-131 report | ✅ | `/compose` (up to ten photos; a destination and optionally a public spot in it), `/report` |
 | SCR-132 block, SCR-135 connection request | ✅ | From the profile (blocking asks for confirmation first) |
 | SCR-133 paywall, SCR-134 purchase result | ⬜ | Need a StoreKit / Play Billing SDK in a development build and the store products (backend verification is ready) |
 | SCR-136 share sheet, SCR-137 media viewer | ✅ | System share sheet (stories, invitations); full-screen photo viewer from a story |

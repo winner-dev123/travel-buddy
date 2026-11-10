@@ -410,7 +410,10 @@
     "photoUnsupported": "That file can't be used. Choose a JPEG, PNG or WebP photo.",
     "photoFailed": "We couldn't open your photos. Try again.",
     "cameraDenied": "Allow camera access in your phone settings to take a photo.",
-    "uploadFailed": "A photo didn't upload. Check your connection and try again."
+    "uploadFailed": "A photo didn't upload. Check your connection and try again.",
+    "spot": "Spot",
+    "spotHint": "Optional: tag a public place in {{place}}.",
+    "removeSpot": "Remove"
   },
   "notifications": {
     "title": "Notifications",

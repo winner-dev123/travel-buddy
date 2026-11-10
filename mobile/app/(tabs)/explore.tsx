@@ -21,7 +21,7 @@ import {
 } from '@/features/explore/api';
 import { DestinationPicker } from '@/features/explore/DestinationPicker';
 import { PlaceRow } from '@/features/explore/PlaceRow';
-import { getCoarsePosition } from '@/features/feed/location';
+import { freshFix, getCoarsePosition, type DeviceFix } from '@/features/feed/location';
 import { OfflinePackages } from '@/features/offline/OfflinePackages';
 import type { DestinationSummary } from '@/features/feed/types';
 import { useAppTheme } from '@/theme/useAppTheme';
@@ -42,6 +42,7 @@ function Explore() {
   const signedIn = useSessionStore((state) => state.status === 'signed_in');
   const [destination, setDestination] = useState<DestinationSummary | null>(null);
   const [near, setNear] = useState<string | null>(null);
+  const [deviceFix, setDeviceFix] = useState<DeviceFix | undefined>(undefined);
   const [locating, setLocating] = useState(false);
   const [locationDenied, setLocationDenied] = useState(false);
   const [q, setQ] = useState('');
@@ -85,10 +86,17 @@ function Explore() {
       term.length >= 2 && destination
         ? exploreKeys.search(destination.id, term)
         : exploreKeys.nearby(point ?? ''),
-    queryFn: (): Promise<PlaceSummary[]> =>
-      term.length >= 2 && destination
-        ? searchPlaces(getApiClient(), destination.id, term)
-        : nearbyPlaces(getApiClient(), point!),
+    queryFn: async (): Promise<PlaceSummary[]> => {
+      if (term.length >= 2 && destination) {
+        return searchPlaces(getApiClient(), destination.id, term);
+      }
+      if (deviceFix && point === deviceFix.near) {
+        // A device position: fresh enough for the API, or taken again (LOC-007).
+        const current = await freshFix(deviceFix);
+        return nearbyPlaces(getApiClient(), current?.near ?? point, current);
+      }
+      return nearbyPlaces(getApiClient(), point!);
+    },
     enabled: signedIn && ((term.length >= 2 && destination !== null) || point !== null),
   });
 
@@ -101,6 +109,7 @@ function Explore() {
       setDestination(null);
       setQ('');
       setNear(position.near);
+      setDeviceFix(position.fix);
     } else {
       setLocationDenied(true);
     }

@@ -106,6 +106,14 @@ async def is_listed(session: AsyncSession, place_id: uuid.UUID) -> bool:
     return found is not None
 
 
+async def listed_destination(session: AsyncSession, place_id: uuid.UUID) -> uuid.UUID | None:
+    """The destination of a place that can be newly referenced (post place tags), or None."""
+    found: uuid.UUID | None = await session.scalar(
+        select(PlaceRow.destination_id).where(PlaceRow.id == place_id, PlaceRow.status.in_(_LISTED))
+    )
+    return found
+
+
 def _within(destination_id: uuid.UUID) -> Any:
     """Places in a destination or any of its descendants (``path`` holds every ancestor)."""
     return PlaceRow.destination_id.in_(

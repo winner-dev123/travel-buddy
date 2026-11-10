@@ -799,7 +799,7 @@ export interface paths {
         };
         /**
          * Resolve a point to its containing destination chain (not stored)
-         * @description Used by the client to label "You're in Rio de Janeiro". The point is rounded to 3 decimals, used for a single `ST_Covers` lookup, and never persisted or logged.
+         * @description Used by the client to label "You're in Rio de Janeiro". The point is rounded to 3 decimals, used for a single `ST_Covers` lookup, and never persisted or logged. A reading less precise than 5 km resolves to the city only (LOC-008); one older than 15 minutes is refused (`stale_location`, LOC-007).
          */
         get: operations["resolveDestination"];
         put?: never;
@@ -853,7 +853,7 @@ export interface paths {
         };
         /**
          * Public places near a point
-         * @description Returns public places (never users). The point is request-scoped and not persisted.
+         * @description Returns public places (never users). The point is request-scoped and not persisted. A reading less precise than 5 km searches the whole city (20 km); one older than 15 minutes is refused (`stale_location`).
          */
         get: operations["listNearbyPlaces"];
         put?: never;
@@ -3747,7 +3747,10 @@ export interface components {
         InputGeoPoint: {
             lat: number;
             lng: number;
+            /** @description Horizontal accuracy in metres; above 5000 only the city is used (LOC-008). */
             accuracy_m?: number;
+            /** @description When the device took the fix; older than 15 minutes is refused with `stale_location` (LOC-007). */
+            captured_at?: components["schemas"]["Timestamp"];
         };
         PageInfo: {
             next_cursor: string | null;
@@ -3776,7 +3779,7 @@ export interface components {
          * @description Stable machine-readable error code. Clients switch on this, never on `title`. See docs/05 §6.
          * @enum {string}
          */
-        ErrorCode: "bad_request" | "validation_failed" | "invalid_cursor" | "method_not_allowed" | "unauthenticated" | "email_unverified" | "mfa_required" | "reauthentication_required" | "justification_required" | "token_expired" | "token_invalid" | "refresh_token_reused" | "session_revoked" | "forbidden" | "not_found" | "conflict" | "precondition_failed" | "precondition_required" | "idempotency_key_reused" | "idempotency_key_in_progress" | "rate_limited" | "entitlement_required" | "quota_exceeded" | "feature_disabled" | "age_restricted" | "consent_required" | "account_suspended" | "account_restricted" | "blocked_relationship" | "connection_required" | "connection_request_cooldown" | "connection_request_not_allowed" | "already_connected" | "discovery_disabled" | "location_unresolvable" | "group_capacity_reached" | "owner_must_transfer" | "invitation_invalid" | "invitation_not_allowed" | "member_restricted" | "chat_admins_only" | "message_edit_window_expired" | "challenge_not_active" | "challenge_locked" | "attempts_exhausted" | "attempt_cooldown" | "not_team_captain" | "reward_not_permitted" | "purchase_invalid" | "purchase_already_linked" | "media_not_ready" | "media_rejected" | "payload_too_large" | "unsupported_media_type" | "upstream_unavailable" | "ai_unavailable" | "ai_output_invalid" | "service_unavailable" | "internal_error";
+        ErrorCode: "bad_request" | "validation_failed" | "invalid_cursor" | "method_not_allowed" | "unauthenticated" | "email_unverified" | "mfa_required" | "reauthentication_required" | "justification_required" | "token_expired" | "token_invalid" | "refresh_token_reused" | "session_revoked" | "forbidden" | "not_found" | "conflict" | "precondition_failed" | "precondition_required" | "idempotency_key_reused" | "idempotency_key_in_progress" | "rate_limited" | "entitlement_required" | "quota_exceeded" | "feature_disabled" | "age_restricted" | "consent_required" | "account_suspended" | "account_restricted" | "blocked_relationship" | "connection_required" | "connection_request_cooldown" | "connection_request_not_allowed" | "already_connected" | "discovery_disabled" | "location_unresolvable" | "stale_location" | "group_capacity_reached" | "owner_must_transfer" | "invitation_invalid" | "invitation_not_allowed" | "member_restricted" | "chat_admins_only" | "message_edit_window_expired" | "challenge_not_active" | "challenge_locked" | "attempts_exhausted" | "attempt_cooldown" | "not_team_captain" | "reward_not_permitted" | "purchase_invalid" | "purchase_already_linked" | "media_not_ready" | "media_rejected" | "payload_too_large" | "unsupported_media_type" | "upstream_unavailable" | "ai_unavailable" | "ai_output_invalid" | "service_unavailable" | "internal_error";
         FieldError: {
             /** @description JSON Pointer into the body (e.g. `/name`), or `query.<name>` / `header.<name>`. */
             field: string;
@@ -6589,6 +6592,10 @@ export interface components {
         Near: components["schemas"]["NearParam"];
         /** @description `lat,lng` of the device. Request-scoped only: rounded to 3 decimals, never persisted, and redacted from logs. Required for `tab=nearby`. */
         NearOptional: components["schemas"]["NearParam"];
+        /** @description When the device took the `near` fix. Older than 15 minutes is refused with `422 stale_location` (the client must locate again; LOC-007); more than 2 minutes in the future is `validation_failed`. Omitted by older clients. */
+        NearTs: components["schemas"]["Timestamp"];
+        /** @description Horizontal accuracy of the `near` fix in metres. Above 5000 the reading counts at city level only (LOC-008). */
+        NearAccuracy: number;
         /** @description A single allow-listed emoji, percent-encoded. */
         Emoji: string;
         SessionId: components["schemas"]["Uuid"];
@@ -8079,6 +8086,10 @@ export interface operations {
             query: {
                 /** @description `lat,lng` of the device. Request-scoped only: rounded to 3 decimals, never persisted, and redacted from logs. */
                 near: components["parameters"]["Near"];
+                /** @description When the device took the `near` fix. Older than 15 minutes is refused with `422 stale_location` (the client must locate again; LOC-007); more than 2 minutes in the future is `validation_failed`. Omitted by older clients. */
+                near_ts?: components["parameters"]["NearTs"];
+                /** @description Horizontal accuracy of the `near` fix in metres. Above 5000 the reading counts at city level only (LOC-008). */
+                near_accuracy_m?: components["parameters"]["NearAccuracy"];
             };
             header?: {
                 /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
@@ -8099,7 +8110,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthenticated"];
-            /** @description `location_unresolvable`. */
+            /** @description `location_unresolvable`, `stale_location` or `validation_failed`. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -8174,6 +8185,10 @@ export interface operations {
             query: {
                 /** @description `lat,lng` of the device. Request-scoped only: rounded to 3 decimals, never persisted, and redacted from logs. */
                 near: components["parameters"]["Near"];
+                /** @description When the device took the `near` fix. Older than 15 minutes is refused with `422 stale_location` (the client must locate again; LOC-007); more than 2 minutes in the future is `validation_failed`. Omitted by older clients. */
+                near_ts?: components["parameters"]["NearTs"];
+                /** @description Horizontal accuracy of the `near` fix in metres. Above 5000 the reading counts at city level only (LOC-008). */
+                near_accuracy_m?: components["parameters"]["NearAccuracy"];
                 radius_m?: number;
                 category?: components["schemas"]["PlaceCategory"][];
                 /** @description Opaque, HMAC-signed, expiring cursor from `page.next_cursor`. Never construct or modify it. */
@@ -8269,6 +8284,10 @@ export interface operations {
                 destination_id?: components["schemas"]["Uuid"];
                 /** @description `lat,lng` of the device. Request-scoped only: rounded to 3 decimals, never persisted, and redacted from logs. Required for `tab=nearby`. */
                 near?: components["parameters"]["NearOptional"];
+                /** @description When the device took the `near` fix. Older than 15 minutes is refused with `422 stale_location` (the client must locate again; LOC-007); more than 2 minutes in the future is `validation_failed`. Omitted by older clients. */
+                near_ts?: components["parameters"]["NearTs"];
+                /** @description Horizontal accuracy of the `near` fix in metres. Above 5000 the reading counts at city level only (LOC-008). */
+                near_accuracy_m?: components["parameters"]["NearAccuracy"];
                 /** @description `nearby` tab only. Discovery radius for content. */
                 radius_km?: number;
                 country?: components["schemas"]["CountryCode"];

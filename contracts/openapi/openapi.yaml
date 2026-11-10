@@ -1303,13 +1303,15 @@ paths:
       tags: [destinations]
       operationId: resolveDestination
       summary: Resolve a point to its containing destination chain (not stored)
-      description: Used by the client to label "You're in Rio de Janeiro". The point is rounded to 3 decimals, used for a single `ST_Covers` lookup, and never persisted or logged.
+      description: Used by the client to label "You're in Rio de Janeiro". The point is rounded to 3 decimals, used for a single `ST_Covers` lookup, and never persisted or logged. A reading less precise than 5 km resolves to the city only (LOC-008); one older than 15 minutes is refused (`stale_location`, LOC-007).
       x-phase: 1
-      x-requirements: [LOC-001, LOC-008]
+      x-requirements: [LOC-001, LOC-007, LOC-008]
       x-rate-limit-class: read
       parameters:
         - $ref: '#/components/parameters/AcceptLanguage'
         - $ref: '#/components/parameters/Near'
+        - $ref: '#/components/parameters/NearTs'
+        - $ref: '#/components/parameters/NearAccuracy'
       responses:
         '200':
           description: Most specific containing destination plus ancestors.
@@ -1318,7 +1320,7 @@ paths:
               schema: { $ref: '#/components/schemas/Destination' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '422':
-          description: '`location_unresolvable`.'
+          description: '`location_unresolvable`, `stale_location` or `validation_failed`.'
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -1372,13 +1374,15 @@ paths:
       tags: [places]
       operationId: listNearbyPlaces
       summary: Public places near a point
-      description: Returns public places (never users). The point is request-scoped and not persisted.
+      description: Returns public places (never users). The point is request-scoped and not persisted. A reading less precise than 5 km searches the whole city (20 km); one older than 15 minutes is refused (`stale_location`).
       x-phase: 1
-      x-requirements: [LOC-009, DEST-003]
+      x-requirements: [LOC-009, DEST-003, LOC-007, LOC-008]
       x-rate-limit-class: read
       parameters:
         - $ref: '#/components/parameters/AcceptLanguage'
         - $ref: '#/components/parameters/Near'
+        - $ref: '#/components/parameters/NearTs'
+        - $ref: '#/components/parameters/NearAccuracy'
         - name: radius_m
           in: query
           required: false
@@ -1498,6 +1502,8 @@ paths:
           description: City, neighborhood, region or country to browse. Includes content tagged to descendants.
           schema: { $ref: '#/components/schemas/Uuid' }
         - $ref: '#/components/parameters/NearOptional'
+        - $ref: '#/components/parameters/NearTs'
+        - $ref: '#/components/parameters/NearAccuracy'
         - name: radius_km
           in: query
           required: false
@@ -6492,6 +6498,18 @@ components:
       required: false
       description: '`lat,lng` of the device. Request-scoped only: rounded to 3 decimals, never persisted, and redacted from logs. Required for `tab=nearby`.'
       schema: { $ref: '#/components/schemas/NearParam' }
+    NearTs:
+      name: near_ts
+      in: query
+      required: false
+      description: When the device took the `near` fix. Older than 15 minutes is refused with `422 stale_location` (the client must locate again; LOC-007); more than 2 minutes in the future is `validation_failed`. Omitted by older clients.
+      schema: { $ref: '#/components/schemas/Timestamp' }
+    NearAccuracy:
+      name: near_accuracy_m
+      in: query
+      required: false
+      description: Horizontal accuracy of the `near` fix in metres. Above 5000 the reading counts at city level only (LOC-008).
+      schema: { type: number, minimum: 0, maximum: 100000 }
     Emoji:
       name: emoji
       in: path
@@ -6727,7 +6745,8 @@ components:
       properties:
         lat: { type: number, minimum: -90, maximum: 90 }
         lng: { type: number, minimum: -180, maximum: 180 }
-        accuracy_m: { type: number, minimum: 0, maximum: 100000 }
+        accuracy_m: { type: number, minimum: 0, maximum: 100000, description: Horizontal accuracy in metres; above 5000 only the city is used (LOC-008). }
+        captured_at: { $ref: '#/components/schemas/Timestamp', description: When the device took the fix; older than 15 minutes is refused with `stale_location` (LOC-007). }
     PageInfo:
       type: object
       required: [next_cursor, has_more]
@@ -6804,6 +6823,7 @@ components:
         - already_connected
         - discovery_disabled
         - location_unresolvable
+        - stale_location
         - group_capacity_reached
         - owner_must_transfer
         - invitation_invalid

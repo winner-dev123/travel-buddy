@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import timedelta
 from typing import Any
 
 import pytest
@@ -156,6 +157,20 @@ def test_nearby_needs_a_location(app: LiveApp) -> None:  # noqa: F811
         422,
         "validation_failed",
     )
+
+
+@pytest.mark.req("LOC-007")
+def test_nearby_refuses_a_stale_location(app: LiveApp) -> None:  # noqa: F811
+    reader, _ = _user(app)
+    old = (app.clock.now() - timedelta(minutes=16)).isoformat()
+    for path, params in (
+        ("/v1/feed", {"tab": "nearby", "near": "41.890,12.492", "near_ts": old}),
+        ("/v1/places/nearby", {"near": "41.890,12.492", "near_ts": old}),
+    ):
+        problem = _problem(
+            app.client.get(path, headers=_auth(reader), params=params), 422, "stale_location"
+        )
+        assert problem["errors"][0]["field"] == "/near_ts", path
 
 
 @pytest.mark.req("FEED-002", "LOC-005")

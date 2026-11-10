@@ -1,4 +1,5 @@
 import type { ApiClient } from '@/api';
+import { fixParams, type DeviceFix } from '@/features/feed/location';
 
 import type {
   Comment,
@@ -24,6 +25,8 @@ export const feedKeys = {
 export interface FeedOptions {
   /** Coarse device position (`lat,lng`) for the Nearby tab. */
   near?: string;
+  /** When and how precisely it was taken (LOC-007, LOC-008). */
+  fix?: DeviceFix;
   radiusKm?: number;
   categories?: PostKind[];
 }
@@ -40,7 +43,9 @@ export function fetchFeed(
       tab,
       cursor,
       limit: 20,
-      ...(options.near ? { near: options.near, radius_km: options.radiusKm ?? 10 } : {}),
+      ...(options.near
+        ? { near: options.near, radius_km: options.radiusKm ?? 10, ...fixParams(options.fix) }
+        : {}),
       ...(options.categories?.length ? { category: options.categories } : {}),
     },
   });
@@ -142,6 +147,8 @@ export interface NewPost {
   body: string;
   visibility: 'public' | 'followers' | 'private';
   destination: DestinationSummary | null;
+  /** A public place in that destination; the post is then filed under the place (POST-002). */
+  place?: { id: string; name: string } | null;
   /** Uploaded media (`MediaAsset` ids), in display order. */
   mediaIds?: string[];
 }
@@ -157,8 +164,12 @@ export function createPost(
       kind: post.kind,
       body: post.body,
       visibility: post.visibility,
-      location_precision: post.destination ? 'destination' : 'none',
-      ...(post.destination ? { destination_id: post.destination.id } : {}),
+      ...(post.place
+        ? { location_precision: 'place', place_id: post.place.id }
+        : {
+            location_precision: post.destination ? 'destination' : 'none',
+            ...(post.destination ? { destination_id: post.destination.id } : {}),
+          }),
       ...(post.mediaIds?.length ? { media_ids: post.mediaIds } : {}),
     },
   });

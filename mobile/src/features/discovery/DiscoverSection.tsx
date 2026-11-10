@@ -120,7 +120,11 @@ export function DiscoverSection() {
       if (target === 'gps') {
         const position = await getCoarsePosition();
         if (position.status !== 'granted') throw new Error(position.status);
-        return shareLocation(getApiClient(), { mode: 'gps', near: position.near });
+        return shareLocation(getApiClient(), {
+          mode: 'gps',
+          near: position.near,
+          fix: position.fix,
+        });
       }
       return shareLocation(getApiClient(), target);
     },

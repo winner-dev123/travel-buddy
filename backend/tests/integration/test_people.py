@@ -118,7 +118,7 @@ def test_relationship_reports_requests_follows_and_blocks(app: LiveApp) -> None:
     )
 
 
-@pytest.mark.req("DEST-004", "ADM-007", "ADM-008")
+@pytest.mark.req("DEST-004", "ADM-004", "ADM-007", "ADM-008")
 def test_staff_feature_and_hide_destinations_with_an_audit(app: LiveApp) -> None:  # noqa: F811
     staff, _ = _staff(app, "admin")
     member, _ = _user(app)

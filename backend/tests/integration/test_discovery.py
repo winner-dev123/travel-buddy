@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import random
 import uuid
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -363,9 +364,31 @@ def test_gps_points_are_resolved_and_discarded(app: LiveApp) -> None:  # noqa: F
     assert body["destination"]["path"] == "brazil/rio-de-janeiro"
     assert "-22.97" not in json.dumps(body)
     assert "-43.18" not in json.dumps(body)
+    assert body["area"]["path"] == "brazil/rio-de-janeiro/copacabana"
+    # A coarse reading can't place anyone in a neighbourhood (LOC-008).
+    coarse = app.client.put(
+        "/v1/users/me/discovery-location",
+        headers=_auth(token),
+        json={"mode": "gps", "point": {"lat": -22.9711, "lng": -43.1822, "accuracy_m": 9000}},
+    )
+    assert coarse.status_code == 200, coarse.text
+    assert coarse.json()["area"] is None
     nowhere = app.client.put(
         "/v1/users/me/discovery-location",
         headers=_auth(token),
         json={"mode": "gps", "point": {"lat": 0.0, "lng": -160.0}},
     )
     _problem(nowhere, 422, "location_unresolvable")
+
+
+@pytest.mark.req("LOC-007")
+def test_discovery_refuses_a_stale_gps_fix(app: LiveApp) -> None:  # noqa: F811
+    token, _ = _traveler(app)
+    old = (datetime.now(tz=UTC) - timedelta(minutes=30)).isoformat()
+    stale = app.client.put(
+        "/v1/users/me/discovery-location",
+        headers=_auth(token),
+        json={"mode": "gps", "point": {"lat": -22.9711, "lng": -43.1822, "captured_at": old}},
+    )
+    problem = _problem(stale, 422, "stale_location")
+    assert problem["errors"][0]["field"] == "/point/captured_at"

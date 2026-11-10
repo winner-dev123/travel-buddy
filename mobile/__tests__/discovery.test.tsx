@@ -32,7 +32,8 @@ jest.mock('expo-router', () => ({
 jest.mock('expo-location', () => ({
   requestForegroundPermissionsAsync: jest.fn(async () => ({ status: mockPermission })),
   getLastKnownPositionAsync: jest.fn(async () => ({
-    coords: { latitude: 38.72231, longitude: -9.13934 },
+    coords: { latitude: 38.72231, longitude: -9.13934, accuracy: 1200 },
+    timestamp: Date.now(),
   })),
   getCurrentPositionAsync: jest.fn(),
   Accuracy: { Low: 2 },
@@ -212,7 +213,11 @@ describe('discover section', () => {
     await fireEvent.press(await screen.findByTestId('discovery-share-gps'));
     await waitFor(() =>
       expect(mockApi.put).toHaveBeenCalledWith('/v1/users/me/discovery-location', {
-        body: { mode: 'gps', point: { lat: 38.72, lng: -9.14 }, visibility: 'visible' },
+        body: {
+          mode: 'gps',
+          point: { lat: 38.72, lng: -9.14, captured_at: expect.any(String), accuracy_m: 1200 },
+          visibility: 'visible',
+        },
       }),
     );
     mockPermission = 'denied';

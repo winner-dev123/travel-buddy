@@ -1,4 +1,5 @@
 import { ApiProblem, type ApiClient } from '@/api';
+import type { DeviceFix } from '@/features/feed/location';
 import type { DestinationSummary, UserSummary } from '@/features/feed/types';
 
 /** Version of the traveler-discovery consent text the user agrees to (DISC-001). */
@@ -61,7 +62,7 @@ export async function fetchSession(client: ApiClient): Promise<DiscoverySession 
 }
 
 export type ShareTarget =
-  { mode: 'gps'; near: string } | { mode: 'destination'; destinationId: string };
+  { mode: 'gps'; near: string; fix?: DeviceFix } | { mode: 'destination'; destinationId: string };
 
 export function shareLocation(
   client: ApiClient,
@@ -70,8 +71,17 @@ export function shareLocation(
 ): Promise<DiscoverySession> {
   if (target.mode === 'gps') {
     const [lat, lng] = target.near.split(',').map(Number);
+    const fix = target.fix;
+    // When and how precisely the fix was taken: stale fixes are refused, coarse ones count
+    // for the city only (LOC-007, LOC-008).
+    const meta = fix
+      ? {
+          captured_at: fix.capturedAt,
+          ...(fix.accuracyM !== null ? { accuracy_m: Math.round(fix.accuracyM) } : {}),
+        }
+      : {};
     return client.put<DiscoverySession>('/v1/users/me/discovery-location', {
-      body: { mode: 'gps', point: { lat, lng }, visibility },
+      body: { mode: 'gps', point: { lat, lng, ...meta }, visibility },
     });
   }
   return client.put<DiscoverySession>('/v1/users/me/discovery-location', {

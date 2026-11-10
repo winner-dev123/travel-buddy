@@ -311,6 +311,8 @@ def create_app(
     app.state.discovery_service = DiscoveryService(sessionmaker=database.sessionmaker, clock=clock)
     # Group co-members share a context for connection requests (groups sit above connections).
     connections_service.add_shared_context(groups_service.share_active_group)
+    # Itinerary summaries reference the author's own trips (trips sit beside social).
+    social_service.set_trip_check(trips_service.owns_trip)
     app.state.connection_service = connections_service.ConnectionService(
         sessionmaker=database.sessionmaker, cursors=cursor_codec, clock=clock
     )

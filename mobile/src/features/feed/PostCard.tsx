@@ -104,7 +104,8 @@ export function PostCard({ post, onOpen, onOpenAuthor, interactive = true }: Pos
     }
   };
 
-  const place = post.primary_destination?.name;
+  // A tagged spot reads better than its city: "Belém Tower" rather than "Lisbon" (POST-002).
+  const place = post.place?.name ?? post.primary_destination?.name;
   if (dismissed) {
     return (
       <View

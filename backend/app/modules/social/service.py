@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from datetime import datetime
 from typing import Any
 
@@ -123,7 +123,7 @@ class PostService:
             tags = clean_tags(list(request.tags))
         except ValueError as exc:
             raise _invalid("/tags", "invalid", str(exc)) from exc
-        _check_references(request.media_ids, request.trip_id, request.place_id)
+        _check_references(request.media_ids)
         _check_location_fields(request.location_precision, request.destination_id, request.place_id)
         problems = kind_violations(
             kind=request.kind,
@@ -157,7 +157,12 @@ class PostService:
                 "posting_limited",
                 message="Posting is limited on your account right now.",
             )
-            ancestry = await _ancestry_or_422(session, request.destination_id)
+            destination_id = request.destination_id
+            if request.place_id is not None:
+                destination_id = await _place_destination(session, request.place_id)
+            if request.trip_id is not None:
+                await _check_trip(session, principal.user_id, request.trip_id)
+            ancestry = await _ancestry_or_422(session, destination_id)
             author = (await profiles.authors(session, [principal.user_id]))[principal.user_id]
             now = await session.scalar(select(func.now()))
             post = PostRow(
@@ -167,9 +172,11 @@ class PostService:
                 language=request.language or author.ui_locale,
                 visibility=request.visibility,
                 location_precision=request.location_precision,
-                primary_destination_id=request.destination_id,
+                primary_destination_id=destination_id,
+                place_id=request.place_id,
                 travel_date=request.travel_date,
                 rating=request.rating,
+                trip_id=request.trip_id,
                 status="published",
                 moderation_state="approved",  # post-moderation: reports trigger review (BL-1.14)
                 published_at=now,
@@ -317,12 +324,17 @@ class PostService:
             if location_changed:
                 precision = changes.get("location_precision", post.location_precision)
                 destination_id = changes.get("destination_id", post.primary_destination_id)
+                place_id = changes.get("place_id", post.place_id)
+                if precision != "place" and "place_id" not in changes:
+                    place_id = None  # leaving 'place' precision drops the place tag
                 if precision == "none":
                     destination_id = None
-                _check_references([], None, changes.get("place_id"))
-                _check_location_fields(precision, destination_id, None)
+                _check_location_fields(precision, destination_id, place_id)
+                if place_id is not None:
+                    destination_id = await _place_destination(session, place_id)
                 post.location_precision = precision
                 post.primary_destination_id = destination_id
+                post.place_id = place_id
             problems = kind_violations(
                 kind=post.kind,
                 body=post.body,
@@ -448,17 +460,32 @@ async def refresh_author_visibility(session: AsyncSession, author_id: uuid.UUID)
 # ─────────────────────────────── helpers ───────────────────────────────
 
 
-def _check_references(
-    media_ids: Sequence[uuid.UUID], trip_id: uuid.UUID | None, place_id: uuid.UUID | None
-) -> None:
-    # Trips and places arrive in Phase 4: nothing can match yet. Media is checked in the
-    # transaction (ownership and state).
+def _check_references(media_ids: Sequence[uuid.UUID]) -> None:
+    # Media, places and trips are checked in the transaction (ownership and state).
     if len(set(media_ids)) != len(media_ids):
         raise _invalid("/media_ids", "duplicate", "Each photo can be attached once.")
-    if trip_id is not None:
+
+
+TripCheck = Callable[[AsyncSession, uuid.UUID, uuid.UUID], Awaitable[bool]]
+_TRIP_CHECK: list[TripCheck] = []
+
+
+def set_trip_check(check: TripCheck) -> None:
+    """Trips sit on the same layer, so main.py registers who may reference a trip (TRIP-006)."""
+    _TRIP_CHECK[:] = [check]
+
+
+async def _check_trip(session: AsyncSession, author_id: uuid.UUID, trip_id: uuid.UUID) -> None:
+    if not _TRIP_CHECK or not await _TRIP_CHECK[0](session, author_id, trip_id):
         raise _invalid("/trip_id", "not_found", "Trip not found.")
-    if place_id is not None:
+
+
+async def _place_destination(session: AsyncSession, place_id: uuid.UUID) -> uuid.UUID:
+    """The destination a place-tagged post is filed under (derived from the place, POST-002)."""
+    destination_id = await destinations.place_destination(session, place_id)
+    if destination_id is None:
         raise _invalid("/place_id", "not_found", "Place not found.")
+    return destination_id
 
 
 def _check_location_fields(
@@ -472,6 +499,10 @@ def _check_location_fields(
         raise _invalid("/destination_id", "required", "Choose a destination.")
     if precision == "place" and place_id is None:
         raise _invalid("/place_id", "required", "Choose a place.")
+    if precision != "place" and place_id is not None:
+        raise _invalid(
+            "/place_id", "inconsistent", "Tag a place only with the 'place' location precision."
+        )
 
 
 async def _ancestry_or_422(
@@ -532,6 +563,10 @@ async def _assemble(
     authors = await profiles.authors(session, [p.author_id for p in posts])
     summaries = await destinations.summaries_by_id(
         session, [p.primary_destination_id for p in posts if p.primary_destination_id], preferences
+    )
+    # Taken-down places drop out of the post (the destination stays).
+    places = await destinations.place_summaries(
+        session, [p.place_id for p in posts if p.place_id], preferences
     )
     reactions_by_type: dict[uuid.UUID, dict[str, int]] = {i: {} for i in ids}
     for post_id, reaction, count in (
@@ -595,6 +630,7 @@ async def _assemble(
             "primary_destination": (
                 summaries.get(post.primary_destination_id) if post.primary_destination_id else None
             ),
+            "place": places.get(post.place_id) if post.place_id else None,
             "travel_date": post.travel_date,
             "rating": post.rating,
             "trip_id": post.trip_id,

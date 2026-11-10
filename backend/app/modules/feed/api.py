@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -13,6 +14,7 @@ from app.core.errors import AppError, ErrorCode, FieldError
 from app.core.i18n import LOCALE_TAG_PATTERN, parse_accept_language
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
+from app.modules.destinations import service as destinations
 from app.modules.feed.schemas import FeedFeedbackRequest
 from app.modules.feed.service import FeedParams, FeedService
 
@@ -60,6 +62,8 @@ async def get_feed(
     tab: Literal["for_you", "nearby", "following", "destinations"] = "for_you",
     destination_id: UUID | None = None,
     near: Annotated[str | None, Query(max_length=40)] = None,
+    near_ts: datetime | None = None,
+    near_accuracy_m: Annotated[float | None, Query(ge=0, le=100_000)] = None,
     radius_km: Annotated[int, Query(ge=1, le=50)] = 10,
     country: Annotated[str | None, Query(pattern=r"^[A-Z]{2}$")] = None,
     category: Annotated[str | None, Query(max_length=300)] = None,
@@ -85,6 +89,8 @@ async def get_feed(
             tab=tab,
             destination_id=destination_id,
             near=near,
+            near_ts=near_ts,
+            near_city_level=destinations.city_level_only(near_accuracy_m),
             radius_km=radius_km,
             country=country,
             kinds=tuple(kinds),

@@ -5,9 +5,37 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 FALLBACK_LOCALE = "en"
 POINT_DECIMALS = 3  # ~110 m: device positions are coarsened before any server use (LOC-003)
+# A device fix older than this is not used (LOC-007); the client must locate again.
+LOCATION_MAX_AGE = timedelta(minutes=15)
+LOCATION_CLOCK_SKEW = timedelta(minutes=2)
+# Readings less precise than this only say which city the device is in (LOC-008).
+CITY_LEVEL_ACCURACY_M = 5_000
+
+
+class StaleLocationError(ValueError):
+    """The device fix is older than ``LOCATION_MAX_AGE``."""
+
+
+def check_fix_age(captured_at: datetime | None, now: datetime) -> None:
+    """Raise ``StaleLocationError`` for an old fix and ``ValueError`` for one from the future.
+    A fix without a timestamp is accepted (older clients)."""
+    if captured_at is None:
+        return
+    if captured_at > now + LOCATION_CLOCK_SKEW:
+        raise ValueError("the location was captured in the future")
+    if now - captured_at > LOCATION_MAX_AGE:
+        raise StaleLocationError("the location is too old")
+
+
+def city_level_only(accuracy_m: float | None) -> bool:
+    """True when the reading is too imprecise for anything finer than the city."""
+    return accuracy_m is not None and accuracy_m > CITY_LEVEL_ACCURACY_M
+
+
 SEGMENT_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _NEAR = re.compile(r"^(-?\d{1,2}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)$")
 

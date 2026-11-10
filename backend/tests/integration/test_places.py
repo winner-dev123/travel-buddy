@@ -18,6 +18,7 @@ from tests.contract_schemas import assert_matches_contract
 from tests.integration.conftest import LiveApp, db_scalar
 from tests.integration.test_destinations import catalog  # noqa: F401 - module-scoped fixture
 from tests.integration.test_identity_flows import _auth
+from tests.integration.test_posts import _create as _create_post
 from tests.integration.test_posts import _destination, _problem, _tick, _user, app  # noqa: F401
 
 pytestmark = pytest.mark.integration
@@ -301,3 +302,63 @@ def test_trip_items_reference_listed_places_only(app: LiveApp) -> None:  # noqa:
     db_scalar(app.db_url, "DELETE FROM places WHERE provider_place_id = 'gulbenkian' RETURNING 1")
     after = app.client.get(f"/v1/trips/{trip['id']}", headers=_auth(token)).json()
     assert after["days"][0]["items"][0]["place"] is None
+
+
+@pytest.mark.req("POST-002", "POST-001")
+def test_posts_can_tag_a_public_place_and_file_under_its_destination(app: LiveApp) -> None:  # noqa: F811
+    _ingest(app, _document())
+    tower = _place_id(app, "belem-tower")
+    author, _ = _user(app)
+    created = _create_post(
+        app,
+        author,
+        kind="attraction_recommendation",
+        body="Go at opening time, before the tour buses.",
+        location_precision="place",
+        place_id=tower,
+    )
+    assert created.status_code == 201, created.text
+    assert_matches_contract(created.json(), "Post")
+    post = created.json()
+    assert post["place"]["id"] == tower
+    assert post["place"]["name"] == "Belém Tower"  # English without Accept-Language
+    assert post["primary_destination"]["path"] == "portugal/lisbon"  # derived from the place
+    # It reaches the destination feed like any destination post.
+    reader, _ = _user(app)
+    feed = app.client.get(
+        "/v1/feed",
+        headers=_auth(reader),
+        params={"destination_id": _destination(app, "portugal/lisbon")},
+    )
+    assert post["id"] in [p["id"] for p in feed.json()["data"]]
+
+    wrong = _create_post(
+        app,
+        author,
+        location_precision="destination",
+        destination_id=_destination(app, "portugal/lisbon"),
+        place_id=tower,
+    )
+    assert _problem(wrong, 422, "validation_failed")["errors"][0]["code"] == "inconsistent"
+    unknown = _create_post(app, author, location_precision="place", place_id=str(uuid.uuid4()))
+    assert _problem(unknown, 422, "validation_failed")["errors"][0]["field"] == "/place_id"
+
+    # Moving the post to destination precision drops the place tag.
+    moved = app.client.patch(
+        f"/v1/posts/{post['id']}",
+        headers=_auth(author),
+        json={"location_precision": "destination"},
+    )
+    assert moved.status_code == 200, moved.text
+    assert moved.json()["place"] is None
+    assert moved.json()["primary_destination"]["path"] == "portugal/lisbon"
+    # A taken-down place disappears from posts that tagged it.
+    again = _create_post(app, author, location_precision="place", place_id=tower)
+    assert again.status_code == 201, again.text
+    db_scalar(
+        app.db_url,
+        "UPDATE places SET status = 'hidden' WHERE id = :p RETURNING 1",
+        p=uuid.UUID(tower),
+    )
+    shown = app.client.get(f"/v1/posts/{again.json()['id']}", headers=_auth(reader))
+    assert shown.json()["place"] is None

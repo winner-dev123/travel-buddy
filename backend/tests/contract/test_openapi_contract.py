@@ -102,6 +102,27 @@ def _implemented() -> list[tuple[str, str, dict[str, Any]]]:
     return found
 
 
+class _StrictLoader(yaml.SafeLoader):
+    """PyYAML keeps the last of duplicated keys silently; other tools refuse the file."""
+
+
+def _no_duplicates(loader: _StrictLoader, node: yaml.MappingNode) -> dict[Any, Any]:
+    keys = [loader.construct_object(key) for key, _ in node.value]
+    duplicated = {k for k in keys if keys.count(k) > 1}
+    if duplicated:
+        raise yaml.constructor.ConstructorError(
+            None, None, f"duplicated keys {sorted(map(str, duplicated))}", node.start_mark
+        )
+    return dict(loader.construct_pairs(node))
+
+
+_StrictLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _no_duplicates)
+
+
+def test_contract_has_no_duplicated_keys() -> None:
+    yaml.load(CONTRACT_PATH.read_text(encoding="utf-8"), Loader=_StrictLoader)  # noqa: S506
+
+
 def test_implemented_routes_exist_in_contract(spec: dict[str, Any]) -> None:
     contract = {_shape(path): item for path, item in spec["paths"].items()}
     missing = [

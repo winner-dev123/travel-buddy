@@ -27,7 +27,8 @@ jest.mock('@/api', () => ({ ...jest.requireActual('@/api'), getApiClient: () => 
 jest.mock('expo-location', () => ({
   requestForegroundPermissionsAsync: jest.fn(async () => ({ status: mockPermission })),
   getLastKnownPositionAsync: jest.fn(async () => ({
-    coords: { latitude: 38.72231, longitude: -9.13934 },
+    coords: { latitude: 38.72231, longitude: -9.13934, accuracy: 1200 },
+    timestamp: Date.now(),
   })),
   getCurrentPositionAsync: jest.fn(),
   Accuracy: { Low: 2 },
@@ -179,15 +180,47 @@ describe('nearby and filters', () => {
     mockApi.get.mockImplementation(async () => page([post('n1')]));
   });
 
-  it('sends only a coarse position for the Nearby tab', async () => {
+  // req: LOC-007, LOC-008
+  it('sends only a coarse position for the Nearby tab, with its time and accuracy', async () => {
     await renderScreen(<Home />);
     await screen.findByText('Story n1');
     await fireEvent.press(screen.getByTestId('feed-tab-nearby'));
     await waitFor(() =>
       expect(mockApi.get).toHaveBeenCalledWith('/v1/feed', {
-        query: { tab: 'nearby', cursor: undefined, limit: 20, near: '38.72,-9.14', radius_km: 10 },
+        query: {
+          tab: 'nearby',
+          cursor: undefined,
+          limit: 20,
+          near: '38.72,-9.14',
+          radius_km: 10,
+          near_ts: expect.any(String),
+          near_accuracy_m: 1200,
+        },
       }),
     );
+  });
+
+  // req: LOC-007
+  it('locates again instead of sending a fix older than the API accepts', async () => {
+    const located = jest.requireMock<{ getLastKnownPositionAsync: jest.Mock }>('expo-location');
+    located.getLastKnownPositionAsync.mockResolvedValueOnce({
+      coords: { latitude: 38.72231, longitude: -9.13934, accuracy: 1200 },
+      timestamp: Date.now() - 20 * 60_000,
+    });
+    await renderScreen(<Home />);
+    await screen.findByText('Story n1');
+    await fireEvent.press(screen.getByTestId('feed-tab-nearby'));
+    await waitFor(() =>
+      expect(mockApi.get).toHaveBeenCalledWith(
+        '/v1/feed',
+        expect.objectContaining({ query: expect.objectContaining({ tab: 'nearby' }) }),
+      ),
+    );
+    const nearbyCall = mockApi.get.mock.calls.find(
+      ([path, options]) => path === '/v1/feed' && options.query.tab === 'nearby',
+    );
+    expect(Date.now() - Date.parse(nearbyCall?.[1].query.near_ts)).toBeLessThan(60_000);
+    expect(located.getLastKnownPositionAsync).toHaveBeenCalledTimes(2);
   });
 
   it('explains a denied permission without calling the feed', async () => {
@@ -323,5 +356,50 @@ describe('composer', () => {
       }),
     );
     await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
+  });
+
+  // req: POST-002
+  it('tags a public place and files the story under it', async () => {
+    useSessionStore.getState().setSignedIn(me);
+    const pasteis = {
+      id: 'pl-1',
+      name: 'Pastéis de Belém',
+      category: 'cafe',
+      destination_id: 'd-lisbon',
+      location: { lat: 38.6975, lng: -9.2033 },
+    };
+    mockApi.get.mockImplementation(async (path: string) => {
+      if (path === '/v1/destinations/search') {
+        return { data: [lisbon], page: { next_cursor: null, has_more: false } };
+      }
+      if (path === '/v1/places/search') {
+        return { data: [pasteis], page: { next_cursor: null, has_more: false } };
+      }
+      return page([]);
+    });
+    mockApi.post.mockResolvedValue(post('new'));
+    await renderScreen(<Compose />);
+    await fireEvent.changeText(screen.getByTestId('compose-body'), 'Still warm at 8 a.m.');
+    await fireEvent.changeText(screen.getByTestId('compose-search'), 'lis');
+    await fireEvent.press(await screen.findByTestId('compose-match-lisbon-pt'));
+    await fireEvent.changeText(screen.getByTestId('compose-spot-search'), 'pastéis');
+    await fireEvent.press(await screen.findByTestId('compose-spot-pl-1'));
+    expect(screen.getByTestId('compose-spot')).toHaveTextContent('📍 Pastéis de Belém');
+    expect(mockApi.get).toHaveBeenCalledWith('/v1/places/search', {
+      query: { q: 'pastéis', destination_id: 'd-lisbon', limit: 20 },
+    });
+    await fireEvent.press(screen.getByTestId('compose-publish'));
+    await waitFor(() =>
+      expect(mockApi.post).toHaveBeenCalledWith('/v1/posts', {
+        idempotencyKey: 'key-1',
+        body: {
+          kind: 'tip',
+          body: 'Still warm at 8 a.m.',
+          visibility: 'public',
+          location_precision: 'place',
+          place_id: 'pl-1',
+        },
+      }),
+    );
   });
 });

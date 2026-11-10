@@ -25,7 +25,7 @@ the first submission, close the gaps listed in [§6](#6-gaps-before-the-first-su
 | Account deletion inside the app (App Store 5.1.1(v)) | Settings → Delete account (SCR-113): 30-day grace, cancellable, then full deletion (AUTH-010) | ✅ |
 | Deletion outside the app (Google Play data deletion URL) | Web route for deletion requests (web session) pointing to the same API | ⚠️ confirm the public URL with the web session |
 | Data access (GDPR Art. 15/20) | Settings → Your data: archive within minutes, 7-day link (AUTH-011, BL-6.03) | ✅ |
-| Sign in with Apple (App Store 4.8) | Required only when the app offers other third-party sign-in; the app uses email and password | ✅ not required today · add with any social login |
+| Sign in with Apple (App Store 4.8) | Required when the app offers other third-party sign-in. The apps show "Continue with Apple / Google" only for providers listed in `AUTH_SOCIAL_PROVIDERS`, with Apple first on iOS; enable Apple together with Google (docs/11 §1.12) | ✅ built · ⬜ providers to configure in Supabase |
 | Minimum age | 18 by default (`MINIMUM_AGE`), birth date at sign-up, under-age sign-ups refused | ✅ |
 
 ## 3. Payments

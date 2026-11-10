@@ -36,6 +36,7 @@ jest.mock('expo-router', () => ({
   Stack: { Screen: () => null },
 }));
 jest.mock('@/features/feed/location', () => ({
+  ...jest.requireActual('@/features/feed/location'),
   getCoarsePosition: jest.fn(async () => ({ status: 'granted', near: '38.72,-9.14' })),
 }));
 

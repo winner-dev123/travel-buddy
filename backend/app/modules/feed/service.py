@@ -53,6 +53,8 @@ class FeedParams:
     tab: str = "for_you"
     destination_id: uuid.UUID | None = None
     near: str | None = None
+    near_ts: datetime | None = None  # when the device took the fix (LOC-007)
+    near_city_level: bool = False  # coarse reading: city only (LOC-008)
     radius_km: int = 10
     country: str | None = None
     kinds: tuple[str, ...] = ()
@@ -168,6 +170,7 @@ class FeedService:
                     point = destinations.coarse_point(params.near)
                 except ValueError as exc:
                     raise _invalid("/near", "invalid", "near must be 'lat,lng'.") from exc
+                destinations.ensure_fresh_fix(params.near_ts, self._clock.now(), field="/near_ts")
             elif params.tab == "nearby":
                 raise _invalid("/near", "required", "The Nearby tab needs your location.")
         steps = await self._steps(session, viewer_id, params, prefs.interests, point)
@@ -284,6 +287,8 @@ class FeedService:
         steps: list[_Step] = []
         if point is not None:
             resolved = await destinations.resolve_point(session, *point)
+            if resolved is not None and params.near_city_level:
+                resolved = await destinations.city_of(session, resolved)
             if resolved is not None:
                 steps.append(_Step("gps", destination_ids=[resolved]))
         browse, upcoming = await location.selected_destinations(session, viewer_id)

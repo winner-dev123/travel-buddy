@@ -64,7 +64,7 @@ def test_only_content_staff_upload_editorial_media_with_a_credit(media: LiveApp)
     )
 
 
-@pytest.mark.req("ADM-007", "ADM-009")
+@pytest.mark.req("ADM-004", "ADM-007", "ADM-009")
 def test_a_cover_needs_verified_rights_and_disappears_when_revoked(media: LiveApp) -> None:
     staff, staff_id = _staff(media, "admin")
     member, _ = _user(media)

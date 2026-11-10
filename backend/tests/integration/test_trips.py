@@ -12,6 +12,7 @@ from tests.contract_schemas import assert_matches_contract
 from tests.integration.conftest import LiveApp, db_scalar
 from tests.integration.test_destinations import catalog  # noqa: F401 - module-scoped fixture
 from tests.integration.test_identity_flows import _auth
+from tests.integration.test_posts import _create as _create_post
 from tests.integration.test_posts import _destination, _problem, _user, app  # noqa: F401
 
 pytestmark = pytest.mark.integration
@@ -302,3 +303,29 @@ def test_offline_sync_merges_and_surfaces_conflicts(app: LiveApp) -> None:  # no
     ).json()
     assert newer["conflicts"] == []
     assert _items(newer["trip"])[0] == "Seafood lunch"
+
+
+@pytest.mark.req("TRIP-006", "POST-001")
+def test_publish_an_itinerary_summary_of_my_trip(app: LiveApp) -> None:  # noqa: F811
+    token, _ = _user(app)
+    trip = _trip(app, token)
+    summary = _create_post(
+        app,
+        token,
+        kind="itinerary_summary",
+        body="Three days in Lisbon: Alfama, Belém and a day trip to Sintra.",
+        trip_id=trip["id"],
+        location_precision="destination",
+        destination_id=_destination(app, "portugal/lisbon"),
+    )
+    assert summary.status_code == 201, summary.text
+    assert_matches_contract(summary.json(), "Post")
+    assert summary.json()["trip_id"] == trip["id"]
+
+    stranger, _ = _user(app)
+    theirs = _create_post(
+        app, stranger, kind="itinerary_summary", body="Mine now", trip_id=trip["id"]
+    )
+    assert _problem(theirs, 422, "validation_failed")["errors"][0]["field"] == "/trip_id"
+    missing = _create_post(app, token, kind="itinerary_summary", body="No trip")
+    assert _problem(missing, 422, "validation_failed")["errors"][0]["field"] == "/trip_id"

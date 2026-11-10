@@ -76,6 +76,7 @@ class ErrorCode(StrEnum):
     REWARD_NOT_PERMITTED = "reward_not_permitted"
     ATTEMPTS_EXHAUSTED = "attempts_exhausted"
     LOCATION_UNRESOLVABLE = "location_unresolvable"
+    STALE_LOCATION = "stale_location"
     UPSTREAM_UNAVAILABLE = "upstream_unavailable"
     AI_UNAVAILABLE = "ai_unavailable"
     AI_OUTPUT_INVALID = "ai_output_invalid"
@@ -90,6 +91,7 @@ _DEFAULT_STATUS: Mapping[ErrorCode, HTTPStatus] = {
     ErrorCode.UNAUTHENTICATED: HTTPStatus.UNAUTHORIZED,
     ErrorCode.MFA_REQUIRED: HTTPStatus.FORBIDDEN,
     ErrorCode.LOCATION_UNRESOLVABLE: HTTPStatus.UNPROCESSABLE_ENTITY,
+    ErrorCode.STALE_LOCATION: HTTPStatus.UNPROCESSABLE_ENTITY,
     ErrorCode.REAUTHENTICATION_REQUIRED: HTTPStatus.UNAUTHORIZED,
     ErrorCode.JUSTIFICATION_REQUIRED: HTTPStatus.BAD_REQUEST,
     ErrorCode.TOKEN_EXPIRED: HTTPStatus.UNAUTHORIZED,

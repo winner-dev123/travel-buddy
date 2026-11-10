@@ -18,7 +18,7 @@ from pydantic import (
 
 from app.core.i18n import LOCALE_TAG_PATTERN
 from app.core.pagination import PageInfo
-from app.modules.destinations.schemas import DestinationSummary
+from app.modules.destinations.schemas import DestinationSummary, PlaceSummary
 from app.modules.media.schemas import MediaRef
 from app.modules.profiles.schemas import UserSummary as UserSummary  # re-export
 
@@ -120,7 +120,7 @@ class Post(_Response):
     visibility: VisibilityName
     location_precision: PrecisionName
     primary_destination: DestinationSummary | None
-    place: None = None  # PlaceSummary with the places module (Phase 4)
+    place: PlaceSummary | None = None  # POST-002 'place' precision
     travel_date: date | None
     rating: int | None
     trip_id: uuid.UUID | None

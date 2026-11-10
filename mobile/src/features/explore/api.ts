@@ -1,4 +1,5 @@
 import type { ApiClient } from '@/api';
+import { fixParams, type DeviceFix } from '@/features/feed/location';
 import type { DestinationSummary, Page, UserSummary } from '@/features/feed/types';
 
 export type PlaceCategory =
@@ -186,9 +187,13 @@ export function getDestination(client: ApiClient, id: string): Promise<Destinati
   return client.get<DestinationDetail>(`/v1/destinations/${id}`);
 }
 
-export async function nearbyPlaces(client: ApiClient, near: string): Promise<PlaceSummary[]> {
+export async function nearbyPlaces(
+  client: ApiClient,
+  near: string,
+  fix?: DeviceFix,
+): Promise<PlaceSummary[]> {
   const page = await client.get<Page<PlaceSummary>>('/v1/places/nearby', {
-    query: { near, radius_m: 5000, limit: 30 },
+    query: { near, radius_m: 5000, limit: 30, ...fixParams(fix) },
   });
   return page.data;
 }

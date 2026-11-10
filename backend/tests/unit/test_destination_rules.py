@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
 
 from app.core.i18n import parse_accept_language
@@ -9,6 +11,9 @@ from app.modules.destinations.domain import (
     SEGMENT_PATTERN,
     BoundingBox,
     Point,
+    StaleLocationError,
+    check_fix_age,
+    city_level_only,
     localized,
     parse_near,
 )
@@ -101,3 +106,23 @@ def test_launch_catalog_is_consistent() -> None:
             assert box.north <= parent_box.north
             assert parent_box.west <= box.west
             assert box.east <= parent_box.east
+
+
+@pytest.mark.req("LOC-007")
+def test_device_fixes_older_than_15_minutes_are_stale() -> None:
+    now = datetime(2026, 11, 10, 12, 0, tzinfo=UTC)
+    check_fix_age(None, now)  # older clients send no timestamp
+    check_fix_age(now - timedelta(minutes=15), now)
+    check_fix_age(now + timedelta(minutes=1), now)  # small clock skew
+    with pytest.raises(StaleLocationError):
+        check_fix_age(now - timedelta(minutes=15, seconds=1), now)
+    with pytest.raises(ValueError, match="future"):
+        check_fix_age(now + timedelta(minutes=3), now)
+
+
+@pytest.mark.req("LOC-008")
+def test_readings_coarser_than_5_km_are_city_level_only() -> None:
+    assert city_level_only(None) is False
+    assert city_level_only(30) is False
+    assert city_level_only(5_000) is False
+    assert city_level_only(5_001) is True

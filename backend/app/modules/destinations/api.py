@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Header, Query, Request
@@ -15,7 +16,16 @@ from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
 from app.modules.destinations.models import PLACE_CATEGORIES, Continent, DestinationKind
 from app.modules.destinations.schemas import Destination, DestinationSummary, Place, PlaceSummary
-from app.modules.destinations.service import DestinationService, ListFilters, PlaceService
+from app.modules.destinations.service import (
+    DestinationService,
+    ListFilters,
+    PlaceService,
+    city_level_only,
+    ensure_fresh_fix,
+)
+
+# Search radius for a coarse device reading: roughly a whole city (LOC-008).
+CITY_RADIUS_M = 20_000
 
 router = APIRouter(prefix="/v1/destinations", tags=["destinations"])
 
@@ -133,8 +143,15 @@ async def resolve_destination(
     _principal: Annotated[Principal, Depends(get_principal)],
     near: Annotated[str, Query(max_length=40)],
     accept_language: AcceptLanguage = None,
+    near_ts: datetime | None = None,
+    near_accuracy_m: Annotated[float | None, Query(ge=0, le=100_000)] = None,
 ) -> Destination:
-    return await _service(request).resolve(near, preferences=_preferences(accept_language))
+    ensure_fresh_fix(near_ts, request.app.state.clock.now(), field="/near_ts")
+    return await _service(request).resolve(
+        near,
+        preferences=_preferences(accept_language),
+        city_level=city_level_only(near_accuracy_m),
+    )
 
 
 @router.get("/{destination_id}", response_model=Destination)
@@ -198,10 +215,14 @@ async def nearby_places(
     category: Annotated[str | None, Query(max_length=300)] = None,
     cursor: CursorParam = None,
     limit: Limit = 20,
+    near_ts: datetime | None = None,
+    near_accuracy_m: Annotated[float | None, Query(ge=0, le=100_000)] = None,
 ) -> Page[PlaceSummary]:
+    ensure_fresh_fix(near_ts, request.app.state.clock.now(), field="/near_ts")
     return await _places(request).nearby(
         near,
-        radius_m=radius_m,
+        # A coarse reading can't tell which part of the city the device is in (LOC-008).
+        radius_m=CITY_RADIUS_M if city_level_only(near_accuracy_m) else radius_m,
         categories=_categories(category),
         cursor=cursor,
         limit=limit,

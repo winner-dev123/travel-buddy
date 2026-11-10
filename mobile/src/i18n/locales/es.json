@@ -416,7 +416,10 @@
     "photoUnsupported": "Ese archivo no se puede usar. Elige una foto JPEG, PNG o WebP.",
     "photoFailed": "No pudimos abrir tus fotos. Inténtalo de nuevo.",
     "cameraDenied": "Permite el acceso a la cámara en los ajustes del teléfono para hacer una foto.",
-    "uploadFailed": "Una foto no se subió. Revisa tu conexión e inténtalo de nuevo."
+    "uploadFailed": "Una foto no se subió. Revisa tu conexión e inténtalo de nuevo.",
+    "spot": "Lugar concreto",
+    "spotHint": "Opcional: etiqueta un lugar público en {{place}}.",
+    "removeSpot": "Quitar"
   },
   "notifications": {
     "title": "Notificaciones",

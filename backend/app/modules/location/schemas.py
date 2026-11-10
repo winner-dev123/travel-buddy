@@ -74,6 +74,7 @@ class GeoPointInput(_Request):
     lat: float = Field(ge=-90, le=90)
     lng: float = Field(ge=-180, le=180)
     accuracy_m: float | None = Field(default=None, ge=0, le=100_000)
+    captured_at: datetime | None = None  # when the device took the fix (LOC-007)
 
     def __repr__(self) -> str:  # keep coordinates out of logs and tracebacks
         return "GeoPointInput(<redacted>)"

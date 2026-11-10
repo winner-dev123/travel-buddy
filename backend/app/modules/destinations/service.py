@@ -9,6 +9,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Select, and_, exists, func, or_, select, text, update
@@ -17,7 +18,14 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.errors import AppError, ErrorCode, FieldError
 from app.core.pagination import CursorCodec, Page, PageInfo
-from app.modules.destinations.domain import join_path, localized, parse_near
+from app.modules.destinations.domain import (
+    StaleLocationError,
+    check_fix_age,
+    join_path,
+    localized,
+    parse_near,
+)
+from app.modules.destinations.domain import city_level_only as city_level_only
 from app.modules.destinations.models import (
     Destination as DestinationRow,
 )
@@ -36,6 +44,7 @@ from app.modules.destinations.places import (
 )
 from app.modules.destinations.places import ids_within as place_ids_within
 from app.modules.destinations.places import is_listed as place_is_listed
+from app.modules.destinations.places import listed_destination as place_destination
 from app.modules.destinations.schemas import Destination, DestinationSummary, GeoPoint
 from app.modules.media import service as media
 from app.modules.media.schemas import MediaRef
@@ -267,9 +276,12 @@ class DestinationService:
             assert row is not None
             return await _detail(session, row, preferences)
 
-    async def resolve(self, near: str, *, preferences: Sequence[str]) -> Destination:
-        """Most specific destination covering a device point (LOC-005). The point is rounded to
-        ~110 m, used for one lookup, and never stored or logged."""
+    async def resolve(
+        self, near: str, *, preferences: Sequence[str], city_level: bool = False
+    ) -> Destination:
+        """Most specific destination covering a device point (LOC-005), or only its city when the
+        reading is coarse (LOC-008). The point is rounded to ~110 m, used for one lookup, and
+        never stored or logged."""
         try:
             point = parse_near(near)
         except ValueError as exc:
@@ -298,6 +310,8 @@ class DestinationService:
                     ErrorCode.LOCATION_UNRESOLVABLE,
                     "This location is outside the destinations we cover yet.",
                 )
+            if city_level:
+                found = await city_of(session, found)
             row = await session.get(DestinationRow, found)
             assert row is not None
             return await _detail(session, row, preferences)
@@ -539,6 +553,27 @@ async def centroids(
     return {row.id: (row.centroid_lat, row.centroid_lng) for row in rows}
 
 
+def ensure_fresh_fix(captured_at: datetime | None, now: datetime, *, field: str) -> None:
+    """Refuse a device location older than 15 minutes (``stale_location``, LOC-007) or one
+    timestamped in the future; a missing timestamp is accepted."""
+    try:
+        check_fix_age(captured_at, now)
+    except StaleLocationError as exc:
+        message = "Your location is out of date. Locate again."
+        raise AppError(
+            ErrorCode.STALE_LOCATION,
+            message,
+            errors=[FieldError(field=field, code="stale_location", message=message)],
+        ) from exc
+    except ValueError as exc:
+        message = "The location time is in the future."
+        raise AppError(
+            ErrorCode.VALIDATION_FAILED,
+            message,
+            errors=[FieldError(field=field, code="invalid", message=message)],
+        ) from exc
+
+
 def coarse_point(near: str) -> tuple[float, float]:
     """``lat,lng`` -> point rounded to ~110 m (LOC-003). Raises ``ValueError`` when malformed."""
     point = parse_near(near)
@@ -653,6 +688,7 @@ __all__ = [
     "PlaceService",
     "admin_update",
     "place_candidates",
+    "place_destination",
     "place_ids_within",
     "place_is_listed",
     "place_summaries",

@@ -6,6 +6,7 @@ Point resolution needs PostGIS (CI); those tests skip on databases without it.
 from __future__ import annotations
 
 import asyncio
+from datetime import timedelta
 from typing import Any
 
 import pytest
@@ -313,6 +314,43 @@ def test_point_resolves_to_the_most_specific_destination(catalog: str, live_app:
         "/v1/destinations/resolve", params={"near": "-22.85,-43.40"}, headers=_auth(token)
     )
     assert _ok(city, "Destination")["path"] == "brazil/rio-de-janeiro"
+
+
+@pytest.mark.req("LOC-007")
+def test_stale_or_future_device_fixes_are_refused(catalog: str, live_app: LiveApp) -> None:
+    token = _token(live_app)
+    now = live_app.clock.now()
+    stale = live_app.client.get(
+        "/v1/destinations/resolve",
+        params={"near": "-22.9711,-43.1822", "near_ts": (now - timedelta(minutes=20)).isoformat()},
+        headers=_auth(token),
+    )
+    assert stale.status_code == 422
+    assert stale.json()["code"] == "stale_location"
+    assert stale.json()["errors"][0]["field"] == "/near_ts"
+    future = live_app.client.get(
+        "/v1/destinations/resolve",
+        params={"near": "-22.9711,-43.1822", "near_ts": (now + timedelta(hours=1)).isoformat()},
+        headers=_auth(token),
+    )
+    assert future.json()["code"] == "validation_failed"
+
+
+@pytest.mark.req("LOC-008")
+def test_coarse_readings_resolve_to_the_city(catalog: str, live_app: LiveApp) -> None:
+    if not _postgis(catalog):
+        pytest.skip("PostGIS not installed on this PostgreSQL (runs in CI)")
+    token = _token(live_app)
+    fresh = live_app.clock.now().isoformat()
+    params = {"near": "-22.9711,-43.1822", "near_ts": fresh}
+    precise = live_app.client.get(
+        "/v1/destinations/resolve", params={**params, "near_accuracy_m": 40}, headers=_auth(token)
+    )
+    assert _ok(precise, "Destination")["path"] == "brazil/rio-de-janeiro/copacabana"
+    coarse = live_app.client.get(
+        "/v1/destinations/resolve", params={**params, "near_accuracy_m": 8000}, headers=_auth(token)
+    )
+    assert _ok(coarse, "Destination")["path"] == "brazil/rio-de-janeiro"
 
 
 def test_points_outside_the_catalog_are_unresolvable(catalog: str, live_app: LiveApp) -> None:

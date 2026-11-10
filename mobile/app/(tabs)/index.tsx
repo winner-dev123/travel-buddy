@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,7 +22,7 @@ import { Button, Notice } from '@/components/Form';
 import { accountKeys, unreadCount } from '@/features/account/api';
 import { feedKeys, fetchFeed, fetchPublicPosts } from '@/features/feed/api';
 import { PostCard } from '@/features/feed/PostCard';
-import { getCoarsePosition } from '@/features/feed/location';
+import { getCoarsePosition, isFresh, type CoarsePosition } from '@/features/feed/location';
 import type { FeedPage, Post, PostKind } from '@/features/feed/types';
 import { useAppTheme } from '@/theme/useAppTheme';
 
@@ -54,6 +54,7 @@ function HomeFeed() {
   const [tab, setTab] = useState<HomeTab>('for_you');
   const [category, setCategory] = useState<PostKind | null>(null);
   const nearby = signedIn && tab === 'nearby';
+  const queryClient = useQueryClient();
 
   // Asked only when the user opens Nearby (LOC-001): no location prompt at launch.
   const position = useQuery({
@@ -63,16 +64,25 @@ function HomeFeed() {
     staleTime: 5 * 60_000,
   });
   const near = position.data?.status === 'granted' ? position.data.near : undefined;
+  const deviceFix = position.data?.status === 'granted' ? position.data.fix : undefined;
 
   const query = useInfiniteQuery({
     queryKey: feedKeys.list(signedIn ? tab : 'guest', near, category),
-    queryFn: ({ pageParam }) =>
-      signedIn
-        ? fetchFeed(getApiClient(), tab, pageParam, {
-            near: nearby ? near : undefined,
-            categories: category ? [category] : undefined,
-          })
-        : fetchPublicPosts(getApiClient(), pageParam),
+    queryFn: async ({ pageParam }) => {
+      if (!signedIn) return fetchPublicPosts(getApiClient(), pageParam);
+      let fix = nearby ? deviceFix : undefined;
+      if (fix && !isFresh(fix)) {
+        // LOC-007: the API refuses fixes older than 15 minutes; locate again first.
+        const again = await getCoarsePosition();
+        queryClient.setQueryData<CoarsePosition>(['device', 'coarse-position'], again);
+        fix = again.status === 'granted' ? again.fix : undefined;
+      }
+      return fetchFeed(getApiClient(), tab, pageParam, {
+        near: nearby ? (fix?.near ?? near) : undefined,
+        fix,
+        categories: category ? [category] : undefined,
+      });
+    },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last: FeedPage) =>
       last.page.has_more ? (last.page.next_cursor ?? undefined) : undefined,

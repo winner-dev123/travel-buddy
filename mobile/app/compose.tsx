@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ApiProblem, getApiClient } from '@/api';
 import { Button, Notice, TextField } from '@/components/Form';
+import { searchPlaces, type PlaceSummary } from '@/features/explore/api';
 import { createPost, feedKeys, searchDestinations, type NewPost } from '@/features/feed/api';
 import type { DestinationSummary, PostKind } from '@/features/feed/types';
 import {
@@ -85,6 +86,8 @@ export default function ComposeScreen() {
   const [visibility, setVisibility] = useState<NewPost['visibility']>('public');
   const [search, setSearch] = useState('');
   const [destination, setDestination] = useState<DestinationSummary | null>(null);
+  const [spotSearch, setSpotSearch] = useState('');
+  const [spot, setSpot] = useState<PlaceSummary | null>(null);
   const [photos, setPhotos] = useState<DraftPhoto[]>([]);
   const [photoNotice, setPhotoNotice] = useState<string | null>(null);
   // One key for this draft: a retried submit never creates a second post.
@@ -117,6 +120,18 @@ export default function ComposeScreen() {
     queryFn: () => searchDestinations(getApiClient(), search),
     enabled: search.trim().length >= 2 && destination === null,
   });
+  // POST-002: optionally tag a public place in the chosen destination.
+  const spots = useQuery({
+    queryKey: ['places', 'search', destination?.id ?? '', spotSearch],
+    queryFn: () => searchPlaces(getApiClient(), destination?.id ?? '', spotSearch.trim()),
+    enabled: destination !== null && spot === null && spotSearch.trim().length >= 2,
+  });
+  const chooseDestination = (next: DestinationSummary | null) => {
+    setDestination(next);
+    setSpot(null);
+    setSpotSearch('');
+  };
+
   const publish = useMutation({
     mutationFn: async () => {
       const client = getApiClient();
@@ -133,6 +148,7 @@ export default function ComposeScreen() {
           body: body.trim(),
           visibility,
           destination,
+          place: spot,
           mediaIds: uploaded.map((photo) => photo.mediaId as string),
         },
         idempotencyKey.current,
@@ -259,7 +275,7 @@ export default function ComposeScreen() {
             <Button
               label={t('compose.changePlace')}
               variant="secondary"
-              onPress={() => setDestination(null)}
+              onPress={() => chooseDestination(null)}
             />
           </View>
         ) : (
@@ -275,7 +291,7 @@ export default function ComposeScreen() {
             {(matches.data ?? []).map((match) => (
               <Pressable
                 key={match.id}
-                onPress={() => setDestination(match)}
+                onPress={() => chooseDestination(match)}
                 accessibilityRole="button"
                 style={[styles.match, { borderColor: theme.colors.divider }]}
                 testID={`compose-match-${match.slug}`}
@@ -287,6 +303,45 @@ export default function ComposeScreen() {
             ))}
           </View>
         )}
+        {destination && spot ? (
+          <View style={styles.row}>
+            <Text
+              style={[theme.typography.body, styles.fill, { color: theme.colors.textPrimary }]}
+              testID="compose-spot"
+            >
+              {`📍 ${spot.name}`}
+            </Text>
+            <Button
+              label={t('compose.removeSpot')}
+              variant="secondary"
+              onPress={() => setSpot(null)}
+            />
+          </View>
+        ) : destination ? (
+          <View style={{ gap: theme.spacing[2] }}>
+            <TextField
+              label={t('compose.spot')}
+              value={spotSearch}
+              onChangeText={setSpotSearch}
+              autoCorrect={false}
+              hint={t('compose.spotHint', { place: destination.name })}
+              testID="compose-spot-search"
+            />
+            {(spots.data ?? []).map((match) => (
+              <Pressable
+                key={match.id}
+                onPress={() => setSpot(match)}
+                accessibilityRole="button"
+                style={[styles.match, { borderColor: theme.colors.divider }]}
+                testID={`compose-spot-${match.id}`}
+              >
+                <Text style={[theme.typography.body, { color: theme.colors.textPrimary }]}>
+                  {match.name}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
         <Text style={[theme.typography.label, { color: theme.colors.textPrimary }]}>
           {t('compose.audience')}
         </Text>
