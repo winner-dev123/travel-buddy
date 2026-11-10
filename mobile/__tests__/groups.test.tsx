@@ -308,38 +308,43 @@ describe('new group', () => {
 });
 
 describe('group conversations', () => {
-  it('show the group name, sender names and announcements', async () => {
-    useSessionStore.getState().setSignedIn(me(false));
-    const convo = {
-      id: 'c-group',
-      kind: 'group',
-      title: 'Alfama supper club',
-      counterpart: null,
-      last_message: {
-        id: 'm1',
-        seq: 1,
-        sender_id: 'u1',
-        kind: 'announcement',
-        snippet: 'Meet at 8',
-        deleted: false,
-        created_at: 'x',
-      },
-      last_seq: 1,
-      unread_count: 1,
-      read_through_seq: 1,
-      delivered_through_seq: 1,
-      muted_until: null,
-      notification_level: 'all',
-      can_send: true,
-      send_restriction: null,
+  const convo = {
+    id: 'c-group',
+    kind: 'group',
+    title: 'Alfama supper club',
+    counterpart: null,
+    last_message: {
+      id: 'm1',
+      seq: 1,
+      sender_id: 'u1',
+      kind: 'announcement',
+      snippet: 'Meet at 8',
+      deleted: false,
       created_at: 'x',
-      last_message_at: '2026-11-09T10:00:00Z',
-    };
-    mockApi.get.mockResolvedValue({ data: [convo], page: { next_cursor: null, has_more: false } });
-    const inbox = await renderUi(<Messages />);
-    expect(await screen.findByText('Alfama supper club')).toBeTruthy();
-    inbox.unmount();
+    },
+    last_seq: 1,
+    unread_count: 1,
+    read_through_seq: 1,
+    delivered_through_seq: 1,
+    muted_until: null,
+    notification_level: 'all',
+    can_send: true,
+    send_restriction: null,
+    created_at: 'x',
+    last_message_at: '2026-11-09T10:00:00Z',
+  };
 
+  it('show the group name in the inbox', async () => {
+    useSessionStore.getState().setSignedIn(me(false));
+    mockApi.get.mockResolvedValue({ data: [convo], page: { next_cursor: null, has_more: false } });
+    await renderUi(<Messages />);
+    expect(await screen.findByText('Alfama supper club')).toBeTruthy();
+  });
+
+  // Separate tests: unmounting by hand and then auto-cleanup left the chat (and its polling)
+  // mounted, which kept Jest from exiting.
+  it('show sender names and announcements in the chat', async () => {
+    useSessionStore.getState().setSignedIn(me(false));
     mockParams = { id: 'c-group' };
     mockApi.get.mockImplementation(async (path: string) =>
       path === '/v1/conversations/c-group'

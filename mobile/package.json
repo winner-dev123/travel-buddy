@@ -14,7 +14,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "jest",
-    "test:ci": "jest --ci --watchAll=false --coverage --forceExit"
+    "test:ci": "jest --ci --watchAll=false --coverage"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
