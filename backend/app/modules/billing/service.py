@@ -40,9 +40,11 @@ from app.modules.billing.entitlements import (
     Feature,
     Grant,
     GrantSource,
+    GroupPremiumStatus,
     Plan,
     Quota,
     evaluate,
+    group_premium_status,
 )
 from app.modules.billing.models import (
     BillingEvent,
@@ -98,6 +100,19 @@ async def snapshot(
 
 async def has(session: AsyncSession, user_id: uuid.UUID, feature: Feature, *, at: datetime) -> bool:
     return (await snapshot(session, user_id, at=at)).has(feature)
+
+
+async def group_premium(
+    session: AsyncSession, owner_id: uuid.UUID, *, at: datetime
+) -> GroupPremiumStatus:
+    """A group's premium status from its owner's grants, with the admin grace (docs/07 §5)."""
+    return group_premium_status(await _load_grants(session, owner_id), at=at)
+
+
+async def quota_limit(
+    session: AsyncSession, user_id: uuid.UUID, quota: Quota, *, at: datetime
+) -> int:
+    return (await snapshot(session, user_id, at=at)).quota(quota, used=0).limit
 
 
 def _quota(snap: EntitlementSnapshot, quota: Quota, used: int) -> QuotaStatusOut:
@@ -555,4 +570,14 @@ async def purge_expired(session: AsyncSession) -> int:
     )
 
 
-__all__ = ["BillingService", "get_entitlements", "has", "snapshot", "timedelta"]
+__all__ = [
+    "BillingService",
+    "Feature",
+    "Quota",
+    "get_entitlements",
+    "group_premium",
+    "has",
+    "quota_limit",
+    "snapshot",
+    "timedelta",
+]

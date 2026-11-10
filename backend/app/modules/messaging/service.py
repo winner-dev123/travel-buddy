@@ -24,7 +24,7 @@ import uuid
 from collections import defaultdict
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from datetime import datetime
-from typing import Any
+from typing import Any, Protocol
 
 from sqlalchemy import and_, delete, exists, func, or_, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
@@ -91,6 +91,21 @@ logger = logging.getLogger(__name__)
 # and ``message.updated`` carry only IDs; each connection loads the message for its own user,
 # re-checking access at delivery time.
 Publish = Callable[[Sequence[uuid.UUID], Mapping[str, Any]], Awaitable[None]]
+
+
+class GroupChatPolicy(Protocol):
+    @property
+    def restriction(self) -> str | None: ...
+
+    @property
+    def permissions(self) -> frozenset[str]: ...
+
+    @property
+    def title(self) -> str | None: ...
+
+
+# A group member's send rights and chat permissions, from the groups module (same layer).
+GroupPolicy = Callable[[AsyncSession, uuid.UUID, uuid.UUID, datetime], Awaitable[GroupChatPolicy]]
 
 
 def _not_found(what: str = "Conversation") -> AppError:
@@ -201,9 +216,19 @@ async def _restrictions(
     user_id: uuid.UUID,
     conversations: Sequence[Conversation],
     peers: Mapping[uuid.UUID, uuid.UUID],
+    group_policy: GroupPolicy | None = None,
 ) -> dict[uuid.UUID, SendRestriction | None]:
     direct = [c for c in conversations if c.kind == ConversationKind.DIRECT]
     result: dict[uuid.UUID, SendRestriction | None] = {c.id: None for c in conversations}
+    groups = [c for c in conversations if c.kind == ConversationKind.GROUP and c.group_id]
+    if groups and group_policy is not None:
+        now = await _db_now(session)
+        for conversation in groups:
+            assert conversation.group_id is not None
+            policy = await group_policy(session, conversation.group_id, user_id, now)
+            result[conversation.id] = (
+                SendRestriction(policy.restriction) if policy.restriction else None
+            )
     if not direct:
         return result
     others = [peers[c.id] for c in direct if c.id in peers]
@@ -227,10 +252,25 @@ async def _restrictions(
 
 
 async def _ensure_can_send(
-    session: AsyncSession, user_id: uuid.UUID, conversation: Conversation
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    conversation: Conversation,
+    group_policy: GroupPolicy | None = None,
 ) -> None:
-    peers = await _peers(session, [conversation.id], user_id)
-    restriction = (await _restrictions(session, user_id, [conversation], peers))[conversation.id]
+    peers = (
+        await _peers(session, [conversation.id], user_id)
+        if conversation.kind == ConversationKind.DIRECT
+        else {}
+    )
+    restriction = (await _restrictions(session, user_id, [conversation], peers, group_policy))[
+        conversation.id
+    ]
+    if restriction is SendRestriction.MEMBER_RESTRICTED:
+        raise AppError(ErrorCode.MEMBER_RESTRICTED, "You can't post in this group right now.")
+    if restriction is SendRestriction.CHAT_ADMINS_ONLY:
+        raise AppError(ErrorCode.CHAT_ADMINS_ONLY, "Only admins can post in this group.")
+    if restriction is SendRestriction.ARCHIVED:
+        raise AppError(ErrorCode.FORBIDDEN, "This group is archived.")
     if restriction is SendRestriction.BLOCKED:
         raise AppError(
             ErrorCode.BLOCKED_RELATIONSHIP, "You blocked this person. Unblock them to message."
@@ -291,7 +331,10 @@ async def _advance_receipt(
 
 
 async def _conversations_out(
-    session: AsyncSession, user_id: uuid.UUID, rows: Sequence[Row]
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    rows: Sequence[Row],
+    group_policy: GroupPolicy | None = None,
 ) -> list[ConversationOut]:
     if not rows:
         return []
@@ -300,7 +343,13 @@ async def _conversations_out(
         session, [c.id for c in conversations if c.kind == ConversationKind.DIRECT], user_id
     )
     users = await profiles.authors(session, list(set(peers.values())))
-    restrictions = await _restrictions(session, user_id, conversations, peers)
+    restrictions = await _restrictions(session, user_id, conversations, peers, group_policy)
+    titles: dict[uuid.UUID, str | None] = {}
+    if group_policy is not None:
+        now = await _db_now(session)
+        for c in conversations:
+            if c.kind == ConversationKind.GROUP and c.group_id:
+                titles[c.id] = (await group_policy(session, c.group_id, user_id, now)).title
     receipts = await _receipts(
         session,
         [(c.id, user_id) for c in conversations] + [(c, u) for c, u in peers.items()],
@@ -345,7 +394,7 @@ async def _conversations_out(
             ConversationOut(
                 id=conversation.id,
                 kind=conversation.kind,  # type: ignore[arg-type]
-                title=None,
+                title=titles.get(conversation.id),
                 avatar=None,
                 group_id=conversation.group_id,
                 challenge_team_id=conversation.challenge_team_id,
@@ -522,11 +571,25 @@ class MessagingService:
         cursors: CursorCodec,
         publish: Publish | None = None,
         sign: media.Signer | None = None,
+        group_policy: GroupPolicy | None = None,
     ) -> None:
         self._sessionmaker = sessionmaker
         self._cursors = cursors
         self._publish = publish
         self._sign = sign
+        self._group_policy = group_policy
+
+    async def _permissions(
+        self, session: AsyncSession, conversation: Conversation, user_id: uuid.UUID
+    ) -> frozenset[str]:
+        if conversation.kind != ConversationKind.GROUP or not conversation.group_id:
+            return frozenset()
+        if self._group_policy is None:
+            return frozenset()
+        policy = await self._group_policy(
+            session, conversation.group_id, user_id, await _db_now(session)
+        )
+        return policy.permissions
 
     async def _emit(self, users: Sequence[uuid.UUID], event: Mapping[str, Any]) -> None:
         """Best effort: the database is the record, and clients catch up by seq (docs/06 §1)."""
@@ -565,7 +628,9 @@ class MessagingService:
             ).all()
             has_more = len(found) > limit
             found = found[:limit]
-            data = await _conversations_out(session, user_id, [(c, m) for c, m, _ in found])
+            data = await _conversations_out(
+                session, user_id, [(c, m) for c, m, _ in found], self._group_policy
+            )
         next_cursor = (
             self._cursors.encode(
                 {"at": found[-1][2].isoformat(), "id": str(found[-1][0].id)}, scope=scope
@@ -621,7 +686,9 @@ class MessagingService:
             member = await session.get(ConversationMember, (conversation.id, me))
             if member is None:
                 raise _not_found()
-            [out] = await _conversations_out(session, me, [(conversation, member)])
+            [out] = await _conversations_out(
+                session, me, [(conversation, member)], self._group_policy
+            )
         if created:
             await self._emit(
                 [me, them],
@@ -637,7 +704,7 @@ class MessagingService:
     ) -> ConversationOut:
         async with self._sessionmaker() as session:
             row = await _access(session, conversation_id, user_id)
-            [out] = await _conversations_out(session, user_id, [row])
+            [out] = await _conversations_out(session, user_id, [row], self._group_policy)
         return out
 
     async def mute(
@@ -649,7 +716,9 @@ class MessagingService:
             if request.notification_level is not None:
                 member.notification_level = request.notification_level
             await session.flush()
-            [out] = await _conversations_out(session, user_id, [(conversation, member)])
+            [out] = await _conversations_out(
+                session, user_id, [(conversation, member)], self._group_policy
+            )
         await self._emit(
             [user_id],
             {
@@ -785,6 +854,36 @@ class MessagingService:
     async def send(
         self, principal: Principal, conversation_id: uuid.UUID, request: SendMessageRequest
     ) -> tuple[MessageOut, bool]:
+        return await self._send(principal, conversation_id, request)
+
+    async def announce(
+        self,
+        principal: Principal,
+        conversation_id: uuid.UUID,
+        client_message_id: uuid.UUID,
+        body: str,
+        pin: bool,
+    ) -> dict[str, Any]:
+        """A group announcement (GCHAT-003); the group checked ``announcements.post``."""
+        out, _ = await self._send(
+            principal,
+            conversation_id,
+            SendMessageRequest(client_message_id=client_message_id, body=body),
+            kind=MessageKind.ANNOUNCEMENT,
+        )
+        if pin:
+            await self.pin(principal.user_id, conversation_id, out.id, on=True)
+            out = await self.get_message(principal.user_id, conversation_id, out.id)
+        return out.model_dump(mode="json")
+
+    async def _send(
+        self,
+        principal: Principal,
+        conversation_id: uuid.UUID,
+        request: SendMessageRequest,
+        *,
+        kind: str | None = None,
+    ) -> tuple[MessageOut, bool]:
         me = principal.user_id
         async with self._sessionmaker() as session, session.begin():
             # The row lock serializes sends per conversation: seq order and duplicate checks.
@@ -805,7 +904,8 @@ class MessagingService:
                 "messaging_limited",
                 message="Messaging is limited on your account right now.",
             )
-            await _ensure_can_send(session, me, conversation)
+            if kind != MessageKind.ANNOUNCEMENT:  # admins may announce in admins-only chats
+                await _ensure_can_send(session, me, conversation, self._group_policy)
             floor = _floor(member)
             if request.reply_to_message_id is not None:
                 target = await session.get(Message, request.reply_to_message_id)
@@ -848,7 +948,7 @@ class MessagingService:
                 seq=conversation.last_seq,
                 sender_id=me,
                 client_message_id=request.client_message_id,
-                kind=request.kind,
+                kind=kind or request.kind,
                 body=request.body,
                 reply_to_message_id=request.reply_to_message_id,
                 thread_root_id=request.thread_root_id,
@@ -925,7 +1025,7 @@ class MessagingService:
                     ErrorCode.MESSAGE_EDIT_WINDOW_EXPIRED,
                     "Messages can be edited for 15 minutes after sending.",
                 )
-            await _ensure_can_send(session, user_id, conversation)
+            await _ensure_can_send(session, user_id, conversation, self._group_policy)
             message.body = body
             message.edited_at = now
             platform.record_event(
@@ -948,16 +1048,39 @@ class MessagingService:
         return out
 
     async def delete(
-        self, user_id: uuid.UUID, conversation_id: uuid.UUID, message_id: uuid.UUID
+        self,
+        user_id: uuid.UUID,
+        conversation_id: uuid.UUID,
+        message_id: uuid.UUID,
+        *,
+        reason_code: str | None = None,
     ) -> None:
-        """Delete for everyone; idempotent. Group moderators arrive with group chat."""
+        """Delete for everyone (sender), or remove as a group moderator with ``messages.remove``
+        (recorded as a moderation action; GCHAT-004). Idempotent."""
         async with self._sessionmaker() as session, session.begin():
             conversation, member = await _access(session, conversation_id, user_id)
             message = await _message_in(session, conversation, member, message_id, lock=True)
             if message.deleted_at is not None:
                 return
-            if message.sender_id != user_id:
-                raise AppError(ErrorCode.FORBIDDEN, "You can delete only your own messages.")
+            by_moderator = message.sender_id != user_id
+            if by_moderator:
+                if "messages.remove" not in await self._permissions(session, conversation, user_id):
+                    raise AppError(ErrorCode.FORBIDDEN, "You can delete only your own messages.")
+                if not reason_code:
+                    raise _invalid("/reason_code", "Say why you're removing this message.")
+                message.moderation_state = ModerationState.REMOVED_BY_MODERATOR
+                await trust_safety.record_action(
+                    session,
+                    target_type="message",
+                    target_id=message.id,
+                    action="remove_content",
+                    reason_code=reason_code,
+                    notes=None,
+                    actor_id=user_id,
+                    report_id=None,
+                    expires_at=None,
+                    group_id=conversation.group_id,
+                )
             await _tombstone(session, message, by=user_id)
             platform.record_event(
                 session,
@@ -968,7 +1091,7 @@ class MessagingService:
                     "conversation_id": str(conversation.id),
                     "message_id": str(message.id),
                     "seq": message.seq,
-                    "by_moderator": False,
+                    "by_moderator": by_moderator,
                 },
             )
             recipients = await _active_members(session, conversation.id)
@@ -977,7 +1100,7 @@ class MessagingService:
                 "message_id": str(message.id),
                 "seq": message.seq,
                 "deleted_at": message.deleted_at.isoformat() if message.deleted_at else None,
-                "by_moderator": False,
+                "by_moderator": by_moderator,
             }
         await self._emit(recipients, {"type": "message.deleted", "data": tombstone})
 
@@ -1011,7 +1134,7 @@ class MessagingService:
             else:
                 if _hidden(message):
                     raise _not_found("Message")
-                await _ensure_can_send(session, user_id, conversation)
+                await _ensure_can_send(session, user_id, conversation, self._group_policy)
                 added = await session.execute(
                     insert(MessageReaction)
                     .values(message_id=message.id, user_id=user_id, emoji=stored)
@@ -1103,6 +1226,10 @@ class MessagingService:
         async with self._sessionmaker() as session, session.begin():
             conversation, member = await _access(session, conversation_id, user_id, lock=True)
             message = await _message_in(session, conversation, member, message_id)
+            if conversation.kind == ConversationKind.GROUP and "messages.pin" not in (
+                await self._permissions(session, conversation, user_id)
+            ):
+                raise AppError(ErrorCode.FORBIDDEN, "Only moderators can pin in this group.")
             if not on:
                 unpinned = await session.execute(
                     delete(ConversationPin).where(
@@ -1188,7 +1315,7 @@ class MessagingService:
         async with self._sessionmaker() as session:
             conversation, _ = await _access(session, conversation_id, user_id)
             try:
-                await _ensure_can_send(session, user_id, conversation)
+                await _ensure_can_send(session, user_id, conversation, self._group_policy)
             except AppError:
                 return []
             blocked_by_me, blocked_me = await trust_safety.blocks_of(session, user_id)
@@ -1292,3 +1419,51 @@ async def purge_expired(session: AsyncSession) -> int:
 
 
 __all__ = ["MessageKind", "MessagingService", "message_evidence", "moderate_message"]
+
+
+async def create_group_conversation(
+    session: AsyncSession, group_id: uuid.UUID, owner_id: uuid.UUID
+) -> uuid.UUID:
+    """The group's one chat room (GCHAT-001), created with the group."""
+    conversation = Conversation(kind=ConversationKind.GROUP, group_id=group_id)
+    session.add(conversation)
+    await session.flush()
+    session.add(ConversationMember(conversation_id=conversation.id, user_id=owner_id))
+    await session.flush()
+    return conversation.id
+
+
+async def add_group_member(
+    session: AsyncSession, conversation_id: uuid.UUID, user_id: uuid.UUID, *, from_join: bool
+) -> None:
+    """Join (or rejoin) the chat; with ``from_join`` history starts at the join (GCHAT-006)."""
+    conversation = await session.get(Conversation, conversation_id, with_for_update=True)
+    if conversation is None:
+        return
+    floor = conversation.last_seq if from_join else 0
+    member = await session.get(ConversationMember, (conversation_id, user_id))
+    if member is None:
+        session.add(
+            ConversationMember(
+                conversation_id=conversation_id, user_id=user_id, joined_at_seq=floor
+            )
+        )
+    else:
+        member.left_at = None
+        member.joined_at_seq = floor
+    await session.flush()
+
+
+async def remove_group_member(
+    session: AsyncSession, conversation_id: uuid.UUID, user_id: uuid.UUID
+) -> None:
+    """Access ends at once: every read and send checks membership (GCHAT-007)."""
+    await session.execute(
+        update(ConversationMember)
+        .where(
+            ConversationMember.conversation_id == conversation_id,
+            ConversationMember.user_id == user_id,
+            ConversationMember.left_at.is_(None),
+        )
+        .values(left_at=func.now())
+    )

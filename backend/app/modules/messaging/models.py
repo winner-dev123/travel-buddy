@@ -57,8 +57,10 @@ class Conversation(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
     kind: Mapped[str] = mapped_column(Text)
     direct_key: Mapped[str | None] = mapped_column(Text)
-    # Foreign keys to travel_groups / challenge_teams arrive with those modules.
-    group_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    group_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("travel_groups.id", ondelete="CASCADE")
+    )
+    # The foreign key to challenge_teams arrives with challenges.
     challenge_team_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     last_seq: Mapped[int] = mapped_column(BigInteger, server_default=text("0"))
     last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -519,6 +519,8 @@ erDiagram
 `ix (owner_id) WHERE status='active'` (owned-group cap). `ix (primary_destination_id) WHERE visibility='public' AND status='active'` (later public discovery).
 
 ### group_roles (system roles seeded; custom roles reserved for later)
+
+> As built (BL-3.07): v1 has only the four system roles, so `group_memberships.role` stores the role key (checked enum) and the permission matrix lives in code (`groups/domain.py`). The `group_roles` table and `role_id` arrive with custom roles.
 `id`, `group_id NULL` (NULL = system role), `key` (`owner`, `admin`, `moderator`, `member`), `permissions text[]`, `rank smallint` (owner 100, admin 80, moderator 50, member 10). `uq (coalesce(group_id, nil_uuid), key)`.
 
 Permissions (initial): `group.edit`, `group.delete`, `group.transfer`, `members.invite`, `members.approve`, `members.remove`, `members.restrict`, `roles.assign`, `messages.remove`, `messages.pin`, `announcements.post`, `challenges.manage`, `challenges.judge`.

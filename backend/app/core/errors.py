@@ -42,6 +42,7 @@ class ErrorCode(StrEnum):
     METHOD_NOT_ALLOWED = "method_not_allowed"
     CONFLICT = "conflict"
     PRECONDITION_FAILED = "precondition_failed"
+    PRECONDITION_REQUIRED = "precondition_required"
     IDEMPOTENCY_KEY_REUSED = "idempotency_key_reused"
     IDEMPOTENCY_KEY_IN_PROGRESS = "idempotency_key_in_progress"
     PAYLOAD_TOO_LARGE = "payload_too_large"
@@ -93,6 +94,7 @@ _DEFAULT_STATUS: Mapping[ErrorCode, HTTPStatus] = {
     ErrorCode.METHOD_NOT_ALLOWED: HTTPStatus.METHOD_NOT_ALLOWED,
     ErrorCode.CONFLICT: HTTPStatus.CONFLICT,
     ErrorCode.PRECONDITION_FAILED: HTTPStatus.PRECONDITION_FAILED,
+    ErrorCode.PRECONDITION_REQUIRED: HTTPStatus.PRECONDITION_REQUIRED,
     ErrorCode.IDEMPOTENCY_KEY_REUSED: HTTPStatus.CONFLICT,
     ErrorCode.IDEMPOTENCY_KEY_IN_PROGRESS: HTTPStatus.CONFLICT,
     ErrorCode.PAYLOAD_TOO_LARGE: HTTPStatus.REQUEST_ENTITY_TOO_LARGE,

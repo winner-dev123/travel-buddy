@@ -137,8 +137,9 @@ async def delete_message(
     principal: CurrentPrincipal,
     reason_code: Annotated[str | None, Query(max_length=40)] = None,
 ) -> Response:
-    del reason_code  # moderator removals arrive with group chat
-    await _service(request).delete(principal.user_id, conversation_id, message_id)
+    await _service(request).delete(
+        principal.user_id, conversation_id, message_id, reason_code=reason_code
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

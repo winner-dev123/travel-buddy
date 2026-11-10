@@ -364,8 +364,11 @@ async def record_action(
     report_id: uuid.UUID | None,
     expires_at: datetime | None,
     restriction_kind: str | None = None,
+    group_id: uuid.UUID | None = None,
 ) -> ModerationAction:
     row = ModerationAction(
+        scope="group" if group_id else "platform",
+        group_id=group_id,
         target_type=target_type,
         target_id=target_id,
         action=action,
@@ -439,12 +442,14 @@ async def active_restrictions(
     ``reinstate`` (SAFE-013). One entry per kind: the one lasting longest."""
     lifted_at = await session.scalar(
         select(func.max(ModerationAction.created_at)).where(
+            ModerationAction.scope == "platform",
             ModerationAction.target_type == "user",
             ModerationAction.target_id == user_id,
             ModerationAction.action == "reinstate",
         )
     )
     query = select(ModerationAction).where(
+        ModerationAction.scope == "platform",  # group restrictions stay inside their group
         ModerationAction.target_type == "user",
         ModerationAction.target_id == user_id,
         ModerationAction.action == "restrict",

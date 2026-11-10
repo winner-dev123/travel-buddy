@@ -54,6 +54,9 @@ from app.modules.discovery.service import DiscoveryService
 from app.modules.feed import service as feed_service
 from app.modules.feed.api import router as feed_router
 from app.modules.feed.service import FeedService
+from app.modules.groups import service as groups_service
+from app.modules.groups.api import invitations_router as group_invitations_router
+from app.modules.groups.api import router as groups_router
 from app.modules.health.api import ReadinessCheck
 from app.modules.health.api import router as health_router
 from app.modules.identity import service as identity_module
@@ -301,6 +304,15 @@ def create_app(
         cursors=cursor_codec,
         publish=realtime_bus.publish,
         sign=media_service.private_signer(media_storage),
+        group_policy=group_chat_policy,
+    )
+    app.state.group_service = groups_service.GroupService(
+        sessionmaker=database.sessionmaker,
+        clock=clock,
+        cursors=cursor_codec,
+        chat=GroupChatRooms(),
+        announce=app.state.messaging_service.announce,
+        public_site_url=settings.public_site_url,
     )
     app.state.notification_service = notifications_service.NotificationService(
         sessionmaker=database.sessionmaker, cursors=cursor_codec
@@ -366,6 +378,8 @@ def create_app(
     app.include_router(notifications_router)
     app.include_router(messaging_router)
     app.include_router(billing_router)
+    app.include_router(groups_router)
+    app.include_router(group_invitations_router)
     app.include_router(realtime_router)
     app.include_router(media_router)
     app.include_router(admin_router)
@@ -429,6 +443,39 @@ def build_rate_limiter(
     return RateLimiter(PostgresRateLimitStore(database.sessionmaker), policy, clock)
 
 
+class GroupChatRooms:
+    """Group chat rooms live in messaging; groups (same layer) reaches them through this."""
+
+    async def create(
+        self, session: AsyncSession, group_id: uuid.UUID, owner_id: uuid.UUID
+    ) -> uuid.UUID:
+        return await messaging_service.create_group_conversation(session, group_id, owner_id)
+
+    async def add_member(
+        self,
+        session: AsyncSession,
+        conversation_id: uuid.UUID,
+        user_id: uuid.UUID,
+        *,
+        from_join: bool,
+    ) -> None:
+        await messaging_service.add_group_member(
+            session, conversation_id, user_id, from_join=from_join
+        )
+
+    async def remove_member(
+        self, session: AsyncSession, conversation_id: uuid.UUID, user_id: uuid.UUID
+    ) -> None:
+        await messaging_service.remove_group_member(session, conversation_id, user_id)
+
+
+async def group_chat_policy(
+    session: AsyncSession, group_id: uuid.UUID, user_id: uuid.UUID, now: datetime
+) -> groups_service.ChatPolicy:
+    """Send rights in a group chat come from the group (groups → messaging, same layer)."""
+    return await groups_service.chat_policy(session, group_id, user_id, now=now)
+
+
 def build_realtime_bus(settings: Settings, redis: Redis | None) -> RealtimeBus:
     """Realtime fanout (ADR-0023): Redis pub/sub across processes, or in-process."""
     if settings.resolved_realtime_bus == "redis":
@@ -488,6 +535,7 @@ def build_job_runner(
         "connections": connections_service.purge_expired,
         "messaging": messaging_service.purge_expired,
         "billing": billing_service.purge_expired,
+        "groups": groups_service.purge_expired,
         "location": location_service.purge_expired,
     }
     periodic = [Periodic(f"retention.{name}", f"retention.{name}", DAILY) for name in purges]

@@ -428,7 +428,9 @@ class Connection:
         )
 
     async def _on_delete(self, envelope: Envelope, data: DeleteData) -> None:
-        await self.messaging.delete(self._me.user_id, data.conversation_id, data.message_id)
+        await self.messaging.delete(
+            self._me.user_id, data.conversation_id, data.message_id, reason_code=data.reason_code
+        )
 
     async def _on_read(self, envelope: Envelope, data: ReadData) -> None:
         await self.messaging.update_receipts(
