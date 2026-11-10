@@ -63,7 +63,8 @@
           "cameraPermission": "Travel Buddy uses the camera when you take a photo to share in a story.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "locales": {
       "en": "./native-locales/en.json",

@@ -68,6 +68,7 @@ class ClientConfig(BaseModel):
     minimum_age: int
     web_push_vapid_public_key: str | None = None
     offline_manifest_keys: list[ManifestKey] = []
+    auth_providers: list[Literal["apple", "google"]] = []
 
 
 def _version(value: str) -> tuple[int, int, int]:
@@ -113,6 +114,7 @@ async def get_client_config(
             ManifestKey.model_validate(key)
             for key in (offline.public_keys() if offline is not None else [])
         ],
+        auth_providers=sorted(set(settings.auth_social_providers)),
     )
 
 

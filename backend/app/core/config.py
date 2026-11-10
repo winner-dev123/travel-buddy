@@ -72,6 +72,10 @@ class Settings(BaseSettings):
     support_email: str = Field(default="support@travelbuddy.app", pattern=r"^[^@\s]+@[^@\s]+$")
     # Public help page; unset until it is published, so no client links to a missing page.
     support_url: str = Field(default="", pattern=r"^(https://[^\s]+)?$")
+    # Social sign-in providers enabled in the IdP (Supabase Auth), as a JSON list in env, e.g.
+    # AUTH_SOCIAL_PROVIDERS='["apple", "google"]'. The apps show a button per listed provider
+    # (AUTH-002, AUTH-003); list one only after configuring it in Supabase.
+    auth_social_providers: list[Literal["apple", "google"]] = Field(default_factory=list)
 
     # JSON object in env, e.g. FEATURE_FLAGS='{"traveler_discovery": true}'.
     # Unknown flag names are rejected at boot by FeatureFlags.

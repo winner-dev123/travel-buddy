@@ -131,6 +131,32 @@ describe('Supabase Auth client', () => {
   });
 });
 
+describe('Supabase social sign-in (AUTH-002, AUTH-003)', () => {
+  const config = { url: 'https://proj.supabase.co', publishableKey: 'sb_publishable_test' };
+
+  it('builds the PKCE authorize URL for a provider', () => {
+    const auth = new SupabaseAuthClient(config, jest.fn());
+    const url = new URL(auth.authorizeUrl('apple', 'chal-123', 'travelbuddy://auth-callback'));
+    expect(`${url.origin}${url.pathname}`).toBe('https://proj.supabase.co/auth/v1/authorize');
+    expect(url.searchParams.get('provider')).toBe('apple');
+    expect(url.searchParams.get('redirect_to')).toBe('travelbuddy://auth-callback');
+    expect(url.searchParams.get('code_challenge')).toBe('chal-123');
+    expect(url.searchParams.get('code_challenge_method')).toBe('s256');
+  });
+
+  it('exchanges the code and verifier for the access token', async () => {
+    const fetchImpl = jest.fn(async () => json(200, { access_token: 'sb-jwt' }));
+    const auth = new SupabaseAuthClient(config, fetchImpl);
+    await expect(auth.exchangeCode('code-1', 'verifier-1')).resolves.toBe('sb-jwt');
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('https://proj.supabase.co/auth/v1/token?grant_type=pkce');
+    expect(JSON.parse(init.body as string)).toEqual({
+      auth_code: 'code-1',
+      code_verifier: 'verifier-1',
+    });
+  });
+});
+
 describe('publishable key guard', () => {
   it('accepts publishable keys and refuses secret keys', () => {
     expect(assertPublishableKey(' sb_publishable_abc ')).toBe('sb_publishable_abc');

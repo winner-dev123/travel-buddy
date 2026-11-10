@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -7,8 +8,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getApiClient } from '@/api';
 import { mintDevIdToken } from '@/auth/devIdp';
 import { describeAuthError } from '@/auth/errors';
-import { exchangeIdToken } from '@/auth/session';
-import { SupabaseAuthClient, SupabaseAuthError } from '@/auth/supabaseAuth';
+import { OAuthCancelled, signInWithProvider } from '@/auth/oauth';
+import { APP_INFO_KEY, exchangeIdToken, fetchAppInfo } from '@/auth/session';
+import { type OAuthProvider, SupabaseAuthClient, SupabaseAuthError } from '@/auth/supabaseAuth';
 import { Button, Notice, TextField } from '@/components/Form';
 import { getIdentityProviderKind, getSupabaseConfig } from '@/config/env';
 import { useAppTheme } from '@/theme/useAppTheme';
@@ -42,6 +44,19 @@ export default function SignInScreen() {
     }
   }, [provider]);
   const misconfigured = provider === 'supabase' && supabase === null;
+  // AUTH-002/003: only the providers configured in Supabase, as announced by the API. Apple comes
+  // first on iOS (App Store guideline 4.8: at least as prominent as other providers).
+  const appInfo = useQuery({
+    queryKey: APP_INFO_KEY,
+    queryFn: () => fetchAppInfo(getApiClient()),
+    enabled: supabase !== null,
+    staleTime: 5 * 60_000,
+  });
+  const order: Record<OAuthProvider, number> =
+    Platform.OS === 'ios' ? { apple: 0, google: 1 } : { google: 0, apple: 1 };
+  const socialProviders = (appInfo.data?.auth_providers ?? [])
+    .filter((p): p is OAuthProvider => p === 'google' || p === 'apple')
+    .sort((a, b) => order[a] - order[b]);
 
   async function finish(idToken: string): Promise<void> {
     const outcome = await exchangeIdToken(getApiClient(), idToken);
@@ -98,6 +113,27 @@ export default function SignInScreen() {
       setError(describeAuthError(caught, t));
       if (caught instanceof SupabaseAuthError && caught.code === 'email_not_confirmed') {
         setCanResend(true);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function continueWith(social: OAuthProvider): Promise<void> {
+    if (!supabase) return;
+    setError(null);
+    setInfo(null);
+    setBusy(true);
+    try {
+      const accessToken = await signInWithProvider(supabase, social);
+      try {
+        await finish(accessToken);
+      } finally {
+        void supabase.signOut(accessToken);
+      }
+    } catch (caught) {
+      if (!(caught instanceof OAuthCancelled)) {
+        setError(describeAuthError(caught, t));
       }
     } finally {
       setBusy(false);
@@ -211,6 +247,29 @@ export default function SignInScreen() {
               testID="sign-in-resend"
             />
           ) : null}
+          {provider === 'supabase' && socialProviders.length > 0 ? (
+            <>
+              <Text
+                style={[
+                  theme.typography.caption,
+                  styles.center,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
+                {t('auth.or')}
+              </Text>
+              {socialProviders.map((social) => (
+                <Button
+                  key={social}
+                  variant="secondary"
+                  label={social === 'apple' ? t('auth.continueApple') : t('auth.continueGoogle')}
+                  onPress={() => void continueWith(social)}
+                  disabled={busy}
+                  testID={`sign-in-${social}`}
+                />
+              ))}
+            </>
+          ) : null}
           {provider === 'supabase' ? (
             <Button
               variant="secondary"
@@ -229,4 +288,4 @@ export default function SignInScreen() {
   );
 }
 
-const styles = StyleSheet.create({ fill: { flex: 1 } });
+const styles = StyleSheet.create({ fill: { flex: 1 }, center: { textAlign: 'center' } });

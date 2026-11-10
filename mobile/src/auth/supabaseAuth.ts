@@ -25,6 +25,9 @@ export class SupabaseAuthError extends Error {
   }
 }
 
+/** Social sign-in providers configured in Supabase (listed in `/v1/client-config`). */
+export type OAuthProvider = 'google' | 'apple';
+
 export type SignUpResult =
   { kind: 'confirmation_sent' } | { kind: 'signed_in'; accessToken: string };
 
@@ -73,12 +76,39 @@ export class SupabaseAuthClient {
     return { kind: 'confirmation_sent' };
   }
 
-  /** Ends the Supabase session after the exchange; failures are irrelevant to the user. */
   /** Send the sign-up confirmation email again (Supabase rate-limits this per address). */
   async resendConfirmation(email: string): Promise<void> {
     await this.call('/auth/v1/resend', { type: 'signup', email });
   }
 
+  /**
+   * Where to send the browser for "Continue with Google / Apple" (AUTH-002, AUTH-003): Supabase
+   * runs the provider sign-in and redirects to `redirectTo` with a one-time `code` (PKCE).
+   */
+  authorizeUrl(provider: OAuthProvider, codeChallenge: string, redirectTo: string): string {
+    const query = new URLSearchParams({
+      provider,
+      redirect_to: redirectTo,
+      code_challenge: codeChallenge,
+      code_challenge_method: 's256',
+    });
+    return `${this.config.url}/auth/v1/authorize?${query.toString()}`;
+  }
+
+  /** Exchanges the redirect's `code` and the PKCE verifier for the Supabase access token. */
+  async exchangeCode(authCode: string, codeVerifier: string): Promise<string> {
+    const body = await this.call('/auth/v1/token?grant_type=pkce', {
+      auth_code: authCode,
+      code_verifier: codeVerifier,
+    });
+    const token = typeof body.access_token === 'string' ? body.access_token : undefined;
+    if (!token) {
+      throw new SupabaseAuthError('unknown', 'Sign-in returned no session.');
+    }
+    return token;
+  }
+
+  /** Ends the Supabase session after the exchange; failures are irrelevant to the user. */
   async signOut(accessToken: string): Promise<void> {
     try {
       await this.fetchImpl(`${this.config.url}/auth/v1/logout?scope=local`, {

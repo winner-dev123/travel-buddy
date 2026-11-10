@@ -188,14 +188,16 @@ export async function signOut(client: ApiClient): Promise<void> {
   }
 }
 
-/** The parts of `GET /v1/client-config` the app uses: legal documents, the support contact and
- * the version policy (SCR-151). */
+/** The parts of `GET /v1/client-config` the app uses: legal documents, the support contact, the
+ * version policy (SCR-151) and the social sign-in providers. */
 export interface AppInfo {
   legal: LegalDocuments;
   support: SupportContact;
   update_required: boolean;
   min_supported_version: string;
   latest_version?: string;
+  /** Social sign-in providers configured in Supabase (AUTH-002, AUTH-003). */
+  auth_providers?: string[];
 }
 
 export const APP_INFO_KEY = ['client-config', 'app-info'] as const;

@@ -313,7 +313,7 @@ screen was folded into another one; ✅ built, ⚠️ partly, ⬜ not yet (reaso
 
 | Screens | Status | Where |
 |---|---|---|
-| SCR-001 sign in, SCR-010 age gate and terms | ✅ | `/(auth)/sign-in`, `/(auth)/complete-registration` |
+| SCR-001 sign in, SCR-010 age gate and terms | ✅ | `/(auth)/sign-in` (email and password; Apple and Google once configured in Supabase), `/(auth)/complete-registration` |
 | SCR-002 email verification status | ⚠️ | Sign-in offers to resend the confirmation email after sign-up or when the email isn't confirmed; publishing explains an unverified email; no dedicated status screen |
 | SCR-003 password reset | ✅ | IdP-hosted |
 | SCR-011..014 onboarding steps | ✅ | One flow at `/(onboarding)/onboarding` (profile, language, interests, destination) |

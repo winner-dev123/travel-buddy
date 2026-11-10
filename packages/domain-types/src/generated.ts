@@ -3955,6 +3955,12 @@ export interface components {
             };
             /** @description Base64url VAPID application server key for Web Push subscriptions (NOTIF-005). Null when Web Push is disabled. Rotations are announced here. */
             web_push_vapid_public_key?: string | null;
+            /**
+             * @description Social sign-in providers configured in the identity provider (AUTH-002, AUTH-003). Clients show a
+             *     "Continue with …" button for each and run the provider sign-in through the IdP (PKCE). Empty while
+             *     none is configured.
+             */
+            auth_providers?: ("apple" | "google")[];
             /** @description Public keys that verify offline package manifests (OFF-001), matched by the manifest's `key_id`. Empty when offline downloads are not configured. Rotations add a key here before manifests use it. */
             offline_manifest_keys?: {
                 key_id: string;

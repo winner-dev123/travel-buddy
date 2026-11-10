@@ -53,6 +53,23 @@ def test_invalid_parameters_are_rejected(client: TestClient, params: dict[str, s
 
 
 @pytest.mark.req("AUTH-009")
+@pytest.mark.req("AUTH-002", "AUTH-003")
+def test_social_providers_are_announced_once_configured(client: TestClient) -> None:
+    body = client.get(
+        "/v1/client-config", params={"platform": "ios", "app_version": "0.1.0"}
+    ).json()
+    assert body["auth_providers"] == []
+    configured = make_settings(auth_social_providers=["google", "apple", "google"])
+    with TestClient(create_app(configured, identity_settings=make_identity_settings())) as app:
+        body = app.get(
+            "/v1/client-config", params={"platform": "ios", "app_version": "0.1.0"}
+        ).json()
+    assert_matches_contract(body, "ClientConfig")
+    assert body["auth_providers"] == ["apple", "google"]
+    with pytest.raises(ValueError):
+        make_settings(auth_social_providers=["facebook"])
+
+
 def test_support_page_is_served_once_published() -> None:
     published = make_settings(support_url="https://travelbuddy.app/support")
     with TestClient(create_app(published, identity_settings=make_identity_settings())) as client:

@@ -110,6 +110,20 @@ Each store answers `503` until its settings exist; Stripe (web) is separate (sec
 `SUPPORT_EMAIL` (default `support@travelbuddy.app`) appears on the apps' Help screen. Set
 `SUPPORT_URL` (https) once the public help page exists; until then the apps show only the email.
 
+### 1.12 Social sign-in (AUTH-002, AUTH-003)
+
+The apps run "Continue with Apple / Google" through Supabase Auth with PKCE; Supabase handles the
+provider and Apple's private-relay emails. Nothing shows until the API lists a provider:
+
+1. In Supabase → Authentication → Providers, enable **Google** (a Google Cloud OAuth client; its
+   authorized redirect URI is `https://<project>.supabase.co/auth/v1/callback`) and **Apple** (Services
+   ID, Team ID, Key ID and the private key from the Apple Developer account).
+2. In Supabase → Authentication → URL Configuration → Redirect URLs, add `travelbuddy://auth-callback`
+   (store builds) and, for development in Expo Go, `exp://127.0.0.1:8081/--/auth-callback`.
+3. Set `AUTH_SOCIAL_PROVIDERS=["apple", "google"]` on the API (`/v1/client-config` then lists them).
+4. Enable Apple together with Google: App Store guideline 4.8 requires Sign in with Apple when an iOS
+   app offers another social sign-in.
+
 ## 2. Runtime topology (production reference)
 
 ```mermaid
