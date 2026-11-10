@@ -584,7 +584,9 @@
     "reactionA11y_other": "{{emoji}}, {{count}} reações",
     "clear": "Limpar",
     "clearTitle": "Limpar este chat?",
-    "clearBody": "As mensagens até agora somem só para você. Os outros continuam vendo."
+    "clearBody": "As mensagens até agora somem só para você. Os outros continuam vendo.",
+    "photoTitle": "Enviar uma foto",
+    "sendPhoto": "Enviar uma foto"
   },
   "groups": {
     "title": "Grupos",

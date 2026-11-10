@@ -574,7 +574,9 @@
     "reactionA11y_other": "{{emoji}}, {{count}} Reaktionen",
     "clear": "Leeren",
     "clearTitle": "Diesen Chat leeren?",
-    "clearBody": "Die bisherigen Nachrichten verschwinden nur für dich. Alle anderen sehen sie weiterhin."
+    "clearBody": "Die bisherigen Nachrichten verschwinden nur für dich. Alle anderen sehen sie weiterhin.",
+    "photoTitle": "Foto senden",
+    "sendPhoto": "Foto senden"
   },
   "groups": {
     "title": "Gruppen",

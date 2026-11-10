@@ -100,12 +100,14 @@ export function sendMessage(
   clientMessageId: string,
   body: string,
   replyToId?: string,
+  attachmentIds: string[] = [],
 ): Promise<Message> {
   return client.post<Message>(`/v1/conversations/${id}/messages`, {
     idempotencyKey: clientMessageId,
     body: {
       client_message_id: clientMessageId,
-      body,
+      ...(body ? { body } : {}),
+      ...(attachmentIds.length ? { kind: 'image', attachment_media_ids: attachmentIds } : {}),
       ...(replyToId ? { reply_to_message_id: replyToId } : {}),
     },
   });

@@ -333,7 +333,7 @@ screen was folded into another one; ✅ built, ⚠️ partly, ⬜ not yet (reaso
 | SCR-069 invite, SCR-070 members and roles, SCR-072 settings and transfer | ✅ | Share an invitation link from the group page; `/groups/manage` (settings, roles, restrict, remove, invitations with revoke, ownership offer, archive); the offer is answered on the group page |
 | SCR-071 join requests | ⬜ | Behind the `group_join_requests` flag (off) |
 | SCR-073 invitation landing | ⚠️ | Join by pasting a link or code in Groups; no deep-link handler yet |
-| SCR-080 inbox, SCR-081/082 chats | ✅ | `/(tabs)/messages`, `/chat/[id]` (replies, reactions, pins, announcements, mute, clear for me) |
+| SCR-080 inbox, SCR-081/082 chats | ✅ | `/(tabs)/messages`, `/chat/[id]` (photos, replies, reactions, pins, announcements, mute, clear for me) |
 | SCR-083 reply thread | ⚠️ | Replies are quoted in the chat; no separate thread view |
 | SCR-084 pinned messages | ✅ | Pinned bar in `/chat/[id]` |
 | SCR-085..090 challenges | ✅ | `/challenges`, `/challenges/[id]`, `/challenges/new`, `/challenges/review`, `/challenges/fulfillments`, `/rewards`; team threads in `/chat/[id]` |

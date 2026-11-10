@@ -584,7 +584,9 @@
     "reactionA11y_other": "{{emoji}}, {{count}} réactions",
     "clear": "Effacer",
     "clearTitle": "Effacer ce chat ?",
-    "clearBody": "Les messages échangés disparaissent pour vous seulement. Les autres les voient toujours."
+    "clearBody": "Les messages échangés disparaissent pour vous seulement. Les autres les voient toujours.",
+    "photoTitle": "Envoyer une photo",
+    "sendPhoto": "Envoyer une photo"
   },
   "groups": {
     "title": "Groupes",

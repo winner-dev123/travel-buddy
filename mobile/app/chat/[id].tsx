@@ -18,7 +18,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getApiClient } from '@/api';
 import { useSessionStore } from '@/auth/sessionStore';
 import { Button, Notice, TextField } from '@/components/Form';
+import { MediaPreview } from '@/features/feed/PhotoGallery';
 import { getGroup, groupKeys } from '@/features/groups/api';
+import {
+  pickPhotos,
+  takePhoto,
+  UnsupportedPhotoError,
+  uploadPhoto,
+  type DraftPhoto,
+} from '@/features/media/upload';
 import {
   clearConversation,
   deleteMessage,
@@ -162,6 +170,52 @@ export default function ChatScreen() {
     Alert.alert(t('messages.clearTitle'), t('messages.clearBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('messages.clear'), style: 'destructive', onPress: () => clear.mutate(throughSeq) },
+    ]);
+
+  // DM-002: photos go to quarantine first and are scanned before anyone else sees them.
+  const [photoNotice, setPhotoNotice] = useState<string | null>(null);
+  const sendPhoto = useMutation({
+    mutationFn: async (photo: DraftPhoto) => {
+      const client = getApiClient();
+      const mediaId = await uploadPhoto(client, photo, 'message');
+      return sendMessage(client, id, pending.current, draft.trim(), replyTo?.id, [mediaId]);
+    },
+    onSuccess: (message) => {
+      setDraft('');
+      setReplyTo(null);
+      pending.current = getApiClient().newIdempotencyKey();
+      queryClient.setQueryData<MessageList>(messageKeys.history(id), (old) =>
+        old && !old.data.some((m) => m.id === message.id)
+          ? {
+              data: [...old.data, message],
+              page: { ...old.page, newest_seq: Math.max(old.page.newest_seq ?? 0, message.seq) },
+            }
+          : old,
+      );
+      void queryClient.invalidateQueries({ queryKey: messageKeys.inbox });
+    },
+  });
+  const addPhoto = (source: 'library' | 'camera') => {
+    setPhotoNotice(null);
+    void (async () => {
+      try {
+        const picked = source === 'library' ? await pickPhotos(1) : await takePhoto();
+        if (picked === 'denied') setPhotoNotice(t('compose.cameraDenied'));
+        else if (picked[0]) sendPhoto.mutate(picked[0]);
+      } catch (error) {
+        setPhotoNotice(
+          error instanceof UnsupportedPhotoError
+            ? t('compose.photoUnsupported')
+            : t('compose.photoFailed'),
+        );
+      }
+    })();
+  };
+  const choosePhoto = () =>
+    Alert.alert(t('messages.photoTitle'), undefined, [
+      { text: t('compose.addPhotos'), onPress: () => addPhoto('library') },
+      { text: t('compose.takePhoto'), onPress: () => addPhoto('camera') },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
 
   const send = useMutation({
@@ -431,19 +485,26 @@ export default function ChatScreen() {
                     {`↩ ${item.reply_to.deleted ? t('messages.deleted') : (item.reply_to.snippet ?? '')}`}
                   </Text>
                 ) : null}
-                <Text
-                  style={[
-                    theme.typography.body,
-                    {
-                      color: mine ? theme.colors.onPrimary : theme.colors.textPrimary,
-                      fontStyle: hidden ? 'italic' : 'normal',
-                    },
-                  ]}
-                >
-                  {hidden
-                    ? t('messages.deleted')
-                    : (item.body ?? (item.attachments.length ? t('messages.photo') : ''))}
-                </Text>
+                {!hidden && item.attachments.length > 0 ? (
+                  <View style={styles.attachments} testID={`message-photos-${item.id}`}>
+                    {item.attachments.map((media) => (
+                      <MediaPreview key={media.id} media={media} />
+                    ))}
+                  </View>
+                ) : null}
+                {hidden || item.body ? (
+                  <Text
+                    style={[
+                      theme.typography.body,
+                      {
+                        color: mine ? theme.colors.onPrimary : theme.colors.textPrimary,
+                        fontStyle: hidden ? 'italic' : 'normal',
+                      },
+                    ]}
+                  >
+                    {hidden ? t('messages.deleted') : item.body}
+                  </Text>
+                ) : null}
                 {item.edited_at && !hidden ? (
                   <Text
                     style={[
@@ -546,13 +607,36 @@ export default function ChatScreen() {
                 multiline
                 testID="chat-input"
               />
-              <Button
-                label={t('messages.send')}
-                onPress={() => send.mutate(draft.trim())}
-                disabled={draft.trim().length === 0}
-                busy={send.isPending}
-                testID="chat-send"
-              />
+              {photoNotice ? (
+                <Notice tone="info" testID="chat-photo-notice">
+                  {photoNotice}
+                </Notice>
+              ) : null}
+              {sendPhoto.isError ? <Notice tone="error">{t('compose.uploadFailed')}</Notice> : null}
+              <View style={styles.sendRow}>
+                <Pressable
+                  onPress={choosePhoto}
+                  disabled={sendPhoto.isPending}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('messages.sendPhoto')}
+                  hitSlop={8}
+                  style={styles.photoButton}
+                  testID="chat-photo"
+                >
+                  <Text style={[theme.typography.title3, { color: theme.colors.primary }]}>
+                    {sendPhoto.isPending ? '…' : '📷'}
+                  </Text>
+                </Pressable>
+                <View style={styles.fill}>
+                  <Button
+                    label={t('messages.send')}
+                    onPress={() => send.mutate(draft.trim())}
+                    disabled={draft.trim().length === 0}
+                    busy={send.isPending}
+                    testID="chat-send"
+                  />
+                </View>
+              </View>
             </>
           )}
         </View>
@@ -576,6 +660,9 @@ const styles = StyleSheet.create({
   },
   pinRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   reactions: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 },
+  attachments: { gap: 4, width: 220 },
+  sendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  photoButton: { paddingHorizontal: 4 },
   reaction: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 6, paddingVertical: 1 },
   muteBar: {
     flexDirection: 'row',

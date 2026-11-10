@@ -20,6 +20,14 @@ const mockApi = {
 };
 
 jest.mock('@/api', () => ({ ...jest.requireActual('@/api'), getApiClient: () => mockApi }));
+const mockUploadPhoto = jest.fn();
+const mockPickPhotos = jest.fn();
+jest.mock('@/features/media/upload', () => ({
+  UnsupportedPhotoError: class extends Error {},
+  pickPhotos: (...args: unknown[]) => mockPickPhotos(...args),
+  takePhoto: jest.fn(),
+  uploadPhoto: (...args: unknown[]) => mockUploadPhoto(...args),
+}));
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
   useLocalSearchParams: () => ({ id: 'c1' }),
@@ -327,4 +335,55 @@ it('clears the chat for me after confirming', async () => {
       body: { through_seq: 2 },
     }),
   );
+});
+
+it('sends a photo through the scanned upload flow (DM-002)', async () => {
+  serve(conversation(), [message('m1', 1, bo, 'hi')]);
+  mockPickPhotos.mockResolvedValue([
+    { uri: 'file:///p.jpg', width: 800, height: 600, mimeType: 'image/jpeg' },
+  ]);
+  mockUploadPhoto.mockResolvedValue('media-1');
+  mockApi.post.mockResolvedValue(
+    message('m2', 2, meUser, '', {
+      body: null as unknown as string,
+      attachments: [{ id: 'media-1', kind: 'image', status: 'processing', url: null }],
+    }),
+  );
+  await renderChat();
+  await fireEvent.press(await screen.findByTestId('chat-photo'));
+  press('Choose photos');
+  await waitFor(() =>
+    expect(mockApi.post).toHaveBeenCalledWith('/v1/conversations/c1/messages', {
+      idempotencyKey: '00000000-0000-4000-8000-000000000001',
+      body: {
+        client_message_id: '00000000-0000-4000-8000-000000000001',
+        kind: 'image',
+        attachment_media_ids: ['media-1'],
+      },
+    }),
+  );
+  expect(mockPickPhotos).toHaveBeenCalledWith(1);
+  expect(mockUploadPhoto.mock.calls[0]?.[2]).toBe('message');
+  expect(await screen.findByTestId('message-photos-m2')).toBeTruthy();
+});
+
+it('shows received photos instead of a placeholder', async () => {
+  serve(conversation(), [
+    message('m1', 1, bo, '', {
+      body: null as unknown as string,
+      attachments: [
+        {
+          id: 'a1',
+          kind: 'image',
+          status: 'ready',
+          url: 'https://cdn.test/a1.webp',
+          width: 800,
+          height: 600,
+        },
+      ],
+    }),
+  ]);
+  await renderChat();
+  expect(await screen.findByTestId('message-photos-m1')).toBeTruthy();
+  expect(screen.queryByText('Photo')).toBeNull();
 });

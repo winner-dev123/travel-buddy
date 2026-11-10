@@ -584,7 +584,9 @@
     "reactionA11y_other": "{{emoji}}, {{count}} reacciones",
     "clear": "Vaciar",
     "clearTitle": "¿Vaciar este chat?",
-    "clearBody": "Los mensajes hasta ahora desaparecen solo para ti. Los demás los siguen viendo."
+    "clearBody": "Los mensajes hasta ahora desaparecen solo para ti. Los demás los siguen viendo.",
+    "photoTitle": "Enviar una foto",
+    "sendPhoto": "Enviar una foto"
   },
   "groups": {
     "title": "Grupos",

@@ -574,7 +574,9 @@
     "reactionA11y_other": "{{emoji}}, {{count}} reactions",
     "clear": "Clear",
     "clearTitle": "Clear this chat?",
-    "clearBody": "The messages so far disappear for you only. Everyone else still sees them."
+    "clearBody": "The messages so far disappear for you only. Everyone else still sees them.",
+    "photoTitle": "Send a photo",
+    "sendPhoto": "Send a photo"
   },
   "groups": {
     "title": "Groups",
