@@ -272,6 +272,27 @@ async def shared_upcoming(
     return found
 
 
+async def share_upcoming_destination(session: AsyncSession, a: uuid.UUID, b: uuid.UUID) -> bool:
+    """Both chose to share an upcoming trip to the same destination for discovery. Private
+    upcoming trips and browse destinations never count (T-LOC-08)."""
+    mine = select(UserSelectedLocation.destination_id).where(
+        UserSelectedLocation.user_id == a,
+        UserSelectedLocation.kind == SelectionKind.UPCOMING,
+        UserSelectedLocation.share_for_discovery.is_(True),
+    )
+    found = await session.scalar(
+        select(UserSelectedLocation.id)
+        .where(
+            UserSelectedLocation.user_id == b,
+            UserSelectedLocation.kind == SelectionKind.UPCOMING,
+            UserSelectedLocation.share_for_discovery.is_(True),
+            UserSelectedLocation.destination_id.in_(mine),
+        )
+        .limit(1)
+    )
+    return found is not None
+
+
 async def shared_upcoming_in(
     session: AsyncSession,
     destination_id: uuid.UUID,
@@ -309,6 +330,9 @@ from app.modules.location.discovery import active_session as active_session  # n
 from app.modules.location.discovery import purge_expired as purge_expired  # noqa: E402
 from app.modules.location.discovery import require_discovery as require_discovery  # noqa: E402
 from app.modules.location.discovery import session_hops_since as session_hops_since  # noqa: E402
+from app.modules.location.discovery import (  # noqa: E402
+    visible_discovery_destination as visible_discovery_destination,
+)
 from app.modules.location.discovery import visible_sessions_in as visible_sessions_in  # noqa: E402
 
 

@@ -165,11 +165,48 @@ def test_recipient_policy_and_blocks_get_the_same_generic_refusal(app: LiveApp) 
     lisbon = app.client.get("/v1/destinations/lookup", params={"path": "portugal/lisbon"}).json()[
         "id"
     ]
+    # Private signals never count: browsing the same city or a trip shared with nobody. They
+    # would otherwise leak through `can_request_connection` on the profile (T-LOC-03/08).
+    private_trips: list[tuple[str, str]] = []
     for token in (ana, shy):
         app.client.put(
             "/v1/users/me/browse-destination", headers=_auth(token), json={"destination_id": lisbon}
         )
-    assert _send(app, ana, shy_id).status_code == 201  # both exploring Lisbon
+        trip = app.client.post(
+            "/v1/users/me/upcoming-destinations",
+            headers=_auth(token),
+            json={"destination_id": lisbon},
+        )
+        assert trip.status_code == 201, trip.text
+        private_trips.append((token, trip.json()["id"]))
+    _problem(_send(app, ana, shy_id), 403, "connection_request_not_allowed")
+    assert _relationship(app, ana, shy_id) == ("none", False)
+    for token, trip_id in private_trips:
+        removed = app.client.delete(
+            f"/v1/users/me/upcoming-destinations/{trip_id}", headers=_auth(token)
+        )
+        assert removed.status_code == 204, removed.text
+    # Both sharing a trip to Lisbon for discovery (which needs their consent) is a shared context.
+    for token in (ana, shy):
+        consent = app.client.post(
+            "/v1/users/me/consents",
+            headers=_auth(token),
+            json={
+                "consent_type": "traveler_discovery",
+                "version": "2026-11-01",
+                "granted": True,
+                "source": "prompt",
+            },
+        )
+        assert consent.status_code == 201, consent.text
+        shared = app.client.post(
+            "/v1/users/me/upcoming-destinations",
+            headers=_auth(token),
+            json={"destination_id": lisbon, "share_for_discovery": True},
+        )
+        assert shared.status_code in (200, 201), shared.text
+    assert _relationship(app, ana, shy_id) == ("none", True)
+    assert _send(app, ana, shy_id).status_code == 201
 
     _, blocker_id = _user(app)
     app.client.put(f"/v1/users/{blocker_id}/block", headers=_auth(ana))

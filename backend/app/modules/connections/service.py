@@ -10,9 +10,11 @@ Rules on sending, checked in this order:
 - accounts younger than 7 days send at most 5 a day (``429``), on top of the route's
   ``contact`` rate limit.
 
-"Shared context" means the two travellers discover the same city, explore the same destination
-(browse or upcoming), or share an active travel group; higher-layer features register their own
-checks with ``add_shared_context`` (wired in main.py).
+"Shared context" counts only what both travellers chose to share: being visible in discovery in
+the same city, sharing an upcoming trip to the same destination for discovery, or an active
+travel group (registered with ``add_shared_context`` from main.py). Private signals (browse
+destination, unshared trips, invisible discovery) never count: ``can_request_connection`` is
+shown on profiles, so they would leak through it (T-LOC-03, T-LOC-08).
 """
 
 from __future__ import annotations
@@ -111,17 +113,11 @@ def add_shared_context(check: SharedContext) -> None:
 
 
 async def _shared_context(session: AsyncSession, a: uuid.UUID, b: uuid.UUID) -> bool:
-    a_discovery = await location.active_discovery_destination(session, a)
-    if a_discovery is not None and a_discovery == await location.active_discovery_destination(
-        session, b
-    ):
-        return True  # discovering the same city
-    a_browse, a_upcoming = await location.selected_destinations(session, a)
-    b_browse, b_upcoming = await location.selected_destinations(session, b)
-    mine = {d for d in [a_browse, *a_upcoming] if d is not None}
-    theirs = {d for d in [b_browse, *b_upcoming] if d is not None}
-    if mine & theirs:
-        return True
+    a_city = await location.visible_discovery_destination(session, a)
+    if a_city is not None and a_city == await location.visible_discovery_destination(session, b):
+        return True  # both visible in discovery in the same city
+    if await location.share_upcoming_destination(session, a, b):
+        return True  # both share an upcoming trip there for discovery
     for check in _EXTRA_CONTEXTS:
         if await check(session, a, b):
             return True

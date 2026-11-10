@@ -94,6 +94,17 @@ async def active_discovery_destination(
     return found.destination_id if found else None
 
 
+async def visible_discovery_destination(
+    session: AsyncSession, user_id: uuid.UUID
+) -> uuid.UUID | None:
+    """The city the user is *visible* in. Invisible sessions count for nothing outside the
+    user's own view (T-LOC-03): not even as a "shared context" for connection requests."""
+    found = await active_session(session, user_id)
+    if found is None or found.visibility != DiscoveryVisibility.VISIBLE:
+        return None
+    return found.destination_id
+
+
 async def _out(
     session: AsyncSession, row: TravelerDiscoverySession, preferences: Sequence[str]
 ) -> DiscoverySessionOut:
