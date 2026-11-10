@@ -1121,5 +1121,16 @@
     "hint": "Type at least two characters.",
     "empty": "No one matches that name.",
     "error": "Search isn't available right now. Try again soon."
+  },
+  "upcoming": {
+    "title": "Upcoming trips",
+    "explain": "Add the places you're going to. Your feed shows stories from them before you arrive. Only you see this list.",
+    "add": "Add a destination",
+    "from": "From (optional)",
+    "to": "To (optional)",
+    "datesInvalid": "Use dates like 2026-12-04, with the end on or after the start.",
+    "save": "Add trip",
+    "remove": "Remove",
+    "error": "We couldn't load your upcoming trips. Check your connection and try again."
   }
 }

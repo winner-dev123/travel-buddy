@@ -1,4 +1,4 @@
-// req: NOTIF-003, I18N-002
+// req: NOTIF-003, I18N-002, LOC-005
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
@@ -14,8 +14,9 @@ import { useSettingsStore } from '@/state/settingsStore';
 
 import LanguageScreen from '../app/settings/language';
 import NotificationSettings from '../app/settings/notifications';
+import UpcomingTrips from '../app/settings/upcoming';
 
-const mockApi = { get: jest.fn(), patch: jest.fn(), post: jest.fn() };
+const mockApi = { get: jest.fn(), patch: jest.fn(), post: jest.fn(), delete: jest.fn() };
 
 jest.mock('@/api', () => ({ ...jest.requireActual('@/api'), getApiClient: () => mockApi }));
 jest.mock('expo-router', () => ({ Stack: { Screen: () => null } }));
@@ -77,6 +78,8 @@ async function renderUi(ui: ReactElement) {
 beforeEach(async () => {
   mockApi.get.mockReset();
   mockApi.patch.mockReset();
+  mockApi.post.mockReset();
+  mockApi.delete.mockReset();
   openURL.mockReset();
   openURL.mockResolvedValue(undefined);
   useSessionStore.getState().setSignedIn(me);
@@ -233,5 +236,59 @@ describe('forced update', () => {
     expect(await screen.findByTestId('app-content')).toBeTruthy();
     await waitFor(() => expect(mockApi.get).toHaveBeenCalled());
     expect(screen.queryByTestId('update-required')).toBeNull();
+  });
+});
+
+describe('upcoming trips', () => {
+  const lisbon = {
+    id: 'd1',
+    kind: 'city',
+    slug: 'lisbon-pt',
+    path: 'portugal/lisbon',
+    name: 'Lisbon',
+    country_code: 'PT',
+    country_name: 'Portugal',
+  };
+
+  it('adds a destination with dates and removes one', async () => {
+    mockApi.get.mockImplementation(async (path: string) =>
+      path === '/v1/destinations/search'
+        ? { data: [lisbon], page: { next_cursor: null, has_more: false } }
+        : {
+            data: [
+              {
+                id: 'up1',
+                destination: { ...lisbon, id: 'd2', slug: 'porto-pt', name: 'Porto' },
+                start_date: '2026-12-10',
+                end_date: '2026-12-12',
+                share_for_discovery: false,
+                created_at: '',
+              },
+            ],
+          },
+    );
+    mockApi.post.mockResolvedValue({});
+    mockApi.delete.mockResolvedValue(undefined);
+    await renderUi(<UpcomingTrips />);
+    expect(await screen.findByTestId('upcoming-up1')).toHaveTextContent(/Porto, Portugal/);
+
+    await fireEvent.changeText(screen.getByTestId('upcoming-search'), 'lis');
+    await fireEvent.press(await screen.findByTestId('upcoming-match-lisbon-pt'));
+    await fireEvent.changeText(screen.getByTestId('upcoming-start'), '2026-12-08');
+    await fireEvent.changeText(screen.getByTestId('upcoming-end'), '2026-12-04');
+    expect(screen.getByTestId('upcoming-dates-invalid')).toBeTruthy(); // end before start
+    expect(screen.getByTestId('upcoming-save')).toBeDisabled();
+    await fireEvent.changeText(screen.getByTestId('upcoming-end'), '2026-12-11');
+    await fireEvent.press(screen.getByTestId('upcoming-save'));
+    await waitFor(() =>
+      expect(mockApi.post).toHaveBeenCalledWith('/v1/users/me/upcoming-destinations', {
+        body: { destination_id: 'd1', start_date: '2026-12-08', end_date: '2026-12-11' },
+      }),
+    );
+
+    await fireEvent.press(screen.getByTestId('upcoming-remove-up1'));
+    await waitFor(() =>
+      expect(mockApi.delete).toHaveBeenCalledWith('/v1/users/me/upcoming-destinations/up1'),
+    );
   });
 });

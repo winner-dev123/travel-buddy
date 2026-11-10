@@ -1138,5 +1138,16 @@
     "hint": "Saisissez au moins deux caractères.",
     "empty": "Personne ne correspond à ce nom.",
     "error": "La recherche n'est pas disponible pour le moment. Réessayez bientôt."
+  },
+  "upcoming": {
+    "title": "Prochains voyages",
+    "explain": "Ajoutez les lieux où vous allez. Votre fil vous montre leurs histoires avant votre arrivée. Vous seul voyez cette liste.",
+    "add": "Ajouter une destination",
+    "from": "Du (facultatif)",
+    "to": "Au (facultatif)",
+    "datesInvalid": "Utilisez des dates comme 2026-12-04, avec une fin égale ou postérieure au début.",
+    "save": "Ajouter le voyage",
+    "remove": "Retirer",
+    "error": "Impossible de charger vos prochains voyages. Vérifiez votre connexion et réessayez."
   }
 }

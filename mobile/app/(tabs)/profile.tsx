@@ -196,6 +196,12 @@ function SignedInProfile({ me }: { me: Me }) {
             testID="profile-menu-privacy"
           />
           <MenuRow
+            icon="airplane-outline"
+            label={t('upcoming.title')}
+            onPress={() => router.push('/settings/upcoming')}
+            testID="profile-menu-upcoming"
+          />
+          <MenuRow
             icon="bookmark-outline"
             label={t('saved.title')}
             onPress={() => router.push('/saved')}

@@ -1121,5 +1121,16 @@
     "hint": "Gib mindestens zwei Zeichen ein.",
     "empty": "Niemand passt zu diesem Namen.",
     "error": "Die Suche ist gerade nicht verfügbar. Versuch es bald noch einmal."
+  },
+  "upcoming": {
+    "title": "Anstehende Reisen",
+    "explain": "Füge Orte hinzu, zu denen du reist. Dein Feed zeigt dir schon vor der Ankunft Storys von dort. Nur du siehst diese Liste.",
+    "add": "Reiseziel hinzufügen",
+    "from": "Von (optional)",
+    "to": "Bis (optional)",
+    "datesInvalid": "Gib Daten wie 2026-12-04 an; das Ende darf nicht vor dem Anfang liegen.",
+    "save": "Reise hinzufügen",
+    "remove": "Entfernen",
+    "error": "Deine anstehenden Reisen konnten nicht geladen werden. Prüfe deine Verbindung und versuch es noch einmal."
   }
 }
