@@ -443,7 +443,9 @@
     "connect": "Conectar",
     "connectNotAllowed": "Esta pessoa não está aceitando pedidos de conexão seus.",
     "message": "Mensagem",
-    "badges": "Insígnias"
+    "badges": "Insígnias",
+    "blockTitle": "Bloquear {{name}}?",
+    "blockBody": "Vocês não verão os perfis, histórias, viagens nem mensagens um do outro, e qualquer conexão entre vocês termina. A pessoa não é avisada."
   },
   "report": {
     "title": "Denunciar",

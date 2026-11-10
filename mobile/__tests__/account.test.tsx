@@ -1,6 +1,7 @@
 // req: AUTH-010, PROF-004, PROF-008, SAFE-001, SAFE-002, SAFE-013, NOTIF-001
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -292,7 +293,12 @@ describe('safety', () => {
       pathname: '/report',
       params: { type: 'user', target: 'u2', name: 'Bo' },
     });
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation((_title, _body, buttons) => {
+      buttons?.find((button) => button.style === 'destructive')?.onPress?.();
+    });
     await fireEvent.press(screen.getByTestId('user-block'));
+    expect(alert).toHaveBeenCalledWith('Block Bo?', expect.any(String), expect.any(Array));
+    alert.mockRestore();
     await waitFor(() => expect(mockApi.put).toHaveBeenCalledWith('/v1/users/u2/block'));
     await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
   });

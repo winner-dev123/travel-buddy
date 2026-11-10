@@ -436,7 +436,9 @@
     "connect": "Verbinden",
     "connectNotAllowed": "Diese Person nimmt keine Kontaktanfragen von dir an.",
     "message": "Nachricht",
-    "badges": "Abzeichen"
+    "badges": "Abzeichen",
+    "blockTitle": "{{name}} blockieren?",
+    "blockBody": "Ihr seht gegenseitig keine Profile, Storys, Reisen oder Nachrichten mehr, und eine Verbindung zwischen euch endet. Die Person wird nicht benachrichtigt."
   },
   "report": {
     "title": "Melden",

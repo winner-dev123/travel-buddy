@@ -306,6 +306,50 @@ Offline: **Works offline** (fully functional from local data) · **Cached read-o
 
 **Phase 0 implementation:** the five tabs, SCR-001 and SCR-010 exist as placeholder routes that render "Coming in Phase N" from `mobile/src/config/featureFlags.ts`. SCR-150 is implemented.
 
+### 8.1 Implementation status (mobile app, 2026-11-10)
+
+Where each screen lives in `mobile/app/` today. Routes differ from the target tree where a
+screen was folded into another one; ✅ built, ⚠️ partly, ⬜ not yet (reason given).
+
+| Screens | Status | Where |
+|---|---|---|
+| SCR-001 sign in, SCR-010 age gate and terms | ✅ | `/(auth)/sign-in`, `/(auth)/complete-registration` |
+| SCR-002 email verification status | ⚠️ | Publishing explains an unverified email; no dedicated status screen yet |
+| SCR-003 password reset | ✅ | IdP-hosted |
+| SCR-011..014 onboarding steps | ✅ | One flow at `/(onboarding)/onboarding` (profile, language, interests, destination) |
+| SCR-015 location primer, SCR-016 discovery guidance | ✅ | Location asked in context on the Nearby tab; `/discovery/consent` |
+| SCR-020 home feed, SCR-021 filters | ✅ | `/(tabs)/index` (filters inline) |
+| SCR-022 destination picker | ✅ | Picker component in Explore, compose and upcoming trips |
+| SCR-023 post detail | ✅ | `/post/[id]` (photo gallery, comments with replies, author edit and delete, save, share) |
+| SCR-024 destination page | ⚠️ | Destination content shows in Explore once chosen (guides, places, offline packages, neighbourhoods); no standalone page |
+| SCR-025, SCR-063 traveller profile | ✅ | `/user/[id]` (badges, followers and following at `/user/follows`) |
+| SCR-026 notifications | ✅ | `/notifications` (push opt-in banner) |
+| SCR-040 Explore | ⚠️ | `/(tabs)/explore` lists places, featured destinations and neighbourhoods; no map yet (BL-4.06, provider decision) |
+| SCR-041 place, SCR-042 planner, SCR-043 review | ✅ | `/places/[id]`, `/trips/plan`, `/trips/review` |
+| SCR-044 guides list, SCR-045 guide reader | ✅ | Guides listed in Explore; `/guides/[id]` |
+| SCR-046 audio tour player, SCR-047 walking route | ⬜ | Need editorial audio (BL-4.07) and maps (BL-4.06) |
+| SCR-060..062, SCR-064, SCR-065 companions | ✅ | `/(tabs)/companions` (discovery, requests, connections); find people at `/people` |
+| SCR-066..068 groups | ✅ | `/groups`, `/groups/[id]`, `/groups/new` |
+| SCR-069 invite, SCR-070 members and roles, SCR-072 settings and transfer | ✅ | Share an invitation link from the group page; `/groups/manage` (settings, roles, restrict, remove, invitations with revoke, ownership offer, archive); the offer is answered on the group page |
+| SCR-071 join requests | ⬜ | Behind the `group_join_requests` flag (off) |
+| SCR-073 invitation landing | ⚠️ | Join by pasting a link or code in Groups; no deep-link handler yet |
+| SCR-080 inbox, SCR-081/082 chats | ✅ | `/(tabs)/messages`, `/chat/[id]` (replies, reactions, pins, announcements, mute, clear for me) |
+| SCR-083 reply thread | ⚠️ | Replies are quoted in the chat; no separate thread view |
+| SCR-084 pinned messages | ✅ | Pinned bar in `/chat/[id]` |
+| SCR-085..090 challenges | ✅ | `/challenges`, `/challenges/[id]`, `/challenges/new`, `/challenges/review`, `/challenges/fulfillments`, `/rewards`; team threads in `/chat/[id]` |
+| SCR-100 my profile, SCR-106 settings home | ✅ | `/(tabs)/profile` (settings rows) |
+| SCR-101 edit profile, SCR-107 privacy | ✅ | `/settings/profile`, `/settings/privacy`; follow requests at `/settings/follow-requests` |
+| SCR-102 saved | ✅ | `/saved` (places), `/bookmarks` (stories) |
+| SCR-103 trips, SCR-104 trip and itinerary editor | ✅ | `/trips`, `/trips/[id]` (offline-first editor, sharing, replanning); upcoming trips at `/settings/upcoming` |
+| SCR-105 downloads | ✅ | `/downloads` |
+| SCR-108..114, SCR-116 settings | ✅ | `/settings/language`, `/settings/notifications`, `/settings/sessions`, `/settings/subscription` (read-only until the purchase SDK), `/settings/blocked`, `/settings/delete-account`, `/settings/data`, `/settings/safety`, `/settings/help` |
+| SCR-115 badges | ✅ | On profiles; rewards at `/rewards` |
+| SCR-130 compose, SCR-131 report | ✅ | `/compose` (up to ten photos), `/report` |
+| SCR-132 block, SCR-135 connection request | ✅ | From the profile (blocking asks for confirmation first) |
+| SCR-133 paywall, SCR-134 purchase result | ⬜ | Need a StoreKit / Play Billing SDK in a development build and the store products (backend verification is ready) |
+| SCR-136 share sheet, SCR-137 media viewer | ✅ | System share sheet (stories, invitations); full-screen photo viewer from a story |
+| SCR-150 not found, SCR-151 forced update | ✅ | `+not-found`; update gate in the root layout (from `/v1/client-config`) |
+
 ## 9. Offline behaviour summary (OFF)
 
 | Works offline (after download or sync) | Cached read-only | Online only |

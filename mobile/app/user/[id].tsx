@@ -2,7 +2,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ApiProblem, getApiClient } from '@/api';
@@ -22,7 +30,7 @@ import { Avatar, PostCard } from '@/features/feed/PostCard';
 import type { Post } from '@/features/feed/types';
 import { useAppTheme } from '@/theme/useAppTheme';
 
-/** SCR-102 Another traveller's profile: follow, block, report and their stories. */
+/** SCR-025 Another traveller's profile: follow, block, report and their stories. */
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t } = useTranslation();
@@ -229,7 +237,20 @@ export default function UserProfileScreen() {
               <Button
                 label={t('user.block')}
                 variant="secondary"
-                onPress={() => blockUser.mutate()}
+                onPress={() =>
+                  Alert.alert(
+                    t('user.blockTitle', { name: data.display_name }),
+                    t('user.blockBody'),
+                    [
+                      { text: t('common.cancel'), style: 'cancel' },
+                      {
+                        text: t('user.block'),
+                        style: 'destructive',
+                        onPress: () => blockUser.mutate(),
+                      },
+                    ],
+                  )
+                }
                 busy={blockUser.isPending}
                 testID="user-block"
               />

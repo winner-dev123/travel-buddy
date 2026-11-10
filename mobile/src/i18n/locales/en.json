@@ -436,7 +436,9 @@
     "connect": "Connect",
     "connectNotAllowed": "This traveller isn't accepting connection requests from you.",
     "message": "Message",
-    "badges": "Badges"
+    "badges": "Badges",
+    "blockTitle": "Block {{name}}?",
+    "blockBody": "You won't see each other's profiles, stories, trips or messages, and any connection between you ends. They aren't told."
   },
   "report": {
     "title": "Report",

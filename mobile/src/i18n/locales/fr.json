@@ -443,7 +443,9 @@
     "connect": "Se connecter",
     "connectNotAllowed": "Cette personne n'accepte pas vos demandes de connexion.",
     "message": "Message",
-    "badges": "Badges"
+    "badges": "Badges",
+    "blockTitle": "Bloquer {{name}} ?",
+    "blockBody": "Vous ne verrez plus vos profils, histoires, voyages ni messages respectifs, et toute connexion entre vous prend fin. La personne n'est pas prévenue."
   },
   "report": {
     "title": "Signaler",
