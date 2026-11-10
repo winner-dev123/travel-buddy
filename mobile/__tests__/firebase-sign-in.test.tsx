@@ -1,4 +1,4 @@
-// req: AUTH-001, AUTH-005
+// req: AUTH-001, AUTH-002, AUTH-003, AUTH-005
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -12,6 +12,13 @@ const mockRouter = { push: jest.fn(), back: jest.fn(), replace: jest.fn() };
 const mockOpenBrowser = jest.fn();
 const mockExchange = jest.fn();
 const mockFetch = jest.fn();
+let mockGoogleClientId: string | null = null;
+const mockGoogle = {
+  configure: jest.fn(),
+  hasPlayServices: jest.fn(async () => true),
+  signIn: jest.fn(),
+  signOut: jest.fn(async () => null),
+};
 
 jest.mock('@/api', () => ({ ...jest.requireActual('@/api'), getApiClient: () => mockApi }));
 jest.mock('expo-router', () => ({ useRouter: () => mockRouter }));
@@ -19,6 +26,18 @@ jest.mock('@/config/env', () => ({
   ...jest.requireActual('@/config/env'),
   getIdentityProviderKind: () => 'firebase',
   getFirebaseConfig: () => ({ apiKey: 'AIzaSyA-test_key_0123456789abcdefghijkl' }),
+  getGoogleWebClientId: () => mockGoogleClientId,
+}));
+jest.mock('@react-native-google-signin/google-signin', () => ({
+  GoogleSignin: mockGoogle,
+  isSuccessResponse: (response: { type: string }) => response.type === 'success',
+  isErrorWithCode: () => false,
+  statusCodes: { SIGN_IN_CANCELLED: 'SIGN_IN_CANCELLED' },
+}));
+jest.mock('expo-apple-authentication', () => ({
+  isAvailableAsync: async () => false,
+  signInAsync: jest.fn(),
+  AppleAuthenticationScope: { FULL_NAME: 0, EMAIL: 1 },
 }));
 jest.mock('@/auth/session', () => ({
   ...jest.requireActual('@/auth/session'),
@@ -66,6 +85,7 @@ async function renderSignIn() {
 
 beforeEach(async () => {
   jest.clearAllMocks();
+  mockGoogleClientId = null;
   await i18n.changeLanguage('en');
   globalThis.fetch = mockFetch as unknown as typeof fetch;
   mockApi.get.mockResolvedValue({
@@ -90,8 +110,10 @@ it('signs in with Firebase and exchanges the ID token', async () => {
   await waitFor(() => expect(mockExchange).toHaveBeenCalledWith(mockApi, idToken));
   expect(methods()).toEqual(['accounts:signInWithPassword']);
   expect(mockRouter.replace).toHaveBeenCalled();
-  // Social sign-in does not run through Firebase yet, whatever the API lists.
+  // No Google client ID in this build and no Apple on the device: no social buttons, whatever
+  // the API lists.
   expect(screen.queryByTestId('sign-in-google')).toBeNull();
+  expect(screen.queryByTestId('sign-in-apple')).toBeNull();
 });
 
 it('offers to resend the confirmation for an unconfirmed email', async () => {
@@ -154,4 +176,31 @@ it('creates an account and asks to confirm the email', async () => {
   expect(await screen.findByTestId('sign-in-info')).toBeTruthy();
   expect(methods()).toEqual(['accounts:signUp', 'accounts:sendOobCode']);
   expect(screen.getByTestId('sign-in-resend')).toBeTruthy();
+});
+
+it('continues with Google through Firebase when the build supports it', async () => {
+  mockGoogleClientId = '1234567890-abcdef.apps.googleusercontent.com';
+  const idToken = token(true);
+  mockGoogle.signIn.mockResolvedValue({ type: 'success', data: { idToken: 'google-jwt' } });
+  mockFetch.mockResolvedValueOnce(firebase(200, { idToken }));
+  mockExchange.mockResolvedValue({ kind: 'signed_in', me: { onboarding_completed: true } });
+  await renderSignIn();
+
+  await fireEvent.press(await screen.findByTestId('sign-in-google'));
+  await waitFor(() => expect(mockExchange).toHaveBeenCalledWith(mockApi, idToken));
+  expect(methods()).toEqual(['accounts:signInWithIdp']);
+  expect(screen.queryByTestId('sign-in-apple')).toBeNull(); // not available on this device
+});
+
+it('explains when the Google email already signs in another way', async () => {
+  mockGoogleClientId = '1234567890-abcdef.apps.googleusercontent.com';
+  mockGoogle.signIn.mockResolvedValue({ type: 'success', data: { idToken: 'google-jwt' } });
+  mockFetch.mockResolvedValueOnce(firebase(200, { needConfirmation: true }));
+  await renderSignIn();
+
+  await fireEvent.press(await screen.findByTestId('sign-in-google'));
+  expect(
+    await screen.findByText('This email already signs in another way. Use that method.'),
+  ).toBeTruthy();
+  expect(mockExchange).not.toHaveBeenCalled();
 });

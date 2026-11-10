@@ -193,7 +193,8 @@
       "unknown": "Algo deu errado. Tente de novo.",
       "missingFields": "Informe seu e-mail e sua senha.",
       "notConfigured": "O login não está configurado nesta versão.",
-      "missingEmail": "Digite seu e-mail primeiro."
+      "missingEmail": "Digite seu e-mail primeiro.",
+      "account_exists": "Este e-mail já entra de outra forma. Use esse método."
     },
     "resendConfirmation": "Reenviar o e-mail de confirmação",
     "confirmationResent": "Enviamos outro e-mail de confirmação. Abra o link e depois entre.",

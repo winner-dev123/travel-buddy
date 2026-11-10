@@ -81,6 +81,15 @@ export function resolveIdentityProvider(
   return hasFirebaseKey ? 'firebase' : 'supabase';
 }
 
+/**
+ * The Firebase project's OAuth "Web client" ID (public), which Google Sign-In needs for an ID token
+ * Firebase accepts (BL-6.12). Unset: "Continue with Google" is not offered.
+ */
+export function getGoogleWebClientId(): string | null {
+  const raw = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID?.trim();
+  return raw && /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/.test(raw) ? raw : null;
+}
+
 export function getFirebaseConfig(): FirebaseConfig {
   const apiKey: string | undefined = process.env.EXPO_PUBLIC_FIREBASE_API_KEY;
   if (!apiKey) {

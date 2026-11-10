@@ -192,7 +192,8 @@
       "unknown": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
       "missingFields": "Gib deine E-Mail und dein Passwort ein.",
       "notConfigured": "Die Anmeldung ist in diesem Build nicht konfiguriert.",
-      "missingEmail": "Gib zuerst deine E-Mail-Adresse ein."
+      "missingEmail": "Gib zuerst deine E-Mail-Adresse ein.",
+      "account_exists": "Diese E-Mail-Adresse meldet sich bereits anders an. Nutze diese Methode."
     },
     "resendConfirmation": "Bestätigungs-E-Mail erneut senden",
     "confirmationResent": "Wir haben dir eine weitere Bestätigungs-E-Mail geschickt. Öffne den Link darin und melde dich dann an.",

@@ -10,6 +10,7 @@ import { getApiClient } from '@/api';
 import { mintDevIdToken } from '@/auth/devIdp';
 import { describeAuthError } from '@/auth/errors';
 import { FirebaseAuthClient } from '@/auth/firebaseAuth';
+import { availableFirebaseSocial, signInWithFirebaseSocial } from '@/auth/firebaseSocial';
 import {
   AuthProviderError,
   MIN_PASSWORD_LENGTH,
@@ -22,6 +23,7 @@ import { type OAuthProvider, SupabaseAuthClient } from '@/auth/supabaseAuth';
 import { Button, Notice, TextField } from '@/components/Form';
 import {
   getFirebaseConfig,
+  getGoogleWebClientId,
   getIdentityProviderKind,
   getSupabaseConfig,
   type IdentityProviderKind,
@@ -73,10 +75,19 @@ export default function SignInScreen() {
   // AUTH-005: Firebase sends the reset email from here; Supabase's reset runs on the web. Either
   // way the new password then works here too.
   const resetUrl = auth?.supportsInAppReset ? null : (appInfo.data?.password_reset_url ?? null);
+  // Firebase runs social sign-in through native sheets (BL-6.12): only what this build and device
+  // can offer. Supabase runs it in the browser, so every announced provider works.
+  const nativeSocial = useQuery({
+    queryKey: ['auth', 'native-social'],
+    queryFn: () => availableFirebaseSocial({ googleWebClientId: getGoogleWebClientId() }),
+    enabled: auth instanceof FirebaseAuthClient,
+    staleTime: Infinity,
+  });
   const order: Record<OAuthProvider, number> =
     Platform.OS === 'ios' ? { apple: 0, google: 1 } : { google: 0, apple: 1 };
-  const socialProviders = (auth?.supportsSocial ? (appInfo.data?.auth_providers ?? []) : [])
+  const socialProviders = (auth ? (appInfo.data?.auth_providers ?? []) : [])
     .filter((p): p is OAuthProvider => p === 'google' || p === 'apple')
+    .filter((p) => auth?.supportsSocial || (nativeSocial.data ?? []).includes(p))
     .sort((a, b) => order[a] - order[b]);
 
   async function finish(idToken: string): Promise<void> {
@@ -145,17 +156,24 @@ export default function SignInScreen() {
   }
 
   async function continueWith(social: OAuthProvider): Promise<void> {
-    if (!(auth instanceof SupabaseAuthClient)) return;
-    const supabase = auth;
+    if (!auth) return;
     setError(null);
     setInfo(null);
     setBusy(true);
     try {
-      const accessToken = await signInWithProvider(supabase, social);
+      const idToken =
+        auth instanceof SupabaseAuthClient
+          ? await signInWithProvider(auth, social)
+          : auth instanceof FirebaseAuthClient
+            ? await signInWithFirebaseSocial(auth, social, {
+                googleWebClientId: getGoogleWebClientId(),
+              })
+            : null;
+      if (!idToken) return;
       try {
-        await finish(accessToken);
+        await finish(idToken);
       } finally {
-        void supabase.signOut(accessToken);
+        void auth.signOut(idToken);
       }
     } catch (caught) {
       if (!(caught instanceof OAuthCancelled)) {

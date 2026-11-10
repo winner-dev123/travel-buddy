@@ -42,6 +42,8 @@ const ERROR_MAP: Record<string, AuthErrorCode> = {
   QUOTA_EXCEEDED: 'rate_limited',
   OPERATION_NOT_ALLOWED: 'signup_disabled',
   ADMIN_ONLY_OPERATION: 'signup_disabled',
+  FEDERATED_USER_ID_ALREADY_LINKED: 'account_exists',
+  EMAIL_EXISTS: 'account_exists',
 };
 
 /** The `email_verified` claim of an ID token (its signature is checked by the backend). */
@@ -116,6 +118,34 @@ export class FirebaseAuthClient implements PasswordAuthClient {
       if (caught instanceof FirebaseAuthError && caught.reason === 'EMAIL_NOT_FOUND') return;
       throw caught;
     }
+  }
+
+  /**
+   * Exchanges a Google or Apple ID token for a Firebase ID token (`accounts:signInWithIdp`,
+   * BL-6.12). With one account per email, an address that already signs in another way answers
+   * `needConfirmation` instead of a token.
+   */
+  async signInWithIdp(
+    providerId: 'google.com' | 'apple.com',
+    idToken: string,
+    rawNonce?: string,
+  ): Promise<string> {
+    const postBody = new URLSearchParams({ id_token: idToken, providerId });
+    if (rawNonce) postBody.set('nonce', rawNonce);
+    const body = await this.call('accounts:signInWithIdp', {
+      postBody: postBody.toString(),
+      requestUri: 'http://localhost',
+      returnSecureToken: true,
+      returnIdpCredential: true,
+    });
+    if (body.needConfirmation === true) {
+      throw new FirebaseAuthError(
+        'account_exists',
+        'This email already signs in another way.',
+        'NEED_CONFIRMATION',
+      );
+    }
+    return stringField(body, 'idToken');
   }
 
   async signOut(): Promise<void> {

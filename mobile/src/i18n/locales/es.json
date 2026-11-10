@@ -193,7 +193,8 @@
       "unknown": "Algo salió mal. Inténtalo de nuevo.",
       "missingFields": "Introduce tu correo y tu contraseña.",
       "notConfigured": "El inicio de sesión no está configurado en esta versión.",
-      "missingEmail": "Primero escribe tu correo."
+      "missingEmail": "Primero escribe tu correo.",
+      "account_exists": "Este correo ya inicia sesión de otra forma. Usa ese método."
     },
     "resendConfirmation": "Reenviar el correo de confirmación",
     "confirmationResent": "Te enviamos otro correo de confirmación. Abre el enlace y luego inicia sesión.",

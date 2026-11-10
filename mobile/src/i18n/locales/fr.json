@@ -193,7 +193,8 @@
       "unknown": "Un problème est survenu. Veuillez réessayer.",
       "missingFields": "Saisissez votre e-mail et votre mot de passe.",
       "notConfigured": "La connexion n'est pas configurée dans cette version.",
-      "missingEmail": "Saisissez d'abord votre adresse e-mail."
+      "missingEmail": "Saisissez d'abord votre adresse e-mail.",
+      "account_exists": "Cette adresse se connecte déjà autrement. Utilisez cette méthode."
     },
     "resendConfirmation": "Renvoyer l'e-mail de confirmation",
     "confirmationResent": "Nous avons envoyé un nouvel e-mail de confirmation. Ouvrez le lien, puis connectez-vous.",

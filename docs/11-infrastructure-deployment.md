@@ -200,6 +200,24 @@ provider and Apple's private-relay emails. Nothing shows until the API lists a p
 4. Enable Apple together with Google: App Store guideline 4.8 requires Sign in with Apple when an iOS
    app offers another social sign-in.
 
+**With Firebase (ADR-0028, BL-6.12)** the mobile app uses native sign-in sheets instead of the browser:
+Google Sign-In (`@react-native-google-signin/google-signin`) and Sign in with Apple
+(`expo-apple-authentication`). Their ID tokens are exchanged with Firebase (`accounts:signInWithIdp`),
+then for a platform session as usual. The buttons show only when the API lists the provider and the
+build and device support it, so Expo Go never shows them. Setup:
+
+1. Firebase → Authentication → Sign-in method: enable **Google**. Firebase creates the OAuth "Web client"; set its ID in
+   the app as `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`.
+2. Google Cloud → Credentials: add an **Android** OAuth client for `com.travelbuddy.app` with the SHA-1
+   of each signing key (the release key, and the debug key for test APKs). Add an **iOS** client for
+   `com.travelbuddy.app`, and give its reversed client ID to the Google Sign-In plugin in `app.json`
+   (`iosUrlScheme`) or ship `GoogleService-Info.plist`.
+3. Firebase → Sign-in method: enable **Apple** (Services ID, Team ID, Key ID and private key from the Apple
+   Developer account). The `expo-apple-authentication` plugin adds the entitlement on iOS.
+4. Keep Firebase's default of one account per email. A Google or Apple sign-in for an email that already
+   uses a password then answers "This email already signs in another way".
+5. Set `AUTH_SOCIAL_PROVIDERS=["apple", "google"]` on the API.
+
 ## 2. Runtime topology (production reference)
 
 ```mermaid

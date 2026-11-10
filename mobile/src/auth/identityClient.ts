@@ -9,6 +9,8 @@ export type AuthErrorCode =
   | 'weak_password'
   | 'rate_limited'
   | 'signup_disabled'
+  /** The email already signs in another way (Firebase: one account per email). */
+  | 'account_exists'
   | 'network'
   | 'unknown';
 
