@@ -843,7 +843,11 @@
         "disputed": "Beanstandet",
         "pending": "Erneut versuchen"
       }
-    }
+    },
+    "cancel": "Challenge absagen",
+    "cancelReason": "Warum sagst du sie ab?",
+    "cancelHint": "Die Mitglieder erfahren, dass die Challenge abgesagt ist. Bereits gesendete Antworten bleiben zur Nachverfolgung gespeichert.",
+    "cancelConfirm": "Challenge absagen"
   },
   "help": {
     "title": "Hilfe & Rechtliches",

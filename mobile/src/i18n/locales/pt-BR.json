@@ -857,7 +857,11 @@
         "disputed": "Em contestação",
         "pending": "Tentar de novo"
       }
-    }
+    },
+    "cancel": "Cancelar desafio",
+    "cancelReason": "Por que você vai cancelar?",
+    "cancelHint": "Os membros ficam sabendo que o desafio foi cancelado. As respostas já enviadas ficam guardadas como registro.",
+    "cancelConfirm": "Cancelar o desafio"
   },
   "help": {
     "title": "Ajuda e informações legais",

@@ -843,7 +843,11 @@
         "disputed": "Disputed",
         "pending": "Retry"
       }
-    }
+    },
+    "cancel": "Cancel challenge",
+    "cancelReason": "Why are you cancelling it?",
+    "cancelHint": "Members are told the challenge is cancelled. Answers already sent are kept for the record.",
+    "cancelConfirm": "Cancel the challenge"
   },
   "help": {
     "title": "Help & legal",

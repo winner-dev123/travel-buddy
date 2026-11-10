@@ -857,7 +857,11 @@
         "disputed": "En disputa",
         "pending": "Reintentar"
       }
-    }
+    },
+    "cancel": "Cancelar reto",
+    "cancelReason": "¿Por qué lo cancelas?",
+    "cancelHint": "Los miembros sabrán que el reto se canceló. Las respuestas ya enviadas se conservan como registro.",
+    "cancelConfirm": "Cancelar el reto"
   },
   "help": {
     "title": "Ayuda y legal",

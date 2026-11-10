@@ -18,6 +18,7 @@ import {
   joinTeam,
   listTeams,
   publishChallenge,
+  cancelChallenge,
   publishResults,
   raiseDispute,
   submitAnswer,
@@ -60,6 +61,7 @@ export default function ChallengeScreen() {
   const [answer, setAnswer] = useState('');
   const [teamName, setTeamName] = useState('');
   const [reason, setReason] = useState('');
+  const [cancelReason, setCancelReason] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<SubmissionResult | null>(null);
 
   const challenge = useQuery({
@@ -126,6 +128,14 @@ export default function ChallengeScreen() {
   const finish = useMutation({
     mutationFn: () => publishResults(getApiClient(), id),
     onSuccess: refresh,
+  });
+  const cancel = useMutation({
+    mutationFn: () => cancelChallenge(getApiClient(), id, (cancelReason ?? '').trim()),
+    onSuccess: () => {
+      setCancelReason(null);
+      refresh();
+      void queryClient.invalidateQueries({ queryKey: challengeKeys.group(groupId) });
+    },
   });
   const dispute = useMutation({
     mutationFn: () => raiseDispute(getApiClient(), id, reason.trim()),
@@ -206,6 +216,44 @@ export default function ChallengeScreen() {
           </>
         ) : null}
 
+        {canManage && ['draft', 'scheduled', 'active'].includes(data.status) ? (
+          cancelReason === null ? (
+            <Button
+              label={t('challenges.cancel')}
+              variant="secondary"
+              onPress={() => setCancelReason('')}
+              testID="challenge-cancel"
+            />
+          ) : (
+            <View style={{ gap: theme.spacing[2] }} testID="challenge-cancel-form">
+              <TextField
+                label={t('challenges.cancelReason')}
+                value={cancelReason}
+                onChangeText={setCancelReason}
+                maxLength={500}
+                multiline
+                testID="challenge-cancel-reason"
+              />
+              <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+                {t('challenges.cancelHint')}
+              </Text>
+              {cancel.isError ? <Notice tone="error">{t('user.actionFailed')}</Notice> : null}
+              <Button
+                label={t('challenges.cancelConfirm')}
+                onPress={() => cancel.mutate()}
+                disabled={cancelReason.trim().length < 3}
+                busy={cancel.isPending}
+                testID="challenge-cancel-confirm"
+              />
+              <Button
+                label={t('common.cancel')}
+                variant="secondary"
+                onPress={() => setCancelReason(null)}
+                testID="challenge-cancel-back"
+              />
+            </View>
+          )
+        ) : null}
         {data.status === 'draft' && canManage ? (
           <>
             <Notice tone="info">{t('challenges.draftNote')}</Notice>

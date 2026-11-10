@@ -370,3 +370,12 @@ export function updateChallenge(
     ifMatchVersion: version,
   });
 }
+
+/** `POST /v1/challenges/{id}/cancel`: members are told; submissions stay for the audit. */
+export async function cancelChallenge(
+  client: ApiClient,
+  id: string,
+  reason: string,
+): Promise<void> {
+  await client.post(`/v1/challenges/${id}/cancel`, { body: { reason } });
+}

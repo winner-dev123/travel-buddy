@@ -564,3 +564,30 @@ it('edits a draft with its version and keeps answers unless replaced', async () 
     params: { id: 'c1' },
   });
 });
+
+it('lets organizers cancel a challenge with a reason', async () => {
+  mockParams = { id: 'c1' };
+  serve({
+    '/v1/challenges/c1': challenge({ status: 'active' }),
+    '/v1/groups/g1': group(['challenges.manage']),
+  });
+  mockApi.post.mockResolvedValueOnce({});
+  await renderUi(<ChallengeScreen />);
+  await fireEvent.press(await screen.findByTestId('challenge-cancel'));
+  expect(screen.getByTestId('challenge-cancel-confirm')).toBeDisabled(); // a reason is required
+  await fireEvent.changeText(screen.getByTestId('challenge-cancel-reason'), 'Venue closed');
+  await fireEvent.press(screen.getByTestId('challenge-cancel-confirm'));
+  await waitFor(() =>
+    expect(mockApi.post).toHaveBeenCalledWith('/v1/challenges/c1/cancel', {
+      body: { reason: 'Venue closed' },
+    }),
+  );
+});
+
+it('offers members no cancel button', async () => {
+  mockParams = { id: 'c1' };
+  serve({ '/v1/challenges/c1': challenge({ status: 'active' }), '/v1/groups/g1': group([]) });
+  await renderUi(<ChallengeScreen />);
+  await screen.findByText('• Think Manueline.');
+  expect(screen.queryByTestId('challenge-cancel')).toBeNull();
+});

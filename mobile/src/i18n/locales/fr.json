@@ -857,7 +857,11 @@
         "disputed": "Contestée",
         "pending": "Réessayer"
       }
-    }
+    },
+    "cancel": "Annuler le défi",
+    "cancelReason": "Pourquoi l'annulez-vous ?",
+    "cancelHint": "Les membres sont informés de l'annulation. Les réponses déjà envoyées sont conservées pour mémoire.",
+    "cancelConfirm": "Annuler le défi"
   },
   "help": {
     "title": "Aide et mentions légales",
