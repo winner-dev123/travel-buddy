@@ -69,6 +69,8 @@ from app.modules.feed.service import FeedService
 from app.modules.groups import service as groups_service
 from app.modules.groups.api import invitations_router as group_invitations_router
 from app.modules.groups.api import router as groups_router
+from app.modules.guides.api import router as guides_router
+from app.modules.guides.service import GuideService
 from app.modules.health.api import ReadinessCheck
 from app.modules.health.api import router as health_router
 from app.modules.identity import service as identity_module
@@ -318,6 +320,7 @@ def create_app(
     app.state.trip_service = trips_service.TripService(
         sessionmaker=database.sessionmaker, cursors=cursor_codec, clock=clock, plans=itinerary_plan
     )
+    app.state.guide_service = GuideService(sessionmaker=database.sessionmaker, clock=clock)
     app.state.saved_place_service = SavedPlaceService(
         sessionmaker=database.sessionmaker, cursors=cursor_codec, clock=clock
     )
@@ -437,6 +440,7 @@ def create_app(
     app.include_router(groups_router)
     app.include_router(trips_router)
     app.include_router(saved_places_router)
+    app.include_router(guides_router)
     app.include_router(ai_router)
     app.include_router(translation_router)
     app.include_router(group_invitations_router)

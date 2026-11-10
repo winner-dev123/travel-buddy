@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "notes": "Original Travel Buddy editorial content. Deliberately free of opening hours, prices and schedules, which change: places link to the licensed catalog for those.",
+  "guides": [
+    {
+      "destination": "portugal/lisbon",
+      "slug": "lisbon-essentials",
+      "locale": "en",
+      "version": 1,
+      "tier": "free",
+      "title": "Lisbon essentials",
+      "summary": "How the city fits together: its hills and neighbourhoods, getting around on foot and by tram, and what to eat.",
+      "content_license": "travelbuddy-editorial",
+      "attribution": "Travel Buddy editorial team",
+      "sections": [
+        {
+          "id": "neighbourhoods",
+          "heading": "Neighbourhoods at a glance",
+          "body_markdown": "Lisbon spreads over steep hills along the Tagus estuary.\n\n- **Alfama** is the oldest quarter: a maze of stairways and alleys below the castle, and the home of fado.\n- **Baixa** is the flat grid rebuilt after the 1755 earthquake, between the river and Rossio square.\n- **Chiado** and **Bairro Alto** sit on the hill to the west: cafés and theatres by day, bars by night.\n- **Belém**, along the river to the west, gathers monuments from the Age of Discovery and the famous custard tarts."
+        },
+        {
+          "id": "getting-around",
+          "heading": "Getting around",
+          "body_markdown": "Walking is the best way to see the centre, but the hills are real: wear shoes with grip, because the limestone pavements get slippery. Historic trams and funiculars climb the steepest streets, the metro links the main districts, and ferries cross the river to the south bank. Check current timetables before you go."
+        },
+        {
+          "id": "food",
+          "heading": "What to eat",
+          "body_markdown": "Try a *pastel de nata* (custard tart), a *bifana* (pork sandwich) and grilled fish. In June, the popular saints' festivities fill the old quarters with grilled sardines, music and street parties."
+        },
+        {
+          "id": "faq",
+          "kind": "faq",
+          "heading": "Frequently asked questions",
+          "faq_items": [
+            {
+              "question": "Is Lisbon a walkable city?",
+              "answer_markdown": "Yes. The centre is compact, but expect steep climbs and steps; trams, funiculars and the metro help on the hills."
+            },
+            {
+              "question": "Do I need a car?",
+              "answer_markdown": "Not in the city. Public transport and walking cover the centre, and trains reach day-trip destinations such as Sintra and Cascais."
+            },
+            {
+              "question": "When is a good time to visit?",
+              "answer_markdown": "Spring and autumn are mild and less crowded; summer is hot and busy, and June brings the street festivities."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "destination": "portugal/lisbon",
+      "slug": "lisbon-essentials",
+      "locale": "pt-BR",
+      "version": 1,
+      "tier": "free",
+      "title": "Lisboa essencial",
+      "summary": "Como a cidade se organiza: colinas e bairros, como circular a pé e de bonde, e o que comer.",
+      "content_license": "travelbuddy-editorial",
+      "attribution": "Equipe editorial do Travel Buddy",
+      "sections": [
+        {
+          "id": "neighbourhoods",
+          "heading": "Os bairros em resumo",
+          "body_markdown": "Lisboa se espalha por colinas íngremes à beira do estuário do Tejo.\n\n- **Alfama** é o bairro mais antigo: um labirinto de escadarias e becos abaixo do castelo, e a casa do fado.\n- **Baixa** é a malha plana reconstruída depois do terremoto de 1755, entre o rio e o Rossio.\n- **Chiado** e **Bairro Alto** ficam na colina a oeste: cafés e teatros de dia, bares à noite.\n- **Belém**, à beira do rio a oeste, reúne monumentos da época dos Descobrimentos e os famosos pastéis."
+        },
+        {
+          "id": "getting-around",
+          "heading": "Como circular",
+          "body_markdown": "Caminhar é a melhor forma de conhecer o centro, mas as ladeiras são de verdade: use calçados com boa aderência, porque a calçada portuguesa fica escorregadia. Bondes históricos e elevadores sobem as ruas mais íngremes, o metrô liga os principais bairros e barcos atravessam o rio até a margem sul. Confira os horários atualizados antes de sair."
+        },
+        {
+          "id": "food",
+          "heading": "O que comer",
+          "body_markdown": "Prove um *pastel de nata*, uma *bifana* (sanduíche de porco) e peixe grelhado. Em junho, as festas dos santos populares enchem os bairros antigos de sardinhas assadas, música e festas de rua."
+        },
+        {
+          "id": "faq",
+          "kind": "faq",
+          "heading": "Perguntas frequentes",
+          "faq_items": [
+            {
+              "question": "Dá para conhecer Lisboa a pé?",
+              "answer_markdown": "Sim. O centro é compacto, mas espere subidas fortes e escadarias; bondes, elevadores e o metrô ajudam nas colinas."
+            },
+            {
+              "question": "Preciso de carro?",
+              "answer_markdown": "Não na cidade. Transporte público e caminhadas cobrem o centro, e trens chegam a passeios de um dia como Sintra e Cascais."
+            },
+            {
+              "question": "Qual é uma boa época para visitar?",
+              "answer_markdown": "Primavera e outono são amenos e menos cheios; o verão é quente e movimentado, e junho traz as festas de rua."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "audio_tours": []
+}

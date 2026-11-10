@@ -713,6 +713,8 @@ erDiagram
 `audio_tours`: `id`, `destination_id`, `guide_id NULL`, `locale`, `title`, `description`, `tier`, `product_id NULL`, `total_duration_s`, `status`, `version`, `content_license`, `rights_expire_at`.
 `audio_tour_stops`: `id`, `tour_id FK CASCADE`, `sort_order`, `place_id FK`, `title`, `audio_media_id FK`, `transcript`, `trigger_radius_m smallint` (geofence, evaluated **on device**), `duration_s`. `uq (tour_id, sort_order)`.
 
+As built (migration 0034): guides and tours also carry a `slug` (one guide across its locales and versions; uniqueness is `(destination_id, locale, slug, version)`, so a destination can have several guides), and tours a `published_at` and `updated_at`. `audio_tour_stops.place_id` references `places` (RESTRICT) and `audio_media_id` references `media_assets` (RESTRICT). Only `published` content whose `rights_expire_at` has not passed is served; publishing a new version retires the older ones. `destinations.has_guides` is kept in sync by the guides loader.
+
 ### offline_packages
 `id`, `destination_id`, `locale`, `kind` (`guide`, `audio_tour`, `map_region`, `bundle`), `version int`, `manifest jsonb` (files with `path`, `bytes`, `sha256`), `manifest_signature bytea`, `total_bytes bigint`, `sha256`, `tier`, `min_app_version`, `map_bbox geography(Polygon) NULL`, `content_license`, `license_expires_at NULL`, `status` (`building`, `published`, `retired`), `published_at`. `uq (destination_id, locale, kind, version)`.
 

@@ -609,5 +609,12 @@
     "replanSubmit": "Proposer des changements",
     "replanConflict": "Ce voyage a changé entre-temps. Rechargez-le et réessayez.",
     "dayShort": "Jour {{number}}"
+  },
+  "guides": {
+    "title": "Guides",
+    "premium": "Guide Premium",
+    "locked": "Ce guide fait partie de Premium.",
+    "missing": "Ce guide n'est pas disponible.",
+    "attribution": "Source : {{source}}"
   }
 }

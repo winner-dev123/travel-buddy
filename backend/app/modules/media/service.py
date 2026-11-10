@@ -105,7 +105,13 @@ def _ref(asset: MediaAsset, sign: Signer | None = None) -> MediaRef:
             url = str(largest["url"])
     return MediaRef(
         id=asset.id,
-        kind="video" if asset.mime_type in VIDEOS else "image",
+        kind=(
+            "audio"
+            if asset.mime_type.startswith("audio/")
+            else "video"
+            if asset.mime_type in VIDEOS
+            else "image"
+        ),
         status="ready"
         if ready
         else "processing"
@@ -113,8 +119,9 @@ def _ref(asset: MediaAsset, sign: Signer | None = None) -> MediaRef:
         else "unavailable",
         url=url,
         url_expires_at=expires_at,
-        width=int(largest["width"]) if ready and largest else None,
-        height=int(largest["height"]) if ready and largest else None,
+        width=int(largest["width"]) if ready and largest and "width" in largest else None,
+        height=int(largest["height"]) if ready and largest and "height" in largest else None,
+        duration_ms=asset.duration_ms,
         alt_text=asset.alt_text,
     )
 

@@ -11,6 +11,7 @@ from app.modules.connections import models as connections_models
 from app.modules.destinations import models as destinations_models
 from app.modules.feed import models as feed_models
 from app.modules.groups import models as groups_models
+from app.modules.guides import models as guides_models
 from app.modules.identity import models as identity_models
 from app.modules.location import models as location_models
 from app.modules.media import models as media_models
@@ -31,6 +32,7 @@ __all__ = [
     "destinations_models",
     "feed_models",
     "groups_models",
+    "guides_models",
     "identity_models",
     "location_models",
     "media_models",

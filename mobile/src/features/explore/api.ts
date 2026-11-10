@@ -270,3 +270,52 @@ export async function applyProposalToTrip(
     ifMatchVersion: trip.version,
   });
 }
+
+/** Contract `GuideSummary`. */
+export interface GuideSummary {
+  id: string;
+  destination_id: string;
+  locale: string;
+  title: string;
+  summary: string;
+  tier: 'free' | 'premium' | 'purchasable';
+  entitled: boolean;
+  version: number;
+}
+
+export interface GuideSection {
+  id: string;
+  kind?: 'prose' | 'faq';
+  heading: string;
+  body_markdown: string;
+  place_ids: string[];
+  faq_items?: { question: string; answer_markdown: string }[];
+}
+
+/** Contract `Guide`. */
+export interface Guide {
+  id: string;
+  destination: DestinationSummary;
+  locale: string;
+  title: string;
+  summary: string;
+  sections: GuideSection[];
+  tier: GuideSummary['tier'];
+  version: number;
+  content_license: string;
+  attribution: string | null;
+}
+
+export async function listGuides(
+  client: ApiClient,
+  destinationId: string,
+): Promise<GuideSummary[]> {
+  const result = await client.get<{ data: GuideSummary[] }>(
+    `/v1/destinations/${destinationId}/guides`,
+  );
+  return result.data;
+}
+
+export function getGuide(client: ApiClient, id: string): Promise<Guide> {
+  return client.get<Guide>(`/v1/guides/${id}`);
+}

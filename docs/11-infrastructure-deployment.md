@@ -61,6 +61,10 @@ Without `ANTHROPIC_API_KEY`, staging and production answer `503 ai_unavailable` 
 
 Places come from OpenStreetMap through the public Overpass API. Load or refresh a destination with `python -m app.modules.destinations.place_ingestion --destination portugal/lisbon` (optional `--radius` metres, `--limit`, or `--file` for a JSON document), run against the target database. Ingestion is idempotent and keeps editorial takedowns. Refresh at least every 180 days, after which place data is flagged as stale. Keep runs occasional: the public Overpass instance is rate-limited.
 
+### 1.7 Guides and audio tours (BL-4.07)
+
+Editorial content is published with `python -m app.modules.guides.seeding --file <document.json>` (default: the launch guides), run against the target database. The loader validates every section before writing, publishes each guide or tour by `(destination, locale, slug, version)`, retires older versions and updates `destinations.has_guides`. Re-running is safe.
+
 ## 2. Runtime topology (production reference)
 
 ```mermaid

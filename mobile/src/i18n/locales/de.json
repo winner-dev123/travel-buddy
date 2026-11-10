@@ -602,5 +602,12 @@
     "replanSubmit": "Änderungen vorschlagen",
     "replanConflict": "Diese Reise wurde inzwischen geändert. Lade sie neu und versuch es erneut.",
     "dayShort": "Tag {{number}}"
+  },
+  "guides": {
+    "title": "Reiseführer",
+    "premium": "Premium-Reiseführer",
+    "locked": "Dieser Reiseführer ist Teil von Premium.",
+    "missing": "Dieser Reiseführer ist nicht verfügbar.",
+    "attribution": "Quelle: {{source}}"
   }
 }

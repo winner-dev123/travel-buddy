@@ -11,6 +11,7 @@ import type { AIGeneration, Place, Trip } from '@/features/explore/api';
 import { i18n } from '@/i18n';
 
 import Explore from '../app/(tabs)/explore';
+import GuideScreen from '../app/guides/[id]';
 import PlaceScreen from '../app/places/[id]';
 import TripScreen from '../app/trips/[id]';
 import Trips from '../app/trips/index';
@@ -229,6 +230,21 @@ describe('explore', () => {
         return { ...lisbon, centroid: { lat: 38.7223, lng: -9.1393 }, time_zone: 'Europe/Lisbon' };
       if (path === '/v1/places/nearby') return page([tower]);
       if (path === '/v1/places/search') return page(options?.query?.q === 'zzz' ? [] : [tower]);
+      if (path === '/v1/destinations/d-lisbon/guides')
+        return {
+          data: [
+            {
+              id: 'g1',
+              destination_id: 'd-lisbon',
+              locale: 'en',
+              title: 'Lisbon essentials',
+              summary: 'How the city fits together.',
+              tier: 'free',
+              entitled: true,
+              version: 1,
+            },
+          ],
+        };
       throw new Error(path);
     });
     await renderUi(<Explore />);
@@ -236,6 +252,11 @@ describe('explore', () => {
     await fireEvent.press(await screen.findByTestId('explore-destination-lisbon-pt'));
     expect(await screen.findByText('Belém Tower')).toBeTruthy();
     expect(screen.getByText('Attraction')).toBeTruthy();
+    await fireEvent.press(await screen.findByTestId('guide-g1'));
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/guides/[id]',
+      params: { id: 'g1' },
+    });
     expect(mockApi.get).toHaveBeenCalledWith('/v1/places/nearby', {
       query: { near: '38.722,-9.139', radius_m: 5000, limit: 30 },
     });
@@ -494,5 +515,55 @@ describe('replanning a trip', () => {
       }),
     );
     expect(mockApi.post).not.toHaveBeenCalledWith('/v1/trips', expect.anything());
+  });
+});
+
+describe('guide reader', () => {
+  it('renders prose, bullet lists and FAQs with the content source', async () => {
+    mockParams = { id: 'g1' };
+    mockApi.get.mockResolvedValue({
+      id: 'g1',
+      destination: lisbon,
+      locale: 'en',
+      title: 'Lisbon essentials',
+      summary: 'How the city fits together.',
+      tier: 'free',
+      version: 1,
+      content_license: 'travelbuddy-editorial',
+      attribution: 'Travel Buddy editorial team',
+      sections: [
+        {
+          id: 'hoods',
+          heading: 'Neighbourhoods',
+          body_markdown: 'Hills everywhere.\n\n- **Alfama** is the oldest quarter.',
+          place_ids: [],
+        },
+        {
+          id: 'faq',
+          kind: 'faq',
+          heading: 'FAQ',
+          body_markdown: '',
+          place_ids: [],
+          faq_items: [{ question: 'Is it walkable?', answer_markdown: 'Yes, with *hills*.' }],
+        },
+      ],
+    });
+    await renderUi(<GuideScreen />);
+    expect(await screen.findByText('•  Alfama is the oldest quarter.')).toBeTruthy();
+    expect(screen.getByText('Is it walkable?')).toBeTruthy();
+    expect(screen.getByText('Yes, with hills.')).toBeTruthy();
+    expect(screen.getByText('Source: Travel Buddy editorial team')).toBeTruthy();
+  });
+
+  it('explains premium guides', async () => {
+    mockParams = { id: 'g2' };
+    mockApi.get.mockRejectedValue(
+      new ApiProblem(
+        { status: 403, code: 'entitlement_required', title: 'Forbidden', type: 'x' },
+        'req-1',
+      ),
+    );
+    await renderUi(<GuideScreen />);
+    expect(await screen.findByText('This guide is part of Premium.')).toBeTruthy();
   });
 });

@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getApiClient } from '@/api';
@@ -12,6 +12,7 @@ import { Button, Notice, TextField } from '@/components/Form';
 import {
   exploreKeys,
   getDestination,
+  listGuides,
   nearbyPlaces,
   searchPlaces,
   type PlaceSummary,
@@ -45,6 +46,11 @@ function Explore() {
   const detail = useQuery({
     queryKey: exploreKeys.destination(destination?.id ?? ''),
     queryFn: () => getDestination(getApiClient(), destination!.id),
+    enabled: destination !== null,
+  });
+  const guides = useQuery({
+    queryKey: ['guides', 'destination', destination?.id ?? ''],
+    queryFn: () => listGuides(getApiClient(), destination!.id),
     enabled: destination !== null,
   });
   const point =
@@ -125,6 +131,24 @@ function Explore() {
           }}
           testID="explore-destination"
         />
+        {(guides.data ?? []).length > 0 ? heading(t('guides.title')) : null}
+        {(guides.data ?? []).map((guide) => (
+          <Pressable
+            key={guide.id}
+            onPress={() => router.push({ pathname: '/guides/[id]', params: { id: guide.id } })}
+            accessibilityRole="link"
+            accessibilityLabel={guide.title}
+            style={[styles.row, { borderColor: theme.colors.divider }]}
+            testID={`guide-${guide.id}`}
+          >
+            <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>
+              {guide.title}
+            </Text>
+            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+              {guide.entitled ? guide.summary : t('guides.premium')}
+            </Text>
+          </Pressable>
+        ))}
         {destination ? (
           <TextField
             label={t('explore.searchPlaces', { place: destination.name })}
@@ -163,4 +187,5 @@ function Explore() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  row: { borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: 10, gap: 2 },
 });

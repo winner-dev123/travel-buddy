@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import Select, and_, exists, func, or_, select, text
+from sqlalchemy import Select, and_, exists, func, or_, select, text, update
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -527,6 +527,13 @@ def coarse_point(near: str) -> tuple[float, float]:
     return point.lat, point.lng
 
 
+async def set_has_guides(session: AsyncSession, destination_id: uuid.UUID, value: bool) -> None:
+    """Maintained by the guides module when it publishes or retires guides (DEST-006)."""
+    await session.execute(
+        update(DestinationRow).where(DestinationRow.id == destination_id).values(has_guides=value)
+    )
+
+
 async def kind_of(session: AsyncSession, destination_id: uuid.UUID) -> str | None:
     """The kind (``city``, ``neighborhood``, …) of an active destination, or ``None``."""
     kind: str | None = await session.scalar(
@@ -545,4 +552,5 @@ __all__ = [
     "place_ids_within",
     "place_is_listed",
     "place_summaries",
+    "set_has_guides",
 ]

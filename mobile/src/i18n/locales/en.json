@@ -602,5 +602,12 @@
     "replanSubmit": "Suggest changes",
     "replanConflict": "This trip changed meanwhile. Reload it and try again.",
     "dayShort": "Day {{number}}"
+  },
+  "guides": {
+    "title": "Guides",
+    "premium": "Premium guide",
+    "locked": "This guide is part of Premium.",
+    "missing": "This guide isn't available.",
+    "attribution": "Source: {{source}}"
   }
 }
