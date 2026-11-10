@@ -383,7 +383,14 @@
     "error": "Impossible de charger les notifications.",
     "unreadA11y_one": "{{count}} notification non lue",
     "unreadA11y_many": "{{count}} de notifications non lues",
-    "unreadA11y_other": "{{count}} notifications non lues"
+    "unreadA11y_other": "{{count}} notifications non lues",
+    "push": {
+      "title": "Soyez prévenu des messages et des réponses",
+      "enable": "Activer les notifications",
+      "denied": "Les notifications de Travel Buddy sont désactivées. Vous pouvez les activer dans les réglages du téléphone.",
+      "openSettings": "Ouvrir les réglages",
+      "done": "Les notifications sont activées."
+    }
   },
   "user": {
     "notFound": "Ce profil n'est pas disponible.",

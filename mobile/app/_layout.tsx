@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { getApiClient, setAccessTokenRefresher } from '@/api';
 import { refreshAccessToken, restoreSession } from '@/auth/session';
 import { useSessionStore } from '@/auth/sessionStore';
+import { usePush } from '@/features/push/usePush';
 import { i18n } from '@/i18n';
 import { resolveSupportedLocale } from '@/i18n/resolveLocale';
 import { bindQueryOnlineManager } from '@/offline/connectivity';
@@ -24,6 +25,7 @@ export default function RootLayout() {
   const deviceLocale = resolveSupportedLocale(deviceLocales.map((locale) => locale.languageTag));
 
   useEffect(() => bindQueryOnlineManager(), []);
+  usePush();
 
   // Resume the platform session from the refresh token in secure storage (ADR-0003).
   useEffect(() => {

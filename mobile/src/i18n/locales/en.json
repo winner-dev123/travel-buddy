@@ -378,7 +378,14 @@
     "empty": "Nothing new yet.",
     "error": "We couldn't load notifications.",
     "unreadA11y_one": "{{count}} unread notification",
-    "unreadA11y_other": "{{count}} unread notifications"
+    "unreadA11y_other": "{{count}} unread notifications",
+    "push": {
+      "title": "Get notified about messages and replies",
+      "enable": "Turn on notifications",
+      "denied": "Notifications are off for Travel Buddy. You can turn them on in your phone's settings.",
+      "openSettings": "Open settings",
+      "done": "Notifications are on."
+    }
   },
   "user": {
     "notFound": "This profile isn't available.",

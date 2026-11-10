@@ -68,8 +68,10 @@ today. If one is added, update this table and the label.
 
 ## 6. Gaps before the first submission
 
-1. **Push notifications:** add `expo-notifications` (permission prompt with purpose text, token
-   registration to `POST /v1/users/me/devices`) and the APNs key / FCM credentials.
+1. **Push notifications:** the app is ready (`expo-notifications`: permission asked in context
+   on the Notifications screen, never at launch; token registered per session to
+   `POST /v1/users/me/devices`; taps open the right screen). Still needed: the EAS project ID in
+   `expo.extra.eas.projectId` and the APNs key / FCM credentials in EAS.
 2. **Photo uploads:** when the picker lands, add `NSPhotoLibraryUsageDescription` /
    `NSCameraUsageDescription` strings in all five locales.
 3. ~~Encryption export compliance~~: done, `ITSAppUsesNonExemptEncryption = false` in

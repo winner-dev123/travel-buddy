@@ -378,7 +378,14 @@
     "empty": "Noch nichts Neues.",
     "error": "Benachrichtigungen konnten nicht geladen werden.",
     "unreadA11y_one": "{{count}} ungelesene Benachrichtigung",
-    "unreadA11y_other": "{{count}} ungelesene Benachrichtigungen"
+    "unreadA11y_other": "{{count}} ungelesene Benachrichtigungen",
+    "push": {
+      "title": "Erfahre von Nachrichten und Antworten",
+      "enable": "Benachrichtigungen einschalten",
+      "denied": "Benachrichtigungen für Travel Buddy sind aus. Du kannst sie in den Einstellungen des Telefons einschalten.",
+      "openSettings": "Einstellungen öffnen",
+      "done": "Benachrichtigungen sind an."
+    }
   },
   "user": {
     "notFound": "Dieses Profil ist nicht verfügbar.",

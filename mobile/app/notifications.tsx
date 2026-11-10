@@ -22,6 +22,8 @@ import {
   type AppNotification,
 } from '@/features/account/api';
 import { Avatar } from '@/features/feed/PostCard';
+import { PushBanner } from '@/features/push/PushBanner';
+import { notificationRoute } from '@/features/push/push';
 import { useAppTheme } from '@/theme/useAppTheme';
 
 /** SCR-120 Notification center (NOTIF-001). Opening it marks everything as read. */
@@ -44,15 +46,8 @@ export default function NotificationsScreen() {
   }, [hasUnread, queryClient]);
 
   const open = (item: AppNotification) => {
-    if (item.entity_type === 'post' && item.entity_id) {
-      router.push({ pathname: '/post/[id]', params: { id: item.entity_id } });
-    } else if (item.entity_type === 'user' && item.entity_id) {
-      router.push({ pathname: '/user/[id]', params: { id: item.entity_id } });
-    } else if (item.entity_type === 'conversation' && item.entity_id) {
-      router.push({ pathname: '/chat/[id]', params: { id: item.entity_id } });
-    } else if (item.entity_type === 'challenge' && item.entity_id) {
-      router.push({ pathname: '/challenges/[id]', params: { id: item.entity_id } });
-    }
+    const route = notificationRoute(item.entity_type, item.entity_id);
+    if (route) router.push(route);
   };
 
   return (
@@ -64,6 +59,7 @@ export default function NotificationsScreen() {
       <FlatList<AppNotification>
         data={list.data?.data ?? []}
         keyExtractor={(item) => item.id}
+        ListHeaderComponent={<PushBanner />}
         contentContainerStyle={{ padding: theme.spacing[4], gap: theme.spacing[2] }}
         refreshControl={
           <RefreshControl refreshing={list.isRefetching} onRefresh={() => void list.refetch()} />

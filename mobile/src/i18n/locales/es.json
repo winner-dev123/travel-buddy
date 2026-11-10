@@ -383,7 +383,14 @@
     "error": "No pudimos cargar las notificaciones.",
     "unreadA11y_one": "{{count}} notificación sin leer",
     "unreadA11y_many": "{{count}} de notificaciones sin leer",
-    "unreadA11y_other": "{{count}} notificaciones sin leer"
+    "unreadA11y_other": "{{count}} notificaciones sin leer",
+    "push": {
+      "title": "Recibe avisos de mensajes y respuestas",
+      "enable": "Activar notificaciones",
+      "denied": "Las notificaciones de Travel Buddy están desactivadas. Puedes activarlas en los ajustes del teléfono.",
+      "openSettings": "Abrir ajustes",
+      "done": "Las notificaciones están activadas."
+    }
   },
   "user": {
     "notFound": "Este perfil no está disponible.",

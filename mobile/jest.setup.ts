@@ -23,3 +23,14 @@ jest.mock('expo-localization', () => {
     useLocales: () => locales,
   };
 });
+
+// Push notifications (expo-notifications): no native module in Jest; tests override as needed.
+jest.mock('expo-notifications', () => ({
+  AndroidImportance: { DEFAULT: 3 },
+  setNotificationHandler: jest.fn(),
+  getPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true })),
+  requestPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  getExpoPushTokenAsync: jest.fn(async () => ({ data: 'ExponentPushToken[test-token]' })),
+  setNotificationChannelAsync: jest.fn(async () => null),
+  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+}));
