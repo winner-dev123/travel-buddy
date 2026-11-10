@@ -25,7 +25,7 @@ export interface RegistrationInput {
   locale: string;
 }
 
-function clientPlatform(): 'ios' | 'android' {
+export function clientPlatform(): 'ios' | 'android' {
   return Platform.OS === 'ios' ? 'ios' : 'android';
 }
 

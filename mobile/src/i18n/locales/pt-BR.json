@@ -98,7 +98,18 @@
     "onlineOnly": "Somente online",
     "onlineOnlyA11y": "Somente online. Este recurso precisa de conexão com a internet.",
     "offlineNow": "Offline",
-    "offlineNowA11y": "Você está offline. Este recurso fica indisponível até você se reconectar."
+    "offlineNowA11y": "Você está offline. Este recurso fica indisponível até você se reconectar.",
+    "title": "Offline",
+    "pack": "Pacote de guias {{locale}} · {{size}}",
+    "download": "Baixar",
+    "remove": "Remover",
+    "premium": "Premium",
+    "downloads": "Downloads",
+    "empty": "Nada baixado ainda. Baixe os guias de um destino em Explorar.",
+    "used": "Usando {{size}} neste dispositivo",
+    "failed": "O download não terminou. Tente novamente.",
+    "quota": "Você atingiu seu limite de downloads offline. Remova um download primeiro.",
+    "offlineCopy": "Você está offline: esta é a sua cópia baixada."
   },
   "safety": {
     "discoveryTitle": "Antes de encontrar outros viajantes",

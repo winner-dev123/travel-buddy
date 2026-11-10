@@ -98,7 +98,18 @@
     "onlineOnly": "En ligne uniquement",
     "onlineOnlyA11y": "En ligne uniquement. Cette fonctionnalité nécessite une connexion Internet.",
     "offlineNow": "Hors ligne",
-    "offlineNowA11y": "Vous êtes hors ligne. Cette fonctionnalité est indisponible jusqu'à votre reconnexion."
+    "offlineNowA11y": "Vous êtes hors ligne. Cette fonctionnalité est indisponible jusqu'à votre reconnexion.",
+    "title": "Hors ligne",
+    "pack": "Pack de guides {{locale}} · {{size}}",
+    "download": "Télécharger",
+    "remove": "Supprimer",
+    "premium": "Premium",
+    "downloads": "Téléchargements",
+    "empty": "Aucun téléchargement pour l'instant. Téléchargez les guides d'une destination depuis Explorer.",
+    "used": "{{size}} utilisés sur cet appareil",
+    "failed": "Le téléchargement n'a pas abouti. Réessayez.",
+    "quota": "Vous avez atteint votre limite de téléchargements hors ligne. Supprimez-en un d'abord.",
+    "offlineCopy": "Vous êtes hors ligne : voici votre copie téléchargée."
   },
   "safety": {
     "discoveryTitle": "Avant de rencontrer d'autres voyageurs",

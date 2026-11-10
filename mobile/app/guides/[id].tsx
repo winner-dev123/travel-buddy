@@ -4,9 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ApiProblem, getApiClient } from '@/api';
+import { ApiNetworkError, ApiProblem, getApiClient } from '@/api';
 import { Notice } from '@/components/Form';
-import { getGuide, type GuideSection } from '@/features/explore/api';
+import { getGuide, type Guide, type GuideSection } from '@/features/explore/api';
+import { offlineGuide } from '@/features/offline/store';
 import { useAppTheme } from '@/theme/useAppTheme';
 
 /** Plain text from the small Markdown subset guides use (emphasis markers are dropped). */
@@ -19,11 +20,25 @@ export default function GuideScreen() {
   const { t } = useTranslation();
   const theme = useAppTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const guide = useQuery({ queryKey: ['guides', id], queryFn: () => getGuide(getApiClient(), id) });
+  // Online first; without a connection, the downloaded copy (OFF-002).
+  const guide = useQuery({
+    queryKey: ['guides', id],
+    queryFn: async (): Promise<{ guide: Guide; offline: boolean }> => {
+      try {
+        return { guide: await getGuide(getApiClient(), id), offline: false };
+      } catch (error) {
+        const local = error instanceof ApiNetworkError ? await offlineGuide<Guide>(id) : null;
+        if (local) {
+          return { guide: local, offline: true };
+        }
+        throw error;
+      }
+    },
+  });
   const locked =
     guide.error instanceof ApiProblem &&
     (guide.error.code === 'entitlement_required' || guide.error.code === 'unauthenticated');
-  const data = guide.data;
+  const data = guide.data?.guide;
 
   return (
     <SafeAreaView
@@ -34,6 +49,7 @@ export default function GuideScreen() {
       <ScrollView contentContainerStyle={{ padding: theme.spacing[4], gap: theme.spacing[3] }}>
         {locked ? <Notice tone="info">{t('guides.locked')}</Notice> : null}
         {guide.isError && !locked ? <Notice tone="error">{t('guides.missing')}</Notice> : null}
+        {guide.data?.offline ? <Notice tone="info">{t('offline.offlineCopy')}</Notice> : null}
         {data ? (
           <>
             <Text

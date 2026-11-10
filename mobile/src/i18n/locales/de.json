@@ -97,7 +97,18 @@
     "onlineOnly": "Nur online",
     "onlineOnlyA11y": "Nur online. Diese Funktion benötigt eine Internetverbindung.",
     "offlineNow": "Offline",
-    "offlineNowA11y": "Du bist offline. Diese Funktion ist erst wieder verfügbar, wenn du verbunden bist."
+    "offlineNowA11y": "Du bist offline. Diese Funktion ist erst wieder verfügbar, wenn du verbunden bist.",
+    "title": "Offline",
+    "pack": "Reiseführer-Paket {{locale}} · {{size}}",
+    "download": "Herunterladen",
+    "remove": "Entfernen",
+    "premium": "Premium",
+    "downloads": "Downloads",
+    "empty": "Noch nichts heruntergeladen. Lade die Reiseführer eines Reiseziels unter Entdecken herunter.",
+    "used": "{{size}} auf diesem Gerät belegt",
+    "failed": "Der Download wurde nicht abgeschlossen. Versuch es erneut.",
+    "quota": "Du hast dein Offline-Download-Limit erreicht. Entferne zuerst einen Download.",
+    "offlineCopy": "Du bist offline: Das ist deine heruntergeladene Kopie."
   },
   "safety": {
     "discoveryTitle": "Bevor du andere Reisende triffst",

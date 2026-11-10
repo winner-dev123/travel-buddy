@@ -97,7 +97,18 @@
     "onlineOnly": "Online only",
     "onlineOnlyA11y": "Online only. This feature needs an internet connection.",
     "offlineNow": "Offline",
-    "offlineNowA11y": "You are offline. This feature is unavailable until you reconnect."
+    "offlineNowA11y": "You are offline. This feature is unavailable until you reconnect.",
+    "title": "Offline",
+    "pack": "{{locale}} guide pack · {{size}}",
+    "download": "Download",
+    "remove": "Remove",
+    "premium": "Premium",
+    "downloads": "Downloads",
+    "empty": "Nothing downloaded yet. Download a destination's guides from Explore.",
+    "used": "Using {{size}} on this device",
+    "failed": "The download didn't complete. Try again.",
+    "quota": "You've reached your offline download allowance. Remove a download first.",
+    "offlineCopy": "You're offline: this is your downloaded copy."
   },
   "safety": {
     "discoveryTitle": "Before you meet other travelers",

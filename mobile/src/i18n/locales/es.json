@@ -98,7 +98,18 @@
     "onlineOnly": "Solo con conexión",
     "onlineOnlyA11y": "Solo con conexión. Esta función necesita conexión a internet.",
     "offlineNow": "Sin conexión",
-    "offlineNowA11y": "No tienes conexión. Esta función no estará disponible hasta que vuelvas a conectarte."
+    "offlineNowA11y": "No tienes conexión. Esta función no estará disponible hasta que vuelvas a conectarte.",
+    "title": "Sin conexión",
+    "pack": "Paquete de guías {{locale}} · {{size}}",
+    "download": "Descargar",
+    "remove": "Eliminar",
+    "premium": "Premium",
+    "downloads": "Descargas",
+    "empty": "Aún no hay descargas. Descarga las guías de un destino desde Explorar.",
+    "used": "Ocupa {{size}} en este dispositivo",
+    "failed": "La descarga no se completó. Inténtalo de nuevo.",
+    "quota": "Alcanzaste tu límite de descargas sin conexión. Elimina una descarga primero.",
+    "offlineCopy": "Estás sin conexión: esta es tu copia descargada."
   },
   "safety": {
     "discoveryTitle": "Antes de quedar con otros viajeros",

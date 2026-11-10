@@ -20,6 +20,7 @@ import {
 import { DestinationPicker } from '@/features/explore/DestinationPicker';
 import { PlaceRow } from '@/features/explore/PlaceRow';
 import { getCoarsePosition } from '@/features/feed/location';
+import { OfflinePackages } from '@/features/offline/OfflinePackages';
 import type { DestinationSummary } from '@/features/feed/types';
 import { useAppTheme } from '@/theme/useAppTheme';
 
@@ -116,6 +117,12 @@ function Explore() {
               onPress={() => router.push('/trips')}
               testID="explore-trips"
             />
+            <Button
+              label={t('offline.downloads')}
+              variant="secondary"
+              onPress={() => router.push('/downloads')}
+              testID="explore-downloads"
+            />
           </View>
         ) : (
           <Notice tone="info">{t('explore.signInToPlan')}</Notice>
@@ -149,6 +156,7 @@ function Explore() {
             </Text>
           </Pressable>
         ))}
+        {destination && signedIn ? <OfflinePackages destination={destination} /> : null}
         {destination ? (
           <TextField
             label={t('explore.searchPlaces', { place: destination.name })}
