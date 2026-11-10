@@ -34,7 +34,7 @@ It is a modular monolith ([ADR-0001](../docs/adr/0001-modular-monolith.md)): one
 | **Messaging (BL-3.03)**: `/v1/conversations` list/open/get, messages (seq history and gap sync, idempotent send, edit, tombstone delete), reactions, threads, receipts, mute, clear, pins; re-authorized on every send; `new_message` notifications; message reports | ✅ Implemented and integration-tested (realtime delivery is BL-3.04) |
 | **Jobs (BL-1.09)**: Postgres job queue, outbox relay, `python -m app.worker [--once]`, `/internal/jobs/tick` (cron secret), after-response tick for serverless | ✅ Implemented and integration-tested |
 | **Web cache webhooks (BL-1.25)**: signed `webCacheRevalidation` on profile visibility, handle and indexing changes | ✅ Implemented; enable with `WEB_REVALIDATE_URL`/`WEB_REVALIDATE_SECRET` (docs/11 §1.1) |
-| Realtime gateway, scheduler (periodic jobs) | ⏳ Phase 1/3 (documented in docs/02, not yet present) |
+| **Realtime gateway (BL-3.04, ADR-0023)**: `wss://…/v1/realtime` (subprotocol `travelbuddy.v1`), auth frame, acks, fanout, receipts, typing, sync; `REALTIME_BUS=memory|redis` | ✅ Implemented and integration-tested; needs a long-running host (not Vercel serverless) |
 
 ### Signing in locally (development IdP)
 

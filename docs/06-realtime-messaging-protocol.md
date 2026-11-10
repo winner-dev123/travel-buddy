@@ -243,8 +243,8 @@ Limits are advertised in `auth.ok.limits` so clients can self-throttle.
 
 ## 13. Implementation notes (Phase 3)
 
-* Process role `realtime` (`app.realtime_main:app`), horizontally scaled behind a load balancer with WebSocket support. Sticky sessions are **not** required.
-* Fanout: Redis pub/sub channels `conv:{id}` and `user:{id}`. Each gateway subscribes only to the channels its connected users need (reference-counted).
+* **As built (ADR-0023):** the gateway is `/v1/realtime` inside `app.main:app`, so any long-running ASGI host serves it; a dedicated realtime deployment is the same entrypoint behind a load balancer with WebSocket support. Sticky sessions are **not** required. Vercel serverless can't hold sockets, so clients there use the REST fallback (poll the conversation list and `after_seq` while a chat is open; push when backgrounded).
+* Fanout: one Redis pub/sub channel per user (`rt:user:{id}`). The messaging service publishes after commit to the users who should see each event, so membership changes need no subscription bookkeeping. `message.new`/`message.updated` events carry IDs and each connection loads the message for its own user (access re-checked at delivery). In-process bus for a single instance (`REALTIME_BUS`).
 * Draining: on SIGTERM, stop accepting connections, send close `4011` with jitter over 30 s, and exit.
 * Observability: connections gauge, auth failures by code, frames in and out by type, ack latency (receive → commit → ack), fanout lag (commit → delivery), `sync.required` count by reason, and backpressure drops.
 * Contract tests: every frame the gateway emits in tests is validated against `contracts/realtime/*.schema.json`. CI also asserts that `envelope.schema.json#/$defs/Message` matches the OpenAPI `Message` schema property for property.

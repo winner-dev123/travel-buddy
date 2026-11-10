@@ -93,6 +93,8 @@ from app.modules.trust_safety.api import router as trust_safety_router
 from app.modules.trust_safety.service import BlockService, ReportService
 from app.modules.web_cache import service as web_cache_service
 from app.modules.web_cache.config import WebCacheSettings
+from app.realtime.bus import MemoryBus, RealtimeBus, RedisBus
+from app.realtime.gateway import router as realtime_router
 
 logger = logging.getLogger(__name__)
 
@@ -267,8 +269,10 @@ def create_app(
         storage=media_storage,
         max_pending=media_settings.media_max_pending_uploads,
     )
+    realtime_bus = build_realtime_bus(settings, redis)
+    app.state.realtime_bus = realtime_bus
     app.state.messaging_service = messaging_service.MessagingService(
-        sessionmaker=database.sessionmaker, cursors=cursor_codec
+        sessionmaker=database.sessionmaker, cursors=cursor_codec, publish=realtime_bus.publish
     )
     app.state.notification_service = notifications_service.NotificationService(
         sessionmaker=database.sessionmaker, cursors=cursor_codec
@@ -333,6 +337,7 @@ def create_app(
     app.include_router(discovery_router)
     app.include_router(notifications_router)
     app.include_router(messaging_router)
+    app.include_router(realtime_router)
     app.include_router(media_router)
     app.include_router(admin_router)
     app.include_router(internal_router)
@@ -390,6 +395,15 @@ def build_rate_limiter(
             raise RuntimeError("RATE_LIMIT_STORE=redis needs REDIS_URL")
         return RateLimiter(RedisRateLimitStore(redis), policy, clock)
     return RateLimiter(PostgresRateLimitStore(database.sessionmaker), policy, clock)
+
+
+def build_realtime_bus(settings: Settings, redis: Redis | None) -> RealtimeBus:
+    """Realtime fanout (ADR-0023): Redis pub/sub across processes, or in-process."""
+    if settings.resolved_realtime_bus == "redis":
+        if redis is None:
+            raise RuntimeError("REALTIME_BUS=redis needs REDIS_URL")
+        return RedisBus(redis)
+    return MemoryBus()
 
 
 def build_job_runner(

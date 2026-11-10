@@ -19,9 +19,10 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from collections import defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from datetime import datetime
 from typing import Any
 
@@ -82,6 +83,14 @@ from app.modules.profiles import service as profiles
 from app.modules.trust_safety import service as trust_safety
 
 Row = tuple[Conversation, ConversationMember]
+
+logger = logging.getLogger(__name__)
+
+# Realtime delivery (docs/06), injected by the composition root: called after commit with the
+# users to tell and an event ``{"type": <server frame type>, "data": {...}}``. ``message.new``
+# and ``message.updated`` carry only IDs; each connection loads the message for its own user,
+# re-checking access at delivery time.
+Publish = Callable[[Sequence[uuid.UUID], Mapping[str, Any]], Awaitable[None]]
 
 
 def _not_found(what: str = "Conversation") -> AppError:
@@ -480,12 +489,46 @@ async def _tombstone(session: AsyncSession, message: Message, *, by: uuid.UUID) 
     message.deleted_by = by
 
 
+async def _active_members(session: AsyncSession, conversation_id: uuid.UUID) -> list[uuid.UUID]:
+    return list(
+        await session.scalars(
+            select(ConversationMember.user_id).where(
+                ConversationMember.conversation_id == conversation_id,
+                ConversationMember.left_at.is_(None),
+            )
+        )
+    )
+
+
+def _message_event(
+    kind: str, conversation_id: uuid.UUID, message_id: uuid.UUID, change: str | None = None
+) -> dict[str, Any]:
+    data: dict[str, Any] = {"conversation_id": str(conversation_id), "message_id": str(message_id)}
+    if change is not None:
+        data["change"] = change
+    return {"type": kind, "data": data}
+
+
 class MessagingService:
     def __init__(
-        self, *, sessionmaker: async_sessionmaker[AsyncSession], cursors: CursorCodec
+        self,
+        *,
+        sessionmaker: async_sessionmaker[AsyncSession],
+        cursors: CursorCodec,
+        publish: Publish | None = None,
     ) -> None:
         self._sessionmaker = sessionmaker
         self._cursors = cursors
+        self._publish = publish
+
+    async def _emit(self, users: Sequence[uuid.UUID], event: Mapping[str, Any]) -> None:
+        """Best effort: the database is the record, and clients catch up by seq (docs/06 §1)."""
+        if self._publish is None or not users:
+            return
+        try:
+            await self._publish(users, event)
+        except Exception:  # pragma: no cover - transport failures never fail the request
+            logger.warning("realtime_publish_failed", extra={"type": event.get("type")})
 
     # ───────────────────────────── conversations ─────────────────────────────
 
@@ -572,6 +615,14 @@ class MessagingService:
             if member is None:
                 raise _not_found()
             [out] = await _conversations_out(session, me, [(conversation, member)])
+        if created:
+            await self._emit(
+                [me, them],
+                {
+                    "type": "conversation.updated",
+                    "data": {"conversation_id": str(out.id), "created": True},
+                },
+            )
         return out, created
 
     async def get_conversation(
@@ -592,6 +643,17 @@ class MessagingService:
                 member.notification_level = request.notification_level
             await session.flush()
             [out] = await _conversations_out(session, user_id, [(conversation, member)])
+        await self._emit(
+            [user_id],
+            {
+                "type": "conversation.updated",
+                "data": {
+                    "conversation_id": str(out.id),
+                    "muted_until": out.muted_until.isoformat() if out.muted_until else None,
+                    "notification_level": out.notification_level,
+                },
+            },
+        )
         return out
 
     async def clear(self, user_id: uuid.UUID, conversation_id: uuid.UUID, through_seq: int) -> None:
@@ -612,15 +674,32 @@ class MessagingService:
             top = conversation.last_seq
             read = min(request.read_through_seq or 0, top)
             delivered = min(request.delivered_through_seq or 0, top)
-            before = await session.scalar(
-                select(MessageReceipt.read_through_seq).where(
-                    MessageReceipt.conversation_id == conversation.id,
-                    MessageReceipt.user_id == user_id,
+            previous = (
+                await session.execute(
+                    select(
+                        MessageReceipt.read_through_seq, MessageReceipt.delivered_through_seq
+                    ).where(
+                        MessageReceipt.conversation_id == conversation.id,
+                        MessageReceipt.user_id == user_id,
+                    )
                 )
-            )
+            ).first()
+            before, before_delivered = (previous[0], previous[1]) if previous else (0, 0)
             read, delivered, updated_at = await _advance_receipt(
                 session, conversation.id, user_id, read=read, delivered=delivered
             )
+            others = [u for u in await _active_members(session, conversation.id) if u != user_id]
+            sharing = await profiles.read_receipts_enabled(session, [user_id, *others])
+            direct = conversation.kind == ConversationKind.DIRECT
+            deliveries: list[tuple[uuid.UUID, dict[str, Any]]] = []
+            for other in others:
+                data: dict[str, Any] = {}
+                if read > before and sharing.get(user_id) and sharing.get(other):
+                    data["read_through_seq"] = read
+                if direct and delivered > before_delivered:
+                    data["delivered_through_seq"] = delivered
+                if data:
+                    deliveries.append((other, data))
             if read > (before or 0):
                 platform.record_event(
                     session,
@@ -633,6 +712,18 @@ class MessagingService:
                         "read_through_seq": read,
                     },
                 )
+        for other, data in deliveries:
+            await self._emit(
+                [other],
+                {
+                    "type": "receipt.updated",
+                    "data": {
+                        "conversation_id": str(conversation_id),
+                        "user_id": str(user_id),
+                        **data,
+                    },
+                },
+            )
         return ReceiptState(
             conversation_id=conversation_id,
             read_through_seq=read,
@@ -781,9 +872,11 @@ class MessagingService:
                     ConversationMember.user_id != me,
                 )
             )
+            member_rows = others.all()
+            recipients = [me, *(user for user, _, _ in member_rows)]
             notify = [
                 str(user)
-                for user, muted_until, level in others.all()
+                for user, muted_until, level in member_rows
                 if should_notify(
                     level=level, muted_until=muted_until, now=now, mentioned=user in mentions
                 )
@@ -804,6 +897,7 @@ class MessagingService:
                 },
             )
             [out] = await _messages_out(session, me, member, [message])
+        await self._emit(recipients, _message_event("message.new", out.conversation_id, out.id))
         return out, False
 
     async def edit(
@@ -840,6 +934,10 @@ class MessagingService:
             )
             await session.flush()
             [out] = await _messages_out(session, user_id, member, [message])
+            recipients = await _active_members(session, conversation.id)
+        await self._emit(
+            recipients, _message_event("message.updated", out.conversation_id, out.id, "edited")
+        )
         return out
 
     async def delete(
@@ -866,6 +964,15 @@ class MessagingService:
                     "by_moderator": False,
                 },
             )
+            recipients = await _active_members(session, conversation.id)
+            tombstone = {
+                "conversation_id": str(conversation.id),
+                "message_id": str(message.id),
+                "seq": message.seq,
+                "deleted_at": message.deleted_at.isoformat() if message.deleted_at else None,
+                "by_moderator": False,
+            }
+        await self._emit(recipients, {"type": "message.deleted", "data": tombstone})
 
     async def react(
         self,
@@ -886,22 +993,28 @@ class MessagingService:
             if stored is None:
                 return
             if not add:
-                await session.execute(
+                removed = await session.execute(
                     delete(MessageReaction).where(
                         MessageReaction.message_id == message.id,
                         MessageReaction.user_id == user_id,
                         MessageReaction.emoji == stored,
                     )
                 )
+                changed = bool(getattr(removed, "rowcount", 0))
+            else:
+                if _hidden(message):
+                    raise _not_found("Message")
+                await _ensure_can_send(session, user_id, conversation)
+                added = await session.execute(
+                    insert(MessageReaction)
+                    .values(message_id=message.id, user_id=user_id, emoji=stored)
+                    .on_conflict_do_nothing()
+                    .returning(MessageReaction.emoji)
+                )
+                changed = added.first() is not None
+            if not changed:
                 return
-            if _hidden(message):
-                raise _not_found("Message")
-            await _ensure_can_send(session, user_id, conversation)
-            await session.execute(
-                insert(MessageReaction)
-                .values(message_id=message.id, user_id=user_id, emoji=stored)
-                .on_conflict_do_nothing()
-            )
+            recipients = await _active_members(session, conversation.id)
             platform.record_event(
                 session,
                 aggregate_type="conversation",
@@ -913,6 +1026,9 @@ class MessagingService:
                     "user_id": str(user_id),
                 },
             )
+        await self._emit(
+            recipients, _message_event("message.updated", conversation_id, message_id, "reactions")
+        )
 
     async def thread(
         self,
@@ -981,30 +1097,109 @@ class MessagingService:
             conversation, member = await _access(session, conversation_id, user_id, lock=True)
             message = await _message_in(session, conversation, member, message_id)
             if not on:
-                await session.execute(
+                unpinned = await session.execute(
                     delete(ConversationPin).where(
                         ConversationPin.conversation_id == conversation.id,
                         ConversationPin.message_id == message.id,
                     )
                 )
-                return
-            if _hidden(message):
-                raise _not_found("Message")
-            already = await session.get(ConversationPin, (conversation.id, message.id))
-            if already is not None:
-                return
-            count = await session.scalar(
-                select(func.count())
-                .select_from(ConversationPin)
-                .where(ConversationPin.conversation_id == conversation.id)
+                if not getattr(unpinned, "rowcount", 0):
+                    return
+            else:
+                if _hidden(message):
+                    raise _not_found("Message")
+                already = await session.get(ConversationPin, (conversation.id, message.id))
+                if already is not None:
+                    return
+                count = await session.scalar(
+                    select(func.count())
+                    .select_from(ConversationPin)
+                    .where(ConversationPin.conversation_id == conversation.id)
+                )
+                if (count or 0) >= MAX_PINS:
+                    raise AppError(ErrorCode.CONFLICT, f"A chat can have up to {MAX_PINS} pins.")
+                session.add(
+                    ConversationPin(
+                        conversation_id=conversation.id, message_id=message.id, pinned_by=user_id
+                    )
+                )
+            recipients = await _active_members(session, conversation.id)
+        await self._emit(
+            recipients,
+            _message_event(
+                "message.updated", conversation_id, message_id, "pinned" if on else "unpinned"
+            ),
+        )
+
+    # ─────────────────────────────── realtime ───────────────────────────────
+
+    async def get_message(
+        self, user_id: uuid.UUID, conversation_id: uuid.UUID, message_id: uuid.UUID
+    ) -> MessageOut:
+        """One message as ``user_id`` sees it (``404`` without access), for realtime frames."""
+        async with self._sessionmaker() as session:
+            conversation, member = await _access(session, conversation_id, user_id)
+            message = await _message_in(session, conversation, member, message_id)
+            [out] = await _messages_out(session, user_id, member, [message])
+        return out
+
+    async def sync(
+        self,
+        user_id: uuid.UUID,
+        held: Sequence[tuple[uuid.UUID, int]],
+        *,
+        list_synced_at: datetime | None,
+    ) -> list[tuple[uuid.UUID, int, int]]:
+        """Conversations the client is behind on: ``(id, from_seq, server_last_seq)``. Unknown
+        or inaccessible IDs are skipped; with ``list_synced_at``, conversations active since
+        then that the client doesn't hold are reported from seq 0."""
+        positions = dict(held)
+        async with self._sessionmaker() as session:
+            query = select(Conversation, ConversationMember).join(
+                ConversationMember, _member_of(user_id)
             )
-            if (count or 0) >= MAX_PINS:
-                raise AppError(ErrorCode.CONFLICT, f"A chat can have up to {MAX_PINS} pins.")
-            session.add(
-                ConversationPin(
-                    conversation_id=conversation.id, message_id=message.id, pinned_by=user_id
+            conditions: list[ColumnElement[bool]] = []
+            if positions:
+                conditions.append(Conversation.id.in_(positions))
+            if list_synced_at is not None:
+                conditions.append(Conversation.last_message_at > list_synced_at)
+            if not conditions:
+                return []
+            rows = (await session.execute(query.where(or_(*conditions)))).all()
+        behind = []
+        for conversation, member in rows:
+            start = max(positions.get(conversation.id, 0), _floor(member))
+            if conversation.last_seq > start:
+                behind.append((conversation.id, start, conversation.last_seq))
+        return behind
+
+    async def typing_recipients(
+        self, user_id: uuid.UUID, conversation_id: uuid.UUID
+    ) -> list[uuid.UUID]:
+        """Who sees the caller typing: other members, never across a block, and nobody when
+        the caller can't send (docs/06 §11)."""
+        async with self._sessionmaker() as session:
+            conversation, _ = await _access(session, conversation_id, user_id)
+            try:
+                await _ensure_can_send(session, user_id, conversation)
+            except AppError:
+                return []
+            blocked_by_me, blocked_me = await trust_safety.blocks_of(session, user_id)
+            hidden = blocked_by_me | blocked_me
+            return [
+                u
+                for u in await _active_members(session, conversation.id)
+                if u != user_id and u not in hidden
+            ]
+
+    async def active_conversation_ids(self, user_id: uuid.UUID) -> set[uuid.UUID]:
+        async with self._sessionmaker() as session:
+            rows = await session.scalars(
+                select(ConversationMember.conversation_id).where(
+                    ConversationMember.user_id == user_id, ConversationMember.left_at.is_(None)
                 )
             )
+            return set(rows)
 
 
 # ─────────────────────────────── for other modules ───────────────────────────────

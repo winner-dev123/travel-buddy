@@ -20,6 +20,7 @@ from typing import Any
 from fastapi import Request
 from fastapi.routing import APIRoute
 from starlette.datastructures import MutableHeaders
+from starlette.requests import HTTPConnection
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.errors import AppError, ErrorCode
@@ -115,8 +116,12 @@ def _subject(request: Request, bucket: Bucket, route: APIRoute) -> str | None:
     return f"ip:{client_ip(request)}"
 
 
-async def enforce_rate_limit(request: Request) -> None:
-    """App-wide dependency: runs before each route's own dependencies (authentication included)."""
+async def enforce_rate_limit(connection: HTTPConnection) -> None:
+    """App-wide dependency: runs before each route's own dependencies (authentication included).
+    WebSocket routes pass through: the realtime gateway limits per frame (docs/06 §10)."""
+    if not isinstance(connection, Request):
+        return
+    request = connection
     limiter: RateLimiter | None = request.app.state.rate_limiter
     route = request.scope.get("route")
     if limiter is None or not isinstance(route, APIRoute):

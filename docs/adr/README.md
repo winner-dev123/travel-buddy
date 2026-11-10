@@ -28,5 +28,6 @@ ADRs use the format **Context → Decision → Consequences → Alternatives**. 
 | [0020](0020-supabase-auth-identity-provider.md) | Supabase Auth as the managed identity provider (publishable key for Auth only; staff MFA via `aal2`) | Identity | Accepted |
 | [0021](0021-rate-limit-stores-and-client-ip.md) | Rate-limit counter stores (Redis, PostgreSQL fallback for serverless) and client IP trust (BFF forwarding secret) | Platform / Security | Accepted |
 | [0022](0022-media-object-storage.md) | Media object storage through an S3-compatible port (own SigV4; Supabase Storage recommended; in-process store for dev/test) | Media / Infra | Accepted |
+| [0023](0023-realtime-delivery-and-hosting.md) | Realtime delivery through per-user channels (gateway inside the API app, Memory/Redis bus, REST fallback on serverless) | Messaging / Infra | Accepted |
 
 Template: [`template.md`](template.md).
