@@ -17,6 +17,7 @@ export const feedKeys = {
     ['feed', tab, ...rest] as const,
   post: (id: string) => ['post', id] as const,
   comments: (id: string) => ['post', id, 'comments'] as const,
+  replies: (commentId: string) => ['comment', commentId, 'replies'] as const,
   bookmarks: ['me', 'bookmarks'] as const,
 };
 
@@ -63,8 +64,17 @@ export function createComment(
   postId: string,
   body: string,
   idempotencyKey: string,
+  parentId?: string,
 ): Promise<Comment> {
-  return client.post<Comment>(`/v1/posts/${postId}/comments`, { body: { body }, idempotencyKey });
+  return client.post<Comment>(`/v1/posts/${postId}/comments`, {
+    body: { body, ...(parentId ? { parent_comment_id: parentId } : {}) },
+    idempotencyKey,
+  });
+}
+
+/** Replies to a top-level comment (one level only, POST-005), oldest first. */
+export function fetchReplies(client: ApiClient, commentId: string): Promise<Page<Comment>> {
+  return client.get<Page<Comment>>(`/v1/comments/${commentId}/replies`, { query: { limit: 50 } });
 }
 
 export function setReaction(

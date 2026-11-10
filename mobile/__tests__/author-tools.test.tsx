@@ -198,3 +198,35 @@ it('deletes comments where allowed and reports other people’s', async () => {
     params: { type: 'comment', target: 'c2', name: 'Bo' },
   });
 });
+
+it('replies to a comment and shows the replies', async () => {
+  const parent = { ...comment('c1', 'bo', false), reply_count: 1 };
+  mockApi.get.mockImplementation(async (path: string) => {
+    if (path === '/v1/posts/p1')
+      return post(false, { author: { id: 'u2', handle: 'bo', display_name: 'Bo', avatar: null } });
+    if (path === '/v1/comments/c1/replies')
+      return {
+        data: [{ ...comment('r1', 'u9', true), parent_comment_id: 'c1' }],
+        page: { next_cursor: null, has_more: false },
+      };
+    return { data: [parent], page: { next_cursor: null, has_more: false } };
+  });
+  mockApi.post.mockReset();
+  mockApi.post.mockResolvedValue({ ...comment('r2', 'u9', true), parent_comment_id: 'c1' });
+  await renderPost();
+  await fireEvent.press(await screen.findByTestId('comment-replies-c1'));
+  expect(await screen.findByTestId('comment-r1')).toBeTruthy();
+  expect(mockApi.get).toHaveBeenCalledWith('/v1/comments/c1/replies', { query: { limit: 50 } });
+
+  await fireEvent.press(screen.getByTestId('comment-reply-c1'));
+  expect(screen.getByTestId('comment-replying')).toHaveTextContent(/^Replying to Bo/);
+  await fireEvent.changeText(screen.getByTestId('comment-input'), 'Same here!');
+  await fireEvent.press(screen.getByTestId('comment-send'));
+  await waitFor(() =>
+    expect(mockApi.post).toHaveBeenCalledWith('/v1/posts/p1/comments', {
+      body: { body: 'Same here!', parent_comment_id: 'c1' },
+      idempotencyKey: 'key-1',
+    }),
+  );
+  await waitFor(() => expect(screen.queryByTestId('comment-replying')).toBeNull());
+});

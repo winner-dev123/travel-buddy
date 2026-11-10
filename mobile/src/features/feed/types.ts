@@ -86,6 +86,8 @@ export interface Comment {
   deleted: boolean;
   created_at: string;
   viewer?: { can_edit: boolean; can_delete: boolean };
+  parent_comment_id?: string | null;
+  reply_count?: number;
 }
 
 export interface Page<T> {

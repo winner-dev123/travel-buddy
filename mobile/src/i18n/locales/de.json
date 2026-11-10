@@ -364,7 +364,13 @@
     "seeLessAuthor": "Weniger von {{name}}",
     "dismissed": "Ausgeblendet. Du siehst weniger Storys wie diese.",
     "share": "Teilen",
-    "shareMessage": "Eine Reisestory auf Travel Buddy: {{url}}"
+    "shareMessage": "Eine Reisestory auf Travel Buddy: {{url}}",
+    "reply": "Antworten",
+    "replyingTo": "Antwort an {{name}}",
+    "cancelReply": "Antwort abbrechen",
+    "hideReplies": "Antworten ausblenden",
+    "viewReplies_one": "{{count}} Antwort ansehen",
+    "viewReplies_other": "{{count}} Antworten ansehen"
   },
   "compose": {
     "open": "Geschichte teilen",

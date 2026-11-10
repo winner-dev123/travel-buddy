@@ -364,7 +364,13 @@
     "seeLessAuthor": "See less from {{name}}",
     "dismissed": "Hidden. You'll see fewer stories like this.",
     "share": "Share",
-    "shareMessage": "A travel story on Travel Buddy: {{url}}"
+    "shareMessage": "A travel story on Travel Buddy: {{url}}",
+    "reply": "Reply",
+    "replyingTo": "Replying to {{name}}",
+    "cancelReply": "Cancel reply",
+    "hideReplies": "Hide replies",
+    "viewReplies_one": "View {{count}} reply",
+    "viewReplies_other": "View {{count}} replies"
   },
   "compose": {
     "open": "Share a story",

@@ -24,6 +24,7 @@ import {
   feedKeys,
   fetchComments,
   fetchPost,
+  fetchReplies,
 } from '@/features/feed/api';
 import { AuthorTools } from '@/features/feed/AuthorTools';
 import { Avatar, PostCard } from '@/features/feed/PostCard';
@@ -39,6 +40,8 @@ export default function PostDetailScreen() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const [draft, setDraft] = useState('');
+  const [replyTo, setReplyTo] = useState<Comment | null>(null);
+  const [openReplies, setOpenReplies] = useState<Set<string>>(new Set());
   // One idempotency key per comment the user writes; retries of the same comment reuse it.
   const commentKey = useRef<string>(getApiClient().newIdempotencyKey());
 
@@ -52,13 +55,26 @@ export default function PostDetailScreen() {
     enabled: signedIn,
   });
   const send = useMutation({
-    mutationFn: (body: string) => createComment(getApiClient(), id, body, commentKey.current),
+    mutationFn: (body: string) =>
+      createComment(getApiClient(), id, body, commentKey.current, replyTo?.id),
     onSuccess: () => {
       setDraft('');
       commentKey.current = getApiClient().newIdempotencyKey();
+      if (replyTo) {
+        setOpenReplies((open) => new Set(open).add(replyTo.id)); // show the new reply
+        void queryClient.invalidateQueries({ queryKey: feedKeys.replies(replyTo.id) });
+      }
+      setReplyTo(null);
       void queryClient.invalidateQueries({ queryKey: feedKeys.comments(id) });
     },
   });
+  const toggleReplies = (commentId: string) =>
+    setOpenReplies((open) => {
+      const next = new Set(open);
+      if (next.has(commentId)) next.delete(commentId);
+      else next.add(commentId);
+      return next;
+    });
 
   const canComment = signedIn && (post.data?.viewer?.can_comment ?? false);
   const meId = useSessionStore((state) => state.me?.account.id);
@@ -186,6 +202,38 @@ export default function PostDetailScreen() {
                 >
                   {item.deleted ? t('post.commentDeleted') : item.body}
                 </Text>
+                <View style={styles.commentLinks}>
+                  {canComment && !item.deleted ? (
+                    <Pressable
+                      onPress={() => setReplyTo(item)}
+                      accessibilityRole="button"
+                      hitSlop={6}
+                      testID={`comment-reply-${item.id}`}
+                    >
+                      <Text style={[theme.typography.caption, { color: theme.colors.primary }]}>
+                        {t('post.reply')}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                  {(item.reply_count ?? 0) > 0 ? (
+                    <Pressable
+                      onPress={() => toggleReplies(item.id)}
+                      accessibilityRole="button"
+                      accessibilityState={{ expanded: openReplies.has(item.id) }}
+                      hitSlop={6}
+                      testID={`comment-replies-${item.id}`}
+                    >
+                      <Text style={[theme.typography.caption, { color: theme.colors.primary }]}>
+                        {openReplies.has(item.id)
+                          ? t('post.hideReplies')
+                          : t('post.viewReplies', { count: item.reply_count ?? 0 })}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+                {openReplies.has(item.id) ? (
+                  <Replies commentId={item.id} onActions={commentActions} />
+                ) : null}
               </View>
             </Pressable>
           )}
@@ -205,6 +253,30 @@ export default function PostDetailScreen() {
             ]}
           >
             {send.isError ? <Notice tone="error">{t('post.commentFailed')}</Notice> : null}
+            {replyTo ? (
+              <View style={styles.commentLinks} testID="comment-replying">
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.fill,
+                    theme.typography.caption,
+                    { color: theme.colors.textSecondary },
+                  ]}
+                >
+                  {t('post.replyingTo', {
+                    name: replyTo.author?.display_name ?? t('post.deletedUser'),
+                  })}
+                </Text>
+                <Pressable
+                  onPress={() => setReplyTo(null)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('post.cancelReply')}
+                  testID="comment-cancel-reply"
+                >
+                  <Text style={[theme.typography.label, { color: theme.colors.primary }]}>✕</Text>
+                </Pressable>
+              </View>
+            ) : null}
             <TextField
               label={t('post.addComment')}
               value={draft}
@@ -227,8 +299,54 @@ export default function PostDetailScreen() {
   );
 }
 
+/** One comment's replies, loaded when opened. */
+function Replies({
+  commentId,
+  onActions,
+}: {
+  commentId: string;
+  onActions: (comment: Comment) => void;
+}) {
+  const { t } = useTranslation();
+  const theme = useAppTheme();
+  const replies = useQuery({
+    queryKey: feedKeys.replies(commentId),
+    queryFn: () => fetchReplies(getApiClient(), commentId),
+  });
+  if (replies.isPending) return <ActivityIndicator />;
+  return (
+    <View style={styles.replies} testID={`replies-${commentId}`}>
+      {(replies.data?.data ?? []).map((reply) => (
+        <Pressable
+          key={reply.id}
+          onLongPress={() => onActions(reply)}
+          style={styles.comment}
+          testID={`comment-${reply.id}`}
+        >
+          <Avatar user={reply.author} size={24} />
+          <View style={styles.fill}>
+            <Text style={[theme.typography.label, { color: theme.colors.textPrimary }]}>
+              {reply.author?.display_name ?? t('post.deletedUser')}
+            </Text>
+            <Text
+              style={[
+                theme.typography.body,
+                { color: reply.deleted ? theme.colors.textSecondary : theme.colors.textPrimary },
+              ]}
+            >
+              {reply.deleted ? t('post.commentDeleted') : reply.body}
+            </Text>
+          </View>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  commentLinks: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 4 },
+  replies: { gap: 8, marginTop: 8 },
   comment: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   composer: { borderTopWidth: 1, gap: 8 },
 });

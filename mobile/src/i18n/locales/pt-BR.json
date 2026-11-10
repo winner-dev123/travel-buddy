@@ -367,7 +367,14 @@
     "seeLessAuthor": "Ver menos de {{name}}",
     "dismissed": "Ocultada. Você verá menos histórias como esta.",
     "share": "Compartilhar",
-    "shareMessage": "Uma história de viagem no Travel Buddy: {{url}}"
+    "shareMessage": "Uma história de viagem no Travel Buddy: {{url}}",
+    "reply": "Responder",
+    "replyingTo": "Respondendo a {{name}}",
+    "cancelReply": "Cancelar resposta",
+    "hideReplies": "Ocultar respostas",
+    "viewReplies_one": "Ver {{count}} resposta",
+    "viewReplies_many": "Ver {{count}} respostas",
+    "viewReplies_other": "Ver {{count}} respostas"
   },
   "compose": {
     "open": "Compartilhar uma história",
