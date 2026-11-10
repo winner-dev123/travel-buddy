@@ -31,5 +31,6 @@ ADRs use the format **Context → Decision → Consequences → Alternatives**. 
 | [0023](0023-realtime-delivery-and-hosting.md) | Realtime delivery through per-user channels (gateway inside the API app, Memory/Redis bus, REST fallback on serverless) | Messaging / Infra | Accepted |
 | [0024](0024-ai-provider-and-cost-controls.md) | AI provider port with a Claude adapter (official SDK, structured outputs), asynchronous generations, quotas and database-backed spend/provider breakers | AI | Accepted |
 | [0025](0025-place-data-from-openstreetmap.md) | Place data from OpenStreetMap (ODbL) through a PlaceSource port, stored as lat/lng with bbox + haversine nearby search | Destinations / AI | Accepted |
+| [0026](0026-offline-packages-signed-manifests.md) | Offline packages: prebuilt, Ed25519-signed manifests (key in client-config), per-device licenses with quota, token download URLs redirecting to storage | Guides / Mobile | Accepted |
 
 Template: [`template.md`](template.md).

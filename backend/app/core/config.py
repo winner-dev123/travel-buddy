@@ -135,6 +135,11 @@ class Settings(BaseSettings):
     ai_breaker_failures: int = Field(default=5, ge=1, le=100)
     ai_breaker_cooldown_seconds: float = Field(default=120.0, gt=0, le=3600)
 
+    # Offline packages (BL-4.08): Ed25519 PEM that signs manifests; clients get the public key from
+    # GET /v1/client-config. Unset outside development/test: licensing and manifests answer 503.
+    offline_manifest_private_key: SecretStr | None = None
+    offline_manifest_key_id: str = "offline-1"
+
     # Development-only adapters (never allowed in staging/production).
     dev_idp_enabled: bool = False
     dev_billing_enabled: bool = False

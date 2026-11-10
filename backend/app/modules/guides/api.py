@@ -6,12 +6,23 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, Request
+from fastapi import APIRouter, Depends, Header, Request, Response, status
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.core.i18n import parse_accept_language
 from app.core.security.authn import get_optional_principal, get_principal
 from app.core.security.principal import Principal
-from app.modules.guides.schemas import AudioTour, AudioTourSummaryList, Guide, GuideSummaryList
+from app.modules.guides.packages import OfflinePackageService
+from app.modules.guides.schemas import (
+    AudioTour,
+    AudioTourSummaryList,
+    Guide,
+    GuideSummaryList,
+    LicenseRequest,
+    OfflineLicenseList,
+    OfflinePackageLicenseOut,
+    OfflinePackageList,
+)
 from app.modules.guides.service import GuideService
 
 router = APIRouter(tags=["guides"])
@@ -76,3 +87,67 @@ async def get_audio_tour(
     return await _service(request).get_tour(
         tour_id, principal.user_id, preferences=parse_accept_language(accept_language)
     )
+
+
+# ─────────────────────────────── offline packages (BL-4.08) ───────────────────────────────
+
+
+def _offline(request: Request) -> OfflinePackageService:
+    service: OfflinePackageService = request.app.state.offline_package_service
+    return service
+
+
+@router.get("/v1/destinations/{destination_id}/offline-packages", response_model=OfflinePackageList)
+async def list_offline_packages(
+    destination_id: uuid.UUID, request: Request, principal: CurrentPrincipal
+) -> OfflinePackageList:
+    return await _offline(request).list_for_destination(destination_id, principal.user_id)
+
+
+@router.post(
+    "/v1/offline-packages/{package_id}/licenses",
+    status_code=status.HTTP_201_CREATED,
+    response_model=OfflinePackageLicenseOut,
+)
+async def license_offline_package(
+    package_id: uuid.UUID, body: LicenseRequest, request: Request, principal: CurrentPrincipal
+) -> OfflinePackageLicenseOut:
+    return await _offline(request).license(
+        principal.user_id,
+        package_id,
+        body.device_id,
+        download_base=f"{str(request.base_url).rstrip('/')}/v1/offline-downloads",
+    )
+
+
+@router.delete(
+    "/v1/offline-packages/{package_id}/licenses/{license_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def release_offline_license(
+    package_id: uuid.UUID, license_id: uuid.UUID, request: Request, principal: CurrentPrincipal
+) -> Response:
+    await _offline(request).release(principal.user_id, package_id, license_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/v1/offline-packages/{package_id}/manifest")
+async def get_offline_manifest(
+    package_id: uuid.UUID, request: Request, principal: CurrentPrincipal
+) -> JSONResponse:
+    # Returned verbatim: re-serializing could change the bytes the signature covers.
+    return JSONResponse(await _offline(request).manifest(principal.user_id, package_id))
+
+
+@router.get("/v1/users/me/offline-packages", response_model=OfflineLicenseList)
+async def list_my_offline_licenses(
+    request: Request, principal: CurrentPrincipal
+) -> OfflineLicenseList:
+    return await _offline(request).my_licenses(principal.user_id)
+
+
+@router.get("/v1/offline-downloads/{token}/{file}")
+async def download_offline_file(token: str, file: str, request: Request) -> RedirectResponse:
+    """The token is the authorization (no bearer: download managers fetch these URLs)."""
+    url = await _offline(request).download_url(token, file)
+    return RedirectResponse(url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)

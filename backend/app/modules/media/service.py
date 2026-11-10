@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.core.errors import AppError, ErrorCode
 from app.core.ids import uuid7
 from app.core.security.principal import Principal
+from app.modules.media.config import MediaSettings as MediaSettings  # re-export for other modules
 from app.modules.media.models import MediaAsset, MediaPurpose, MediaStatus, RejectionReason
 from app.modules.media.processing import RejectedMediaError, process_image, verify
 from app.modules.media.schemas import (
@@ -34,7 +35,8 @@ from app.modules.media.schemas import (
     MediaUpload,
     UploadTarget,
 )
-from app.modules.media.storage import ObjectStorage, ObjectTooLargeError
+from app.modules.media.storage import ObjectStorage as ObjectStorage  # re-export for other modules
+from app.modules.media.storage import ObjectTooLargeError
 from app.modules.platform import service as platform
 
 logger = logging.getLogger(__name__)

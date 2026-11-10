@@ -2975,6 +2975,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/offline-downloads/{token}/{file}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download one file of a licensed offline package (redirects to short-lived storage)
+         * @description `OfflinePackageLicense.download.base_url` ends in `/v1/offline-downloads/{token}/`; append a manifest
+         *     file `path`. The token is the authorization (it names one license and expires with
+         *     `download.expires_at`), so download managers need no bearer token. Every request re-checks that
+         *     the license is active and the package's content license has not expired (OFF-005), then answers
+         *     `307` to a short-lived storage URL. Verify each file's sha256 against the signed manifest.
+         */
+        get: operations["downloadOfflineFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/users/me/offline-packages": {
         parameters: {
             query?: never;
@@ -3643,6 +3667,14 @@ export interface components {
             };
             /** @description Base64url VAPID application server key for Web Push subscriptions (NOTIF-005). Null when Web Push is disabled. Rotations are announced here. */
             web_push_vapid_public_key?: string | null;
+            /** @description Public keys that verify offline package manifests (OFF-001), matched by the manifest's `key_id`. Empty when offline downloads are not configured. Rotations add a key here before manifests use it. */
+            offline_manifest_keys?: {
+                key_id: string;
+                /** @constant */
+                alg: "Ed25519";
+                /** @description Raw 32-byte Ed25519 public key. */
+                public_key: string;
+            }[];
             legal: {
                 terms_version: string;
                 privacy_version: string;
@@ -12180,6 +12212,31 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["EntitlementRequired"];
             404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    downloadOfflineFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                file: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Temporary redirect to the file in storage. */
+            307: {
+                headers: {
+                    Location: components["headers"]["Location"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["ServiceUnavailable"];
             default: components["responses"]["Problem"];
         };
     };

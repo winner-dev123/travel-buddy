@@ -26,6 +26,7 @@ from app.core.errors import AppError, ErrorCode
 from app.core.time import Clock
 from app.modules.billing import service as billing
 from app.modules.destinations import service as destinations
+from app.modules.destinations.schemas import DestinationSummary
 from app.modules.guides.models import AudioTour as AudioTourRow
 from app.modules.guides.models import AudioTourStop as StopRow
 from app.modules.guides.models import DestinationGuide
@@ -52,7 +53,7 @@ def _not_found(what: str) -> AppError:
     return AppError(ErrorCode.NOT_FOUND, f"{what} not found.")
 
 
-def _live(
+def live(
     model: type[DestinationGuide] | type[AudioTourRow], now: datetime
 ) -> list[ColumnElement[bool]]:
     return [
@@ -86,7 +87,7 @@ def _best[Row: (DestinationGuide, AudioTourRow)](
     ]
 
 
-async def _entitled(
+async def entitled(
     session: AsyncSession,
     viewer_id: uuid.UUID | None,
     *,
@@ -112,6 +113,24 @@ def _locked(viewer_id: uuid.UUID | None, kind: ContentKind) -> AppError:
         ErrorCode.ENTITLEMENT_REQUIRED,
         "This is premium content.",
         extensions={"entitlement": _PREMIUM[kind].value},
+    )
+
+
+def guide_document(row: DestinationGuide, destination: DestinationSummary) -> Guide:
+    """The contract ``Guide`` for a stored guide (API responses and offline packages)."""
+    return Guide(
+        id=row.id,
+        destination=destination,
+        locale=row.locale,
+        title=row.title,
+        summary=row.summary,
+        sections=[GuideSection.model_validate(section) for section in row.content],
+        tier=row.tier,  # type: ignore[arg-type]
+        version=row.version,
+        content_license=row.content_license,
+        attribution=row.attribution,
+        published_at=row.published_at,  # type: ignore[arg-type]
+        updated_at=row.updated_at,
     )
 
 
@@ -142,7 +161,7 @@ class GuideService:
                 await session.scalars(
                     select(DestinationGuide).where(
                         DestinationGuide.destination_id == destination_id,
-                        *_live(DestinationGuide, now),
+                        *live(DestinationGuide, now),
                     )
                 )
             ).all()
@@ -159,7 +178,7 @@ class GuideService:
                         title=row.title,
                         summary=row.summary,
                         tier=row.tier,  # type: ignore[arg-type]
-                        entitled=await _entitled(
+                        entitled=await entitled(
                             session,
                             viewer_id,
                             kind="guide",
@@ -181,7 +200,7 @@ class GuideService:
         async with self._sessionmaker() as session:
             row = await session.scalar(
                 select(DestinationGuide).where(
-                    DestinationGuide.id == guide_id, *_live(DestinationGuide, now)
+                    DestinationGuide.id == guide_id, *live(DestinationGuide, now)
                 )
             )
             if row is None:
@@ -191,24 +210,11 @@ class GuideService:
             )
             if row.destination_id not in summaries:
                 raise _not_found("Guide")
-            if not await _entitled(
+            if not await entitled(
                 session, viewer_id, kind="guide", content_id=row.id, tier=row.tier, at=now
             ):
                 raise _locked(viewer_id, "guide")
-        return Guide(
-            id=row.id,
-            destination=summaries[row.destination_id],
-            locale=row.locale,
-            title=row.title,
-            summary=row.summary,
-            sections=[GuideSection.model_validate(section) for section in row.content],
-            tier=row.tier,  # type: ignore[arg-type]
-            version=row.version,
-            content_license=row.content_license,
-            attribution=row.attribution,
-            published_at=row.published_at,  # type: ignore[arg-type]
-            updated_at=row.updated_at,
-        )
+        return guide_document(row, summaries[row.destination_id])
 
     # ─────────────────────────────── audio tours ───────────────────────────────
 
@@ -227,7 +233,7 @@ class GuideService:
                     await session.scalars(
                         select(AudioTourRow).where(
                             AudioTourRow.destination_id == destination_id,
-                            *_live(AudioTourRow, now),
+                            *live(AudioTourRow, now),
                         )
                     )
                 ).all(),
@@ -251,7 +257,7 @@ class GuideService:
                         title=row.title,
                         description=row.description,
                         tier=row.tier,  # type: ignore[arg-type]
-                        entitled=await _entitled(
+                        entitled=await entitled(
                             session,
                             viewer_id,
                             kind="audio_tour",
@@ -272,7 +278,7 @@ class GuideService:
         now = self._clock.now()
         async with self._sessionmaker() as session:
             row = await session.scalar(
-                select(AudioTourRow).where(AudioTourRow.id == tour_id, *_live(AudioTourRow, now))
+                select(AudioTourRow).where(AudioTourRow.id == tour_id, *live(AudioTourRow, now))
             )
             if row is None:
                 raise _not_found("Audio tour")
@@ -281,7 +287,7 @@ class GuideService:
             )
             if row.destination_id not in summaries:
                 raise _not_found("Audio tour")
-            if not await _entitled(
+            if not await entitled(
                 session, viewer_id, kind="audio_tour", content_id=row.id, tier=row.tier, at=now
             ):
                 raise _locked(viewer_id, "audio_tour")

@@ -69,7 +69,10 @@ from app.modules.feed.service import FeedService
 from app.modules.groups import service as groups_service
 from app.modules.groups.api import invitations_router as group_invitations_router
 from app.modules.groups.api import router as groups_router
+from app.modules.guides import packages as offline_packages
 from app.modules.guides.api import router as guides_router
+from app.modules.guides.offline import DownloadTokens, ManifestSigner, development_manifest_key
+from app.modules.guides.packages import OfflinePackageService
 from app.modules.guides.service import GuideService
 from app.modules.health.api import ReadinessCheck
 from app.modules.health.api import router as health_router
@@ -214,7 +217,7 @@ def create_app(
         browse_destination=location_service.browse_destination_summary,
         limiter=rate_limiter,
         restrictions=account_restrictions,
-        quota_usage=ai_service.quota_usage,
+        quota_usage=quota_usage,
     )
 
     media_storage = build_media_storage(media_settings, http_client, clock)
@@ -321,6 +324,13 @@ def create_app(
         sessionmaker=database.sessionmaker, cursors=cursor_codec, clock=clock, plans=itinerary_plan
     )
     app.state.guide_service = GuideService(sessionmaker=database.sessionmaker, clock=clock)
+    app.state.offline_package_service = OfflinePackageService(
+        sessionmaker=database.sessionmaker,
+        clock=clock,
+        storage=media_storage,
+        signer=build_manifest_signer(settings),
+        tokens=DownloadTokens(settings.cursor_signing_key.get_secret_value().encode("utf-8")),
+    )
     app.state.saved_place_service = SavedPlaceService(
         sessionmaker=database.sessionmaker, cursors=cursor_codec, clock=clock
     )
@@ -344,7 +354,7 @@ def create_app(
             api_base=settings.stripe_api_base,
         ),
         web_origin=settings.public_site_url,
-        usage=ai_service.quota_usage,
+        usage=quota_usage,
         providers=(
             {"apple": DevBillingProvider(), "google": DevBillingProvider()}
             if settings.dev_billing_enabled
@@ -541,6 +551,26 @@ async def group_chat_policy(
     return await groups_service.chat_policy(session, group_id, user_id, now=now)
 
 
+def build_manifest_signer(settings: Settings) -> ManifestSigner | None:
+    """Signs offline package manifests (BL-4.08); a development key outside staging/production."""
+    if settings.offline_manifest_private_key is not None:
+        key = load_ed25519_private_key(settings.offline_manifest_private_key.get_secret_value())
+        return ManifestSigner(key, settings.offline_manifest_key_id)
+    if settings.app_env.allows_dev_adapters:
+        return ManifestSigner(development_manifest_key(), "dev-offline")
+    return None
+
+
+async def quota_usage(
+    session: AsyncSession, user_id: uuid.UUID, at: datetime
+) -> dict[billing_service.Quota, int]:
+    """Current usage of every metered quota, from the modules that own the rows."""
+    return {
+        **await ai_service.quota_usage(session, user_id, at),
+        **await offline_packages.quota_usage(session, user_id, at),
+    }
+
+
 def build_ai_provider(settings: Settings) -> AIProvider | None:
     """The AI adapter for this environment (BL-4.02, ADR-0024); ``None`` = unavailable (503)."""
     resolved = settings.resolved_ai_provider
@@ -703,6 +733,7 @@ def build_job_runner(
         "groups": groups_service.purge_expired,
         "trips": trips_service.purge_expired,
         "ai_assistant": ai_service.purge_expired,
+        "offline_packages": offline_packages.purge_expired,
         "location": location_service.purge_expired,
     }
     periodic = [Periodic(f"retention.{name}", f"retention.{name}", DAILY) for name in purges]

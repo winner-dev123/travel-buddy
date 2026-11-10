@@ -31,6 +31,16 @@ class LegalDocuments(BaseModel):
     community_guidelines_url: str
 
 
+class ManifestKey(BaseModel):
+    """Public key that verifies offline package manifests, matched by ``key_id`` (OFF-001)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    key_id: str
+    alg: Literal["Ed25519"]
+    public_key: str  # base64 of the raw 32-byte key
+
+
 class ClientConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -43,6 +53,7 @@ class ClientConfig(BaseModel):
     legal: LegalDocuments
     minimum_age: int
     web_push_vapid_public_key: str | None = None
+    offline_manifest_keys: list[ManifestKey] = []
 
 
 def _version(value: str) -> tuple[int, int, int]:
@@ -61,6 +72,7 @@ async def get_client_config(
     identity: IdentityService = request.app.state.identity_service
     legal = identity.legal_requirements()
     vapid = getattr(request.app.state, "web_push_vapid", None)
+    offline = getattr(request.app.state, "offline_package_service", None)
     site = settings.public_site_url.rstrip("/")
     # The web is always deployed at the current version; only native apps can be outdated.
     outdated = platform != "web" and _version(app_version) < _version(
@@ -82,4 +94,8 @@ async def get_client_config(
         ),
         minimum_age=legal.minimum_age,
         web_push_vapid_public_key=vapid.public_key if vapid is not None else None,
+        offline_manifest_keys=[
+            ManifestKey.model_validate(key)
+            for key in (offline.public_keys() if offline is not None else [])
+        ],
     )

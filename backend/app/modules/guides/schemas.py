@@ -5,10 +5,11 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Literal, Self
+from typing import Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.modules.billing.schemas import QuotaStatusOut
 from app.modules.destinations.schemas import DestinationSummary, PlaceSummary
 from app.modules.media.schemas import MediaRef
 
@@ -120,3 +121,59 @@ class AudioTour(_Out):
     total_duration_s: int
     stops: list[AudioTourStop]
     content_license: str
+
+
+PackageKind = Literal["guide", "audio_tour", "map_region", "bundle"]
+
+
+class OfflinePackageSummary(_Out):
+    id: uuid.UUID
+    destination_id: uuid.UUID
+    locale: str
+    kind: PackageKind
+    version: int
+    total_bytes: int
+    tier: Tier
+    entitled: bool
+    min_app_version: str
+    license_expires_at: datetime | None
+    published_at: datetime
+
+
+class OfflinePackageList(_Out):
+    data: list[OfflinePackageSummary]
+
+
+class DownloadInfo(_Out):
+    base_url: str
+    expires_at: datetime
+
+
+class LicenseRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    device_id: str = Field(min_length=8, max_length=128)
+
+
+class OfflinePackageLicenseOut(_Out):
+    id: uuid.UUID
+    package_id: uuid.UUID
+    device_id: str
+    granted_at: datetime
+    expires_at: datetime | None
+    # Kept as the exact signed dict: re-serializing could change the signed bytes.
+    manifest: dict[str, Any]
+    download: DownloadInfo
+    quota: QuotaStatusOut
+
+
+class OfflinePackageLicenseSummary(_Out):
+    id: uuid.UUID
+    package: OfflinePackageSummary
+    device_id: str
+    granted_at: datetime
+    expires_at: datetime | None
+
+
+class OfflineLicenseList(_Out):
+    data: list[OfflinePackageLicenseSummary]

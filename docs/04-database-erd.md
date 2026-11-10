@@ -718,8 +718,10 @@ As built (migration 0034): guides and tours also carry a `slug` (one guide acros
 ### offline_packages
 `id`, `destination_id`, `locale`, `kind` (`guide`, `audio_tour`, `map_region`, `bundle`), `version int`, `manifest jsonb` (files with `path`, `bytes`, `sha256`), `manifest_signature bytea`, `total_bytes bigint`, `sha256`, `tier`, `min_app_version`, `map_bbox geography(Polygon) NULL`, `content_license`, `license_expires_at NULL`, `status` (`building`, `published`, `retired`), `published_at`. `uq (destination_id, locale, kind, version)`.
 
+As built (migration 0035, ADR-0026): `files jsonb` holds `[{path, bytes, sha256, content_type}]`. The signature is computed when a manifest is issued (it covers `issued_at`), so there is no `manifest_signature` column. `product_id FK→products SET NULL` and `created_at` were added; `map_bbox` waits for map region packages (BL-4.06).
+
 ### offline_package_licenses
-`id`, `user_id`, `package_id`, `device_id`, `granted_at`, `expires_at NULL`, `revoked_at`. `uq (user_id, package_id, device_id)`. Count of active licenses per user is checked against the entitlement quota.
+`id`, `user_id`, `package_id`, `device_id`, `granted_at`, `expires_at NULL`, `revoked_at`. `uq (user_id, package_id, device_id)`. Count of active licenses per user is checked against the entitlement quota. As built: `revoked_at` marks a released license (kept 30 days, then purged); a newer package version licensed on the same device revokes the older license.
 
 ### post_translations
 `post_id FK→posts CASCADE`, `target_language`, `source_language`, `body_hash` (sha256 of the post text the translation was made from; a mismatch means the post was edited and the translation is redone), `text`, `model`, `created_at`. PK `(post_id, target_language)` (migration 0033). A cache of machine translations shown with the "machine-translated" label (POST-010); the original post is never modified.

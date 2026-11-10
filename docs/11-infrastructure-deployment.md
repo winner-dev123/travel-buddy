@@ -65,6 +65,15 @@ Places come from OpenStreetMap through the public Overpass API. Load or refresh 
 
 Editorial content is published with `python -m app.modules.guides.seeding --file <document.json>` (default: the launch guides), run against the target database. The loader validates every section before writing, publishes each guide or tour by `(destination, locale, slug, version)`, retires older versions and updates `destinations.has_guides`. Re-running is safe.
 
+### 1.8 Offline packages (BL-4.08, ADR-0026)
+
+Offline downloads need shared S3-compatible storage (section 1.4) and a manifest signing key:
+
+1. Generate a key with `openssl genpkey -algorithm ed25519` and set `OFFLINE_MANIFEST_PRIVATE_KEY` (PEM) and `OFFLINE_MANIFEST_KEY_ID` (for example `offline-1`) on the API project. The public key appears in `GET /v1/client-config` under `offline_manifest_keys`. To rotate, publish the new key id, then switch the private key.
+2. Build packages with `python -m app.modules.guides.packaging --destination <path>` against the target database and storage, after publishing or updating guides.
+
+Without the key, licensing and manifests answer 503 and listing still works.
+
 ## 2. Runtime topology (production reference)
 
 ```mermaid

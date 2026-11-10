@@ -5162,6 +5162,38 @@ paths:
         '403': { $ref: '#/components/responses/EntitlementRequired' }
         '404': { $ref: '#/components/responses/NotFound' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/offline-downloads/{token}/{file}:
+    get:
+      tags: [guides]
+      operationId: downloadOfflineFile
+      summary: Download one file of a licensed offline package (redirects to short-lived storage)
+      description: |
+        `OfflinePackageLicense.download.base_url` ends in `/v1/offline-downloads/{token}/`; append a manifest
+        file `path`. The token is the authorization (it names one license and expires with
+        `download.expires_at`), so download managers need no bearer token. Every request re-checks that
+        the license is active and the package's content license has not expired (OFF-005), then answers
+        `307` to a short-lived storage URL. Verify each file's sha256 against the signed manifest.
+      security: [{}]
+      x-phase: 4
+      x-requirements: [OFF-001, OFF-005]
+      x-rate-limit-class: read
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string, maxLength: 512 }
+        - name: file
+          in: path
+          required: true
+          schema: { type: string, pattern: '^[A-Za-z0-9._-]{1,128}$' }
+      responses:
+        '307':
+          description: Temporary redirect to the file in storage.
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/users/me/offline-packages:
     get:
       tags: [guides]
@@ -6419,6 +6451,17 @@ components:
         web_push_vapid_public_key:
           type: [string, 'null']
           description: Base64url VAPID application server key for Web Push subscriptions (NOTIF-005). Null when Web Push is disabled. Rotations are announced here.
+        offline_manifest_keys:
+          type: array
+          description: Public keys that verify offline package manifests (OFF-001), matched by the manifest's `key_id`. Empty when offline downloads are not configured. Rotations add a key here before manifests use it.
+          items:
+            type: object
+            additionalProperties: false
+            required: [key_id, alg, public_key]
+            properties:
+              key_id: { type: string }
+              alg: { type: string, const: Ed25519 }
+              public_key: { type: string, contentEncoding: base64, description: Raw 32-byte Ed25519 public key. }
         legal:
           type: object
           required: [terms_version, privacy_version, terms_url, privacy_url]
