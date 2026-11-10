@@ -5969,6 +5969,96 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/admin/products:
+    get:
+      tags: [admin]
+      operationId: adminListProducts
+      summary: All products, including inactive ones (subscription configuration)
+      x-phase: 6
+      x-requirements: [ADM-005]
+      x-rate-limit-class: admin
+      x-platform-permission: billing.configure
+      responses:
+        '200':
+          description: Products.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/AdminProduct' } }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [admin]
+      operationId: adminCreateProduct
+      summary: Add a product (store product ID or Stripe price ID) and what it grants (audited)
+      x-phase: 6
+      x-requirements: [ADM-005, ADM-007, ADM-008]
+      x-rate-limit-class: admin
+      x-platform-permission: billing.configure
+      parameters:
+        - $ref: '#/components/parameters/AuditJustification'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateProductRequest' }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminProduct' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/admin/products/{productId}:
+    patch:
+      tags: [admin]
+      operationId: adminUpdateProduct
+      summary: Activate or retire a product, or change what it grants (audited)
+      description: The SKU, platform, kind and period never change; retire the product and add a new one instead. Existing grants keep the keys they were given.
+      x-phase: 6
+      x-requirements: [ADM-005, ADM-007, ADM-008]
+      x-rate-limit-class: admin
+      x-platform-permission: billing.configure
+      parameters:
+        - $ref: '#/components/parameters/AuditJustification'
+        - name: productId
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              properties:
+                active: { type: boolean }
+                entitlement_keys:
+                  type: array
+                  minItems: 1
+                  maxItems: 10
+                  items: { type: string, pattern: '^(premium|content:[a-z_]+:[a-z0-9_-]{1,60})$' }
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminProduct' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/admin/ops/summary:
     get:
       tags: [admin]
@@ -9378,6 +9468,33 @@ components:
       required: [data]
       properties:
         data: { type: array, items: { $ref: '#/components/schemas/EntitlementGrant' } }
+    CreateProductRequest:
+      type: object
+      additionalProperties: false
+      required: [sku, platform, kind, entitlement_keys]
+      properties:
+        sku: { type: string, minLength: 3, maxLength: 200 }
+        platform: { $ref: '#/components/schemas/ProductPlatform' }
+        kind: { type: string, enum: [auto_renewable, non_consumable] }
+        plan_key: { type: [string, 'null'], enum: [premium, null] }
+        period: { type: [string, 'null'], enum: [P1M, P1Y, null] }
+        entitlement_keys:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items: { type: string, pattern: '^(premium|content:[a-z_]+:[a-z0-9_-]{1,60})$' }
+    AdminProduct:
+      type: object
+      required: [id, sku, platform, kind, plan_key, period, entitlement_keys, active]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        sku: { type: string }
+        platform: { $ref: '#/components/schemas/ProductPlatform' }
+        kind: { type: string, enum: [auto_renewable, non_consumable] }
+        plan_key: { type: [string, 'null'], enum: [premium, null] }
+        period: { type: [string, 'null'], enum: [P1M, P1Y, null] }
+        entitlement_keys: { type: array, items: { type: string } }
+        active: { type: boolean }
     OpsSummary:
       type: object
       required: [generated_at, moderation, outbox, jobs]

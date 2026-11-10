@@ -28,9 +28,13 @@ from app.modules.admin.schemas import (
 )
 from app.modules.admin.service import AdminService
 from app.modules.billing.schemas import (
+    AdminProductList,
+    AdminProductOut,
+    CreateProductRequest,
     EntitlementGrantList,
     EntitlementGrantOut,
     GrantEntitlementRequest,
+    UpdateProductRequest,
 )
 from app.modules.challenges.schemas import RewardDetail, RewardReviewRequest
 from app.modules.destinations.schemas import Destination
@@ -184,6 +188,33 @@ async def admin_revoke_entitlement_grant(
     who: Annotated[Staff, Depends(staff(Permission.ENTITLEMENTS_GRANT, justified=True))],
 ) -> EntitlementGrantOut:
     return await _service(request).revoke_grant(who, grant_id)
+
+
+@router.get("/products", response_model=AdminProductList)
+async def admin_list_products(
+    request: Request,
+    _who: Annotated[Staff, Depends(staff(Permission.BILLING_CONFIGURE))],
+) -> AdminProductList:
+    return await _service(request).products()
+
+
+@router.post("/products", status_code=status.HTTP_201_CREATED, response_model=AdminProductOut)
+async def admin_create_product(
+    body: CreateProductRequest,
+    request: Request,
+    who: Annotated[Staff, Depends(staff(Permission.BILLING_CONFIGURE, justified=True))],
+) -> AdminProductOut:
+    return await _service(request).create_product(who, body)
+
+
+@router.patch("/products/{product_id}", response_model=AdminProductOut)
+async def admin_update_product(
+    product_id: uuid.UUID,
+    body: UpdateProductRequest,
+    request: Request,
+    who: Annotated[Staff, Depends(staff(Permission.BILLING_CONFIGURE, justified=True))],
+) -> AdminProductOut:
+    return await _service(request).update_product(who, product_id, body)
 
 
 @router.get("/ops/summary", response_model=OpsSummary)

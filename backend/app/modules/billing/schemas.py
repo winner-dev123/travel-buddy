@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 
 class _Model(BaseModel):
@@ -169,3 +169,47 @@ class GrantEntitlementRequest(BaseModel):
     entitlement_key: str = Field(pattern=r"^(premium|content:[a-z_]+:[a-z0-9_-]{1,60})$")
     ends_at: datetime
     reason: str = Field(min_length=10, max_length=500)
+
+
+EntitlementKey = Annotated[
+    str, StringConstraints(pattern=r"^(premium|content:[a-z_]+:[a-z0-9_-]{1,60})$")
+]
+
+
+class AdminProductOut(BaseModel):
+    """Contract ``AdminProduct`` (ADM-005)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: uuid.UUID
+    sku: str
+    platform: Literal["ios", "android", "web"]
+    kind: Literal["auto_renewable", "non_consumable"]
+    plan_key: Literal["premium"] | None
+    period: Literal["P1M", "P1Y"] | None
+    entitlement_keys: list[str]
+    active: bool
+
+
+class AdminProductList(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    data: list[AdminProductOut]
+
+
+class CreateProductRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sku: str = Field(min_length=3, max_length=200)
+    platform: Literal["ios", "android", "web"]
+    kind: Literal["auto_renewable", "non_consumable"]
+    plan_key: Literal["premium"] | None = None
+    period: Literal["P1M", "P1Y"] | None = None
+    entitlement_keys: list[EntitlementKey] = Field(min_length=1, max_length=10)
+
+
+class UpdateProductRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    active: bool | None = None
+    entitlement_keys: list[EntitlementKey] | None = Field(default=None, min_length=1, max_length=10)

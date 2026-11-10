@@ -3456,6 +3456,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** All products, including inactive ones (subscription configuration) */
+        get: operations["adminListProducts"];
+        put?: never;
+        /** Add a product (store product ID or Stripe price ID) and what it grants (audited) */
+        post: operations["adminCreateProduct"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/products/{productId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Activate or retire a product, or change what it grants (audited)
+         * @description The SKU, platform, kind and period never change; retire the product and add a new one instead. Existing grants keep the keys they were given.
+         */
+        patch: operations["adminUpdateProduct"];
+        trace?: never;
+    };
     "/v1/admin/ops/summary": {
         parameters: {
             query?: never;
@@ -5993,6 +6031,30 @@ export interface components {
         };
         EntitlementGrantList: {
             data: components["schemas"]["EntitlementGrant"][];
+        };
+        CreateProductRequest: {
+            sku: string;
+            platform: components["schemas"]["ProductPlatform"];
+            /** @enum {string} */
+            kind: "auto_renewable" | "non_consumable";
+            /** @enum {string|null} */
+            plan_key?: "premium" | null;
+            /** @enum {string|null} */
+            period?: "P1M" | "P1Y" | null;
+            entitlement_keys: string[];
+        };
+        AdminProduct: {
+            id: components["schemas"]["Uuid"];
+            sku: string;
+            platform: components["schemas"]["ProductPlatform"];
+            /** @enum {string} */
+            kind: "auto_renewable" | "non_consumable";
+            /** @enum {string|null} */
+            plan_key: "premium" | null;
+            /** @enum {string|null} */
+            period: "P1M" | "P1Y" | null;
+            entitlement_keys: string[];
+            active: boolean;
         };
         OpsSummary: {
             generated_at: components["schemas"]["Timestamp"];
@@ -13283,6 +13345,106 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminListProducts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Products. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AdminProduct"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminCreateProduct: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Why the staff member is performing this action or viewing sensitive data (ADM-009). Stored verbatim
+                 *     in `audit_logs.metadata.justification`. Missing or blank → `400 justification_required`.
+                 */
+                "X-Audit-Justification": components["parameters"]["AuditJustification"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProductRequest"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProduct"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminUpdateProduct: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Why the staff member is performing this action or viewing sensitive data (ADM-009). Stored verbatim
+                 *     in `audit_logs.metadata.justification`. Missing or blank → `400 justification_required`.
+                 */
+                "X-Audit-Justification": components["parameters"]["AuditJustification"];
+            };
+            path: {
+                productId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    active?: boolean;
+                    entitlement_keys?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProduct"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
             default: components["responses"]["Problem"];
         };
     };

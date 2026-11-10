@@ -64,6 +64,8 @@ from app.modules.billing.models import (
 from app.modules.billing.providers import BillingProvider, PurchaseClaim, StoreTransaction
 from app.modules.billing.schemas import (
     ActiveSubscription,
+    AdminProductOut,
+    CreateProductRequest,
     EntitlementFeatures,
     EntitlementGrantOut,
     EntitlementQuotas,
@@ -71,6 +73,7 @@ from app.modules.billing.schemas import (
     ProductOut,
     PurchaseOut,
     QuotaStatusOut,
+    UpdateProductRequest,
     VerifyPurchaseResult,
 )
 from app.modules.billing.stripe import (
@@ -969,3 +972,66 @@ async def revoke_staff_grant(
         row.revoked_at = now
         await session.flush()
     return _grant_out(row)
+
+
+# ─────────────────────────── product configuration (ADM-005) ───────────────────────────
+
+
+def _admin_product(row: Product) -> AdminProductOut:
+    return AdminProductOut(
+        id=row.id,
+        sku=row.sku,
+        platform=row.platform,  # type: ignore[arg-type]
+        kind=row.kind,  # type: ignore[arg-type]
+        plan_key=row.plan_key,  # type: ignore[arg-type]
+        period=row.period,  # type: ignore[arg-type]
+        entitlement_keys=list(row.entitlement_keys or []),
+        active=row.active,
+    )
+
+
+async def admin_products(session: AsyncSession) -> list[AdminProductOut]:
+    rows = await session.scalars(select(Product).order_by(Product.platform, Product.sku))
+    return [_admin_product(r) for r in rows]
+
+
+async def create_product(session: AsyncSession, request: CreateProductRequest) -> AdminProductOut:
+    """Auto-renewable products are premium plans with a period; one-off purchases have neither."""
+    renewable = request.kind == "auto_renewable"
+    if renewable != (request.plan_key is not None) or renewable != (request.period is not None):
+        raise AppError(
+            ErrorCode.VALIDATION_FAILED,
+            "Subscriptions need a plan and a period; one-off purchases have neither.",
+            errors=[FieldError(field="/period", code="invalid", message="Check plan and period.")],
+        )
+    exists = await session.scalar(
+        select(Product.id).where(Product.platform == request.platform, Product.sku == request.sku)
+    )
+    if exists is not None:
+        raise AppError(ErrorCode.CONFLICT, "That SKU already exists on this platform.")
+    row = Product(
+        sku=request.sku,
+        platform=request.platform,
+        kind=request.kind,
+        plan_key=request.plan_key,
+        period=request.period,
+        entitlement_keys=list(dict.fromkeys(request.entitlement_keys)),
+        active=True,
+    )
+    session.add(row)
+    await session.flush()
+    return _admin_product(row)
+
+
+async def update_product(
+    session: AsyncSession, product_id: uuid.UUID, request: UpdateProductRequest
+) -> AdminProductOut:
+    row = await session.get(Product, product_id, with_for_update=True)
+    if row is None:
+        raise AppError(ErrorCode.NOT_FOUND, "Product not found.")
+    if request.active is not None:
+        row.active = request.active
+    if request.entitlement_keys is not None:
+        row.entitlement_keys = list(dict.fromkeys(request.entitlement_keys))
+    await session.flush()
+    return _admin_product(row)

@@ -32,9 +32,13 @@ from app.modules.admin.schemas import (
 )
 from app.modules.billing import service as billing
 from app.modules.billing.schemas import (
+    AdminProductList,
+    AdminProductOut,
+    CreateProductRequest,
     EntitlementGrantList,
     EntitlementGrantOut,
     GrantEntitlementRequest,
+    UpdateProductRequest,
 )
 from app.modules.challenges import service as challenges
 from app.modules.challenges.schemas import RewardDetail, RewardReviewRequest
@@ -398,6 +402,38 @@ class AdminService:
             grant = await billing.revoke_staff_grant(session, grant_id, now=self._clock.now())
             _audit(session, staff, "entitlement.revoked", "entitlement_grant", grant_id)
         return grant
+
+    async def products(self) -> AdminProductList:
+        async with self._sessionmaker() as session:
+            return AdminProductList(data=await billing.admin_products(session))
+
+    async def create_product(self, staff: Staff, request: CreateProductRequest) -> AdminProductOut:
+        async with self._sessionmaker() as session, session.begin():
+            product = await billing.create_product(session, request)
+            _audit(
+                session,
+                staff,
+                "product.created",
+                "product",
+                product.id,
+                **request.model_dump(mode="json"),
+            )
+        return product
+
+    async def update_product(
+        self, staff: Staff, product_id: uuid.UUID, request: UpdateProductRequest
+    ) -> AdminProductOut:
+        async with self._sessionmaker() as session, session.begin():
+            product = await billing.update_product(session, product_id, request)
+            _audit(
+                session,
+                staff,
+                "product.updated",
+                "product",
+                product_id,
+                **request.model_dump(mode="json", exclude_none=True),
+            )
+        return product
 
     async def ops_summary(self) -> OpsSummary:
         """ADM-006: moderation queue, outbox lag and job failures right now."""

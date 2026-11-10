@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import timedelta
 
 import pytest
@@ -81,3 +82,42 @@ def test_ops_summary_shows_the_moderation_queue_and_queues(app: LiveApp) -> None
     assert summary.json()["moderation"]["open_reports"] >= 1
     assert summary.json()["moderation"]["oldest_open_age_seconds"] is not None
     assert summary.json()["outbox"]["unpublished_events"] >= 0
+
+
+@pytest.mark.req("ADM-005", "ADM-007")
+def test_superadmins_configure_products(app: LiveApp) -> None:  # noqa: F811
+    root, _ = _staff(app, "superadmin")
+    admin, _ = _staff(app, "admin")
+    sku = f"price_test_{uuid.uuid4().hex[:10]}"
+    body = {
+        "sku": sku,
+        "platform": "web",
+        "kind": "auto_renewable",
+        "plan_key": "premium",
+        "period": "P1M",
+        "entitlement_keys": ["premium"],
+    }
+    _problem(
+        app.client.post("/v1/admin/products", headers=_admin(admin), json=body), 403, "forbidden"
+    )
+    _problem(
+        app.client.post("/v1/admin/products", headers=_admin(root), json={**body, "period": None}),
+        422,
+        "validation_failed",
+    )
+    created = app.client.post("/v1/admin/products", headers=_admin(root), json=body)
+    assert created.status_code == 201, created.text
+    assert_matches_contract(created.json(), "AdminProduct")
+    _problem(
+        app.client.post("/v1/admin/products", headers=_admin(root), json=body), 409, "conflict"
+    )
+    public = app.client.get("/v1/billing/products", params={"platform": "web"}).json()["data"]
+    assert sku in [p["sku"] for p in public]
+    retired = app.client.patch(
+        f"/v1/admin/products/{created.json()['id']}", headers=_admin(root), json={"active": False}
+    )
+    assert retired.json()["active"] is False
+    public = app.client.get("/v1/billing/products", params={"platform": "web"}).json()["data"]
+    assert sku not in [p["sku"] for p in public]
+    listed = app.client.get("/v1/admin/products", headers=_admin(root)).json()["data"]
+    assert sku in [p["sku"] for p in listed]  # staff still see retired products
