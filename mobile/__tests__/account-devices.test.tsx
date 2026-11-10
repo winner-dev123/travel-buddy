@@ -1,4 +1,4 @@
-// req: AUTH-006, BILL-005, PROF-007
+// req: AUTH-006, BILL-005, POST-006
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';

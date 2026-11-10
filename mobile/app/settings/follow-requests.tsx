@@ -10,7 +10,7 @@ import { accountKeys, answerFollowRequest, listFollowRequests } from '@/features
 import { Avatar } from '@/features/feed/PostCard';
 import { useAppTheme } from '@/theme/useAppTheme';
 
-/** Follow requests to my private account (PROF-007): approve to let someone see my stories, or
+/** Follow requests to my private account (POST-006, PROF-004): approve to let someone see my stories, or
  * decline. Without this, a private account could never gain followers. */
 export default function FollowRequestsScreen() {
   const { t } = useTranslation();

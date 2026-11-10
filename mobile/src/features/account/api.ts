@@ -300,7 +300,7 @@ export function fetchEntitlements(client: ApiClient): Promise<Entitlements> {
   return client.get<Entitlements>('/v1/billing/entitlements');
 }
 
-/** Pending follow requests to my private account (PROF-007). */
+/** Pending follow requests to my private account (POST-006). */
 export function listFollowRequests(client: ApiClient): Promise<Page<UserSummary>> {
   return client.get<Page<UserSummary>>('/v1/users/me/follow-requests', { query: { limit: 50 } });
 }

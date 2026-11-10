@@ -10,7 +10,7 @@ import { listFollows } from '@/features/account/api';
 import { Avatar } from '@/features/feed/PostCard';
 import { useAppTheme } from '@/theme/useAppTheme';
 
-/** Who follows a traveller, or whom they follow (PROF-003). Private accounts' lists are only
+/** Who follows a traveller, or whom they follow (POST-006). Private accounts' lists are only
  * served to their approved followers; the server decides. */
 export default function FollowsScreen() {
   const { id, kind } = useLocalSearchParams<{ id: string; kind: 'followers' | 'following' }>();
