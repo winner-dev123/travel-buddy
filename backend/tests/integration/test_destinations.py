@@ -49,7 +49,7 @@ def _truncate(url: str) -> None:
 def catalog(schema_db_url: str) -> str:
     _truncate(schema_db_url)
     result = _seed(schema_db_url)
-    assert result.created == 35
+    assert result.created == 41
     return schema_db_url
 
 
@@ -83,7 +83,7 @@ def test_slug_sort_enumerates_every_destination_exactly_once(
         cursor = body["page"]["next_cursor"]
         if not body["page"]["has_more"]:
             break
-    assert len(seen) == len(set(seen)) == 35
+    assert len(seen) == len(set(seen)) == 41
     assert seen == sorted(seen)
 
 
@@ -99,6 +99,8 @@ def test_directory_filters(catalog: str, live_app: LiveApp) -> None:
         "france/paris",
         "italy/rome",
         "iceland/reykjavik",
+        "germany/berlin",
+        "united-kingdom/london",
     }
     brazil = _ok(
         _get(live_app, "/v1/destinations", country="BR", limit=50), "DestinationSummaryPage"
@@ -273,8 +275,8 @@ def test_hidden_destinations_are_invisible(catalog: str, live_app: LiveApp) -> N
 
 def test_seeding_is_idempotent(catalog: str) -> None:
     again = _seed(catalog)
-    assert (again.created, again.updated) == (0, 35)
-    assert db_scalar(catalog, "SELECT count(*) FROM destinations") == 35
+    assert (again.created, again.updated) == (0, 41)
+    assert db_scalar(catalog, "SELECT count(*) FROM destinations") == 41
 
 
 # ─────────────────────────────── point resolution (PostGIS) ───────────────────────────────
@@ -332,6 +334,36 @@ def test_malformed_near_is_rejected(catalog: str, live_app: LiveApp) -> None:
     assert response.status_code == 422
 
 
+# The initial launch set named in the PRD (DEST-005); the catalog adds more around it.
+PRD_LAUNCH_CITIES = (
+    "brazil/rio-de-janeiro",
+    "portugal/lisbon",
+    "spain/barcelona",
+    "mexico/mexico-city",
+    "france/paris",
+    "germany/berlin",
+    "united-kingdom/london",
+    "united-states/new-york-city",
+    "argentina/buenos-aires",
+    "thailand/bangkok",
+)
+
+
+@pytest.mark.req("DEST-005", "I18N-002")
+def test_the_prd_launch_cities_are_seeded_and_localized(catalog: str, live_app: LiveApp) -> None:
+    for path in PRD_LAUNCH_CITIES:
+        body = _ok(_get(live_app, "/v1/destinations/lookup", path=path), "Destination")
+        assert body["kind"] == "city", path
+        assert body["tagline"], path
+    berlin = _ok(
+        _get(live_app, "/v1/destinations/lookup", lang="pt-BR", path="germany/berlin"),
+        "Destination",
+    )
+    assert (berlin["name"], berlin["country_name"]) == ("Berlim", "Alemanha")
+    caba = _ok(_get(live_app, "/v1/destinations/search", q="caba"), "DestinationSummaryPage")
+    assert caba["data"][0]["path"] == "argentina/buenos-aires"
+
+
 def test_seeded_boundaries_match_postgis_availability(catalog: str) -> None:
     async def count(maker: async_sessionmaker[AsyncSession]) -> int:
         async with maker() as session:
@@ -349,4 +381,4 @@ def test_seeded_boundaries_match_postgis_availability(catalog: str) -> None:
         finally:
             await engine.dispose()
 
-    assert asyncio.run(run()) == 35
+    assert asyncio.run(run()) == 41

@@ -382,6 +382,87 @@
    "alt_names": {}
   },
   {
+   "path": "germany",
+   "kind": "country",
+   "country_code": "DE",
+   "continent": "europe",
+   "time_zone": "Europe/Berlin",
+   "centroid": {
+    "lat": 51.1657,
+    "lng": 10.4515
+   },
+   "bbox": {
+    "south": 47.27,
+    "west": 5.87,
+    "north": 55.06,
+    "east": 15.04
+   },
+   "featured": false,
+   "names": {
+    "en": "Germany",
+    "es": "Alemania",
+    "pt-BR": "Alemanha",
+    "fr": "Allemagne",
+    "de": "Deutschland"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
+   "path": "united-kingdom",
+   "kind": "country",
+   "country_code": "GB",
+   "continent": "europe",
+   "time_zone": "Europe/London",
+   "centroid": {
+    "lat": 55.3781,
+    "lng": -3.436
+   },
+   "bbox": {
+    "south": 49.86,
+    "west": -8.65,
+    "north": 60.86,
+    "east": 1.77
+   },
+   "featured": false,
+   "names": {
+    "en": "United Kingdom",
+    "es": "Reino Unido",
+    "pt-BR": "Reino Unido",
+    "fr": "Royaume-Uni",
+    "de": "Vereinigtes Königreich"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
+   "path": "argentina",
+   "kind": "country",
+   "country_code": "AR",
+   "continent": "south_america",
+   "time_zone": "America/Argentina/Buenos_Aires",
+   "centroid": {
+    "lat": -38.4161,
+    "lng": -63.6167
+   },
+   "bbox": {
+    "south": -55.06,
+    "west": -73.56,
+    "north": -21.78,
+    "east": -53.59
+   },
+   "featured": false,
+   "names": {
+    "en": "Argentina",
+    "es": "Argentina",
+    "pt-BR": "Argentina",
+    "fr": "Argentine",
+    "de": "Argentinien"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
    "path": "brazil/rio-de-janeiro",
    "kind": "city",
    "country_code": "BR",
@@ -912,6 +993,110 @@
    "alt_names": {
     "en": [
      "Reykjavik"
+    ]
+   }
+  },
+  {
+   "path": "germany/berlin",
+   "kind": "city",
+   "country_code": "DE",
+   "continent": "europe",
+   "time_zone": "Europe/Berlin",
+   "centroid": {
+    "lat": 52.52,
+    "lng": 13.405
+   },
+   "bbox": {
+    "south": 52.34,
+    "west": 13.09,
+    "north": 52.68,
+    "east": 13.76
+   },
+   "featured": false,
+   "names": {
+    "en": "Berlin",
+    "es": "Berlín",
+    "pt-BR": "Berlim",
+    "fr": "Berlin",
+    "de": "Berlin"
+   },
+   "taglines": {
+    "en": "Galleries, lakes and nights that end at sunrise.",
+    "es": "Galerías, lagos y noches que terminan al amanecer.",
+    "pt-BR": "Galerias, lagos e noites que terminam ao nascer do sol.",
+    "fr": "Galeries, lacs et nuits qui finissent au lever du soleil.",
+    "de": "Galerien, Seen und Nächte, die erst bei Sonnenaufgang enden."
+   },
+   "alt_names": {}
+  },
+  {
+   "path": "united-kingdom/london",
+   "kind": "city",
+   "country_code": "GB",
+   "continent": "europe",
+   "time_zone": "Europe/London",
+   "centroid": {
+    "lat": 51.5074,
+    "lng": -0.1278
+   },
+   "bbox": {
+    "south": 51.28,
+    "west": -0.51,
+    "north": 51.69,
+    "east": 0.33
+   },
+   "featured": false,
+   "names": {
+    "en": "London",
+    "es": "Londres",
+    "pt-BR": "Londres",
+    "fr": "Londres",
+    "de": "London"
+   },
+   "taglines": {
+    "en": "Royal parks, world-class museums and a pub on every corner.",
+    "es": "Parques reales, museos de primer nivel y un pub en cada esquina.",
+    "pt-BR": "Parques reais, museus de primeira linha e um pub em cada esquina.",
+    "fr": "Parcs royaux, musées de premier plan et un pub à chaque coin de rue.",
+    "de": "Königliche Parks, Museen von Weltrang und ein Pub an jeder Ecke."
+   },
+   "alt_names": {}
+  },
+  {
+   "path": "argentina/buenos-aires",
+   "kind": "city",
+   "country_code": "AR",
+   "continent": "south_america",
+   "time_zone": "America/Argentina/Buenos_Aires",
+   "centroid": {
+    "lat": -34.6037,
+    "lng": -58.3816
+   },
+   "bbox": {
+    "south": -34.71,
+    "west": -58.53,
+    "north": -34.53,
+    "east": -58.33
+   },
+   "featured": false,
+   "names": {
+    "en": "Buenos Aires",
+    "es": "Buenos Aires",
+    "pt-BR": "Buenos Aires",
+    "fr": "Buenos Aires",
+    "de": "Buenos Aires"
+   },
+   "taglines": {
+    "en": "Tango, steak and late dinners under jacaranda trees.",
+    "es": "Tango, asado y cenas tardías bajo los jacarandás.",
+    "pt-BR": "Tango, carne na brasa e jantares tardios sob os jacarandás.",
+    "fr": "Tango, viande grillée et dîners tardifs sous les jacarandas.",
+    "de": "Tango, Steak und späte Abendessen unter Jacarandabäumen."
+   },
+   "alt_names": {
+    "es": [
+     "CABA",
+     "Capital Federal"
     ]
    }
   },
