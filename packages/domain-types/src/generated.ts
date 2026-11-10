@@ -246,6 +246,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/dev/billing/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * DEVELOPMENT ONLY — simulate a store notification for a `dev` subscription
+         * @description Mounted only with `DEV_BILLING_ENABLED` (development and test; boot fails elsewhere). With it on, Apple and
+         *     Google verification is served by the dev provider, which accepts `dev:<sku>:<original transaction id>` as
+         *     the signed transaction or purchase token. This endpoint then drives renewals, grace, expiry and refunds
+         *     through the same state machine as real store notifications (docs/07 §4).
+         */
+        post: operations["devSimulateStoreEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/users/me": {
         parameters: {
             query?: never;
@@ -3552,8 +3575,11 @@ export interface components {
         OfflinePackageKind: "guide" | "audio_tour" | "map_region" | "bundle";
         /** @enum {string} */
         ProductPlatform: "ios" | "android" | "web";
-        /** @enum {string} */
-        BillingProvider: "apple" | "google" | "stripe";
+        /**
+         * @description `dev` exists only in development and test (docs/07 §6).
+         * @enum {string}
+         */
+        BillingProvider: "apple" | "google" | "stripe" | "dev";
         /** @enum {string} */
         ReportTargetType: "post" | "comment" | "user" | "message" | "group" | "challenge" | "media";
         /** @enum {string} */
@@ -6448,6 +6474,50 @@ export interface operations {
                     "application/json": components["schemas"]["Jwks"];
                 };
             };
+            /** @description Not available in this environment. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    devSimulateStoreEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    original_transaction_id: string;
+                    /** @enum {string} */
+                    event: "renewed" | "grace" | "billing_retry" | "recovered" | "paused" | "resumed" | "auto_renew_off" | "auto_renew_on" | "expired" | "refunded";
+                    /** @description Provider event ID; a repeat is ignored. */
+                    event_id?: string | null;
+                    signed_date?: components["schemas"]["NullableTimestamp"];
+                };
+            };
+        };
+        responses: {
+            /** @description Applied, or recorded and ignored (unknown subscription, out of order, not applicable). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        outcome: "processed" | "ignored";
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
             /** @description Not available in this environment. */
             404: {
                 headers: {

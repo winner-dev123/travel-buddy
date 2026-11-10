@@ -59,6 +59,8 @@ class ErrorCode(StrEnum):
     MEMBER_RESTRICTED = "member_restricted"
     CHAT_ADMINS_ONLY = "chat_admins_only"
     MESSAGE_EDIT_WINDOW_EXPIRED = "message_edit_window_expired"
+    PURCHASE_INVALID = "purchase_invalid"
+    PURCHASE_ALREADY_LINKED = "purchase_already_linked"
     CONNECTION_REQUEST_COOLDOWN = "connection_request_cooldown"
     CONNECTION_REQUEST_NOT_ALLOWED = "connection_request_not_allowed"
     ALREADY_CONNECTED = "already_connected"
@@ -108,6 +110,8 @@ _DEFAULT_STATUS: Mapping[ErrorCode, HTTPStatus] = {
     ErrorCode.MEMBER_RESTRICTED: HTTPStatus.FORBIDDEN,
     ErrorCode.CHAT_ADMINS_ONLY: HTTPStatus.FORBIDDEN,
     ErrorCode.MESSAGE_EDIT_WINDOW_EXPIRED: HTTPStatus.FORBIDDEN,
+    ErrorCode.PURCHASE_INVALID: HTTPStatus.UNPROCESSABLE_ENTITY,
+    ErrorCode.PURCHASE_ALREADY_LINKED: HTTPStatus.CONFLICT,
     ErrorCode.CONNECTION_REQUEST_COOLDOWN: HTTPStatus.CONFLICT,
     ErrorCode.CONNECTION_REQUEST_NOT_ALLOWED: HTTPStatus.FORBIDDEN,
     ErrorCode.ALREADY_CONNECTED: HTTPStatus.CONFLICT,

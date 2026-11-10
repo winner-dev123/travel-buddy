@@ -404,6 +404,50 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
 
+  /v1/dev/billing/events:
+    post:
+      tags: [billing]
+      operationId: devSimulateStoreEvent
+      summary: DEVELOPMENT ONLY — simulate a store notification for a `dev` subscription
+      description: |
+        Mounted only with `DEV_BILLING_ENABLED` (development and test; boot fails elsewhere). With it on, Apple and
+        Google verification is served by the dev provider, which accepts `dev:<sku>:<original transaction id>` as
+        the signed transaction or purchase token. This endpoint then drives renewals, grace, expiry and refunds
+        through the same state machine as real store notifications (docs/07 §4).
+      x-phase: 3
+      x-dev-only: true
+      x-requirements: [BILL-006, BILL-008]
+      x-rate-limit-class: write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [original_transaction_id, event]
+              properties:
+                original_transaction_id: { type: string, minLength: 1, maxLength: 200 }
+                event: { type: string, enum: [renewed, grace, billing_retry, recovered, paused, resumed, auto_renew_off, auto_renew_on, expired, refunded] }
+                event_id: { type: [string, 'null'], maxLength: 200, description: Provider event ID; a repeat is ignored. }
+                signed_date: { $ref: '#/components/schemas/NullableTimestamp' }
+      responses:
+        '200':
+          description: Applied, or recorded and ignored (unknown subscription, out of order, not applicable).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [outcome]
+                properties:
+                  outcome: { type: string, enum: [processed, ignored] }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404':
+          description: Not available in this environment.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
   # ───────────────────────────── Me (Phase 1) ─────────────────────────────
   /v1/users/me:
     get:
@@ -6313,7 +6357,7 @@ components:
     ContentTier: { type: string, enum: [free, premium, purchasable] }
     OfflinePackageKind: { type: string, enum: [guide, audio_tour, map_region, bundle] }
     ProductPlatform: { type: string, enum: [ios, android, web] }
-    BillingProvider: { type: string, enum: [apple, google, stripe] }
+    BillingProvider: { type: string, enum: [apple, google, stripe, dev], description: '`dev` exists only in development and test (docs/07 §6).' }
     ReportTargetType: { type: string, enum: [post, comment, user, message, group, challenge, media] }
     ReportReason: { type: string, enum: [spam, harassment, hate, sexual_content, minor_safety, violence, self_harm, scam, privacy_violation, impersonation, illegal, other] }
     ReportStatus: { type: string, enum: [open, in_review, actioned, dismissed] }

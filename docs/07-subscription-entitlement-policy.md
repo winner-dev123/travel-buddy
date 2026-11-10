@@ -149,7 +149,7 @@ group_premium_active(t) =
 
 **Web (Stripe).** `POST /v1/billing/checkout-sessions {product_id, success_path, cancel_path}` creates a hosted Checkout Session bound to the user's `billing_customers` row and returns its URL. **Only** the signature-verified webhook `POST /v1/billing/webhooks/stripe` grants entitlements, and the success page grants nothing: it polls `GET /v1/billing/entitlements`. `POST /v1/billing/portal-sessions` returns a Customer Portal URL for web-purchased subscriptions. Stripe states map onto §4: `active`/`trialing` → `active`, `past_due` → `in_grace_period` (until Stripe's retry schedule ends), `unpaid`/`incomplete_expired`/`canceled` at period end → `expired`, `paused` → `paused`, charge refunded or disputed and lost → `revoked`.
 
-Development adapter: `DevBillingProvider` (provider `dev`) lets tests and local builds simulate store events. It is enabled only when `APP_ENV ∈ {development, test}`, and production boot fails if it is configured.
+Development adapter: `DevBillingProvider` (provider `dev`) lets tests and local builds simulate store events. It is enabled only when `APP_ENV ∈ {development, test}`, and production boot fails if it is configured. As built (BL-3.01): with `DEV_BILLING_ENABLED=true`, Apple and Google verification requests are served by the dev provider, which accepts `dev:<sku>:<original transaction id>[:<status>]` as the signed transaction or purchase token; `POST /v1/dev/billing/events {original_transaction_id, event}` then simulates renewals, grace, billing retry, pause, expiry and refunds through the same state machine. Without store credentials, real Apple and Google verification answers `503 service_unavailable`.
 
 ## 7. Entitlements API shape (contract)
 

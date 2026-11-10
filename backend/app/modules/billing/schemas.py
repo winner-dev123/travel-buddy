@@ -51,3 +51,92 @@ class Entitlements(_Model):
     features: EntitlementFeatures
     quotas: EntitlementQuotas
     active_subscription: ActiveSubscription | None = None
+
+
+class _Request(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class GrantedContent(_Model):
+    type: Literal["guide", "audio_tour", "offline_package"]
+    id: uuid.UUID
+
+
+class ProductOut(_Model):
+    """Contract ``Product`` (prices come from the store or Stripe, never from here)."""
+
+    id: uuid.UUID
+    sku: str
+    platform: Literal["ios", "android", "web"]
+    provider: Literal["apple", "google", "stripe", "dev"]
+    kind: Literal["auto_renewable", "non_consumable"]
+    plan_key: Literal["premium"] | None
+    period: Literal["P1M", "P1Y"] | None
+    entitlement_keys: list[str]
+    grants_content: list[GrantedContent] = Field(default_factory=list)
+
+
+class ProductList(_Model):
+    data: list[ProductOut]
+
+
+class PurchaseOut(_Model):
+    id: uuid.UUID
+    provider: Literal["apple", "google", "stripe", "dev"]
+    product_sku: str
+    kind: Literal["non_consumable", "subscription_purchase", "renewal"]
+    status: Literal["verified", "refunded", "revoked"]
+    purchased_at: datetime
+
+
+class VerifyPurchaseResult(_Model):
+    purchase: PurchaseOut
+    entitlements: Entitlements
+
+
+class AppleVerifyRequest(_Request):
+    provider: Literal["apple"]
+    signed_transaction: str = Field(min_length=20, max_length=16384)
+
+
+class GoogleVerifyRequest(_Request):
+    provider: Literal["google"]
+    product_sku: str = Field(max_length=200)
+    purchase_token: str = Field(min_length=10, max_length=4096)
+    package_name: str = Field(max_length=200)
+
+
+class GooglePurchaseRef(_Request):
+    product_sku: str = Field(max_length=200)
+    purchase_token: str = Field(min_length=10, max_length=4096)
+
+
+class AppleRestoreRequest(_Request):
+    provider: Literal["apple"]
+    signed_transactions: list[str] = Field(min_length=1, max_length=100)
+
+
+class GoogleRestoreRequest(_Request):
+    provider: Literal["google"]
+    package_name: str = Field(max_length=200)
+    purchases: list[GooglePurchaseRef] = Field(min_length=1, max_length=100)
+
+
+class DevBillingEventRequest(_Request):
+    """Development and tests only: simulate a store notification for a dev subscription."""
+
+    original_transaction_id: str = Field(min_length=1, max_length=200)
+    event: Literal[
+        "renewed",
+        "grace",
+        "billing_retry",
+        "recovered",
+        "paused",
+        "resumed",
+        "auto_renew_off",
+        "auto_renew_on",
+        "expired",
+        "refunded",
+    ]
+    event_id: str | None = Field(default=None, max_length=200)
+    signed_date: datetime | None = None

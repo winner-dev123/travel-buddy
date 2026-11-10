@@ -39,6 +39,10 @@ from app.core.security.access_tokens import (
 from app.core.time import Clock, SystemClock
 from app.modules.admin.api import router as admin_router
 from app.modules.admin.service import AdminService
+from app.modules.billing import service as billing_service
+from app.modules.billing.api import dev_router as dev_billing_router
+from app.modules.billing.api import router as billing_router
+from app.modules.billing.providers import DevBillingProvider, UnconfiguredStore
 from app.modules.client_config.api import router as client_config_router
 from app.modules.connections import service as connections_service
 from app.modules.connections.api import router as connections_router
@@ -278,6 +282,18 @@ def create_app(
         storage=media_storage,
         max_pending=media_settings.media_max_pending_uploads,
     )
+    app.state.billing_service = billing_service.BillingService(
+        sessionmaker=database.sessionmaker,
+        clock=clock,
+        providers=(
+            {"apple": DevBillingProvider(), "google": DevBillingProvider()}
+            if settings.dev_billing_enabled
+            else {
+                "apple": UnconfiguredStore("the App Store"),
+                "google": UnconfiguredStore("Google Play"),
+            }
+        ),
+    )
     realtime_bus = build_realtime_bus(settings, redis)
     app.state.realtime_bus = realtime_bus
     app.state.messaging_service = messaging_service.MessagingService(
@@ -349,6 +365,7 @@ def create_app(
     app.include_router(discovery_router)
     app.include_router(notifications_router)
     app.include_router(messaging_router)
+    app.include_router(billing_router)
     app.include_router(realtime_router)
     app.include_router(media_router)
     app.include_router(admin_router)
@@ -357,6 +374,8 @@ def create_app(
         app.mount(LocalStorage.MOUNT, media_storage.asgi_app())
     if dev_idp is not None:  # absent → 404 (contract: not available in this environment)
         app.include_router(dev_idp_router)
+    if settings.dev_billing_enabled:  # refused outside development/test by Settings
+        app.include_router(dev_billing_router)
     return app
 
 
@@ -468,6 +487,7 @@ def build_job_runner(
         "media": media_service.purge_expired,
         "connections": connections_service.purge_expired,
         "messaging": messaging_service.purge_expired,
+        "billing": billing_service.purge_expired,
         "location": location_service.purge_expired,
     }
     periodic = [Periodic(f"retention.{name}", f"retention.{name}", DAILY) for name in purges]
