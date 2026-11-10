@@ -102,7 +102,7 @@ def test_report_and_block_in_one_request(app: LiveApp) -> None:  # noqa: F811
             "not_found",
         ),
         (
-            {"target_type": "group", "target_id": str(uuid.uuid4()), "reason": "spam"},
+            {"target_type": "challenge", "target_id": str(uuid.uuid4()), "reason": "spam"},
             422,
             "validation_failed",
         ),
