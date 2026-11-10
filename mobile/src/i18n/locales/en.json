@@ -719,7 +719,7 @@
   },
   "trips": {
     "title": "My trips",
-    "empty": "No trips yet. Plan one with AI or from a destination.",
+    "empty": "No trips yet. Plan one with AI or create one yourself.",
     "loadFailed": "Trips couldn't be loaded. Try again.",
     "dates": "{{start}} – {{end}}",
     "missing": "This trip isn't available.",
@@ -748,7 +748,11 @@
     "addPeople": "Add connections",
     "add": "Add",
     "leave": "Leave this trip",
-    "shareStale": "The trip changed meanwhile. Try again."
+    "shareStale": "The trip changed meanwhile. Try again.",
+    "new": "New trip",
+    "titleLabel": "Trip name (optional)",
+    "create": "Create trip",
+    "defaultTitle": "Trip to {{place}}"
   },
   "guides": {
     "title": "Guides",
@@ -1129,7 +1133,8 @@
     "archive": "Archive group",
     "archiveTitle": "Archive this group?",
     "archiveBody": "Members can still read it, but the chat becomes read-only and nobody can join.",
-    "archived": "This group is archived. Members can read it; nobody can post or join."
+    "archived": "This group is archived. Members can read it; nobody can post or join.",
+    "restrictedUntil": "Can't post until {{time}}"
   },
   "bookmarks": {
     "title": "Saved stories",

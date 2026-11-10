@@ -445,11 +445,7 @@ class GroupService:
                     "Creating groups is a premium feature.",
                     extensions={"entitlement": billing.Feature.GROUPS_CREATE.value},
                 )
-            owned = await session.scalar(
-                select(func.count())
-                .select_from(TravelGroup)
-                .where(TravelGroup.owner_id == me, TravelGroup.status == GroupStatus.ACTIVE)
-            )
+            owned = await owned_active_groups(session, me)
             limit = await billing.quota_limit(session, me, billing.Quota.GROUPS_OWNED, at=now)
             if (owned or 0) >= limit:
                 raise AppError(
@@ -1504,6 +1500,23 @@ async def is_group_member(session: AsyncSession, group_id: uuid.UUID, user_id: u
         )
     )
     return status in _MEMBER
+
+
+async def owned_active_groups(session: AsyncSession, owner_id: uuid.UUID) -> int:
+    """Active groups the user owns: the ``groups.owned`` quota (GRP-002)."""
+    count = await session.scalar(
+        select(func.count())
+        .select_from(TravelGroup)
+        .where(TravelGroup.owner_id == owner_id, TravelGroup.status == GroupStatus.ACTIVE)
+    )
+    return int(count or 0)
+
+
+async def quota_usage(
+    session: AsyncSession, user_id: uuid.UUID, at: datetime
+) -> dict[billing.Quota, int]:
+    """Usage shown with the entitlements (injected by the composition root)."""
+    return {billing.Quota.GROUPS_OWNED: await owned_active_groups(session, user_id)}
 
 
 async def hand_over_owned_groups(session: AsyncSession, owner_id: uuid.UUID) -> None:

@@ -49,7 +49,7 @@ const RESTRICT_FOR = [
  * removing members never depends on the owner's subscription. */
 export default function ManageGroupScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const theme = useAppTheme();
   const queryClient = useQueryClient();
   const group = useQuery({
@@ -255,6 +255,19 @@ export default function ManageGroupScreen() {
                 {t(`groups.roles.${member.role}`)}
               </Text>
             </View>
+            {member.status === 'restricted' && member.restricted_until ? (
+              <Text
+                style={[theme.typography.caption, { color: theme.colors.textSecondary }]}
+                testID={`restricted-until-${member.user.id}`}
+              >
+                {t('manageGroup.restrictedUntil', {
+                  time: new Date(member.restricted_until).toLocaleString(i18n.language, {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  }),
+                })}
+              </Text>
+            ) : null}
             {below(member) ? (
               <View style={styles.actions}>
                 {canAssign

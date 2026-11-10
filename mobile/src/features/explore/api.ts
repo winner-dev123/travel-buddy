@@ -249,6 +249,23 @@ export function getTrip(client: ApiClient, id: string): Promise<Trip> {
   return client.get<Trip>(`/v1/trips/${id}`);
 }
 
+/** TRIP-001: a new trip with a day per date in one destination; filled in the editor. */
+export function createTrip(
+  client: ApiClient,
+  idempotencyKey: string,
+  trip: { title: string; startDate: string; endDate: string; destinationId: string },
+): Promise<Trip> {
+  return client.post<Trip>('/v1/trips', {
+    idempotencyKey,
+    body: {
+      title: trip.title.trim().slice(0, 100),
+      start_date: trip.startDate,
+      end_date: trip.endDate,
+      destination_ids: [trip.destinationId],
+    },
+  });
+}
+
 /** Save a proposal as a new trip: create it (a day per date), then copy the proposed days in. */
 export async function saveProposalAsTrip(
   client: ApiClient,

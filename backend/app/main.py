@@ -728,6 +728,7 @@ async def quota_usage(
     return {
         **await ai_service.quota_usage(session, user_id, at),
         **await offline_packages.quota_usage(session, user_id, at),
+        **await groups_service.quota_usage(session, user_id, at),
     }
 
 

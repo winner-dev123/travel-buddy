@@ -317,7 +317,11 @@ describe('ownership offers on the group page', () => {
 describe('restricting members', () => {
   it('restricts for a chosen time and lifts a restriction', async () => {
     useSessionStore.getState().setSignedIn(me('cy'));
-    const restricted = { ...member(dee, 'member'), status: 'restricted' as const };
+    const restricted = {
+      ...member(dee, 'member'),
+      status: 'restricted' as const,
+      restricted_until: '2026-11-11T09:30:00Z',
+    };
     mockApi.get.mockImplementation(async (path: string) => {
       if (path === '/v1/groups/g1')
         return group('moderator', ['members.remove', 'members.restrict']);
@@ -339,6 +343,10 @@ describe('restricting members', () => {
       buttons = given ?? [];
     });
     await renderUi(<ManageGroup />);
+    // When the restriction ends is shown with the member.
+    expect(await screen.findByTestId('restricted-until-dee')).toHaveTextContent(
+      /^Can't post until /,
+    );
 
     await fireEvent.press(await screen.findByTestId('restrict-eve'));
     expect(buttons.map((b) => b.text)).toEqual([

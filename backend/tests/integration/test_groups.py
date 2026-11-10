@@ -125,6 +125,9 @@ def test_owned_group_cap(store: LiveApp) -> None:  # noqa: F811
     for index in range(10):
         assert _create(store, owner, name=f"Trip number {index}").status_code == 201
     _problem(_create(store, owner, name="One too many"), 409, "quota_exceeded")
+    # The subscription screen shows the same count the cap uses.
+    quota = store.client.get("/v1/billing/entitlements", headers=_auth(owner)).json()["quotas"]
+    assert (quota["groups.owned"]["used"], quota["groups.owned"]["limit"]) == (10, 10)
 
 
 # ─────────────────────────────── joining ───────────────────────────────

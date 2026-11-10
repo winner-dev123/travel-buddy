@@ -719,7 +719,7 @@
   },
   "trips": {
     "title": "Meine Reisen",
-    "empty": "Noch keine Reisen. Plane eine mit KI oder über ein Reiseziel.",
+    "empty": "Noch keine Reisen. Plane eine mit KI oder lege selbst eine an.",
     "loadFailed": "Reisen konnten nicht geladen werden. Versuch es erneut.",
     "dates": "{{start}} – {{end}}",
     "missing": "Diese Reise ist nicht verfügbar.",
@@ -748,7 +748,11 @@
     "addPeople": "Kontakte hinzufügen",
     "add": "Hinzufügen",
     "leave": "Reise verlassen",
-    "shareStale": "Die Reise hat sich inzwischen geändert. Versuch es noch einmal."
+    "shareStale": "Die Reise hat sich inzwischen geändert. Versuch es noch einmal.",
+    "new": "Neue Reise",
+    "titleLabel": "Name der Reise (optional)",
+    "create": "Reise erstellen",
+    "defaultTitle": "Reise nach {{place}}"
   },
   "guides": {
     "title": "Reiseführer",
@@ -1129,7 +1133,8 @@
     "archive": "Gruppe archivieren",
     "archiveTitle": "Diese Gruppe archivieren?",
     "archiveBody": "Mitglieder können sie weiter lesen, aber der Chat wird schreibgeschützt und niemand kann beitreten.",
-    "archived": "Diese Gruppe ist archiviert. Mitglieder können sie lesen; niemand kann schreiben oder beitreten."
+    "archived": "Diese Gruppe ist archiviert. Mitglieder können sie lesen; niemand kann schreiben oder beitreten.",
+    "restrictedUntil": "Kann bis {{time}} nicht posten"
   },
   "bookmarks": {
     "title": "Gespeicherte Storys",

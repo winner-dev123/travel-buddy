@@ -24,6 +24,12 @@ export default function TripsScreen() {
       <Stack.Screen options={{ headerShown: true, title: t('trips.title') }} />
       <ScrollView contentContainerStyle={{ padding: theme.spacing[4], gap: theme.spacing[3] }}>
         <Button label={t('explore.plan')} onPress={() => router.push('/trips/plan')} />
+        <Button
+          label={t('trips.new')}
+          variant="secondary"
+          onPress={() => router.push('/trips/new')}
+          testID="trips-new"
+        />
         {trips.isError ? <Notice tone="error">{t('trips.loadFailed')}</Notice> : null}
         {trips.data && trips.data.length === 0 ? (
           <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>

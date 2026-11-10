@@ -340,7 +340,7 @@ screen was folded into another one; ✅ built, ⚠️ partly, ⬜ not yet (reaso
 | SCR-100 my profile, SCR-106 settings home | ✅ | `/(tabs)/profile` (settings rows) |
 | SCR-101 edit profile, SCR-107 privacy | ✅ | `/settings/profile`, `/settings/privacy`; follow requests at `/settings/follow-requests` |
 | SCR-102 saved | ✅ | `/saved` (places), `/bookmarks` (stories) |
-| SCR-103 trips, SCR-104 trip and itinerary editor | ✅ | `/trips`, `/trips/[id]` (offline-first editor, sharing, replanning); upcoming trips at `/settings/upcoming` |
+| SCR-103 trips, SCR-104 trip and itinerary editor | ✅ | `/trips` (plan with AI or `/trips/new` by hand), `/trips/[id]` (offline-first editor, sharing, replanning); upcoming trips at `/settings/upcoming` |
 | SCR-105 downloads | ✅ | `/downloads` |
 | SCR-108..114, SCR-116 settings | ✅ | `/settings/language`, `/settings/notifications`, `/settings/sessions`, `/settings/subscription` (read-only until the purchase SDK), `/settings/blocked`, `/settings/delete-account`, `/settings/data`, `/settings/safety`, `/settings/help` |
 | SCR-115 badges | ✅ | On profiles; rewards at `/rewards` |

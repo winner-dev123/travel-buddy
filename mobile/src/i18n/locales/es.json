@@ -731,7 +731,7 @@
   },
   "trips": {
     "title": "Mis viajes",
-    "empty": "Aún no tienes viajes. Planifica uno con IA o desde un destino.",
+    "empty": "Todavía no hay viajes. Planifica uno con IA o créalo tú.",
     "loadFailed": "No se pudieron cargar los viajes. Inténtalo de nuevo.",
     "dates": "{{start}} – {{end}}",
     "missing": "Este viaje no está disponible.",
@@ -760,7 +760,11 @@
     "addPeople": "Añadir conexiones",
     "add": "Añadir",
     "leave": "Salir de este viaje",
-    "shareStale": "El viaje cambió mientras tanto. Inténtalo de nuevo."
+    "shareStale": "El viaje cambió mientras tanto. Inténtalo de nuevo.",
+    "new": "Nuevo viaje",
+    "titleLabel": "Nombre del viaje (opcional)",
+    "create": "Crear viaje",
+    "defaultTitle": "Viaje a {{place}}"
   },
   "guides": {
     "title": "Guías",
@@ -1148,7 +1152,8 @@
     "archive": "Archivar grupo",
     "archiveTitle": "¿Archivar este grupo?",
     "archiveBody": "Los miembros podrán seguir leyéndolo, pero el chat será de solo lectura y nadie podrá unirse.",
-    "archived": "Este grupo está archivado. Los miembros pueden leerlo; nadie puede escribir ni unirse."
+    "archived": "Este grupo está archivado. Los miembros pueden leerlo; nadie puede escribir ni unirse.",
+    "restrictedUntil": "No puede publicar hasta el {{time}}"
   },
   "bookmarks": {
     "title": "Historias guardadas",
