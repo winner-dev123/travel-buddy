@@ -953,5 +953,59 @@
     "bodyVersion": "This version is no longer supported. Update to version {{version}} to keep using the app.",
     "action": "Update",
     "fromStore": "Update the app from your app store."
+  },
+  "safetyCenter": {
+    "title": "Safety center",
+    "intro": "Travel Buddy is about meeting people on your own terms. These tips help you stay safe, at home and on the road.",
+    "meeting": {
+      "title": "Meeting other travellers",
+      "points": [
+        "Meet in busy public places, in daylight when you can.",
+        "Tell a friend where you're going and who you're meeting.",
+        "Arrange your own transport and keep your phone charged.",
+        "You can leave at any time. Trust your instincts."
+      ]
+    },
+    "location": {
+      "title": "Your location",
+      "points": [
+        "Discovery only ever shows the city you're in, never your exact position, and it's off until you turn it on.",
+        "Don't share your accommodation or exact address until you trust someone.",
+        "You can stop discovery or make your profile private at any time in Settings."
+      ]
+    },
+    "scams": {
+      "title": "Scams to watch for",
+      "points": [
+        "Never send money or gift cards to someone you met in the app.",
+        "Be careful with links that ask you to pay or sign in outside the app.",
+        "Challenge prizes never cost anything. Anyone asking you to pay for a prize is not from Travel Buddy."
+      ]
+    },
+    "reporting": {
+      "title": "Reporting and blocking",
+      "points": [
+        "Report a profile, story, comment, message, group or challenge from its menu.",
+        "Our team reviews every report, the most serious first. The person isn't told who reported them.",
+        "Blocking hides you from each other everywhere: profiles, stories, messages, trips and groups."
+      ]
+    },
+    "emergency": {
+      "title": "In an emergency",
+      "points": [
+        "Call the local emergency number first: 112 works across the EU and in many other countries; 911 in the US and Canada.",
+        "Travel Buddy can't send help. After you're safe, report what happened so we can act on the account.",
+        "Keep your embassy's contact details with you when you travel abroad."
+      ]
+    },
+    "contact": "Contact support"
+  },
+  "saved": {
+    "title": "Saved places",
+    "empty": "Places you save while exploring appear here.",
+    "defaultCollection": "Saved",
+    "remove": "Remove",
+    "removeA11y": "Remove {{name}} from saved places",
+    "error": "We couldn't load your saved places. Check your connection and try again."
   }
 }

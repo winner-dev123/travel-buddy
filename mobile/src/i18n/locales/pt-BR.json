@@ -968,5 +968,59 @@
     "bodyVersion": "Esta versão não é mais compatível. Atualize para a versão {{version}} para continuar usando o app.",
     "action": "Atualizar",
     "fromStore": "Atualize o app pela sua loja de aplicativos."
+  },
+  "safetyCenter": {
+    "title": "Central de segurança",
+    "intro": "O Travel Buddy é para conhecer pessoas do seu jeito. Estas dicas ajudam você a ficar seguro, em casa e na estrada.",
+    "meeting": {
+      "title": "Encontrar outros viajantes",
+      "points": [
+        "Marque em lugares públicos movimentados, de preferência de dia.",
+        "Conte a alguém aonde você vai e com quem vai se encontrar.",
+        "Organize seu próprio transporte e mantenha o celular carregado.",
+        "Você pode ir embora quando quiser. Confie nos seus instintos."
+      ]
+    },
+    "location": {
+      "title": "Sua localização",
+      "points": [
+        "A descoberta mostra só a cidade em que você está, nunca sua posição exata, e fica desligada até você ativar.",
+        "Não compartilhe sua hospedagem nem seu endereço exato até confiar em alguém.",
+        "Você pode parar a descoberta ou deixar seu perfil privado a qualquer momento nas Configurações."
+      ]
+    },
+    "scams": {
+      "title": "Golpes para ficar de olho",
+      "points": [
+        "Nunca envie dinheiro nem vale-presente para alguém que você conheceu no app.",
+        "Cuidado com links que pedem pagamento ou login fora do app.",
+        "Prêmios de desafios nunca custam nada. Quem pede pagamento por um prêmio não é do Travel Buddy."
+      ]
+    },
+    "reporting": {
+      "title": "Denunciar e bloquear",
+      "points": [
+        "Denuncie um perfil, história, comentário, mensagem, grupo ou desafio pelo menu dele.",
+        "Nossa equipe analisa todas as denúncias, as mais graves primeiro. A pessoa não fica sabendo quem denunciou.",
+        "Bloquear esconde vocês um do outro em todo lugar: perfis, histórias, mensagens, viagens e grupos."
+      ]
+    },
+    "emergency": {
+      "title": "Em uma emergência",
+      "points": [
+        "Ligue primeiro para o número de emergência local: no Brasil, 190 (polícia) e 192 (SAMU); 112 funciona na UE e em muitos outros países.",
+        "O Travel Buddy não pode enviar ajuda. Quando estiver em segurança, denuncie o que aconteceu para podermos agir sobre a conta.",
+        "Leve os contatos da sua embaixada ou consulado quando viajar para o exterior."
+      ]
+    },
+    "contact": "Falar com o suporte"
+  },
+  "saved": {
+    "title": "Lugares salvos",
+    "empty": "Os lugares que você salvar enquanto explora aparecem aqui.",
+    "defaultCollection": "Salvos",
+    "remove": "Remover",
+    "removeA11y": "Remover {{name}} dos lugares salvos",
+    "error": "Não conseguimos carregar seus lugares salvos. Verifique sua conexão e tente de novo."
   }
 }

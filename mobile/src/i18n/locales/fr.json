@@ -968,5 +968,59 @@
     "bodyVersion": "Cette version n'est plus prise en charge. Passez à la version {{version}} pour continuer à utiliser l'app.",
     "action": "Mettre à jour",
     "fromStore": "Mettez l'app à jour depuis votre boutique d'applications."
+  },
+  "safetyCenter": {
+    "title": "Centre de sécurité",
+    "intro": "Travel Buddy, c'est rencontrer des gens selon vos conditions. Ces conseils vous aident à rester en sécurité, chez vous comme en voyage.",
+    "meeting": {
+      "title": "Rencontrer d'autres voyageurs",
+      "points": [
+        "Retrouvez-vous dans des lieux publics fréquentés, de jour si possible.",
+        "Dites à un proche où vous allez et qui vous rencontrez.",
+        "Organisez vous-même votre transport et gardez votre téléphone chargé.",
+        "Vous pouvez partir à tout moment. Fiez-vous à votre instinct."
+      ]
+    },
+    "location": {
+      "title": "Votre position",
+      "points": [
+        "La découverte n'affiche que la ville où vous êtes, jamais votre position exacte, et elle reste désactivée tant que vous ne l'activez pas.",
+        "Ne partagez pas votre hébergement ni votre adresse exacte avant de faire confiance à quelqu'un.",
+        "Vous pouvez arrêter la découverte ou rendre votre profil privé à tout moment dans les Réglages."
+      ]
+    },
+    "scams": {
+      "title": "Arnaques à surveiller",
+      "points": [
+        "N'envoyez jamais d'argent ni de cartes cadeaux à quelqu'un rencontré dans l'app.",
+        "Méfiez-vous des liens qui vous demandent de payer ou de vous connecter en dehors de l'app.",
+        "Les prix des défis ne coûtent jamais rien. Quiconque vous demande de payer pour un prix ne vient pas de Travel Buddy."
+      ]
+    },
+    "reporting": {
+      "title": "Signaler et bloquer",
+      "points": [
+        "Signalez un profil, une histoire, un commentaire, un message, un groupe ou un défi depuis son menu.",
+        "Notre équipe examine chaque signalement, les plus graves en premier. La personne ne sait pas qui l'a signalée.",
+        "Bloquer vous masque l'un à l'autre partout : profils, histoires, messages, voyages et groupes."
+      ]
+    },
+    "emergency": {
+      "title": "En cas d'urgence",
+      "points": [
+        "Appelez d'abord le numéro d'urgence local : le 112 fonctionne dans toute l'UE et dans de nombreux autres pays ; le 911 aux États-Unis et au Canada.",
+        "Travel Buddy ne peut pas envoyer de secours. Une fois en sécurité, signalez ce qui s'est passé pour que nous puissions agir sur le compte.",
+        "Gardez les coordonnées de votre ambassade sur vous quand vous voyagez à l'étranger."
+      ]
+    },
+    "contact": "Contacter l'assistance"
+  },
+  "saved": {
+    "title": "Lieux enregistrés",
+    "empty": "Les lieux que vous enregistrez en explorant apparaissent ici.",
+    "defaultCollection": "Enregistrés",
+    "remove": "Retirer",
+    "removeA11y": "Retirer {{name}} des lieux enregistrés",
+    "error": "Impossible de charger vos lieux enregistrés. Vérifiez votre connexion et réessayez."
   }
 }

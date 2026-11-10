@@ -953,5 +953,59 @@
     "bodyVersion": "Diese Version wird nicht mehr unterstützt. Aktualisiere auf Version {{version}}, um die App weiter zu nutzen.",
     "action": "Aktualisieren",
     "fromStore": "Aktualisiere die App über deinen App-Store."
+  },
+  "safetyCenter": {
+    "title": "Sicherheitscenter",
+    "intro": "Bei Travel Buddy lernst du Leute so kennen, wie du es willst. Diese Tipps helfen dir, sicher zu bleiben – zu Hause und unterwegs.",
+    "meeting": {
+      "title": "Andere Reisende treffen",
+      "points": [
+        "Triff dich an belebten öffentlichen Orten, wenn möglich bei Tageslicht.",
+        "Sag jemandem, wohin du gehst und wen du triffst.",
+        "Organisiere deinen eigenen Transport und halte dein Handy geladen.",
+        "Du kannst jederzeit gehen. Vertrau deinem Bauchgefühl."
+      ]
+    },
+    "location": {
+      "title": "Dein Standort",
+      "points": [
+        "Entdecken zeigt nur die Stadt, in der du bist, nie deinen genauen Standort, und ist aus, bis du es einschaltest.",
+        "Teile deine Unterkunft oder genaue Adresse erst, wenn du jemandem vertraust.",
+        "Du kannst Entdecken jederzeit in den Einstellungen beenden oder dein Profil privat machen."
+      ]
+    },
+    "scams": {
+      "title": "Betrugsmaschen erkennen",
+      "points": [
+        "Schicke niemals Geld oder Gutscheinkarten an jemanden, den du in der App kennengelernt hast.",
+        "Vorsicht bei Links, die dich außerhalb der App zum Bezahlen oder Anmelden auffordern.",
+        "Challenge-Preise kosten nie etwas. Wer dich für einen Preis bezahlen lässt, ist nicht von Travel Buddy."
+      ]
+    },
+    "reporting": {
+      "title": "Melden und blockieren",
+      "points": [
+        "Melde ein Profil, eine Story, einen Kommentar, eine Nachricht, eine Gruppe oder eine Challenge über das jeweilige Menü.",
+        "Unser Team prüft jede Meldung, die schwerwiegendsten zuerst. Die Person erfährt nicht, wer sie gemeldet hat.",
+        "Blockieren verbirgt euch überall voreinander: Profile, Storys, Nachrichten, Reisen und Gruppen."
+      ]
+    },
+    "emergency": {
+      "title": "Im Notfall",
+      "points": [
+        "Ruf zuerst die örtliche Notrufnummer an: Die 112 gilt in der ganzen EU und vielen anderen Ländern, die 911 in den USA und Kanada.",
+        "Travel Buddy kann keine Hilfe schicken. Wenn du in Sicherheit bist, melde den Vorfall, damit wir gegen das Konto vorgehen können.",
+        "Hab die Kontaktdaten deiner Botschaft dabei, wenn du ins Ausland reist."
+      ]
+    },
+    "contact": "Support kontaktieren"
+  },
+  "saved": {
+    "title": "Gespeicherte Orte",
+    "empty": "Orte, die du beim Entdecken speicherst, erscheinen hier.",
+    "defaultCollection": "Gespeichert",
+    "remove": "Entfernen",
+    "removeA11y": "{{name}} aus gespeicherten Orten entfernen",
+    "error": "Deine gespeicherten Orte konnten nicht geladen werden. Prüfe deine Verbindung und versuch es noch einmal."
   }
 }

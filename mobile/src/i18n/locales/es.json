@@ -968,5 +968,59 @@
     "bodyVersion": "Esta versión ya no es compatible. Actualiza a la versión {{version}} para seguir usando la app.",
     "action": "Actualizar",
     "fromStore": "Actualiza la app desde tu tienda de aplicaciones."
+  },
+  "safetyCenter": {
+    "title": "Centro de seguridad",
+    "intro": "Travel Buddy consiste en conocer gente cuando y como tú quieras. Estos consejos te ayudan a mantenerte seguro, en casa y de viaje.",
+    "meeting": {
+      "title": "Quedar con otros viajeros",
+      "points": [
+        "Queda en lugares públicos concurridos y, si puedes, de día.",
+        "Cuéntale a alguien adónde vas y con quién has quedado.",
+        "Organiza tu propio transporte y lleva el teléfono cargado.",
+        "Puedes irte cuando quieras. Confía en tu instinto."
+      ]
+    },
+    "location": {
+      "title": "Tu ubicación",
+      "points": [
+        "El descubrimiento solo muestra la ciudad en la que estás, nunca tu posición exacta, y está desactivado hasta que lo actives.",
+        "No compartas tu alojamiento ni tu dirección exacta hasta que confíes en alguien.",
+        "Puedes detener el descubrimiento o hacer tu perfil privado en cualquier momento desde Ajustes."
+      ]
+    },
+    "scams": {
+      "title": "Estafas a tener en cuenta",
+      "points": [
+        "Nunca envíes dinero ni tarjetas regalo a alguien que conociste en la app.",
+        "Ten cuidado con los enlaces que te piden pagar o iniciar sesión fuera de la app.",
+        "Los premios de los retos nunca cuestan nada. Quien te pida pagar por un premio no es de Travel Buddy."
+      ]
+    },
+    "reporting": {
+      "title": "Denunciar y bloquear",
+      "points": [
+        "Denuncia un perfil, historia, comentario, mensaje, grupo o reto desde su menú.",
+        "Nuestro equipo revisa todas las denuncias, primero las más graves. La persona no sabe quién la denunció.",
+        "Bloquear os oculta mutuamente en todas partes: perfiles, historias, mensajes, viajes y grupos."
+      ]
+    },
+    "emergency": {
+      "title": "En una emergencia",
+      "points": [
+        "Llama primero al número de emergencias local: el 112 funciona en toda la UE y en muchos otros países; el 911 en EE. UU. y Canadá.",
+        "Travel Buddy no puede enviar ayuda. Cuando estés a salvo, denuncia lo ocurrido para que podamos actuar sobre la cuenta.",
+        "Lleva contigo los datos de contacto de tu embajada cuando viajes al extranjero."
+      ]
+    },
+    "contact": "Contactar con soporte"
+  },
+  "saved": {
+    "title": "Lugares guardados",
+    "empty": "Los lugares que guardes mientras exploras aparecerán aquí.",
+    "defaultCollection": "Guardados",
+    "remove": "Quitar",
+    "removeA11y": "Quitar {{name}} de los lugares guardados",
+    "error": "No pudimos cargar tus lugares guardados. Revisa tu conexión e inténtalo de nuevo."
   }
 }
