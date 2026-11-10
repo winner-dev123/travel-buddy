@@ -134,7 +134,7 @@ Web-workstream items (Next.js app, BFF, web admin) are tracked by the web workst
 | BL-4.01 | Places ingestion from licensed provider (adapter) + freshness | L | 1.05 | DEST-003 |
 | BL-4.02 | AI provider port, adapters, telemetry, quotas, circuit breaker | M | 3.02 | AI-001, AI-009 |
 | BL-4.03 | Itinerary generation (grounded candidates, schema, semantic validation, repair) | L | 4.01, 4.02 | AI-002..004, AI-007, AI-008 |
-| BL-4.04 | Trips, days, items, saved places, collaborators, offline sync protocol | L | 1.05 | TRIP-001..005 |
+| BL-4.04 | Trips, days, items, saved places, collaborators, offline sync protocol | L | 1.05 | TRIP-001..005 | 🟡 Trips done: `/v1/trips` create (a day per date, destinations), list with role, get, edit and delete with `If-Match` versions; days and items (fractional ordering, moves between days, tombstones); `POST /sync` for offline batches (newer write wins, later server edits come back as conflicts with the server state, invalid ops reported, idempotent); owners and editors edit, viewers and public readers read. Pending: saved places (need the places catalog, BL-4.01), collaborator management endpoints, connections/group visibility |
 | BL-4.05 | Replanning (premium) | M | 4.03, 4.04 | AI-005 |
 | BL-4.06 | Maps integration (MapLibre, tiles provider, routing port) | L | 4.01 | GUIDE-001..003 |
 | BL-4.07 | Guides + audio tours content model, admin authoring, purchase grants | L | 3.02 | GUIDE-004, GUIDE-005, BILL-001 |

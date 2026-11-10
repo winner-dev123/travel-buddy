@@ -99,6 +99,8 @@ from app.modules.social.follows import FollowService
 from app.modules.social.interactions import InteractionService
 from app.modules.social.profile_view import PublicProfileService
 from app.modules.social.public import PublicPostService
+from app.modules.trips import service as trips_service
+from app.modules.trips.api import router as trips_router
 from app.modules.trust_safety import service as trust_safety_service
 from app.modules.trust_safety.api import router as trust_safety_router
 from app.modules.trust_safety.service import BlockService, ReportService
@@ -293,6 +295,9 @@ def create_app(
         storage=media_storage,
         max_pending=media_settings.media_max_pending_uploads,
     )
+    app.state.trip_service = trips_service.TripService(
+        sessionmaker=database.sessionmaker, cursors=cursor_codec, clock=clock
+    )
     app.state.billing_service = billing_service.BillingService(
         sessionmaker=database.sessionmaker,
         clock=clock,
@@ -403,6 +408,7 @@ def create_app(
     app.include_router(messaging_router)
     app.include_router(billing_router)
     app.include_router(groups_router)
+    app.include_router(trips_router)
     app.include_router(group_invitations_router)
     app.include_router(realtime_router)
     app.include_router(realtime_tickets_router)
@@ -573,6 +579,7 @@ def build_job_runner(
         "messaging": messaging_service.purge_expired,
         "billing": billing_service.purge_expired,
         "groups": groups_service.purge_expired,
+        "trips": trips_service.purge_expired,
         "location": location_service.purge_expired,
     }
     periodic = [Periodic(f"retention.{name}", f"retention.{name}", DAILY) for name in purges]
