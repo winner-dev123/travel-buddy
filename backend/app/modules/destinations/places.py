@@ -113,6 +113,18 @@ def _within(destination_id: uuid.UUID) -> Any:
     )
 
 
+async def ids_within(
+    session: AsyncSession, place_ids: Sequence[uuid.UUID], destination_id: uuid.UUID
+) -> set[uuid.UUID]:
+    """Which of ``place_ids`` lie in the destination or its descendants (saved-place filters)."""
+    if not place_ids:
+        return set()
+    found = await session.scalars(
+        select(PlaceRow.id).where(PlaceRow.id.in_(list(place_ids)), _within(destination_id))
+    )
+    return set(found)
+
+
 @dataclass(frozen=True, slots=True)
 class PlaceCandidate:
     """A catalog place an AI itinerary may reference, with what the proposal joins."""

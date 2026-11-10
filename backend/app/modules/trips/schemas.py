@@ -196,3 +196,20 @@ class SyncResult(_Response):
     trip: TripOut
     applied_op_ids: list[uuid.UUID]
     conflicts: list[SyncConflict]
+
+
+class SavePlaceRequest(_Request):
+    collection: str = Field(default="default", min_length=1, max_length=40)
+    note: str | None = Field(default=None, max_length=500)
+
+
+class SavedPlaceOut(_Response):
+    place: PlaceSummary
+    collection: str
+    note: str | None
+    created_at: datetime
+
+
+class SavedPlacePage(_Response):
+    data: list[SavedPlaceOut]
+    page: PageInfo

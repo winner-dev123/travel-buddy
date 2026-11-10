@@ -8,14 +8,19 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 
+from app.core.i18n import parse_accept_language
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
+from app.modules.trips.saved_places import SavedPlaceService
 from app.modules.trips.schemas import (
     ApplyItineraryRequest,
     CreateTripRequest,
     DayInput,
     ItemInput,
     ItemPatch,
+    SavedPlaceOut,
+    SavedPlacePage,
+    SavePlaceRequest,
     SyncRequest,
     SyncResult,
     TripOut,
@@ -204,3 +209,62 @@ async def sync_trip(
     idempotency_key: Annotated[uuid.UUID, Header(alias="Idempotency-Key")],
 ) -> SyncResult:
     return await _service(request).sync(principal, trip_id, body, idempotency_key=idempotency_key)
+
+
+# ─────────────────────────────── saved places (TRIP-003) ───────────────────────────────
+
+saved_places_router = APIRouter(prefix="/v1/users/me/saved-places", tags=["trips"])
+AcceptLanguage = Annotated[str | None, Header(alias="Accept-Language", max_length=200)]
+Collection = Annotated[str, Query(min_length=1, max_length=40)]
+
+
+def _saved(request: Request) -> SavedPlaceService:
+    service: SavedPlaceService = request.app.state.saved_place_service
+    return service
+
+
+@saved_places_router.get("", response_model=SavedPlacePage)
+async def list_saved_places(
+    request: Request,
+    principal: CurrentPrincipal,
+    accept_language: AcceptLanguage = None,
+    collection: Annotated[str | None, Query(min_length=1, max_length=40)] = None,
+    destination_id: uuid.UUID | None = None,
+    cursor: Annotated[str | None, Query(max_length=1024)] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> SavedPlacePage:
+    return await _saved(request).list(
+        principal.user_id,
+        collection=collection,
+        destination_id=destination_id,
+        cursor=cursor,
+        limit=limit,
+        preferences=parse_accept_language(accept_language),
+    )
+
+
+@saved_places_router.put("/{place_id}", response_model=SavedPlaceOut)
+async def save_place(
+    place_id: uuid.UUID,
+    request: Request,
+    principal: CurrentPrincipal,
+    body: SavePlaceRequest | None = None,
+    accept_language: AcceptLanguage = None,
+) -> SavedPlaceOut:
+    return await _saved(request).save(
+        principal.user_id,
+        place_id,
+        body or SavePlaceRequest(),
+        preferences=parse_accept_language(accept_language),
+    )
+
+
+@saved_places_router.delete("/{place_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def unsave_place(
+    place_id: uuid.UUID,
+    request: Request,
+    principal: CurrentPrincipal,
+    collection: Collection = "default",
+) -> Response:
+    await _saved(request).unsave(principal.user_id, place_id, collection)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

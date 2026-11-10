@@ -161,3 +161,25 @@ class ItineraryItem(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class SavedPlace(Base):
+    """A traveller's saved catalog place, optionally in a named collection (TRIP-003)."""
+
+    __tablename__ = "saved_places"
+    __table_args__ = (
+        PrimaryKeyConstraint("user_id", "place_id", "collection"),
+        CheckConstraint("char_length(collection) BETWEEN 1 AND 40", name="collection_length"),
+        CheckConstraint("char_length(note) <= 500", name="note_length"),
+        Index("ix_saved_places__user_created", "user_id", text("created_at DESC")),
+    )
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    place_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("places.id", ondelete="CASCADE"), nullable=False
+    )
+    collection: Mapped[str] = mapped_column(Text, server_default=text("'default'"))
+    note: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

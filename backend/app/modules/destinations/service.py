@@ -34,6 +34,7 @@ from app.modules.destinations.places import (
     place_candidates,
     place_summaries,
 )
+from app.modules.destinations.places import ids_within as place_ids_within
 from app.modules.destinations.places import is_listed as place_is_listed
 from app.modules.destinations.schemas import Destination, DestinationSummary, GeoPoint
 
@@ -541,6 +542,7 @@ __all__ = [
     "PlaceCandidate",
     "PlaceService",
     "place_candidates",
+    "place_ids_within",
     "place_is_listed",
     "place_summaries",
 ]

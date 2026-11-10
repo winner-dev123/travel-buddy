@@ -111,6 +111,8 @@ from app.modules.social.profile_view import PublicProfileService
 from app.modules.social.public import PublicPostService
 from app.modules.trips import service as trips_service
 from app.modules.trips.api import router as trips_router
+from app.modules.trips.api import saved_places_router
+from app.modules.trips.saved_places import SavedPlaceService
 from app.modules.trust_safety import service as trust_safety_service
 from app.modules.trust_safety.api import router as trust_safety_router
 from app.modules.trust_safety.service import BlockService, ReportService
@@ -315,6 +317,9 @@ def create_app(
     app.state.trip_service = trips_service.TripService(
         sessionmaker=database.sessionmaker, cursors=cursor_codec, clock=clock, plans=itinerary_plan
     )
+    app.state.saved_place_service = SavedPlaceService(
+        sessionmaker=database.sessionmaker, cursors=cursor_codec, clock=clock
+    )
     app.state.ai_provider = ai_provider
     app.state.ai_service = ai
     app.state.billing_service = billing_service.BillingService(
@@ -430,6 +435,7 @@ def create_app(
     app.include_router(billing_router)
     app.include_router(groups_router)
     app.include_router(trips_router)
+    app.include_router(saved_places_router)
     app.include_router(ai_router)
     app.include_router(group_invitations_router)
     app.include_router(realtime_router)
