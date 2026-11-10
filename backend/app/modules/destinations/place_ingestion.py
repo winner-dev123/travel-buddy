@@ -53,13 +53,7 @@ async def ingest_destination(
 
 async def _run(args: argparse.Namespace) -> IngestResult:
     settings = get_settings()
-    database = Database(
-        settings.database_url,
-        pool_size=1,
-        max_overflow=0,
-        pool_recycle_seconds=settings.database_pool_recycle_seconds,
-        transaction_pooler=settings.database_transaction_pooler,
-    )
+    database = Database.from_settings(settings, pool_size=1, max_overflow=0)
     clock = SystemClock()
     try:
         async with httpx.AsyncClient(follow_redirects=False) as http_client:

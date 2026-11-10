@@ -90,8 +90,9 @@ from app.modules.health.api import router as health_router
 from app.modules.identity import exports as data_exports
 from app.modules.identity import service as identity_module
 from app.modules.identity.adapters.dev_idp import DevIdentityProvider
+from app.modules.identity.adapters.firebase import FirebaseAccountCheck, firebase_project
+from app.modules.identity.adapters.idp_deletion import build_idp_deleter
 from app.modules.identity.adapters.oidc import HttpJwksKeyProvider, IssuerConfig, OidcVerifier
-from app.modules.identity.adapters.supabase_admin import build_idp_deleter
 from app.modules.identity.api import auth_router, dev_idp_router, exports_router, me_router
 from app.modules.identity.config import IdentitySettings
 from app.modules.identity.schemas import AccountRestriction
@@ -169,13 +170,7 @@ def create_app(
         level=settings.log_level, json_output=settings.log_json, service_name=settings.service_name
     )
 
-    database = Database(
-        settings.database_url,
-        pool_size=settings.database_pool_size,
-        max_overflow=settings.database_max_overflow,
-        pool_recycle_seconds=settings.database_pool_recycle_seconds,
-        transaction_pooler=settings.database_transaction_pooler,
-    )
+    database = Database.from_settings(settings)
     redis = create_redis(settings.redis_url) if settings.redis_url else None
     http_client = httpx.AsyncClient(follow_redirects=False, transport=http_transport)
 
@@ -204,6 +199,11 @@ def create_app(
         ttl=timedelta(seconds=settings.access_token_ttl_seconds),
         clock=clock,
     )
+    firebase_check = (
+        FirebaseAccountCheck(identity_settings.firebase_web_api_key, http_client)
+        if identity_settings.firebase_web_api_key
+        else None
+    )
     issuers = [
         IssuerConfig(
             issuer=trusted.issuer,
@@ -211,8 +211,9 @@ def create_app(
             algorithms=trusted.algorithms,
             keys=HttpJwksKeyProvider(str(trusted.jwks_uri), http_client),
             method=trusted.method,
+            account_check=firebase_check if firebase_project(trusted.issuer) else None,
         )
-        for trusted in identity_settings.oidc_issuers
+        for trusted in identity_settings.trusted_issuers
     ]
     rate_limiter = build_rate_limiter(
         settings, database=database, redis=redis, clock=clock, store=rate_limit_store

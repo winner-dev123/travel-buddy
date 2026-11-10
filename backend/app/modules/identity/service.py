@@ -31,8 +31,8 @@ from app.modules.billing import service as billing_service
 from app.modules.destinations.schemas import DestinationSummary
 from app.modules.identity import push_tokens
 from app.modules.identity import repository as repo
+from app.modules.identity.adapters.idp_deletion import IdpAccountDeleter
 from app.modules.identity.adapters.oidc import OidcVerifier, VerifiedIdentity
-from app.modules.identity.adapters.supabase_admin import IdpAccountDeleter
 from app.modules.identity.config import IdentitySettings
 from app.modules.identity.domain import (
     RefreshMatch,
@@ -209,6 +209,9 @@ class IdentityService:
                 birth_year=request.birth_date.year,  # the full date is never stored
                 age_assured_at=now,
                 primary_locale=request.locale,
+                # Firebase reports validSince from account creation; recording it here keeps a
+                # later sign-in from treating it as a password change (AUTH-005).
+                last_recovery_at=identity.recovered_at,
             )
             session.add(user)
             await session.flush()

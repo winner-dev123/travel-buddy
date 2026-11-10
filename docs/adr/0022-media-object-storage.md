@@ -1,6 +1,6 @@
 # ADR-0022: Media object storage through an S3-compatible port
 
-- **Status:** Accepted
+- **Status:** Accepted. Amended by [ADR-0028](0028-firebase-platform-and-railway-hosting.md): Cloud Storage through its S3-compatible XML API
 - **Date:** 2026-11-09
 - **Deciders:** Backend
 - **Requirements:** POST-004, SAFE-004, T-MED-01..05

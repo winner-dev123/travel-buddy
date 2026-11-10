@@ -37,25 +37,75 @@ export function getFeatureFlagOverrides(): string[] {
     .filter((value) => value.length > 0);
 }
 
-/** Who authenticates users (ADR-0020). `dev` is the backend's development IdP. */
-export type IdentityProviderKind = 'supabase' | 'dev';
+/**
+ * Who authenticates users: Firebase Authentication (ADR-0028), Supabase Auth (ADR-0020, until the
+ * move is complete) or, in development builds, the backend's development IdP.
+ */
+export type IdentityProviderKind = 'firebase' | 'supabase' | 'dev';
 
 export interface SupabaseConfig {
   url: string;
   publishableKey: string;
 }
 
+export interface FirebaseConfig {
+  /** The project's Web API key: identifies the project, not a secret (ADR-0028). */
+  apiKey: string;
+}
+
 export function getIdentityProviderKind(): IdentityProviderKind {
-  const raw = process.env.EXPO_PUBLIC_IDENTITY_PROVIDER;
+  return resolveIdentityProvider(
+    process.env.EXPO_PUBLIC_IDENTITY_PROVIDER,
+    Boolean(process.env.EXPO_PUBLIC_FIREBASE_API_KEY),
+    __DEV__,
+  );
+}
+
+/** Explicit choice first; otherwise Firebase when its key is configured, else Supabase. */
+export function resolveIdentityProvider(
+  raw: string | undefined,
+  hasFirebaseKey: boolean,
+  isDev: boolean,
+): IdentityProviderKind {
   if (raw === 'dev') {
-    if (!__DEV__) {
+    if (!isDev) {
       throw new ConfigurationError(
         'The development identity provider is not allowed in release builds.',
       );
     }
     return 'dev';
   }
-  return 'supabase';
+  if (raw === 'firebase' || raw === 'supabase') {
+    return raw;
+  }
+  return hasFirebaseKey ? 'firebase' : 'supabase';
+}
+
+export function getFirebaseConfig(): FirebaseConfig {
+  const apiKey: string | undefined = process.env.EXPO_PUBLIC_FIREBASE_API_KEY;
+  if (!apiKey) {
+    throw new ConfigurationError(
+      'EXPO_PUBLIC_FIREBASE_API_KEY must be set (see mobile/.env.example).',
+    );
+  }
+  return { apiKey: assertFirebaseWebApiKey(apiKey) };
+}
+
+/**
+ * Only the Web API key may ship in the app bundle. A service-account key (JSON with a private key)
+ * grants admin access to the project and is refused outright.
+ */
+export function assertFirebaseWebApiKey(key: string): string {
+  const trimmed = key.trim();
+  if (/private_key|BEGIN [A-Z ]*PRIVATE KEY|service_account/.test(trimmed)) {
+    throw new ConfigurationError(
+      'A Firebase SERVICE ACCOUNT key was configured. Only the Web API key may be bundled.',
+    );
+  }
+  if (!/^AIza[0-9A-Za-z_-]{35}$/.test(trimmed)) {
+    throw new ConfigurationError('EXPO_PUBLIC_FIREBASE_API_KEY is not a Firebase Web API key.');
+  }
+  return trimmed;
 }
 
 export function getSupabaseConfig(): SupabaseConfig {

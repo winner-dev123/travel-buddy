@@ -359,7 +359,7 @@ Redis holds **no source-of-truth data**. Losing it degrades performance and pres
 | Mobile | React Native + TypeScript (strict) on **Expo** (dev builds / prebuild), Expo Router, TanStack Query, Zustand, expo-sqlite (offline data), expo-secure-store (tokens), i18next, MapLibre RN (Phase 4) |
 | Web app + admin | Next.js (App Router) as a BFF, in an npm-workspaces monorepo (`apps/web`, `packages/*`). Owned by the web workstream. See [docs/web](web/01-architecture.md) and ADR-0009…0014 |
 | Backend | Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2 (async, asyncpg), Alembic, GeoAlchemy2 |
-| Data | **Supabase** managed PostgreSQL ([ADR-0018](adr/0018-supabase-managed-postgres.md)) + PostGIS, extensions `postgis`, `citext`, `pg_trgm`, `unaccent` (in the `extensions` schema). Database only: the Supabase Data API is locked down (RLS deny-all, API roles revoked) and the backend is the sole data path. CI and local dev use plain PostGIS |
+| Data | **Cloud SQL for PostgreSQL** in the Firebase project, through the Cloud SQL Python Connector ([ADR-0028](adr/0028-firebase-platform-and-railway-hosting.md); cutover pending). Until then: **Supabase** managed PostgreSQL ([ADR-0018](adr/0018-supabase-managed-postgres.md)) + PostGIS, extensions `postgis`, `citext`, `pg_trgm`, `unaccent` (in the `extensions` schema). Database only: the Supabase Data API is locked down (RLS deny-all, API roles revoked) and the backend is the sole data path. CI and local dev use plain PostGIS |
 | Cache / ephemeral | Redis 7 |
 | Media | S3-compatible storage (MinIO locally), CDN |
 | Quality | ruff, mypy (strict), pytest (incl. architecture-boundary tests); ESLint, TypeScript `strict`, Jest + React Native Testing Library, Maestro (E2E) |

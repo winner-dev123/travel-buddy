@@ -191,10 +191,12 @@
       "network": "Keine Verbindung. Prüfe deine Internetverbindung und versuche es erneut.",
       "unknown": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
       "missingFields": "Gib deine E-Mail und dein Passwort ein.",
-      "notConfigured": "Die Anmeldung ist in diesem Build nicht konfiguriert."
+      "notConfigured": "Die Anmeldung ist in diesem Build nicht konfiguriert.",
+      "missingEmail": "Gib zuerst deine E-Mail-Adresse ein."
     },
     "resendConfirmation": "Bestätigungs-E-Mail erneut senden",
-    "confirmationResent": "Wir haben dir eine weitere Bestätigungs-E-Mail geschickt. Öffne den Link darin und melde dich dann an."
+    "confirmationResent": "Wir haben dir eine weitere Bestätigungs-E-Mail geschickt. Öffne den Link darin und melde dich dann an.",
+    "resetSent": "Falls es ein Konto mit dieser E-Mail-Adresse gibt, haben wir dir einen Link zum Zurücksetzen des Passworts geschickt."
   },
   "registration": {
     "title": "Fast geschafft",

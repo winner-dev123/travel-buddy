@@ -8,12 +8,8 @@ import httpx
 import pytest
 from pydantic import SecretStr
 
-from app.modules.identity.adapters.supabase_admin import (
-    IdpDeletionError,
-    SupabaseAdminDeleter,
-    build_idp_deleter,
-    supabase_base_url,
-)
+from app.modules.identity.adapters.idp_deletion import IdpDeletionError, build_idp_deleter
+from app.modules.identity.adapters.supabase_admin import SupabaseAdminDeleter, supabase_base_url
 from app.modules.web_cache.domain import revalidation_for
 from tests.conftest import make_identity_settings
 

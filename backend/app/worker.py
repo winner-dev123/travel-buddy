@@ -38,12 +38,8 @@ async def run(*, once: bool, idle_sleep_seconds: float) -> None:
     configure_logging(
         level=settings.log_level, json_output=settings.log_json, service_name="travelbuddy-worker"
     )
-    database = Database(
-        settings.database_url,
-        pool_size=min(settings.database_pool_size, 4),
-        max_overflow=0,
-        pool_recycle_seconds=settings.database_pool_recycle_seconds,
-        transaction_pooler=settings.database_transaction_pooler,
+    database = Database.from_settings(
+        settings, pool_size=min(settings.database_pool_size, 4), max_overflow=0
     )
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()

@@ -51,13 +51,7 @@ def seeded_relations() -> list[tuple[str, int]]:
 
 async def _run(args: argparse.Namespace) -> int:
     settings = get_settings()
-    database = Database(
-        settings.database_url,
-        pool_size=1,
-        max_overflow=0,
-        pool_recycle_seconds=settings.database_pool_recycle_seconds,
-        transaction_pooler=settings.database_transaction_pooler,
-    )
+    database = Database.from_settings(settings, pool_size=1, max_overflow=0)
     targets = seeded_relations() if args.all else [(args.destination, args.relation)]
     loaded = 0
     try:

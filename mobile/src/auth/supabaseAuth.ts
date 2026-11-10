@@ -1,35 +1,26 @@
 import type { SupabaseConfig } from '@/config/env';
 
+import {
+  type AuthErrorCode,
+  AuthProviderError,
+  type PasswordAuthClient,
+  type SignUpResult,
+} from './identityClient';
+
 /**
  * Supabase Auth over its REST API (ADR-0020), without the supabase-js session machinery:
  * the Supabase access token is used ONCE, as the `id_token` exchanged for a platform session,
  * and is never stored. Only Auth endpoints are called with the publishable key.
  */
 
-export type SupabaseAuthErrorCode =
-  | 'invalid_credentials'
-  | 'email_not_confirmed'
-  | 'weak_password'
-  | 'rate_limited'
-  | 'signup_disabled'
-  | 'network'
-  | 'unknown';
+export type SupabaseAuthErrorCode = AuthErrorCode;
 
-export class SupabaseAuthError extends Error {
+export class SupabaseAuthError extends AuthProviderError {
   override name = 'SupabaseAuthError';
-  constructor(
-    readonly code: SupabaseAuthErrorCode,
-    message: string,
-  ) {
-    super(message);
-  }
 }
 
 /** Social sign-in providers configured in Supabase (listed in `/v1/client-config`). */
 export type OAuthProvider = 'google' | 'apple';
-
-export type SignUpResult =
-  { kind: 'confirmation_sent' } | { kind: 'signed_in'; accessToken: string };
 
 type FetchLike = (input: string, init: RequestInit) => Promise<Response>;
 
@@ -43,7 +34,10 @@ const ERROR_MAP: Record<string, SupabaseAuthErrorCode> = {
   signup_disabled: 'signup_disabled',
 };
 
-export class SupabaseAuthClient {
+export class SupabaseAuthClient implements PasswordAuthClient {
+  readonly supportsSocial = true;
+  // The reset link opens the web reset page (`password_reset_url` in /v1/client-config).
+  readonly supportsInAppReset = false;
   private readonly fetchImpl: FetchLike;
 
   constructor(
@@ -79,6 +73,11 @@ export class SupabaseAuthClient {
   /** Send the sign-up confirmation email again (Supabase rate-limits this per address). */
   async resendConfirmation(email: string): Promise<void> {
     await this.call('/auth/v1/resend', { type: 'signup', email });
+  }
+
+  /** Sends Supabase's recovery email; it answers the same for unknown addresses. */
+  async sendPasswordReset(email: string): Promise<void> {
+    await this.call('/auth/v1/recover', { email });
   }
 
   /**

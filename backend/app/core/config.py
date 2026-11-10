@@ -44,6 +44,15 @@ class Settings(BaseSettings):
     # True when DATABASE_URL points at a transaction-mode pooler (Supabase Supavisor :6543,
     # PgBouncer transaction mode): disables asyncpg prepared-statement caching (ADR-0018).
     database_transaction_pooler: bool = False
+    # Cloud SQL for PostgreSQL in the Firebase project (ADR-0028): the instance connection name,
+    # "project:region:instance". When set, connections go through the Cloud SQL Python Connector
+    # (needs the `gcp` extra) and DATABASE_URL supplies only the user, password and database name.
+    database_cloud_sql_instance: str = Field(
+        default="", pattern=r"^([a-z0-9.:-]+:[a-z0-9-]+:[a-z0-9-]+)?$"
+    )
+    # Google service account key (the JSON file's contents) for Cloud SQL and Firebase Admin calls
+    # (ADR-0028). Unset = Application Default Credentials.
+    google_service_account_json: SecretStr | None = None
     # Empty = Redis not configured (no feature depends on it yet); readiness then skips it.
     redis_url: str = "redis://localhost:6379/0"
     readiness_timeout_seconds: float = Field(default=1.0, gt=0, le=10)

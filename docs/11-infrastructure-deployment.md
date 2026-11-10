@@ -15,7 +15,72 @@
 | `staging` | Release candidate, store sandbox, IdP test tenant | Synthetic + test accounts | Merge to `main` |
 | `production` | Live | Real | Manual approval of a tagged release |
 
+### 1.0 Platform: Firebase and Railway (ADR-0028)
+
+The platform is moving from Supabase and Vercel (ADR-0018, 0019, 0020) to the owner's Firebase project and Railway. The code supports both until the cutover: set the Firebase variables and the backend trusts both issuers, and the apps choose their provider from build configuration.
+
+**Firebase console** (project on the **Blaze** plan; region `us-east1` throughout):
+
+1. **Authentication → Sign-in method:** enable *Email/Password*.
+   * **Settings:** password policy at least 8 characters; *Email enumeration protection* on; add the web domain to *Authorized domains*.
+   * **Templates:** set the sender name and, later, the custom email domain.
+   * **Staff MFA (ADM-007):** upgrade to *Identity Platform* and enable TOTP.
+2. **Project settings → General:** copy the project ID and the **Web API key**.
+   * In Google Cloud console → APIs & Services → Credentials, restrict that key to the *Identity Toolkit API* and *Token Service API*.
+   * Add an Android app with the package name from `mobile/app.json` and download `google-services.json` (needed for FCM).
+3. **Cloud SQL** (Google Cloud console):
+   * Enable the *Cloud SQL Admin API*.
+   * Create a PostgreSQL 16 instance in `us-east1`. Start with the smallest Enterprise shared-core tier; backups on; point-in-time recovery on before real users (NFR-004).
+   * Create database `travelbuddy` and user `travelbuddy` with a generated password.
+   * Note the *instance connection name* (`project:region:instance`).
+4. **Service account** (IAM → Service accounts):
+   * Create `travelbuddy-api` with the roles *Cloud SQL Client* and *Firebase Authentication Admin*.
+   * Create a JSON key. It is a secret: it goes only into Railway variables.
+5. **Cloud Storage:**
+   * Create buckets `<project>-media-quarantine` and `<project>-media-private` (private, uniform access) and `<project>-media-public` (grant `allUsers` the *Storage Object Viewer* role).
+   * Settings → Interoperability: create an **HMAC key** for the service account.
+6. **FCM:** Project settings → Cloud Messaging. Generate the FCM V1 service account key and upload it to EAS (§1.9).
+
+**Railway** (one project, region US East, from the GitHub repository):
+
+| Service | Settings |
+|---|---|
+| `api` | Root directory `backend`; builder Dockerfile; pre-deploy command `alembic upgrade head`; health check path `/health/live`; public domain (later `api.<domain>`) |
+| `worker` | Same repository and root directory; start command `python -m app.worker`; no public domain; restart on failure |
+
+Railway's config-as-code files are deprecated (new services can't use them), so these settings live in the dashboard.
+
+**Variables** for both services (Railway shared variables):
+
+* **Database:**
+  * `DATABASE_URL=postgresql+asyncpg://travelbuddy:<password>@/travelbuddy`
+  * `DATABASE_CLOUD_SQL_INSTANCE=<project>:us-east1:<instance>`
+  * `GOOGLE_SERVICE_ACCOUNT_JSON=<key JSON>`
+* **Identity:** `FIREBASE_PROJECT_ID`, `FIREBASE_WEB_API_KEY`.
+* **Media:**
+  * `MEDIA_S3_ENDPOINT=https://storage.googleapis.com`, `MEDIA_S3_REGION=auto`;
+  * `MEDIA_S3_ACCESS_KEY_ID` and `MEDIA_S3_SECRET_ACCESS_KEY` (the HMAC key);
+  * `MEDIA_QUARANTINE_BUCKET`, `MEDIA_PRIVATE_BUCKET`, `MEDIA_PUBLIC_BUCKET`;
+  * `MEDIA_PUBLIC_BASE_URL=https://storage.googleapis.com/<project>-media-public`.
+* **The rest of the existing staging set:** `APP_ENV`, `CURSOR_SIGNING_KEY`, `PLATFORM_JWT_PRIVATE_KEY`, `REFRESH_TOKEN_DERIVATION_KEY`, `PUBLIC_SITE_URL`, `CORS_ALLOWED_ORIGINS`, `FEATURE_FLAGS` and so on.
+
+The worker makes the cron tick and after-response ticks unnecessary (§1.1): leave `CRON_SECRET` and `JOBS_INLINE_AFTER_RESPONSE` unset there.
+
+**Apps:**
+
+* **Mobile:** set `EXPO_PUBLIC_FIREBASE_API_KEY`, and `EXPO_PUBLIC_IDENTITY_PROVIDER=firebase` (or leave it unset). The APK workflow takes `identity_provider=firebase` and `firebase_api_key`.
+* **Web:** the web workstream switches its BFF adapter.
+
+**Cutover:**
+
+1. Deploy both Railway services and confirm that `/health/ready` answers and the worker logs ticks.
+2. Run the seed commands against Cloud SQL (docs/16).
+3. Point the apps at the Railway API.
+4. Then remove the Supabase variables and the Vercel API project (BL-6.11).
+
 ### 1.1 Background jobs on the serverless staging API (ADR-0019)
+
+On Railway (§1.0) the `worker` service runs the queue continuously, and nothing below is needed. This section applies while staging still runs on Vercel.
 
 Vercel functions cannot host the long-running `worker` role, so on staging the job queue (ADR-0004) is advanced by:
 
@@ -37,11 +102,13 @@ With no `REDIS_URL`, `RATE_LIMIT_STORE=auto` counts in PostgreSQL (UNLOGGED `rat
 
 ### 1.3 Account deletion (BL-1.17)
 
+With Firebase (ADR-0028), `FIREBASE_PROJECT_ID` plus `GOOGLE_SERVICE_ACCOUNT_JSON` (role *Firebase Authentication Admin*) lets the saga delete the Firebase account. Accounts of either provider are handled while both are configured.
+
 `SUPABASE_SECRET_KEY` (server-only; a `sb_secret_…` key or the legacy `service_role` JWT) lets the deletion saga delete the Supabase Auth user once an account's 30-day grace ends. Without it, our data is still erased and the job logs `idp_account_not_deleted`. The saga runs from the hourly periodic task, so on staging it needs the cron tick (`CRON_SECRET`) or after-response ticks.
 
 ### 1.4 Media storage (BL-1.08, ADR-0022)
 
-Without storage settings, uploads answer `503` and everything else works. To enable uploads on Supabase Storage:
+Without storage settings, uploads answer `503` and everything else works. With Firebase (ADR-0028), use Cloud Storage through its S3-compatible XML API (§1.0, step 5): endpoint `https://storage.googleapis.com`, region `auto`, an HMAC key, and `MEDIA_PUBLIC_BASE_URL=https://storage.googleapis.com/<public bucket>`. To enable uploads on Supabase Storage instead:
 
 1. Storage → create bucket `media-quarantine` (**private**, file size limit 25 MB, allowed types `image/jpeg,image/png,image/webp`) and bucket `media-public` (**public**).
 2. Storage → S3 connection → create an access key pair.
@@ -83,7 +150,9 @@ screen. To make pushes reach devices:
 
 1. Create the EAS project and set its id in `mobile/app.json` under `expo.extra.eas.projectId`
    (without it the app skips registration).
-2. In EAS, upload the APNs key (iOS) and the FCM credentials (Android) for the app.
+2. In EAS, upload the APNs key (iOS) and the FCM V1 service account key (Android) from the
+   Firebase project (§1.0, step 6), and add the Android app's `google-services.json` to the build
+   (`expo.android.googleServicesFile` in `mobile/app.json`).
 3. Web Push for the browser needs `WEB_PUSH_VAPID_PRIVATE_KEY` (the public key is served in
    `/v1/client-config`).
 

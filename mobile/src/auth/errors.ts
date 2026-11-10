@@ -2,14 +2,14 @@ import type { TFunction } from 'i18next';
 
 import { ApiNetworkError, ApiProblem } from '@/api';
 
-import { SupabaseAuthError } from './supabaseAuth';
+import { AuthProviderError } from './identityClient';
 
 /** A localized, user-facing message for any sign-in or registration failure. */
 export function describeAuthError(error: unknown, t: TFunction): string {
   if (__DEV__) {
     console.warn('[auth]', error);
   }
-  if (error instanceof SupabaseAuthError) {
+  if (error instanceof AuthProviderError) {
     return t(`auth.errors.${error.code}`);
   }
   if (error instanceof ApiNetworkError) {

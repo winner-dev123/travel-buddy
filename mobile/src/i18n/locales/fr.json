@@ -192,10 +192,12 @@
       "network": "Pas de connexion. Vérifiez votre accès à Internet et réessayez.",
       "unknown": "Un problème est survenu. Veuillez réessayer.",
       "missingFields": "Saisissez votre e-mail et votre mot de passe.",
-      "notConfigured": "La connexion n'est pas configurée dans cette version."
+      "notConfigured": "La connexion n'est pas configurée dans cette version.",
+      "missingEmail": "Saisissez d'abord votre adresse e-mail."
     },
     "resendConfirmation": "Renvoyer l'e-mail de confirmation",
-    "confirmationResent": "Nous avons envoyé un nouvel e-mail de confirmation. Ouvrez le lien, puis connectez-vous."
+    "confirmationResent": "Nous avons envoyé un nouvel e-mail de confirmation. Ouvrez le lien, puis connectez-vous.",
+    "resetSent": "Si un compte existe pour cette adresse, nous avons envoyé un lien pour réinitialiser votre mot de passe."
   },
   "registration": {
     "title": "Presque terminé",

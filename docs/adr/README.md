@@ -23,15 +23,16 @@ ADRs use the format **Context → Decision → Consequences → Alternatives**. 
 | [0015](0015-expo-react-native.md) | Expo (dev builds) for the React Native app | Mobile | Accepted |
 | [0016](0016-no-e2ee-in-v1.md) | No end-to-end encryption for messages in v1 | Messaging | Accepted |
 | [0017](0017-billing-direct-store-integration.md) | Direct App Store / Play integration behind a billing port | Billing | Proposed |
-| [0018](0018-supabase-managed-postgres.md) | Supabase as the managed PostgreSQL provider (database only; Data API locked down) | Data / Infra | Accepted |
-| [0019](0019-backend-api-hosting.md) | Backend API hosting: Vercel serverless (staging), Render/Docker ready for long-running roles | Infra | Accepted |
-| [0020](0020-supabase-auth-identity-provider.md) | Supabase Auth as the managed identity provider (publishable key for Auth only; staff MFA via `aal2`) | Identity | Accepted |
+| [0018](0018-supabase-managed-postgres.md) | Supabase as the managed PostgreSQL provider (database only; Data API locked down) | Data / Infra | Superseded by 0028 (cutover pending) |
+| [0019](0019-backend-api-hosting.md) | Backend API hosting: Vercel serverless (staging), Render/Docker ready for long-running roles | Infra | Superseded by 0028 (cutover pending) |
+| [0020](0020-supabase-auth-identity-provider.md) | Supabase Auth as the managed identity provider (publishable key for Auth only; staff MFA via `aal2`) | Identity | Superseded by 0028 (cutover pending) |
 | [0021](0021-rate-limit-stores-and-client-ip.md) | Rate-limit counter stores (Redis, PostgreSQL fallback for serverless) and client IP trust (BFF forwarding secret) | Platform / Security | Accepted |
-| [0022](0022-media-object-storage.md) | Media object storage through an S3-compatible port (own SigV4; Supabase Storage recommended; in-process store for dev/test) | Media / Infra | Accepted |
+| [0022](0022-media-object-storage.md) | Media object storage through an S3-compatible port (own SigV4; Supabase Storage recommended; in-process store for dev/test) | Media / Infra | Accepted. Amended by 0028 (Cloud Storage) |
 | [0023](0023-realtime-delivery-and-hosting.md) | Realtime delivery through per-user channels (gateway inside the API app, Memory/Redis bus, REST fallback on serverless) | Messaging / Infra | Accepted |
 | [0024](0024-ai-provider-and-cost-controls.md) | AI provider port with a Claude adapter (official SDK, structured outputs), asynchronous generations, quotas and database-backed spend/provider breakers | AI | Accepted |
 | [0025](0025-place-data-from-openstreetmap.md) | Place data from OpenStreetMap (ODbL) through a PlaceSource port, stored as lat/lng with bbox + haversine nearby search | Destinations / AI | Accepted |
 | [0026](0026-offline-packages-signed-manifests.md) | Offline packages: prebuilt, Ed25519-signed manifests (key in client-config), per-device licenses with quota, token download URLs redirecting to storage | Guides / Mobile | Accepted |
 | [0027](0027-destination-boundaries-from-openstreetmap.md) | Destination boundaries from OSM administrative relations (ODbL), assembled and repaired in PostGIS, loaded by an operator command; source recorded per polygon | Destinations | Accepted |
+| [0028](0028-firebase-platform-and-railway-hosting.md) | Firebase platform: Firebase Auth (account check at sign-in, Admin API deletion), Cloud SQL for PostgreSQL through the Cloud SQL Python Connector, Cloud Storage via the S3 port, FCM; API and worker on Railway | Identity / Data / Infra | Accepted (cutover pending) |
 
 Template: [`template.md`](template.md).

@@ -34,12 +34,20 @@ class VerifiedIdentity:
     amr: frozenset[str]
     auth_time: datetime
     method: str
-    # When the user came back through a password-recovery link (AUTH-005), else None.
+    # Since when the account's sessions are valid: the Supabase password-recovery link, or
+    # Firebase's ``validSince`` (moved by a password change). Older sessions end (AUTH-005).
     recovered_at: datetime | None = None
 
 
 class KeyProvider(Protocol):
     async def get_key(self, kid: str | None) -> Any: ...
+
+
+class AccountCheck(Protocol):
+    async def credentials_valid_since(self, id_token: str) -> datetime | None:
+        """Called after the token verified: raises if the IdP says the token or account is no
+        longer valid; returns since when the account's sessions are valid (None if unknown)."""
+        ...
 
 
 class StaticKeyProvider:
@@ -104,6 +112,7 @@ class IssuerConfig:
     algorithms: Sequence[str]
     keys: KeyProvider
     method: str
+    account_check: AccountCheck | None = None
 
 
 def _invalid(detail: str = "The identity token is invalid.") -> AppError:
@@ -114,8 +123,10 @@ def _parse_amr(claims: Mapping[str, Any]) -> frozenset[str]:
     """Authentication methods, normalized for platform policies (ADM-007, ADR-0020).
 
     RFC 8176 ``amr`` is a list of strings; Supabase Auth uses ``[{"method": ..., ...}]``.
-    Supabase signals a completed second factor with ``aal: "aal2"``; that is recorded as the
-    RFC 8176 ``mfa`` method so policies need not know the vendor.
+    Supabase signals a completed second factor with ``aal: "aal2"`` and Firebase with
+    ``firebase.sign_in_second_factor``; both are recorded as the RFC 8176 ``mfa`` method so
+    policies need not know the vendor. Firebase's ``sign_in_provider`` is recorded too
+    (``password`` as RFC 8176 ``pwd``).
     """
     value = claims.get("amr")
     methods: set[str] = set()
@@ -127,7 +138,34 @@ def _parse_amr(claims: Mapping[str, Any]) -> frozenset[str]:
                 methods.add(item["method"])
     if claims.get("aal") == "aal2":
         methods.add(MFA_METHOD)
+    firebase = _firebase_claims(claims)
+    provider = firebase.get("sign_in_provider")
+    if isinstance(provider, str):
+        methods.add("pwd" if provider == "password" else provider)
+    if isinstance(firebase.get("sign_in_second_factor"), str):
+        methods.add(MFA_METHOD)
     return frozenset(methods)
+
+
+def _firebase_claims(claims: Mapping[str, Any]) -> Mapping[str, Any]:
+    value = claims.get("firebase")
+    return value if isinstance(value, dict) else {}
+
+
+# Firebase ``sign_in_provider`` → the identity method recorded with the account link (ADR-0028).
+_FIREBASE_METHODS = {"password": "email_password", "google.com": "google", "apple.com": "apple"}
+
+
+def _method(claims: Mapping[str, Any], default: str) -> str:
+    provider = _firebase_claims(claims).get("sign_in_provider")
+    return _FIREBASE_METHODS.get(provider, default) if isinstance(provider, str) else default
+
+
+def _is_anonymous(claims: Mapping[str, Any]) -> bool:
+    return (
+        claims.get("is_anonymous") is True  # Supabase
+        or _firebase_claims(claims).get("sign_in_provider") == "anonymous"  # Firebase
+    )
 
 
 RECOVERY_METHOD = "recovery"
@@ -230,9 +268,16 @@ class OidcVerifier:
         if expected_nonce is not None and claims.get("nonce") != expected_nonce:
             raise _invalid("The identity token nonce does not match.")
 
-        if claims.get("is_anonymous") is True:
-            # Supabase anonymous sign-ins are not accounts; never let them register or log in.
+        if _is_anonymous(claims):
+            # Anonymous sign-ins are not accounts; never let them register or log in.
             raise _invalid("Anonymous sessions cannot be used to sign in.")
+        recovered_at = _recovered_at(claims)
+        if config.account_check is not None:
+            # Firebase: refuses disabled accounts and revoked tokens. ``validSince`` moves when the
+            # password changes, which ends older sessions like a Supabase recovery (AUTH-005).
+            valid_since = await config.account_check.credentials_valid_since(id_token)
+            if valid_since is not None:
+                recovered_at = max(recovered_at or valid_since, valid_since)
         email = claims.get("email")
         amr = _parse_amr(claims)
         auth_time = datetime.fromtimestamp(_auth_time(claims), tz=UTC)
@@ -244,6 +289,6 @@ class OidcVerifier:
             name=_display_name(claims),
             amr=amr,
             auth_time=auth_time,
-            method=config.method,
-            recovered_at=_recovered_at(claims),
+            method=_method(claims, config.method),
+            recovered_at=recovered_at,
         )

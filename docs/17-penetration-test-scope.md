@@ -16,7 +16,7 @@ findings are reported and fixed. The threat model it builds on is [docs/08](08-p
 | Realtime | Message delivery and tickets (ADR-0013, ADR-0023) | Ticket replay and cross-conversation access |
 
 **Out of scope:** production; denial of service and load (covered by BL-6.04); third-party
-platforms themselves (Supabase, Vercel, Anthropic, the stores; follow their own disclosure
+platforms themselves (Firebase/Google Cloud, Railway, Supabase, Vercel, Anthropic, the stores; follow their own disclosure
 programmes); social engineering and physical access; other customers' tenants on shared hosts.
 
 ## 2. Priorities

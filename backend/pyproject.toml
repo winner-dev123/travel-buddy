@@ -27,6 +27,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Cloud SQL for PostgreSQL in the Firebase project (ADR-0028); installed in the container image.
+gcp = ["cloud-sql-python-connector[asyncpg]>=1.23,<2"]
 dev = [
   "pytest>=8.3",
   "pytest-asyncio>=0.24",
@@ -73,6 +75,11 @@ files = ["app"]
 
 [[tool.mypy.overrides]]
 module = ["geoalchemy2.*", "asyncpg.*"]
+ignore_missing_imports = true
+
+# Optional `gcp` extra, absent from CI and local dev environments (ADR-0028).
+[[tool.mypy.overrides]]
+module = ["google.*"]
 ignore_missing_imports = true
 
 [tool.pydantic-mypy]

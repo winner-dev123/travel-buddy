@@ -7,10 +7,9 @@ from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.core.config import get_settings
-from app.core.db import SECURE_PUBLIC_SCHEMA_SQL, engine_options
+from app.core.db import SECURE_PUBLIC_SCHEMA_SQL, Database
 from app.models_registry import Base
 
 config = context.config
@@ -63,13 +62,15 @@ def _do_run_migrations(connection: Connection) -> None:
 
 
 async def run_migrations_online() -> None:
-    url, connect_args = engine_options(
-        _database_url(), transaction_pooler=get_settings().database_transaction_pooler
+    # Same connection path as the app: direct, pooled or Cloud SQL connector (ADR-0028).
+    database = Database.from_settings(
+        get_settings(), url=_database_url(), pool_size=1, max_overflow=0
     )
-    engine = create_async_engine(url, connect_args=connect_args)
-    async with engine.connect() as connection:
-        await connection.run_sync(_do_run_migrations)
-    await engine.dispose()
+    try:
+        async with database.engine.connect() as connection:
+            await connection.run_sync(_do_run_migrations)
+    finally:
+        await database.dispose()
 
 
 if context.is_offline_mode():

@@ -404,6 +404,21 @@ def test_signing_in_from_a_recovery_link_ends_older_sessions(live_app: LiveApp) 
     assert _refresh(live_app, fresh["refresh_token"]).status_code == 200
 
 
+@pytest.mark.req("AUTH-005")
+def test_the_recovery_time_at_registration_does_not_end_the_first_session(
+    live_app: LiveApp,
+) -> None:
+    # Firebase reports validSince from account creation, so the very first token already carries a
+    # "credentials valid since" time; the next sign-in must not treat it as a password change.
+    sub = f"user-{uuid.uuid4()}"
+    first_token = _id_token(live_app, sub=sub, recovered=True)
+    phone = _register(live_app, first_token).json()["tokens"]
+    live_app.clock.set(live_app.clock.now() + timedelta(minutes=1))
+    laptop = live_app.client.post("/v1/auth/login", json={"id_token": first_token, "client": "web"})
+    assert laptop.status_code == 200, laptop.text
+    assert _refresh(live_app, phone["refresh_token"]).status_code == 200
+
+
 @pytest.mark.security
 def test_cannot_revoke_someone_elses_session(live_app: LiveApp) -> None:
     alice = _register(live_app, _id_token(live_app)).json()["tokens"]

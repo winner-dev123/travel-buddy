@@ -32,13 +32,7 @@ async def _run(path: str, locales: list[str]) -> list[str]:
     media = MediaSettings()
     if media.resolved_storage != "s3":
         raise SystemExit("offline packages need MEDIA_STORAGE=s3 (shared object storage)")
-    database = Database(
-        settings.database_url,
-        pool_size=1,
-        max_overflow=0,
-        pool_recycle_seconds=settings.database_pool_recycle_seconds,
-        transaction_pooler=settings.database_transaction_pooler,
-    )
+    database = Database.from_settings(settings, pool_size=1, max_overflow=0)
     clock = SystemClock()
     built: list[str] = []
     try:

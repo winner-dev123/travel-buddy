@@ -177,13 +177,7 @@ async def _run(path: Path) -> SeedResult:
     import app.models_registry  # noqa: F401
 
     settings = get_settings()
-    database = Database(
-        settings.database_url,
-        pool_size=1,
-        max_overflow=0,
-        pool_recycle_seconds=settings.database_pool_recycle_seconds,
-        transaction_pooler=settings.database_transaction_pooler,
-    )
+    database = Database.from_settings(settings, pool_size=1, max_overflow=0)
     try:
         async with database.sessionmaker() as session, session.begin():
             return await load_content(session, read_document(path), SystemClock().now())

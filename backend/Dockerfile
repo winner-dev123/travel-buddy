@@ -6,7 +6,8 @@ ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 WORKDIR /build
 COPY pyproject.toml README.md ./
 COPY app ./app
-RUN pip wheel --wheel-dir /wheels .
+# The `gcp` extra adds the Cloud SQL connector (ADR-0028).
+RUN pip wheel --wheel-dir /wheels ".[gcp]"
 
 FROM python:3.12-slim AS runtime
 ENV PYTHONUNBUFFERED=1 \
@@ -23,6 +24,6 @@ COPY migrations ./migrations
 USER 10001:10001
 EXPOSE 8000
 # Migrations run as a separate one-off task: `alembic upgrade head` (docs/11 section 3).
-# PORT is injected by the platform (Render sets it); proxy headers are trusted because the
+# PORT is injected by the platform (Railway sets it); proxy headers are trusted because the
 # container is only reachable through the platform's load balancer.
 CMD ["sh", "-c", "exec uvicorn app.main:create_app --factory --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*' --no-server-header"]

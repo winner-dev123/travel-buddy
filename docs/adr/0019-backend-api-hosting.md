@@ -1,6 +1,6 @@
 # ADR-0019: Backend API hosting: Vercel serverless now, container host later
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-0028](0028-firebase-platform-and-railway-hosting.md) (cutover pending; in force until then)
 - **Date:** 2026-11-09
 - **Deciders:** Product owner, backend
 - **Resolves:** the rest of PRD Q-8 for the staging API. Web is on Vercel (web workstream), and the database is on Supabase (ADR-0018)

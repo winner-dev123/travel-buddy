@@ -34,7 +34,9 @@ Legal review must confirm the bases, retention periods and transfer mechanisms b
 
 | Processor | Service | Location | Transfer mechanism |
 |---|---|---|---|
-| Supabase | Postgres, auth | Region to be chosen (BL-6.09) | DPA; SCCs if outside the EEA |
+| Google (Firebase, Google Cloud) | Authentication (Firebase Auth), Postgres (Cloud SQL), object storage (Cloud Storage), Android push (FCM) (ADR-0028) | `us-east1`; EU region to be decided (BL-6.11) | Google Cloud DPA, SCCs |
+| Railway | API and worker hosting (ADR-0028) | US East | DPA, SCCs |
+| Supabase | Postgres, auth, until the ADR-0028 cutover | `us-east-1` | DPA; SCCs if outside the EEA |
 | Vercel | API and web hosting, cron | Global edge, functions region-pinned | DPA, SCCs |
 | Object storage (S3-compatible) | Media, offline packages, export archives | To be chosen | DPA, SCCs |
 | Anthropic | AI itineraries, translation, challenge judging | US | DPA, SCCs, no training on API data |
@@ -70,7 +72,7 @@ a justification. The user sees each request and its status under Settings → Yo
 ## 5. Open items for the privacy review
 
 1. Controller details, EU representative (if needed) and DPO decision.
-2. Supabase and storage regions (EU project if the launch markets require it).
+2. Google Cloud region for Cloud SQL and Cloud Storage (EU if the launch markets require it, ADR-0028).
 3. Legal confirmation of retention for billing records, reward fulfillment and moderation evidence.
 4. Legitimate interest assessments for moderation, audit and abuse prevention (referenced in docs/08).
 5. Sign-off of the discovery DPIA (docs/13) and a short DPIA screening for AI judging of answers.

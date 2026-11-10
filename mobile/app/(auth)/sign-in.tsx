@@ -9,17 +9,41 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getApiClient } from '@/api';
 import { mintDevIdToken } from '@/auth/devIdp';
 import { describeAuthError } from '@/auth/errors';
+import { FirebaseAuthClient } from '@/auth/firebaseAuth';
+import {
+  AuthProviderError,
+  MIN_PASSWORD_LENGTH,
+  type PasswordAuthClient,
+} from '@/auth/identityClient';
 import { OAuthCancelled, signInWithProvider } from '@/auth/oauth';
 import { APP_INFO_KEY, exchangeIdToken, fetchAppInfo } from '@/auth/session';
 import { takeHomeRoute } from '@/auth/sessionStore';
-import { type OAuthProvider, SupabaseAuthClient, SupabaseAuthError } from '@/auth/supabaseAuth';
+import { type OAuthProvider, SupabaseAuthClient } from '@/auth/supabaseAuth';
 import { Button, Notice, TextField } from '@/components/Form';
-import { getIdentityProviderKind, getSupabaseConfig } from '@/config/env';
+import {
+  getFirebaseConfig,
+  getIdentityProviderKind,
+  getSupabaseConfig,
+  type IdentityProviderKind,
+} from '@/config/env';
+import { i18n } from '@/i18n';
 import { useAppTheme } from '@/theme/useAppTheme';
 
 type Mode = 'signIn' | 'signUp';
 
-/** SCR-001 Sign in / create account (AUTH-001..003, ADR-0020). */
+/** The configured provider's client; null for the development IdP or a build missing settings. */
+function passwordClient(provider: IdentityProviderKind): PasswordAuthClient | null {
+  try {
+    if (provider === 'firebase') {
+      return new FirebaseAuthClient(getFirebaseConfig(), undefined, () => i18n.language);
+    }
+    return provider === 'supabase' ? new SupabaseAuthClient(getSupabaseConfig()) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** SCR-001 Sign in / create account (AUTH-001..003, ADR-0020, ADR-0028). */
 export default function SignInScreen() {
   const { t } = useTranslation();
   const theme = useAppTheme();
@@ -34,31 +58,24 @@ export default function SignInScreen() {
   const [info, setInfo] = useState<string | null>(null);
   // After a sign-up, or when sign-in says the email isn't confirmed yet (SCR-002).
   const [canResend, setCanResend] = useState(false);
-  // A build without Supabase settings shows an explicit error instead of crashing.
-  const supabase = useMemo(() => {
-    if (provider !== 'supabase') {
-      return null;
-    }
-    try {
-      return new SupabaseAuthClient(getSupabaseConfig());
-    } catch {
-      return null;
-    }
-  }, [provider]);
-  const misconfigured = provider === 'supabase' && supabase === null;
-  // AUTH-002/003: only the providers configured in Supabase, as announced by the API. Apple comes
+  // A build without the provider's settings shows an explicit error instead of crashing.
+  const auth = useMemo(() => passwordClient(provider), [provider]);
+  const usesPassword = provider !== 'dev';
+  const misconfigured = usesPassword && auth === null;
+  // AUTH-002/003: only the providers configured in the IdP, as announced by the API. Apple comes
   // first on iOS (App Store guideline 4.8: at least as prominent as other providers).
   const appInfo = useQuery({
     queryKey: APP_INFO_KEY,
     queryFn: () => fetchAppInfo(getApiClient()),
-    enabled: supabase !== null,
+    enabled: auth !== null,
     staleTime: 5 * 60_000,
   });
-  // AUTH-005: the IdP reset flow runs on the web; the new password then works here too.
-  const resetUrl = appInfo.data?.password_reset_url ?? null;
+  // AUTH-005: Firebase sends the reset email from here; Supabase's reset runs on the web. Either
+  // way the new password then works here too.
+  const resetUrl = auth?.supportsInAppReset ? null : (appInfo.data?.password_reset_url ?? null);
   const order: Record<OAuthProvider, number> =
     Platform.OS === 'ios' ? { apple: 0, google: 1 } : { google: 0, apple: 1 };
-  const socialProviders = (appInfo.data?.auth_providers ?? [])
+  const socialProviders = (auth?.supportsSocial ? (appInfo.data?.auth_providers ?? []) : [])
     .filter((p): p is OAuthProvider => p === 'google' || p === 'apple')
     .sort((a, b) => order[a] - order[b]);
 
@@ -76,8 +93,12 @@ export default function SignInScreen() {
     setError(null);
     setInfo(null);
     const trimmedEmail = email.trim();
-    if (!trimmedEmail || (provider === 'supabase' && !password)) {
+    if (!trimmedEmail || (usesPassword && !password)) {
       setError(t('auth.errors.missingFields'));
+      return;
+    }
+    if (usesPassword && mode === 'signUp' && password.length < MIN_PASSWORD_LENGTH) {
+      setError(t('auth.errors.weak_password'));
       return;
     }
     setBusy(true);
@@ -91,11 +112,11 @@ export default function SignInScreen() {
         );
         return;
       }
-      if (!supabase) {
+      if (!auth) {
         return;
       }
       if (mode === 'signUp') {
-        const result = await supabase.signUp(trimmedEmail, password);
+        const result = await auth.signUp(trimmedEmail, password);
         if (result.kind === 'confirmation_sent') {
           setInfo(t('auth.confirmationSent'));
           setCanResend(true);
@@ -103,19 +124,19 @@ export default function SignInScreen() {
           return;
         }
         await finish(result.accessToken);
-        void supabase.signOut(result.accessToken);
+        void auth.signOut(result.accessToken);
         return;
       }
-      const accessToken = await supabase.signInWithPassword(trimmedEmail, password);
+      const idToken = await auth.signInWithPassword(trimmedEmail, password);
       try {
-        await finish(accessToken);
+        await finish(idToken);
       } finally {
-        // The Supabase session was only needed for the exchange.
-        void supabase.signOut(accessToken);
+        // The provider's session was only needed for the exchange.
+        void auth.signOut(idToken);
       }
     } catch (caught) {
       setError(describeAuthError(caught, t));
-      if (caught instanceof SupabaseAuthError && caught.code === 'email_not_confirmed') {
+      if (caught instanceof AuthProviderError && caught.code === 'email_not_confirmed') {
         setCanResend(true);
       }
     } finally {
@@ -124,7 +145,8 @@ export default function SignInScreen() {
   }
 
   async function continueWith(social: OAuthProvider): Promise<void> {
-    if (!supabase) return;
+    if (!(auth instanceof SupabaseAuthClient)) return;
+    const supabase = auth;
     setError(null);
     setInfo(null);
     setBusy(true);
@@ -145,12 +167,35 @@ export default function SignInScreen() {
   }
 
   async function resend() {
-    if (!supabase || email.trim().length === 0) return;
+    if (!auth || email.trim().length === 0) return;
+    if (!password) {
+      setError(t('auth.errors.missingFields'));
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      await supabase.resendConfirmation(email.trim());
+      await auth.resendConfirmation(email.trim(), password);
       setInfo(t('auth.confirmationResent'));
+    } catch (caught) {
+      setError(describeAuthError(caught, t));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sendReset() {
+    if (!auth) return;
+    setError(null);
+    setInfo(null);
+    if (email.trim().length === 0) {
+      setError(t('auth.errors.missingEmail'));
+      return;
+    }
+    setBusy(true);
+    try {
+      await auth.sendPasswordReset(email.trim());
+      setInfo(t('auth.resetSent'));
     } catch (caught) {
       setError(describeAuthError(caught, t));
     } finally {
@@ -217,7 +262,7 @@ export default function SignInScreen() {
             textContentType="emailAddress"
             testID="sign-in-email"
           />
-          {provider === 'supabase' ? (
+          {usesPassword ? (
             <TextField
               label={t('auth.password')}
               hint={mode === 'signUp' ? t('auth.passwordHint') : undefined}
@@ -242,16 +287,16 @@ export default function SignInScreen() {
             disabled={misconfigured}
             testID="sign-in-submit"
           />
-          {provider === 'supabase' && mode === 'signIn' && resetUrl ? (
+          {usesPassword && mode === 'signIn' && (resetUrl || auth?.supportsInAppReset) ? (
             <Button
               variant="secondary"
               label={t('auth.forgotPassword')}
-              onPress={() => void WebBrowser.openBrowserAsync(resetUrl)}
+              onPress={() => void (resetUrl ? WebBrowser.openBrowserAsync(resetUrl) : sendReset())}
               disabled={busy}
               testID="sign-in-forgot-password"
             />
           ) : null}
-          {provider === 'supabase' && canResend && mode === 'signIn' ? (
+          {usesPassword && canResend && mode === 'signIn' ? (
             <Button
               variant="secondary"
               label={t('auth.resendConfirmation')}
@@ -260,7 +305,7 @@ export default function SignInScreen() {
               testID="sign-in-resend"
             />
           ) : null}
-          {provider === 'supabase' && socialProviders.length > 0 ? (
+          {socialProviders.length > 0 ? (
             <>
               <Text
                 style={[
@@ -283,7 +328,7 @@ export default function SignInScreen() {
               ))}
             </>
           ) : null}
-          {provider === 'supabase' ? (
+          {usesPassword ? (
             <Button
               variant="secondary"
               label={mode === 'signIn' ? t('auth.switchToSignUp') : t('auth.switchToSignIn')}

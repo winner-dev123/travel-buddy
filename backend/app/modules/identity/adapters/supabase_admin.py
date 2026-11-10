@@ -7,24 +7,11 @@ server-only. Without it the saga still erases our data and logs that the IdP acc
 
 from __future__ import annotations
 
-from typing import Protocol
 from urllib.parse import quote
 
 import httpx
 
-from app.modules.identity.config import IdentitySettings
-
-
-class IdpAccountDeleter(Protocol):
-    def handles(self, issuer: str) -> bool: ...
-
-    async def delete(self, issuer: str, subject: str) -> None:
-        """Delete the account; an already-missing account counts as deleted. Raises to retry."""
-        ...
-
-
-class IdpDeletionError(Exception):
-    pass
+from app.modules.identity.adapters.idp_deletion import IdpDeletionError
 
 
 def supabase_base_url(issuer: str) -> str | None:
@@ -56,11 +43,3 @@ class SupabaseAdminDeleter:
         if response.status_code in (200, 204, 404):
             return
         raise IdpDeletionError(f"Supabase Admin API answered {response.status_code}")
-
-
-def build_idp_deleter(
-    settings: IdentitySettings, http: httpx.AsyncClient
-) -> IdpAccountDeleter | None:
-    if settings.supabase_secret_key is None:
-        return None
-    return SupabaseAdminDeleter(settings.supabase_secret_key.get_secret_value(), http)

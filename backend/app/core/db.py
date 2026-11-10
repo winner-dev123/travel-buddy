@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 import uuid
-from collections.abc import AsyncIterator, Iterable
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable
 from enum import StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fastapi import Request
 from sqlalchemy import CheckConstraint, MetaData, make_url, text
@@ -16,6 +18,9 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
+
+if TYPE_CHECKING:
+    from app.core.config import Settings
 
 # Stable constraint names so Alembic autogenerate output is deterministic (ADR-0007).
 NAMING_CONVENTION: dict[str, str] = {
@@ -115,6 +120,58 @@ def engine_options(url: str, *, transaction_pooler: bool) -> tuple[str, dict[str
     return pooled.render_as_string(hide_password=False), connect_args
 
 
+CLOUD_SQL_SCOPE = "https://www.googleapis.com/auth/sqlservice.admin"
+
+
+def cloud_sql_connect(
+    instance: str, url: str, *, credentials_json: str | None
+) -> tuple[Callable[[], Awaitable[Any]], Callable[[], Awaitable[None]]]:
+    """``(connect, close)`` for Cloud SQL for PostgreSQL through the Cloud SQL Python Connector.
+
+    The connector reaches the instance's public IP over TLS with an ephemeral certificate issued to
+    the service account, so no IP allow-list is needed. That suits hosts without fixed egress
+    addresses, such as Railway (ADR-0028). ``url`` supplies only the user, password and database
+    name. The connector is created on first use, inside the running event loop, and certificates
+    are refreshed lazily when a connection is opened. The import is deferred because the connector
+    is the optional ``gcp`` extra.
+    """
+    parsed = make_url(url)
+    state: dict[str, Any] = {}
+    lock = asyncio.Lock()
+
+    async def connector() -> Any:
+        async with lock:
+            if "connector" not in state:
+                from google.cloud.sql.connector import create_async_connector
+
+                credentials = None
+                if credentials_json:
+                    from google.oauth2 import service_account
+
+                    credentials = service_account.Credentials.from_service_account_info(
+                        json.loads(credentials_json), scopes=[CLOUD_SQL_SCOPE]
+                    )
+                state["connector"] = await create_async_connector(
+                    credentials=credentials, refresh_strategy="lazy"
+                )
+        return state["connector"]
+
+    async def connect() -> Any:
+        return await (await connector()).connect_async(
+            instance,
+            "asyncpg",
+            user=parsed.username,
+            password=parsed.password,
+            db=parsed.database,
+        )
+
+    async def close() -> None:
+        if "connector" in state:
+            await state.pop("connector").close_async()
+
+    return connect, close
+
+
 class Database:
     """Owns the async engine. Connections are opened lazily on first use."""
 
@@ -126,9 +183,18 @@ class Database:
         max_overflow: int | None = None,
         pool_recycle_seconds: int = 600,
         transaction_pooler: bool = False,
+        cloud_sql_instance: str | None = None,
+        google_credentials_json: str | None = None,
         echo: bool = False,
     ) -> None:
         engine_url, connect_args = engine_options(url, transaction_pooler=transaction_pooler)
+        options: dict[str, Any] = {"connect_args": connect_args}
+        self._close_connector: Callable[[], Awaitable[None]] | None = None
+        if cloud_sql_instance:
+            connect, self._close_connector = cloud_sql_connect(
+                cloud_sql_instance, url, credentials_json=google_credentials_json
+            )
+            engine_url, options = "postgresql+asyncpg://", {"async_creator": connect}
         self.engine: AsyncEngine = create_async_engine(
             engine_url,
             pool_size=pool_size,
@@ -136,11 +202,32 @@ class Database:
             pool_pre_ping=True,
             # Managed poolers close idle server connections; recycle before they do.
             pool_recycle=pool_recycle_seconds,
-            connect_args=connect_args,
             echo=echo,
+            **options,
         )
         self.sessionmaker: async_sessionmaker[AsyncSession] = async_sessionmaker(
             self.engine, expire_on_commit=False
+        )
+
+    @classmethod
+    def from_settings(
+        cls,
+        settings: Settings,
+        *,
+        url: str | None = None,
+        pool_size: int | None = None,
+        max_overflow: int | None = None,
+    ) -> Database:
+        """The database the settings describe: direct, pooled or Cloud SQL (ADR-0018, ADR-0028)."""
+        credentials = settings.google_service_account_json
+        return cls(
+            url or settings.database_url,
+            pool_size=settings.database_pool_size if pool_size is None else pool_size,
+            max_overflow=settings.database_max_overflow if max_overflow is None else max_overflow,
+            pool_recycle_seconds=settings.database_pool_recycle_seconds,
+            transaction_pooler=settings.database_transaction_pooler,
+            cloud_sql_instance=settings.database_cloud_sql_instance or None,
+            google_credentials_json=credentials.get_secret_value() if credentials else None,
         )
 
     async def ping(self) -> None:
@@ -149,6 +236,8 @@ class Database:
 
     async def dispose(self) -> None:
         await self.engine.dispose()
+        if self._close_connector is not None:
+            await self._close_connector()
 
 
 async def get_session(request: Request) -> AsyncIterator[AsyncSession]:

@@ -1,6 +1,6 @@
 # ADR-0020: Supabase Auth as the managed identity provider
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-0028](0028-firebase-platform-and-railway-hosting.md) (cutover pending; in force until then)
 - **Date:** 2026-11-09
 - **Deciders:** Product owner (delegated the recommendation: "pls recommend you and continue"), backend
 - **Requirements:** AUTH-001..007, ADM-007, ADM-008, SAFE-010

@@ -63,7 +63,7 @@ today. If one is added, update this table and the label.
 |---|---|
 | Data encrypted in transit | Yes (TLS 1.2+, NFR-006) |
 | Users can request deletion | Yes (in the app and on the web) |
-| Data shared with third parties | No sale or sharing for advertising. Processors: Supabase (database, auth), Vercel (hosting), object storage, Anthropic (AI itineraries and translations, only the request text, no account data), Apple and Google for purchases and push |
+| Data shared with third parties | No sale or sharing for advertising. Processors: Google (Firebase Auth, Cloud SQL, Cloud Storage, FCM) and Railway (hosting) after the ADR-0028 cutover, Supabase (database, auth) and Vercel (hosting) until then, Anthropic (AI itineraries and translations, only the request text, no account data), Apple and Google for purchases and push |
 | Data types | As in §4: email, photos and videos, other user content, messages, approximate location (transient), user and device IDs, purchase history |
 | Optional collection | Discovery location and post translation are opt-in (consents) |
 

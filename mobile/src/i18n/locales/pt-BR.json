@@ -192,10 +192,12 @@
       "network": "Sem conexão. Verifique sua internet e tente de novo.",
       "unknown": "Algo deu errado. Tente de novo.",
       "missingFields": "Informe seu e-mail e sua senha.",
-      "notConfigured": "O login não está configurado nesta versão."
+      "notConfigured": "O login não está configurado nesta versão.",
+      "missingEmail": "Digite seu e-mail primeiro."
     },
     "resendConfirmation": "Reenviar o e-mail de confirmação",
-    "confirmationResent": "Enviamos outro e-mail de confirmação. Abra o link e depois entre."
+    "confirmationResent": "Enviamos outro e-mail de confirmação. Abra o link e depois entre.",
+    "resetSent": "Se existir uma conta com este e-mail, enviamos um link para redefinir sua senha."
   },
   "registration": {
     "title": "Quase lá",

@@ -192,10 +192,12 @@
       "network": "Sin conexión. Revisa tu internet e inténtalo de nuevo.",
       "unknown": "Algo salió mal. Inténtalo de nuevo.",
       "missingFields": "Introduce tu correo y tu contraseña.",
-      "notConfigured": "El inicio de sesión no está configurado en esta versión."
+      "notConfigured": "El inicio de sesión no está configurado en esta versión.",
+      "missingEmail": "Primero escribe tu correo."
     },
     "resendConfirmation": "Reenviar el correo de confirmación",
-    "confirmationResent": "Te enviamos otro correo de confirmación. Abre el enlace y luego inicia sesión."
+    "confirmationResent": "Te enviamos otro correo de confirmación. Abre el enlace y luego inicia sesión.",
+    "resetSent": "Si existe una cuenta con este correo, te enviamos un enlace para restablecer la contraseña."
   },
   "registration": {
     "title": "Ya casi está",

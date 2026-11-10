@@ -139,12 +139,7 @@ async def _main(path: Path) -> None:
     from app.core.db import Database
 
     settings = get_settings()
-    database = Database(
-        settings.database_url,
-        pool_size=1,
-        max_overflow=0,
-        transaction_pooler=settings.database_transaction_pooler,
-    )
+    database = Database.from_settings(settings, pool_size=1, max_overflow=0)
     try:
         async with database.sessionmaker() as session, session.begin():
             result = await load_catalog(session, read_document(path))

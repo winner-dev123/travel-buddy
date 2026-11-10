@@ -3,7 +3,8 @@ name: mobile-apk
 # Manually triggered Android APK build for testers and emulators (release build, debug-signed:
 # NOT for store distribution). Runs on Linux because Windows builds hit MAX_PATH in the native
 # CMake step. Public client configuration comes in as inputs; secrets are never needed here
-# (the app only ever embeds the Supabase PUBLISHABLE key, ADR-0020).
+# (the app only ever embeds the Firebase Web API key, ADR-0028, or the Supabase PUBLISHABLE key,
+# ADR-0020).
 
 on:
   workflow_dispatch:
@@ -12,13 +13,22 @@ on:
         description: Platform API base URL
         required: true
         default: https://travel-buddy-api-jet.vercel.app
-      supabase_url:
-        description: Supabase project URL
+      identity_provider:
+        description: Sign-in provider
         required: true
+        default: supabase
+        type: choice
+        options: [firebase, supabase]
+      firebase_api_key:
+        description: Firebase Web API key (AIza...), for identity_provider=firebase. Never a service-account key.
+        required: false
+      supabase_url:
+        description: Supabase project URL, for identity_provider=supabase
+        required: false
         default: https://dmvhbgxxxilcniadoqvb.supabase.co
       supabase_publishable_key:
-        description: Supabase PUBLISHABLE key (sb_publishable_...). Never a secret key.
-        required: true
+        description: Supabase PUBLISHABLE key (sb_publishable_...), for identity_provider=supabase. Never a secret key.
+        required: false
       architectures:
         description: Comma-separated ABIs
         required: true
@@ -56,19 +66,30 @@ jobs:
       - name: Client configuration
         env:
           API_BASE_URL: ${{ inputs.api_base_url }}
+          PROVIDER: ${{ inputs.identity_provider }}
+          FIREBASE_KEY: ${{ inputs.firebase_api_key }}
           SUPABASE_URL: ${{ inputs.supabase_url }}
           SUPABASE_KEY: ${{ inputs.supabase_publishable_key }}
         run: |
-          case "$SUPABASE_KEY" in
-            sb_publishable_*) ;;
-            *) echo "::error::Only a Supabase publishable key (sb_publishable_...) may be embedded."; exit 1 ;;
-          esac
           {
             echo "EXPO_PUBLIC_API_BASE_URL=$API_BASE_URL"
-            echo "EXPO_PUBLIC_IDENTITY_PROVIDER=supabase"
-            echo "EXPO_PUBLIC_SUPABASE_URL=$SUPABASE_URL"
-            echo "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$SUPABASE_KEY"
+            echo "EXPO_PUBLIC_IDENTITY_PROVIDER=$PROVIDER"
           } > .env.production.local
+          if [ "$PROVIDER" = "firebase" ]; then
+            if ! printf '%s' "$FIREBASE_KEY" | grep -Eq '^AIza[0-9A-Za-z_-]{35}$'; then
+              echo "::error::Only a Firebase Web API key (AIza...) may be embedded."; exit 1
+            fi
+            echo "EXPO_PUBLIC_FIREBASE_API_KEY=$FIREBASE_KEY" >> .env.production.local
+          else
+            case "$SUPABASE_KEY" in
+              sb_publishable_*) ;;
+              *) echo "::error::Only a Supabase publishable key (sb_publishable_...) may be embedded."; exit 1 ;;
+            esac
+            {
+              echo "EXPO_PUBLIC_SUPABASE_URL=$SUPABASE_URL"
+              echo "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$SUPABASE_KEY"
+            } >> .env.production.local
+          fi
 
       - name: Generate the native Android project
         run: npx expo prebuild --platform android --no-install
