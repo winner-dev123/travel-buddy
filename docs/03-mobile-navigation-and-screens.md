@@ -265,7 +265,7 @@ Offline: **Works offline** (fully functional from local data) · **Cached read-o
 | SCR-087 | Create or edit challenge | `/challenges/new?groupId=` | 5 | Group role + owner premium | Online only | `POST /v1/groups/{id}/challenges` | CHAL, BILL |
 | SCR-088 | Results and rewards | results inline in `/challenges/[id]`; `/rewards` (my rewards and codes) | 5 | Group member | Cached read-only | `GET /v1/challenges/{id}/results` | CHAL |
 | SCR-089 | Team challenge thread | `/chat/[id]` (the team's conversation) | 5 | Team member | Cached read-only | team conversation | CHAL, GCHAT |
-| SCR-090 | Judge review queue | `/challenges/[id]/judge` | 5 | `challenges.judge` role | Online only | judging endpoints | CHAL |
+| SCR-090 | Judge review queue | `/challenges/review?id=` | 5 | `challenges.judge` role | Online only | judging endpoints | CHAL |
 
 ### Profile and settings
 

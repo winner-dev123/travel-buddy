@@ -766,6 +766,36 @@
       "disputed": "En revisión"
     },
     "sponsor": "De {{name}}",
-    "code": "Código del premio"
+    "code": "Código del premio",
+    "review": {
+      "open": "Revisar respuestas",
+      "title": "Revisar respuestas",
+      "empty": "No hay respuestas pendientes de decisión.",
+      "ownAnswer": "No puedes evaluar tu propia respuesta.",
+      "final": "Los resultados son definitivos. Usa las disputas.",
+      "status": {
+        "pending": "Pendiente",
+        "needs_review": "Necesita un juez",
+        "correct": "Correcta",
+        "incorrect": "Incorrecta",
+        "void": "Anulada"
+      },
+      "ai": "Juez IA ({{confidence}}% de seguridad): {{rationale}}",
+      "verdicts": {
+        "correct": "Correcta",
+        "incorrect": "Incorrecta",
+        "void": "Anular"
+      },
+      "winners": "Ganadores",
+      "confirm": "Confirmar",
+      "revoke": "Revocar"
+    },
+    "dispute": {
+      "title": "¿Algo está mal en el resultado?",
+      "reason": "Cuenta a los organizadores qué pasó",
+      "send": "Abrir una disputa",
+      "sent": "Gracias. Los organizadores lo revisarán.",
+      "limit": "Ya tienes disputas abiertas o el plazo terminó."
+    }
   }
 }

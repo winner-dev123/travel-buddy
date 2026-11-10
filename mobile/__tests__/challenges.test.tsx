@@ -11,6 +11,7 @@ import { i18n } from '@/i18n';
 import ChallengeScreen from '../app/challenges/[id]';
 import ChallengesScreen from '../app/challenges/index';
 import NewChallenge from '../app/challenges/new';
+import Review from '../app/challenges/review';
 import Rewards from '../app/rewards';
 
 const mockApi = {
@@ -405,4 +406,94 @@ it('shows reward codes to their recipient', async () => {
   await renderUi(<Rewards />);
   expect(await screen.findByTestId('reward-code-f1')).toHaveTextContent('TOUR10-BELEM');
   expect(screen.getByText('Where is the tower? · Ready')).toBeTruthy();
+});
+
+describe('judging', () => {
+  it('lists waiting answers with the AI advice and records verdicts', async () => {
+    mockParams = { id: 'c1' };
+    const submission = {
+      id: 's9',
+      challenge_id: 'c1',
+      submitted_by: person('u3', 'Caio'),
+      team_id: null,
+      attempt_no: 1,
+      answer_text: 'The old fort by the river',
+      evaluation_status: 'needs_review',
+      evaluator: 'ai',
+      ai_confidence: 0.55,
+      ai_rationale: 'Probably the tower, but vague.',
+      submitted_at: '2026-11-10T10:00:00Z',
+      evaluated_at: null,
+    };
+    mockApi.get.mockImplementation((path: string, options?: { query?: Record<string, string> }) => {
+      if (path === '/v1/challenges/c1/submissions') {
+        return Promise.resolve({
+          data: options?.query?.evaluation_status === 'needs_review' ? [submission] : [],
+          page: { next_cursor: null },
+        });
+      }
+      return Promise.resolve({
+        challenge_id: 'c1',
+        status: 'judging',
+        published: false,
+        results_published_at: null,
+        participant_count: 2,
+        winners: [
+          {
+            id: 'w1',
+            rank: 1,
+            user: person('u2', 'Ana'),
+            team: null,
+            status: 'provisional',
+            determined_by: 'system',
+            determined_at: '2026-11-10T10:00:00Z',
+          },
+        ],
+      });
+    });
+    mockApi.post.mockResolvedValue({});
+    await renderUi(<Review />);
+    expect(await screen.findByTestId('review-ai-s9')).toHaveTextContent(
+      'AI judge (55% sure): Probably the tower, but vague.',
+    );
+    await fireEvent.press(screen.getByTestId('review-correct-s9'));
+    await waitFor(() =>
+      expect(mockApi.post).toHaveBeenCalledWith('/v1/challenges/c1/submissions/s9/judgement', {
+        body: { evaluation_status: 'correct' },
+      }),
+    );
+    await fireEvent.press(screen.getByTestId('review-confirm-w1'));
+    await waitFor(() =>
+      expect(mockApi.post).toHaveBeenCalledWith('/v1/challenges/c1/winners/w1/confirm'),
+    );
+  });
+
+  it('lets participants dispute a finished challenge', async () => {
+    mockParams = { id: 'c1' };
+    serve({
+      '/v1/challenges/c1': challenge({
+        status: 'judging',
+        my_participation: {
+          attempts_used: 1,
+          attempts_remaining: 2,
+          next_attempt_at: null,
+          team_id: null,
+          is_captain: false,
+          status: 'active',
+        },
+      }),
+      '/v1/groups/g1': group([]),
+    });
+    mockApi.post.mockResolvedValueOnce({ id: 'd1' });
+    await renderUi(<ChallengeScreen />);
+    await fireEvent.changeText(
+      await screen.findByTestId('challenge-dispute-reason'),
+      'My answer was right but marked wrong.',
+    );
+    await fireEvent.press(screen.getByTestId('challenge-dispute-send'));
+    expect(await screen.findByTestId('challenge-dispute-sent')).toBeTruthy();
+    expect(mockApi.post).toHaveBeenCalledWith('/v1/challenges/c1/disputes', {
+      body: { reason: 'My answer was right but marked wrong.' },
+    });
+  });
 });

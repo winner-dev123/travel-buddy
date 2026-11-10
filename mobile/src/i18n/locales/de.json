@@ -755,6 +755,36 @@
       "disputed": "In Prüfung"
     },
     "sponsor": "Von {{name}}",
-    "code": "Belohnungscode"
+    "code": "Belohnungscode",
+    "review": {
+      "open": "Antworten prüfen",
+      "title": "Antworten prüfen",
+      "empty": "Keine Antwort wartet auf eine Entscheidung.",
+      "ownAnswer": "Du kannst deine eigene Antwort nicht bewerten.",
+      "final": "Die Ergebnisse stehen fest. Nutze einen Einspruch.",
+      "status": {
+        "pending": "Wartet",
+        "needs_review": "Braucht eine Bewertung",
+        "correct": "Richtig",
+        "incorrect": "Falsch",
+        "void": "Ungültig"
+      },
+      "ai": "KI-Jury ({{confidence}} % sicher): {{rationale}}",
+      "verdicts": {
+        "correct": "Richtig",
+        "incorrect": "Falsch",
+        "void": "Ungültig"
+      },
+      "winners": "Gewinner",
+      "confirm": "Bestätigen",
+      "revoke": "Zurückziehen"
+    },
+    "dispute": {
+      "title": "Stimmt etwas mit dem Ergebnis nicht?",
+      "reason": "Erzähl den Organisatoren, was passiert ist",
+      "send": "Einspruch einlegen",
+      "sent": "Danke. Die Organisatoren sehen sich das an.",
+      "limit": "Du hast schon offene Einsprüche, oder die Frist ist vorbei."
+    }
   }
 }

@@ -755,6 +755,36 @@
       "disputed": "Under review"
     },
     "sponsor": "From {{name}}",
-    "code": "Reward code"
+    "code": "Reward code",
+    "review": {
+      "open": "Review answers",
+      "title": "Review answers",
+      "empty": "No answers are waiting for a decision.",
+      "ownAnswer": "You can't judge your own answer.",
+      "final": "Results are final. Use disputes instead.",
+      "status": {
+        "pending": "Waiting",
+        "needs_review": "Needs a judge",
+        "correct": "Correct",
+        "incorrect": "Incorrect",
+        "void": "Void"
+      },
+      "ai": "AI judge ({{confidence}}% sure): {{rationale}}",
+      "verdicts": {
+        "correct": "Correct",
+        "incorrect": "Incorrect",
+        "void": "Void"
+      },
+      "winners": "Winners",
+      "confirm": "Confirm",
+      "revoke": "Revoke"
+    },
+    "dispute": {
+      "title": "Something wrong with the result?",
+      "reason": "Tell the organizers what happened",
+      "send": "Raise a dispute",
+      "sent": "Thanks. The organizers will look into it.",
+      "limit": "You already have open disputes, or the time to dispute is over."
+    }
   }
 }

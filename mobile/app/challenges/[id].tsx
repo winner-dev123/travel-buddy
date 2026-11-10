@@ -19,6 +19,7 @@ import {
   listTeams,
   publishChallenge,
   publishResults,
+  raiseDispute,
   submitAnswer,
   type SubmissionResult,
 } from '@/features/challenges/api';
@@ -58,6 +59,7 @@ export default function ChallengeScreen() {
   const key = useRef(getApiClient().newIdempotencyKey());
   const [answer, setAnswer] = useState('');
   const [teamName, setTeamName] = useState('');
+  const [reason, setReason] = useState('');
   const [outcome, setOutcome] = useState<SubmissionResult | null>(null);
 
   const challenge = useQuery({
@@ -124,6 +126,10 @@ export default function ChallengeScreen() {
   const finish = useMutation({
     mutationFn: () => publishResults(getApiClient(), id),
     onSuccess: refresh,
+  });
+  const dispute = useMutation({
+    mutationFn: () => raiseDispute(getApiClient(), id, reason.trim()),
+    onSuccess: () => setReason(''),
   });
 
   if (challenge.isPending) {
@@ -376,6 +382,54 @@ export default function ChallengeScreen() {
               <Notice tone="error">
                 {finish.error instanceof ApiProblem && finish.error.code === 'conflict'
                   ? t('challenges.resultsBlocked')
+                  : t('user.actionFailed')}
+              </Notice>
+            ) : null}
+          </>
+        ) : null}
+
+        {canJudge && data.status !== 'draft' && data.status !== 'cancelled' && !published ? (
+          <Button
+            label={t('challenges.review.open')}
+            variant="secondary"
+            onPress={() => router.push({ pathname: '/challenges/review', params: { id: data.id } })}
+            testID="challenge-review"
+          />
+        ) : null}
+
+        {mine && !canJudge && (data.status === 'judging' || data.status === 'completed') ? (
+          <>
+            <Text accessibilityRole="header" style={headerStyle}>
+              {t('challenges.dispute.title')}
+            </Text>
+            {dispute.isSuccess ? (
+              <Notice tone="success" testID="challenge-dispute-sent">
+                {t('challenges.dispute.sent')}
+              </Notice>
+            ) : (
+              <>
+                <TextField
+                  label={t('challenges.dispute.reason')}
+                  value={reason}
+                  onChangeText={setReason}
+                  maxLength={1000}
+                  multiline
+                  testID="challenge-dispute-reason"
+                />
+                <Button
+                  label={t('challenges.dispute.send')}
+                  variant="secondary"
+                  onPress={() => dispute.mutate()}
+                  disabled={reason.trim().length < 10}
+                  busy={dispute.isPending}
+                  testID="challenge-dispute-send"
+                />
+              </>
+            )}
+            {dispute.isError ? (
+              <Notice tone="error">
+                {dispute.error instanceof ApiProblem && dispute.error.code === 'conflict'
+                  ? t('challenges.dispute.limit')
                   : t('user.actionFailed')}
               </Notice>
             ) : null}

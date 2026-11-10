@@ -766,6 +766,36 @@
       "disputed": "Em análise"
     },
     "sponsor": "De {{name}}",
-    "code": "Código do prêmio"
+    "code": "Código do prêmio",
+    "review": {
+      "open": "Revisar respostas",
+      "title": "Revisar respostas",
+      "empty": "Nenhuma resposta aguardando decisão.",
+      "ownAnswer": "Você não pode julgar a própria resposta.",
+      "final": "O resultado é definitivo. Use as contestações.",
+      "status": {
+        "pending": "Aguardando",
+        "needs_review": "Precisa de juiz",
+        "correct": "Certa",
+        "incorrect": "Errada",
+        "void": "Anulada"
+      },
+      "ai": "Juiz de IA ({{confidence}}% de certeza): {{rationale}}",
+      "verdicts": {
+        "correct": "Certa",
+        "incorrect": "Errada",
+        "void": "Anular"
+      },
+      "winners": "Vencedores",
+      "confirm": "Confirmar",
+      "revoke": "Revogar"
+    },
+    "dispute": {
+      "title": "Algo errado no resultado?",
+      "reason": "Conte aos organizadores o que aconteceu",
+      "send": "Abrir contestação",
+      "sent": "Obrigado. Os organizadores vão analisar.",
+      "limit": "Você já tem contestações abertas ou o prazo acabou."
+    }
   }
 }

@@ -766,6 +766,36 @@
       "disputed": "En cours d'examen"
     },
     "sponsor": "Offert par {{name}}",
-    "code": "Code de la récompense"
+    "code": "Code de la récompense",
+    "review": {
+      "open": "Examiner les réponses",
+      "title": "Examiner les réponses",
+      "empty": "Aucune réponse n'attend de décision.",
+      "ownAnswer": "Vous ne pouvez pas juger votre propre réponse.",
+      "final": "Les résultats sont définitifs. Passez par une contestation.",
+      "status": {
+        "pending": "En attente",
+        "needs_review": "À juger",
+        "correct": "Juste",
+        "incorrect": "Fausse",
+        "void": "Annulée"
+      },
+      "ai": "Juge IA (sûr à {{confidence}} %) : {{rationale}}",
+      "verdicts": {
+        "correct": "Juste",
+        "incorrect": "Fausse",
+        "void": "Annuler"
+      },
+      "winners": "Gagnants",
+      "confirm": "Confirmer",
+      "revoke": "Retirer"
+    },
+    "dispute": {
+      "title": "Un problème avec le résultat ?",
+      "reason": "Expliquez aux organisateurs ce qui s'est passé",
+      "send": "Contester",
+      "sent": "Merci. Les organisateurs vont examiner votre demande.",
+      "limit": "Vous avez déjà des contestations ouvertes, ou le délai est passé."
+    }
   }
 }

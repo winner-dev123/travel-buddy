@@ -143,6 +143,24 @@ export interface NewChallenge {
   }[];
 }
 
+/** Contract `ChallengeSubmission` (AI fields only for judges). */
+export interface ChallengeSubmission {
+  id: string;
+  challenge_id: string;
+  submitted_by: UserSummary | null;
+  team_id: string | null;
+  attempt_no: number;
+  answer_text: string;
+  evaluation_status: EvaluationStatus;
+  evaluator: 'exact' | 'ai' | 'admin' | null;
+  ai_confidence?: number | null;
+  ai_rationale?: string | null;
+  submitted_at: string;
+  evaluated_at: string | null;
+}
+
+export type Judgement = 'correct' | 'incorrect' | 'void';
+
 export const challengeKeys = {
   group: (groupId: string) => ['challenges', 'group', groupId] as const,
   detail: (id: string) => ['challenges', 'detail', id] as const,
@@ -150,6 +168,7 @@ export const challengeKeys = {
   results: (id: string) => ['challenges', 'results', id] as const,
   teams: (id: string) => ['challenges', 'teams', id] as const,
   rewards: ['challenges', 'rewards'] as const,
+  review: (id: string) => ['challenges', 'review', id] as const,
 };
 
 /** Statuses in which a challenge is still open for teams and answers. */
@@ -237,4 +256,52 @@ export function joinTeam(client: ApiClient, id: string, teamId: string): Promise
 
 export function listMyRewards(client: ApiClient): Promise<Page<MyReward>> {
   return client.get<Page<MyReward>>('/v1/users/me/rewards', { query: { limit: 50 } });
+}
+
+/** Answers waiting for a judge (SCR-090): pending and needs-review, oldest first. */
+export async function listReviewQueue(
+  client: ApiClient,
+  id: string,
+): Promise<ChallengeSubmission[]> {
+  const pages = await Promise.all(
+    (['pending', 'needs_review'] as const).map((evaluation_status) =>
+      client.get<Page<ChallengeSubmission>>(`/v1/challenges/${id}/submissions`, {
+        query: { scope: 'all', evaluation_status, limit: 100 },
+      }),
+    ),
+  );
+  return pages
+    .flatMap((page) => page.data)
+    .sort((a, b) => a.submitted_at.localeCompare(b.submitted_at));
+}
+
+export function judgeSubmission(
+  client: ApiClient,
+  challengeId: string,
+  submissionId: string,
+  evaluation: Judgement,
+): Promise<ChallengeSubmission> {
+  return client.post<ChallengeSubmission>(
+    `/v1/challenges/${challengeId}/submissions/${submissionId}/judgement`,
+    { body: { evaluation_status: evaluation } },
+  );
+}
+
+export function updateWinner(
+  client: ApiClient,
+  challengeId: string,
+  winnerId: string,
+  action: 'confirm' | 'revoke',
+): Promise<ChallengeWinner> {
+  return client.post<ChallengeWinner>(
+    `/v1/challenges/${challengeId}/winners/${winnerId}/${action}`,
+  );
+}
+
+export function raiseDispute(
+  client: ApiClient,
+  challengeId: string,
+  reason: string,
+): Promise<unknown> {
+  return client.post(`/v1/challenges/${challengeId}/disputes`, { body: { reason } });
 }
