@@ -74,6 +74,42 @@ Offline downloads need shared S3-compatible storage (section 1.4) and a manifest
 
 Without the key, licensing and manifests answer 503 and listing still works.
 
+### 1.9 Push notifications (BL-3.06, BL-6.06)
+
+The API sends mobile pushes through the Expo push service (`PUSH_PROVIDER=auto` uses it outside
+development; `EXPO_ACCESS_TOKEN` is optional, for Expo's enhanced push security). The app
+registers a token per session only after the user allows notifications on the Notifications
+screen. To make pushes reach devices:
+
+1. Create the EAS project and set its id in `mobile/app.json` under `expo.extra.eas.projectId`
+   (without it the app skips registration).
+2. In EAS, upload the APNs key (iOS) and the FCM credentials (Android) for the app.
+3. Web Push for the browser needs `WEB_PUSH_VAPID_PRIVATE_KEY` (the public key is served in
+   `/v1/client-config`).
+
+### 1.10 Store billing (BL-6.01, ADR-0017)
+
+Each store answers `503` until its settings exist; Stripe (web) is separate (section 6).
+
+* **App Store:** `APPLE_BUNDLE_ID` and `APPLE_ROOT_CA_SHA256` (the SHA-256 fingerprint of Apple
+  Root CA - G3 from apple.com/certificateauthority; several, comma-separated, during a rotation).
+  In App Store Connect, set the Server Notifications v2 URL to `<api>/v1/billing/webhooks/apple`.
+* **Google Play:** `GOOGLE_PLAY_PACKAGE_NAME` and `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` (a service
+  account key with access to the Play Developer API, granted in Play Console → Users and
+  permissions). For Real-time Developer Notifications: create a Pub/Sub topic, link it in Play
+  Console → Monetization setup, and add an **authenticated push** subscription to
+  `<api>/v1/billing/webhooks/google` with a dedicated service account; set
+  `GOOGLE_PUBSUB_AUDIENCE` (the push audience, normally that URL) and
+  `GOOGLE_PUBSUB_SERVICE_ACCOUNT` (its email). Pushes without that Google-signed token are
+  refused.
+* Products: create them in each store, then in `/v1/admin/products` with the same SKUs.
+  Quota limits and the group admin grace are edited at runtime in `/v1/admin/billing/policy`.
+
+### 1.11 Support contact (store readiness)
+
+`SUPPORT_EMAIL` (default `support@travelbuddy.app`) appears on the apps' Help screen. Set
+`SUPPORT_URL` (https) once the public help page exists; until then the apps show only the email.
+
 ## 2. Runtime topology (production reference)
 
 ```mermaid
