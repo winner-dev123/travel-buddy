@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ApiProblem, getApiClient } from '@/api';
+import { showActions } from '@/components/ActionSheet';
 import { Notice, SwitchRow } from '@/components/Form';
 import { Avatar } from '@/features/feed/PostCard';
 import {
@@ -149,7 +150,7 @@ export default function ManageGroupScreen() {
       ],
     );
   const chooseRestriction = (member: GroupMember) =>
-    Alert.alert(
+    showActions(
       t('manageGroup.restrictTitle', { name: member.user.display_name }),
       t('manageGroup.restrictBody'),
       [

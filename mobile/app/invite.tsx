@@ -24,8 +24,11 @@ export default function InviteScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const url = Linking.useLinkingURL();
-  const params = useLocalSearchParams<{ t?: string }>();
-  const candidate = params.t ?? (url ? tokenFrom(url) : '');
+  // `travelbuddy://invite?t=<token>` or the web link's form `…/invite#t=<token>` (Expo Router
+  // hands the fragment over as the `#` param, without the `#`).
+  const params = useLocalSearchParams<{ t?: string; '#'?: string }>();
+  const fromHash = params['#'] ? tokenFrom(`#${params['#']}`) : undefined;
+  const candidate = params.t ?? fromHash ?? (url ? tokenFrom(url) : '');
   const token = TOKEN.test(candidate) ? candidate : null;
   const status = useSessionStore((state) => state.status);
   const signedOut = status === 'signed_out';

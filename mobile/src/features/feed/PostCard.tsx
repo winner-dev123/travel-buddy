@@ -1,9 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Image, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 
 import { getApiClient } from '@/api';
+import { showActions } from '@/components/ActionSheet';
 import { PhotoGallery } from '@/features/feed/PhotoGallery';
 import { useAppTheme } from '@/theme/useAppTheme';
 
@@ -56,7 +57,7 @@ export function PostCard({ post, onOpen, onOpenAuthor, interactive = true }: Pos
     void sendFeedFeedback(getApiClient(), post.id, kind).catch(() => undefined);
   };
   const more = () =>
-    Alert.alert(t('post.moreTitle'), undefined, [
+    showActions(t('post.moreTitle'), undefined, [
       { text: t('post.hide'), onPress: () => feedback('hide') },
       { text: t('post.notInterested'), onPress: () => feedback('not_interested') },
       {

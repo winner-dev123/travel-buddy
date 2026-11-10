@@ -332,7 +332,7 @@ screen was folded into another one; ✅ built, ⚠️ partly, ⬜ not yet (reaso
 | SCR-066..068 groups | ✅ | `/groups`, `/groups/[id]`, `/groups/new` |
 | SCR-069 invite, SCR-070 members and roles, SCR-072 settings and transfer | ✅ | Share an invitation link from the group page; `/groups/manage` (settings, roles, restrict, remove, invitations with revoke, ownership offer, archive); the offer is answered on the group page |
 | SCR-071 join requests | ⬜ | Behind the `group_join_requests` flag (off) |
-| SCR-073 invitation landing | ✅ | `/invite` opened by `travelbuddy://invite#t=<token>` (preview, join, open if already a member); pasting a link or code in Groups still works. Opening `https://…/invite` links in the app needs universal links (associated domains) once the production domain is set |
+| SCR-073 invitation landing | ✅ | `/invite` opened by `travelbuddy://invite?t=<token>` (preview, join, open if already a member; signed-out travellers sign in first and come back). The web link's fragment form `#t=<token>` is read too, but Expo Go drops fragments, so app links use the query. Pasting a link or code in Groups still works. Opening `https://…/invite` links in the app needs universal links (associated domains) once the production domain is set |
 | SCR-080 inbox, SCR-081/082 chats | ✅ | `/(tabs)/messages`, `/chat/[id]` (photos, replies, reactions, pins, announcements, mute, clear for me) |
 | SCR-083 reply thread | ✅ | `/chat/thread` in group chats, opened from a message's reply count or "Reply in thread"; replies also stay quoted in the chat |
 | SCR-084 pinned messages | ✅ | Pinned bar in `/chat/[id]` |

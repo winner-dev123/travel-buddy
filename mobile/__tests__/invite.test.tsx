@@ -13,11 +13,12 @@ import Invite from '../app/invite';
 const mockApi = { get: jest.fn(), post: jest.fn(), newIdempotencyKey: jest.fn(() => 'k1') };
 const mockRouter = { push: jest.fn(), back: jest.fn(), replace: jest.fn() };
 let mockUrl: string | null = null;
+let mockParams: Record<string, string> = {};
 
 jest.mock('@/api', () => ({ ...jest.requireActual('@/api'), getApiClient: () => mockApi }));
 jest.mock('expo-router', () => ({
   useRouter: () => mockRouter,
-  useLocalSearchParams: () => ({}),
+  useLocalSearchParams: () => mockParams,
   Stack: { Screen: () => null },
 }));
 jest.mock('expo-linking', () => ({ useLinkingURL: () => mockUrl }));
@@ -64,6 +65,7 @@ const me = {
 
 beforeEach(async () => {
   jest.clearAllMocks();
+  mockParams = {};
   useSessionStore.getState().setSignedIn(me);
   await i18n.changeLanguage('en');
 });
@@ -125,4 +127,15 @@ it('asks a signed-out traveller to sign in and brings them back afterwards', asy
   useSessionStore.getState().setSignedIn(me);
   expect(takeHomeRoute()).toEqual({ pathname: '/invite', params: { t: TOKEN } });
   expect(takeHomeRoute()).toBe('/'); // used once
+});
+
+it('reads the token from the route params: a query or the fragment', async () => {
+  mockUrl = 'travelbuddy://invite';
+  mockApi.post.mockResolvedValue(preview);
+  mockParams = { '#': `t=${TOKEN}` }; // Expo Router's form of `#t=<token>`
+  await renderInvite();
+  expect(await screen.findByTestId('invite-preview')).toBeTruthy();
+  expect(mockApi.post).toHaveBeenCalledWith('/v1/group-invitations/preview', {
+    body: { token: TOKEN },
+  });
 });

@@ -9,6 +9,7 @@ import { getApiClient, setAccessTokenRefresher } from '@/api';
 import { refreshAccessToken, restoreSession } from '@/auth/session';
 import { useSessionStore } from '@/auth/sessionStore';
 import { usePush } from '@/features/push/usePush';
+import { ActionSheetHost } from '@/components/ActionSheet';
 import { UpdateGate } from '@/features/update/UpdateGate';
 import { i18n, SUPPORTED_LOCALES, type SupportedLocale } from '@/i18n';
 import { resolveSupportedLocale } from '@/i18n/resolveLocale';
@@ -76,6 +77,7 @@ export default function RootLayout() {
             <Stack.Screen name="+not-found" />
           </Stack>
         </UpdateGate>
+        <ActionSheetHost />
         <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       </QueryClientProvider>
     </SafeAreaProvider>

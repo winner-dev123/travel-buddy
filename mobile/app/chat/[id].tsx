@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ApiProblem, getApiClient } from '@/api';
 import { useSessionStore } from '@/auth/sessionStore';
+import { showActions } from '@/components/ActionSheet';
 import { Button, Notice, TextField } from '@/components/Form';
 import { MediaPreview } from '@/features/feed/PhotoGallery';
 import { getGroup, groupKeys } from '@/features/groups/api';
@@ -141,7 +142,7 @@ export default function ChatScreen() {
   // Compared with the last fetch, not the render time (renders must stay pure).
   const muted = mutedUntil !== null && Date.parse(mutedUntil) > conversation.dataUpdatedAt;
   const chooseMute = () =>
-    Alert.alert(t('messages.muteTitle'), t('messages.muteBody'), [
+    showActions(t('messages.muteTitle'), t('messages.muteBody'), [
       ...MUTE_FOR.map(({ hours, label }) => ({
         text: t(label),
         onPress: () => mute.mutate(hours),
@@ -159,7 +160,7 @@ export default function ChatScreen() {
     react.mutate({ message, emoji, on: !mine });
   };
   const chooseReaction = (message: Message) =>
-    Alert.alert(t('messages.react'), undefined, [
+    showActions(t('messages.react'), undefined, [
       ...QUICK_REACTIONS.map((emoji) => ({
         text: emoji,
         onPress: () => toggleReaction(message, emoji),
@@ -273,13 +274,13 @@ export default function ChatScreen() {
         : []),
     ];
     if (message.sender?.id === me) {
-      Alert.alert(t('messages.actions'), undefined, [
+      showActions(t('messages.actions'), undefined, [
         ...common,
         { text: t('messages.delete'), style: 'destructive', onPress: () => remove.mutate(message) },
         { text: t('common.cancel'), style: 'cancel' },
       ]);
     } else {
-      Alert.alert(t('messages.actions'), undefined, [
+      showActions(t('messages.actions'), undefined, [
         ...common,
         {
           text: t('messages.report'),
