@@ -1,0 +1,7 @@
+{
+  "ios": {
+    "NSPhotoLibraryUsageDescription": "Travel Buddy n'ouvre votre photothèque que lorsque vous choisissez des photos à partager dans une histoire.",
+    "NSCameraUsageDescription": "Travel Buddy utilise l'appareil photo lorsque vous prenez une photo à partager dans une histoire.",
+    "NSLocationWhenInUseUsageDescription": "Travel Buddy utilise votre position approximative pour afficher des histoires de la ville où vous êtes. Elle n'est jamais enregistrée ni montrée à personne."
+  }
+}

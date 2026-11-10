@@ -286,6 +286,7 @@ Offline: **Works offline** (fully functional from local data) · **Cached read-o
 | SCR-112 | Blocked users | `/settings/blocked` | 1 | User | Online only | blocks endpoints | SAFE |
 | SCR-113 | Account deletion and data export | `/settings/delete-account`, `/settings/data` | 1 / 6 | User | Online only | deletion and export endpoints | AUTH |
 | SCR-114 | Safety center (guidance, how reporting works) | `/settings/safety` | 1 | Guest / User | Works offline (bundled copy) | — | SAFE |
+| SCR-116 | Help and legal (support contact, help centre, terms, privacy, guidelines, version) | `/settings/help` | 6 | User | Online only | `GET /v1/client-config` (`support`, `legal`) | AUTH |
 | SCR-115 | Badges and achievements | `/profile/badges` | 5 | User | Cached read-only | badges endpoint | CHAL |
 
 ### Modals and system

@@ -14,14 +14,14 @@ the first submission, close the gaps listed in [§6](#6-gaps-before-the-first-su
 | Report content and people | `POST /v1/reports` for users, posts, comments, messages, groups and challenges (SAFE-002); mobile report sheet (SCR-131) | ✅ |
 | Block abusive users | `PUT /v1/users/{id}/block` hides profiles, posts, messages, trips and challenges both ways (SAFE-001); mobile blocked list | ✅ |
 | Act on reports within 24 hours | Moderation queue ordered by priority (SAFE-003), staff tools and audit; `GET /v1/admin/ops/summary` shows the oldest open report | ✅ tooling · ⚠️ staffing rota needed |
-| Published contact information | Support address in the app (Settings) and the store listing | ⚠️ add to Settings before submission |
+| Published contact information | Profile → Help & legal (SCR-116): support email (`support` in `/v1/client-config`, `SUPPORT_EMAIL`), help centre link once `SUPPORT_URL` is set, terms, privacy policy and guidelines | ✅ app · ⚠️ store listing and public help page |
 | Terms with zero tolerance for abuse | Community guidelines URL from `/v1/client-config` (`legal.community_guidelines_url`), accepted at sign-up | ✅ (legal copy pending) |
 
 ## 2. Accounts
 
 | Requirement | Where it lives | Status |
 |---|---|---|
-| Account deletion inside the app (App Store 5.1.1(v)) | Settings → Delete account (SCR-118): 30-day grace, cancellable, then full deletion (AUTH-010) | ✅ |
+| Account deletion inside the app (App Store 5.1.1(v)) | Settings → Delete account (SCR-113): 30-day grace, cancellable, then full deletion (AUTH-010) | ✅ |
 | Deletion outside the app (Google Play data deletion URL) | Web route for deletion requests (web session) pointing to the same API | ⚠️ confirm the public URL with the web session |
 | Data access (GDPR Art. 15/20) | Settings → Your data: archive within minutes, 7-day link (AUTH-011, BL-6.03) | ✅ |
 | Sign in with Apple (App Store 4.8) | Required only when the app offers other third-party sign-in; the app uses email and password | ✅ not required today · add with any social login |
@@ -72,14 +72,31 @@ today. If one is added, update this table and the label.
    on the Notifications screen, never at launch; token registered per session to
    `POST /v1/users/me/devices`; taps open the right screen). Still needed: the EAS project ID in
    `expo.extra.eas.projectId` and the APNs key / FCM credentials in EAS.
-2. **Photo uploads:** when the picker lands, add `NSPhotoLibraryUsageDescription` /
-   `NSCameraUsageDescription` strings in all five locales.
+2. ~~Photo uploads~~: done. The composer attaches up to ten photos (system picker or camera),
+   uploads them through the presigned flow and finalizes them; permission strings are in
+   [§7](#7-device-permissions), localized in five languages.
 3. ~~Encryption export compliance~~: done, `ITSAppUsesNonExemptEncryption = false` in
    `ios.infoPlist` (standard HTTPS only).
-4. **Support contact** in Settings and a public support page.
+4. **Support contact:** in the app (Help & legal). Still needed: a public help page on the web
+   (web session), then set `SUPPORT_URL` so the app links to it; the same URL goes into both
+   store listings.
 5. **Review account:** a demo account with sample trips, a group and a challenge, given to App
    Review and Play review in the submission notes.
 6. **Store listings:** screenshots in five locales, age rating questionnaires (user-generated
    content, unrestricted messaging between users), privacy policy URL.
 7. **Google Play billing:** Play Developer API service account for purchase verification and Real-time
    Developer Notifications (BL-6.01).
+
+## 7. Device permissions
+
+Each permission is asked only when the user starts the action that needs it, never at launch.
+iOS usage strings come from the config plugins (English) and `mobile/native-locales/*.json`
+(en, es, pt-BR, fr, de, through `expo.locales`).
+
+| Permission | When it is asked | iOS key | Android |
+|---|---|---|---|
+| Location (approximate, while in use) | Opening the Nearby feed tab | `NSLocationWhenInUseUsageDescription` | `ACCESS_COARSE_LOCATION`; fine and background location blocked |
+| Photos | Not asked: the system photo picker returns only the photos the user picks | `NSPhotoLibraryUsageDescription` (required by the picker module) | Photo picker, no media permission; legacy storage permissions only up to Android 12 (`maxSdkVersion 32`) |
+| Camera | Tapping "Take a photo" in the composer | `NSCameraUsageDescription` | `CAMERA` |
+| Microphone | Never (no video recording) | not declared | `RECORD_AUDIO` blocked |
+| Notifications | "Turn on" on the Notifications screen | — (system prompt) | `POST_NOTIFICATIONS` (Android 13+) |

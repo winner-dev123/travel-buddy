@@ -371,7 +371,18 @@
     "verifyEmail": "Verify your email address before posting.",
     "restricted": "Posting is limited on your account right now.",
     "bodyHint_one": "{{count}} character left",
-    "bodyHint_other": "{{count}} characters left"
+    "bodyHint_other": "{{count}} characters left",
+    "photos": "Photos",
+    "addPhotos": "Choose photos",
+    "takePhoto": "Take a photo",
+    "removePhoto": "Remove photo {{index}}",
+    "photosLeft_one": "You can add {{count}} more photo.",
+    "photosLeft_other": "You can add {{count}} more photos.",
+    "photoRequired": "Add at least one photo to a photo story.",
+    "photoUnsupported": "That file can't be used. Choose a JPEG, PNG or WebP photo.",
+    "photoFailed": "We couldn't open your photos. Try again.",
+    "cameraDenied": "Allow camera access in your phone settings to take a photo.",
+    "uploadFailed": "A photo didn't upload. Check your connection and try again."
   },
   "notifications": {
     "title": "Notifications",
@@ -813,5 +824,20 @@
         "pending": "Retry"
       }
     }
+  },
+  "help": {
+    "title": "Help & legal",
+    "getHelp": "Get help",
+    "contact": "Contact support",
+    "center": "Help centre",
+    "emailUs": "You can also write to {{email}}.",
+    "noMailApp": "No mail app is set up. Write to {{email}} from any email account.",
+    "mailSubject": "Travel Buddy support",
+    "legal": "Legal",
+    "terms": "Terms of service",
+    "privacy": "Privacy policy",
+    "guidelines": "Community guidelines",
+    "version": "Version {{version}}",
+    "error": "We couldn't load this page. Check your connection and try again."
   }
 }

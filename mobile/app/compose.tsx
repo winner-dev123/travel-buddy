@@ -1,18 +1,29 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ApiProblem, getApiClient } from '@/api';
 import { Button, Notice, TextField } from '@/components/Form';
 import { createPost, feedKeys, searchDestinations, type NewPost } from '@/features/feed/api';
 import type { DestinationSummary, PostKind } from '@/features/feed/types';
+import {
+  MAX_PHOTOS,
+  PhotoUploadError,
+  pickPhotos,
+  takePhoto,
+  UnsupportedPhotoError,
+  uploadPhoto,
+  type DraftPhoto,
+} from '@/features/media/upload';
 import { useAppTheme } from '@/theme/useAppTheme';
 
 const KINDS: PostKind[] = [
   'tip',
+  'photo',
   'experience',
   'attraction_recommendation',
   'restaurant_recommendation',
@@ -63,7 +74,7 @@ function Chip({
   );
 }
 
-/** SCR-030 Composer (Phase 1 slice): text stories with an optional destination. */
+/** SCR-030 Composer: stories with up to ten photos and an optional destination. */
 export default function ComposeScreen() {
   const { t } = useTranslation();
   const theme = useAppTheme();
@@ -74,8 +85,32 @@ export default function ComposeScreen() {
   const [visibility, setVisibility] = useState<NewPost['visibility']>('public');
   const [search, setSearch] = useState('');
   const [destination, setDestination] = useState<DestinationSummary | null>(null);
+  const [photos, setPhotos] = useState<DraftPhoto[]>([]);
+  const [photoNotice, setPhotoNotice] = useState<string | null>(null);
   // One key for this draft: a retried submit never creates a second post.
-  const idempotencyKey = useRef(getApiClient().newIdempotencyKey());
+  const [firstKey] = useState(() => getApiClient().newIdempotencyKey());
+  const idempotencyKey = useRef(firstKey);
+
+  const changePhotos = (next: DraftPhoto[]) => {
+    setPhotos(next);
+    // A different set of photos is a different request: retrying must not reuse the old key.
+    idempotencyKey.current = getApiClient().newIdempotencyKey();
+  };
+  const addPhotos = async (source: 'library' | 'camera') => {
+    setPhotoNotice(null);
+    try {
+      const picked =
+        source === 'library' ? await pickPhotos(MAX_PHOTOS - photos.length) : await takePhoto();
+      if (picked === 'denied') setPhotoNotice(t('compose.cameraDenied'));
+      else if (picked.length) changePhotos([...photos, ...picked].slice(0, MAX_PHOTOS));
+    } catch (error) {
+      setPhotoNotice(
+        error instanceof UnsupportedPhotoError
+          ? t('compose.photoUnsupported')
+          : t('compose.photoFailed'),
+      );
+    }
+  };
 
   const matches = useQuery({
     queryKey: ['destinations', 'search', search],
@@ -83,12 +118,26 @@ export default function ComposeScreen() {
     enabled: search.trim().length >= 2 && destination === null,
   });
   const publish = useMutation({
-    mutationFn: () =>
-      createPost(
-        getApiClient(),
-        { kind, body: body.trim(), visibility, destination },
+    mutationFn: async () => {
+      const client = getApiClient();
+      const uploaded = [...photos];
+      for (const [index, photo] of uploaded.entries()) {
+        if (photo.mediaId) continue;
+        uploaded[index] = { ...photo, mediaId: await uploadPhoto(client, photo) };
+        setPhotos([...uploaded]); // keep progress: a retry skips photos already on the server
+      }
+      return createPost(
+        client,
+        {
+          kind,
+          body: body.trim(),
+          visibility,
+          destination,
+          mediaIds: uploaded.map((photo) => photo.mediaId as string),
+        },
         idempotencyKey.current,
-      ),
+      );
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: feedKeys.all });
       router.back();
@@ -96,13 +145,17 @@ export default function ComposeScreen() {
   });
 
   const needsPlace = LOCATED.has(kind) && destination === null;
-  const canPublish = body.trim().length > 0 && !needsPlace;
+  const needsPhoto = kind === 'photo' && photos.length === 0;
+  const canPublish = (body.trim().length > 0 || photos.length > 0) && !needsPlace && !needsPhoto;
   const errorText =
-    publish.error instanceof ApiProblem && publish.error.code === 'email_unverified'
-      ? t('compose.verifyEmail')
-      : publish.error instanceof ApiProblem && publish.error.code === 'account_restricted'
-        ? t('compose.restricted')
-        : t('compose.failed');
+    publish.error instanceof PhotoUploadError ||
+    (publish.error instanceof ApiProblem && publish.error.code === 'conflict')
+      ? t('compose.uploadFailed')
+      : publish.error instanceof ApiProblem && publish.error.code === 'email_unverified'
+        ? t('compose.verifyEmail')
+        : publish.error instanceof ApiProblem && publish.error.code === 'account_restricted'
+          ? t('compose.restricted')
+          : t('compose.failed');
 
   return (
     <SafeAreaView
@@ -137,6 +190,61 @@ export default function ComposeScreen() {
           hint={t('compose.bodyHint', { count: BODY_MAX - body.length })}
           testID="compose-body"
         />
+        <Text style={[theme.typography.label, { color: theme.colors.textPrimary }]}>
+          {t('compose.photos')}
+        </Text>
+        {photos.length ? (
+          <View style={styles.wrap} testID="compose-photos">
+            {photos.map((photo, index) => (
+              <View key={photo.uri}>
+                <Image
+                  source={{ uri: photo.uri }}
+                  style={[styles.thumb, { backgroundColor: theme.colors.surface }]}
+                  accessibilityIgnoresInvertColors
+                />
+                <Pressable
+                  onPress={() => changePhotos(photos.filter((other) => other !== photo))}
+                  disabled={publish.isPending}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('compose.removePhoto', { index: index + 1 })}
+                  hitSlop={8}
+                  style={[styles.remove, { backgroundColor: theme.colors.background }]}
+                  testID={`compose-photo-remove-${index}`}
+                >
+                  <Ionicons name="close" size={16} color={theme.colors.textPrimary} />
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        ) : null}
+        {photos.length < MAX_PHOTOS ? (
+          <View style={styles.row}>
+            <Button
+              label={t('compose.addPhotos')}
+              variant="secondary"
+              onPress={() => void addPhotos('library')}
+              disabled={publish.isPending}
+              testID="compose-add-photos"
+            />
+            <Button
+              label={t('compose.takePhoto')}
+              variant="secondary"
+              onPress={() => void addPhotos('camera')}
+              disabled={publish.isPending}
+              testID="compose-take-photo"
+            />
+          </View>
+        ) : null}
+        <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+          {needsPhoto
+            ? t('compose.photoRequired')
+            : t('compose.photosLeft', { count: MAX_PHOTOS - photos.length })}
+        </Text>
+        {photoNotice ? (
+          <Notice tone="info" testID="compose-photo-notice">
+            {photoNotice}
+          </Notice>
+        ) : null}
         <Text style={[theme.typography.label, { color: theme.colors.textPrimary }]}>
           {t('compose.place')}
         </Text>
@@ -222,4 +330,15 @@ const styles = StyleSheet.create({
     minHeight: 36,
   },
   match: { borderWidth: 1, borderRadius: 8, padding: 12 },
+  thumb: { width: 88, height: 88, borderRadius: 8 },
+  remove: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

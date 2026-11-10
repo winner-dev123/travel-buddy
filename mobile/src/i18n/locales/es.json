@@ -375,7 +375,19 @@
     "restricted": "La publicación está limitada en tu cuenta en este momento.",
     "bodyHint_one": "Queda {{count}} carácter",
     "bodyHint_many": "Quedan {{count}} de caracteres",
-    "bodyHint_other": "Quedan {{count}} caracteres"
+    "bodyHint_other": "Quedan {{count}} caracteres",
+    "photos": "Fotos",
+    "addPhotos": "Elegir fotos",
+    "takePhoto": "Hacer una foto",
+    "removePhoto": "Quitar la foto {{index}}",
+    "photosLeft_one": "Puedes añadir {{count}} foto más.",
+    "photosLeft_many": "Puedes añadir {{count}} fotos más.",
+    "photosLeft_other": "Puedes añadir {{count}} fotos más.",
+    "photoRequired": "Añade al menos una foto a una historia de fotos.",
+    "photoUnsupported": "Ese archivo no se puede usar. Elige una foto JPEG, PNG o WebP.",
+    "photoFailed": "No pudimos abrir tus fotos. Inténtalo de nuevo.",
+    "cameraDenied": "Permite el acceso a la cámara en los ajustes del teléfono para hacer una foto.",
+    "uploadFailed": "Una foto no se subió. Revisa tu conexión e inténtalo de nuevo."
   },
   "notifications": {
     "title": "Notificaciones",
@@ -825,5 +837,20 @@
         "pending": "Reintentar"
       }
     }
+  },
+  "help": {
+    "title": "Ayuda y legal",
+    "getHelp": "Obtener ayuda",
+    "contact": "Contactar con soporte",
+    "center": "Centro de ayuda",
+    "emailUs": "También puedes escribir a {{email}}.",
+    "noMailApp": "No hay ninguna app de correo configurada. Escribe a {{email}} desde cualquier cuenta de correo.",
+    "mailSubject": "Soporte de Travel Buddy",
+    "legal": "Legal",
+    "terms": "Condiciones del servicio",
+    "privacy": "Política de privacidad",
+    "guidelines": "Normas de la comunidad",
+    "version": "Versión {{version}}",
+    "error": "No pudimos cargar esta página. Revisa tu conexión e inténtalo de nuevo."
   }
 }

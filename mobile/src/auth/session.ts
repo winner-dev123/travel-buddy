@@ -6,7 +6,7 @@ import { ApiProblem, type ApiClient } from '@/api';
 
 import { useSessionStore } from './sessionStore';
 import { tokenStore } from './tokenStore';
-import type { AuthResult, LegalDocuments, Me, SessionTokens } from './types';
+import type { AuthResult, LegalDocuments, Me, SessionTokens, SupportContact } from './types';
 
 /**
  * Platform session flows (ADR-0003/0020): an IdP token (Supabase or the dev IdP) is exchanged
@@ -188,9 +188,15 @@ export async function signOut(client: ApiClient): Promise<void> {
   }
 }
 
-export async function fetchLegalDocuments(client: ApiClient): Promise<LegalDocuments> {
-  const config = await client.get<{ legal: LegalDocuments }>('/v1/client-config', {
+/** The parts of `GET /v1/client-config` the app shows: legal documents and the support contact. */
+export function fetchAppInfo(
+  client: ApiClient,
+): Promise<{ legal: LegalDocuments; support: SupportContact }> {
+  return client.get('/v1/client-config', {
     query: { platform: clientPlatform(), app_version: APP_VERSION },
   });
-  return config.legal;
+}
+
+export async function fetchLegalDocuments(client: ApiClient): Promise<LegalDocuments> {
+  return (await fetchAppInfo(client)).legal;
 }

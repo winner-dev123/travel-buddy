@@ -68,6 +68,10 @@ class Settings(BaseSettings):
     public_site_url: str = Field(default="http://localhost:3000", pattern=r"^https?://[^\s/]+")
     min_supported_app_version: str = Field(default="0.1.0", pattern=r"^\d+\.\d+\.\d+$")
     latest_app_version: str = Field(default="0.1.0", pattern=r"^\d+\.\d+\.\d+$")
+    # Shown in the apps' Help screen and the store listings (App Store 1.5).
+    support_email: str = Field(default="support@travelbuddy.app", pattern=r"^[^@\s]+@[^@\s]+$")
+    # Public help page; unset until it is published, so no client links to a missing page.
+    support_url: str = Field(default="", pattern=r"^(https://[^\s]+)?$")
 
     # JSON object in env, e.g. FEATURE_FLAGS='{"traveler_discovery": true}'.
     # Unknown flag names are rejected at boot by FeatureFlags.

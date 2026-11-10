@@ -81,6 +81,8 @@ export interface NewPost {
   body: string;
   visibility: 'public' | 'followers' | 'private';
   destination: DestinationSummary | null;
+  /** Uploaded media (`MediaAsset` ids), in display order. */
+  mediaIds?: string[];
 }
 
 export function createPost(
@@ -96,6 +98,7 @@ export function createPost(
       visibility: post.visibility,
       location_precision: post.destination ? 'destination' : 'none',
       ...(post.destination ? { destination_id: post.destination.id } : {}),
+      ...(post.mediaIds?.length ? { media_ids: post.mediaIds } : {}),
     },
   });
 }

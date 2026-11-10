@@ -1,0 +1,7 @@
+{
+  "ios": {
+    "NSPhotoLibraryUsageDescription": "Travel Buddy öffnet deine Fotomediathek nur, wenn du Fotos für eine Story auswählst.",
+    "NSCameraUsageDescription": "Travel Buddy verwendet die Kamera, wenn du ein Foto für eine Story aufnimmst.",
+    "NSLocationWhenInUseUsageDescription": "Travel Buddy verwendet deinen ungefähren Standort, um Storys aus deiner Stadt zu zeigen. Er wird nie gespeichert oder anderen gezeigt."
+  }
+}

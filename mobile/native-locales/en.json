@@ -1,0 +1,7 @@
+{
+  "ios": {
+    "NSPhotoLibraryUsageDescription": "Travel Buddy opens your photo library only when you choose photos to share in a story.",
+    "NSCameraUsageDescription": "Travel Buddy uses the camera when you take a photo to share in a story.",
+    "NSLocationWhenInUseUsageDescription": "Travel Buddy uses your approximate location to show stories from the city you're in. It is never stored or shown to anyone."
+  }
+}

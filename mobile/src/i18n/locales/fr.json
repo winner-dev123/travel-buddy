@@ -375,7 +375,19 @@
     "restricted": "La publication est limitée sur votre compte pour le moment.",
     "bodyHint_one": "{{count}} caractère restant",
     "bodyHint_many": "{{count}} de caractères restants",
-    "bodyHint_other": "{{count}} caractères restants"
+    "bodyHint_other": "{{count}} caractères restants",
+    "photos": "Photos",
+    "addPhotos": "Choisir des photos",
+    "takePhoto": "Prendre une photo",
+    "removePhoto": "Retirer la photo {{index}}",
+    "photosLeft_one": "Vous pouvez encore ajouter {{count}} photo.",
+    "photosLeft_many": "Vous pouvez encore ajouter {{count}} photos.",
+    "photosLeft_other": "Vous pouvez encore ajouter {{count}} photos.",
+    "photoRequired": "Ajoutez au moins une photo à une histoire photo.",
+    "photoUnsupported": "Ce fichier ne peut pas être utilisé. Choisissez une photo JPEG, PNG ou WebP.",
+    "photoFailed": "Impossible d'ouvrir vos photos. Réessayez.",
+    "cameraDenied": "Autorisez l'accès à l'appareil photo dans les réglages du téléphone pour prendre une photo.",
+    "uploadFailed": "Une photo n'a pas été envoyée. Vérifiez votre connexion et réessayez."
   },
   "notifications": {
     "title": "Notifications",
@@ -825,5 +837,20 @@
         "pending": "Réessayer"
       }
     }
+  },
+  "help": {
+    "title": "Aide et mentions légales",
+    "getHelp": "Obtenir de l'aide",
+    "contact": "Contacter l'assistance",
+    "center": "Centre d'aide",
+    "emailUs": "Vous pouvez aussi écrire à {{email}}.",
+    "noMailApp": "Aucune application de messagerie n'est configurée. Écrivez à {{email}} depuis n'importe quelle adresse e-mail.",
+    "mailSubject": "Assistance Travel Buddy",
+    "legal": "Mentions légales",
+    "terms": "Conditions d'utilisation",
+    "privacy": "Politique de confidentialité",
+    "guidelines": "Règles de la communauté",
+    "version": "Version {{version}}",
+    "error": "Impossible de charger cette page. Vérifiez votre connexion et réessayez."
   }
 }

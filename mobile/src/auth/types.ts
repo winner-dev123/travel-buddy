@@ -61,4 +61,11 @@ export interface LegalDocuments {
   privacy_version: string;
   terms_url: string;
   privacy_url: string;
+  community_guidelines_url?: string;
+}
+
+/** Contract `ClientConfig.support`: ``url`` is null until the public help page is published. */
+export interface SupportContact {
+  email: string;
+  url: string | null;
 }

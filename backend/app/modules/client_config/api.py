@@ -37,6 +37,13 @@ class LegalDocuments(BaseModel):
     community_guidelines_url: str
 
 
+class SupportContact(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    email: str
+    url: str | None
+
+
 class ManifestKey(BaseModel):
     """Public key that verifies offline package manifests, matched by ``key_id`` (OFF-001)."""
 
@@ -57,6 +64,7 @@ class ClientConfig(BaseModel):
     default_locale: str
     feature_flags: dict[str, bool]
     legal: LegalDocuments
+    support: SupportContact
     minimum_age: int
     web_push_vapid_public_key: str | None = None
     offline_manifest_keys: list[ManifestKey] = []
@@ -98,6 +106,7 @@ async def get_client_config(
             privacy_url=f"{site}/legal/privacy",
             community_guidelines_url=f"{site}/legal/community-guidelines",
         ),
+        support=SupportContact(email=settings.support_email, url=settings.support_url or None),
         minimum_age=legal.minimum_age,
         web_push_vapid_public_key=vapid.public_key if vapid is not None else None,
         offline_manifest_keys=[

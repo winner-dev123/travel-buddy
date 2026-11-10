@@ -3,6 +3,8 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
+from app.main import create_app
+from tests.conftest import make_identity_settings, make_settings
 from tests.contract_schemas import assert_matches_contract
 
 
@@ -19,6 +21,7 @@ def test_client_config_matches_contract_and_serves_legal_versions(client: TestCl
     assert body["supported_locales"] == ["en", "es", "pt-BR", "fr", "de"]
     assert body["feature_flags"]["traveler_discovery"] is False
     assert body["web_push_vapid_public_key"] is None
+    assert body["support"] == {"email": "support@travelbuddy.app", "url": None}
 
 
 @pytest.mark.parametrize(
@@ -47,3 +50,18 @@ def test_invalid_parameters_are_rejected(client: TestClient, params: dict[str, s
     response = client.get("/v1/client-config", params=params)
     assert response.status_code == 422
     assert response.json()["code"] == "validation_failed"
+
+
+@pytest.mark.req("AUTH-009")
+def test_support_page_is_served_once_published() -> None:
+    published = make_settings(support_url="https://travelbuddy.app/support")
+    with TestClient(create_app(published, identity_settings=make_identity_settings())) as client:
+        body = client.get(
+            "/v1/client-config", params={"platform": "ios", "app_version": "0.1.0"}
+        ).json()
+    assert body["support"] == {
+        "email": "support@travelbuddy.app",
+        "url": "https://travelbuddy.app/support",
+    }
+    with pytest.raises(ValueError):
+        make_settings(support_url="http://travelbuddy.app/support")  # https only

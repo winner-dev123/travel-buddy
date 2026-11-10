@@ -3825,6 +3825,19 @@ export interface components {
                 /** Format: uri */
                 safety_tips_url?: string;
             };
+            /** @description How users reach support (App Store 1.5); shown on the apps' Help screen. */
+            support: {
+                /**
+                 * Format: email
+                 * @example support@travelbuddy.app
+                 */
+                email: string;
+                /**
+                 * Format: uri
+                 * @description Public help page. Null until it is published; clients then offer only the email.
+                 */
+                url: string | null;
+            };
             /** @example 18 */
             minimum_age: number;
         };

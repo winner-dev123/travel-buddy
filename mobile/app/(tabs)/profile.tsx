@@ -205,6 +205,12 @@ function SignedInProfile({ me }: { me: Me }) {
             onPress={() => router.push('/settings/data')}
             testID="profile-menu-data"
           />
+          <MenuRow
+            icon="help-buoy-outline"
+            label={t('help.title')}
+            onPress={() => router.push('/settings/help')}
+            testID="profile-menu-help"
+          />
           {!pending ? (
             <MenuRow
               icon="trash-outline"

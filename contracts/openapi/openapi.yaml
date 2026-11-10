@@ -6699,7 +6699,7 @@ components:
           additionalProperties: { type: string, enum: [ok, fail] }
     ClientConfig:
       type: object
-      required: [min_supported_version, update_required, supported_locales, default_locale, feature_flags, legal, minimum_age]
+      required: [min_supported_version, update_required, supported_locales, default_locale, feature_flags, legal, support, minimum_age]
       properties:
         min_supported_version: { type: string }
         latest_version: { type: string }
@@ -6738,6 +6738,17 @@ components:
             privacy_url: { type: string, format: uri }
             community_guidelines_url: { type: string, format: uri }
             safety_tips_url: { type: string, format: uri }
+        support:
+          type: object
+          description: How users reach support (App Store 1.5); shown on the apps' Help screen.
+          additionalProperties: false
+          required: [email, url]
+          properties:
+            email: { type: string, format: email, example: support@travelbuddy.app }
+            url:
+              type: [string, 'null']
+              format: uri
+              description: Public help page. Null until it is published; clients then offer only the email.
         minimum_age: { type: integer, minimum: 13, example: 18 }
     TravelInterestCatalog:
       type: object
