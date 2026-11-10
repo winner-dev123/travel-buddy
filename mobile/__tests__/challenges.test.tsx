@@ -11,6 +11,7 @@ import { i18n } from '@/i18n';
 import ChallengeScreen from '../app/challenges/[id]';
 import ChallengesScreen from '../app/challenges/index';
 import NewChallenge from '../app/challenges/new';
+import Fulfillments from '../app/challenges/fulfillments';
 import Review from '../app/challenges/review';
 import Rewards from '../app/rewards';
 
@@ -130,7 +131,13 @@ function serve(routes: Record<string, unknown>) {
 }
 
 beforeEach(async () => {
-  for (const fn of [mockApi.get, mockApi.post, mockRouter.push, mockRouter.replace]) {
+  for (const fn of [
+    mockApi.get,
+    mockApi.post,
+    mockApi.patch,
+    mockRouter.push,
+    mockRouter.replace,
+  ]) {
     fn.mockReset();
   }
   mockParams = {};
@@ -495,5 +502,65 @@ describe('judging', () => {
     expect(mockApi.post).toHaveBeenCalledWith('/v1/challenges/c1/disputes', {
       body: { reason: 'My answer was right but marked wrong.' },
     });
+  });
+});
+
+it('lets organizers issue a discount code and mark it delivered', async () => {
+  mockParams = { id: 'c1' };
+  const pending = {
+    id: 'f1',
+    challenge_reward_id: 'r2',
+    winner_id: 'w1',
+    recipient: person('u2', 'Ana'),
+    status: 'pending',
+    issued_at: null,
+    delivered_at: null,
+    notes: null,
+    updated_at: '2026-11-11T12:00:00Z',
+  };
+  mockApi.get.mockResolvedValue({ data: [pending], page: { next_cursor: null } });
+  mockApi.post.mockResolvedValue({ ...pending, status: 'issued' });
+  await renderUi(<Fulfillments />);
+  expect(screen.queryByTestId('fulfillment-delivered-f1')).toBeNull(); // not before issuing
+  await fireEvent.changeText(await screen.findByTestId('fulfillment-code-f1'), ' tour10 ');
+  await fireEvent.press(screen.getByTestId('fulfillment-issued-f1'));
+  await waitFor(() =>
+    expect(mockApi.post).toHaveBeenCalledWith('/v1/challenges/c1/fulfillments/f1/transitions', {
+      body: { to_status: 'issued', secret: 'tour10' },
+    }),
+  );
+});
+
+it('edits a draft with its version and keeps answers unless replaced', async () => {
+  mockParams = { groupId: 'g1', edit: 'c1' };
+  const starts = new Date(Date.now() + 60 * 60 * 1000);
+  mockApi.get.mockResolvedValue({
+    ...challenge({
+      status: 'draft',
+      starts_at: starts.toISOString(),
+      ends_at: new Date(starts.getTime() + 3 * 86_400_000).toISOString(),
+    }),
+    answer_count: 2,
+    participant_count: 0,
+    pending_review_count: 0,
+    version: 4,
+  });
+  mockApi.patch.mockResolvedValueOnce({ id: 'c1' });
+  await renderUi(<NewChallenge />);
+  expect(await screen.findByDisplayValue('Where is the tower?')).toBeTruthy();
+  expect(screen.queryByTestId('new-challenge-badge')).toBeNull(); // set at creation only
+  await fireEvent.changeText(screen.getByTestId('new-challenge-title'), 'Which tower?');
+  await fireEvent.press(screen.getByTestId('new-challenge-save'));
+  await waitFor(() => expect(mockApi.patch).toHaveBeenCalled());
+  const [path, options] = mockApi.patch.mock.calls[0];
+  expect(path).toBe('/v1/challenges/c1');
+  expect(options.ifMatchVersion).toBe(4);
+  expect(options.body.title).toBe('Which tower?');
+  expect(options.body.accepted_answers).toBeUndefined();
+  const span = (Date.parse(options.body.ends_at) - Date.parse(options.body.starts_at)) / 86_400_000;
+  expect(span).toBe(3);
+  expect(mockRouter.replace).toHaveBeenCalledWith({
+    pathname: '/challenges/[id]',
+    params: { id: 'c1' },
   });
 });

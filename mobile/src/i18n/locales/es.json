@@ -750,7 +750,12 @@
       "teams": "Resolver en equipos",
       "badge": "Insignia para el ganador (opcional)",
       "badgeHint": "La insignia aparece en el perfil del ganador. Sin premios en dinero.",
-      "save": "Guardar borrador"
+      "save": "Guardar borrador",
+      "edit": "Editar borrador",
+      "answersKeep_one": "Déjalo vacío para mantener la {{count}} respuesta actual.",
+      "answersKeep_many": "Déjalo vacío para mantener las {{count}} respuestas actuales.",
+      "answersKeep_other": "Déjalo vacío para mantener las {{count}} respuestas actuales.",
+      "stale": "Alguien más cambió este borrador. Ábrelo de nuevo e inténtalo otra vez."
     },
     "policies": {
       "first_correct": "La primera respuesta correcta",
@@ -796,6 +801,22 @@
       "send": "Abrir una disputa",
       "sent": "Gracias. Los organizadores lo revisarán.",
       "limit": "Ya tienes disputas abiertas o el plazo terminó."
+    },
+    "fulfill": {
+      "open": "Premios por entregar",
+      "title": "Premios por entregar",
+      "empty": "No hay premios reales por entregar.",
+      "code": "Código de descuento (al emitir)",
+      "codeNeeded": "Añade el código de descuento para emitirlo.",
+      "platform": "El equipo de la plataforma entrega este premio.",
+      "to": {
+        "issued": "Emitir",
+        "delivered": "Entregado",
+        "failed": "Falló",
+        "cancelled": "Cancelar",
+        "disputed": "En disputa",
+        "pending": "Reintentar"
+      }
     }
   }
 }

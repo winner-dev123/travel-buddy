@@ -210,6 +210,17 @@ export default function ChallengeScreen() {
           <>
             <Notice tone="info">{t('challenges.draftNote')}</Notice>
             <Button
+              label={t('challenges.form.edit')}
+              variant="secondary"
+              onPress={() =>
+                router.push({
+                  pathname: '/challenges/new',
+                  params: { groupId: data.group_id, edit: data.id },
+                })
+              }
+              testID="challenge-edit"
+            />
+            <Button
               label={t('challenges.publish')}
               onPress={() => publish.mutate()}
               busy={publish.isPending}
@@ -394,6 +405,17 @@ export default function ChallengeScreen() {
             variant="secondary"
             onPress={() => router.push({ pathname: '/challenges/review', params: { id: data.id } })}
             testID="challenge-review"
+          />
+        ) : null}
+
+        {canManage && published ? (
+          <Button
+            label={t('challenges.fulfill.open')}
+            variant="secondary"
+            onPress={() =>
+              router.push({ pathname: '/challenges/fulfillments', params: { id: data.id } })
+            }
+            testID="challenge-fulfillments"
           />
         ) : null}
 

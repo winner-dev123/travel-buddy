@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,7 +11,9 @@ import {
   badgeKey,
   challengeKeys,
   createChallenge,
+  getManagerView,
   type NewChallenge,
+  updateChallenge,
 } from '@/features/challenges/api';
 import { useAppTheme } from '@/theme/useAppTheme';
 
@@ -25,7 +27,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * It is saved as a draft; organizers publish it from the challenge screen. Cash prizes, raffles
  * and paid entry are refused by the server. */
 export default function NewChallengeScreen() {
-  const { groupId } = useLocalSearchParams<{ groupId: string }>();
+  const { groupId, edit } = useLocalSearchParams<{ groupId: string; edit?: string }>();
   const { t } = useTranslation();
   const theme = useAppTheme();
   const router = useRouter();
@@ -40,6 +42,26 @@ export default function NewChallengeScreen() {
   const [attempts, setAttempts] = useState('3');
   const [teams, setTeams] = useState(false);
   const [badge, setBadge] = useState('');
+  const editing = Boolean(edit);
+  const draft = useQuery({
+    queryKey: challengeKeys.manage(edit ?? ''),
+    queryFn: () => getManagerView(getApiClient(), edit!),
+    enabled: editing,
+  });
+  const loaded = draft.data;
+  // Fill the form once per loaded draft (adjusting state while rendering, not in an effect).
+  const [prefilled, setPrefilled] = useState<string | null>(null);
+  if (loaded && prefilled !== loaded.id) {
+    setPrefilled(loaded.id);
+    setTitle(loaded.title);
+    setRiddle(loaded.description);
+    setAttempts(String(loaded.max_attempts));
+    if ((POLICIES as readonly string[]).includes(loaded.winner_policy)) {
+      setPolicy(loaded.winner_policy as (typeof POLICIES)[number]);
+    }
+    const span = (Date.parse(loaded.ends_at) - Date.parse(loaded.starts_at)) / DAY_MS;
+    setDays(DURATIONS.reduce((best, d) => (Math.abs(d - span) < Math.abs(best - span) ? d : best)));
+  }
 
   const accepted = answers
     .split('\n')
@@ -79,7 +101,30 @@ export default function NewChallengeScreen() {
       router.replace({ pathname: '/challenges/[id]', params: { id: created.id } });
     },
   });
-  const code = create.error instanceof ApiProblem ? create.error.code : null;
+  const save = useMutation({
+    mutationFn: () => {
+      const current = loaded!;
+      // A draft whose start has passed starts again shortly after it is saved.
+      const startsAt = Math.max(Date.parse(current.starts_at), Date.now() + START_DELAY_MS);
+      return updateChallenge(getApiClient(), current.id, current.version, {
+        title: title.trim(),
+        description: riddle.trim(),
+        starts_at: new Date(startsAt).toISOString(),
+        ends_at: new Date(startsAt + days * DAY_MS).toISOString(),
+        max_attempts: Math.min(20, Math.max(1, Number.parseInt(attempts, 10) || 3)),
+        winner_policy: policy,
+        ...(accepted.length ? { accepted_answers: accepted.slice(0, 20) } : {}),
+      });
+    },
+    onSuccess: (updated) => {
+      void queryClient.invalidateQueries({ queryKey: challengeKeys.detail(updated.id) });
+      void queryClient.invalidateQueries({ queryKey: challengeKeys.manage(updated.id) });
+      void queryClient.invalidateQueries({ queryKey: challengeKeys.group(groupId) });
+      router.replace({ pathname: '/challenges/[id]', params: { id: updated.id } });
+    },
+  });
+  const failure = editing ? save.error : create.error;
+  const code = failure instanceof ApiProblem ? failure.code : null;
   const error =
     code === 'entitlement_required'
       ? t('challenges.premiumNote')
@@ -87,10 +132,15 @@ export default function NewChallengeScreen() {
         ? t('challenges.prizeNotAllowed')
         : code === 'validation_failed'
           ? t('challenges.invalid')
-          : create.isError
-            ? t('user.actionFailed')
-            : null;
-  const valid = title.trim().length >= 3 && riddle.trim().length >= 10 && accepted.length > 0;
+          : code === 'precondition_failed'
+            ? t('challenges.form.stale')
+            : failure
+              ? t('user.actionFailed')
+              : null;
+  const valid =
+    title.trim().length >= 3 &&
+    riddle.trim().length >= 10 &&
+    (editing ? loaded !== undefined : accepted.length > 0);
 
   const chip = (selected: boolean) => [
     styles.chip,
@@ -109,7 +159,12 @@ export default function NewChallengeScreen() {
       edges={['bottom']}
       style={[styles.fill, { backgroundColor: theme.colors.background }]}
     >
-      <Stack.Screen options={{ headerShown: true, title: t('challenges.new') }} />
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: editing ? t('challenges.form.edit') : t('challenges.new'),
+        }}
+      />
       <ScrollView contentContainerStyle={{ padding: theme.spacing[4], gap: theme.spacing[3] }}>
         <TextField
           label={t('challenges.form.title')}
@@ -128,20 +183,26 @@ export default function NewChallengeScreen() {
         />
         <TextField
           label={t('challenges.form.answers')}
-          hint={t('challenges.form.answersHint')}
+          hint={
+            editing
+              ? t('challenges.form.answersKeep', { count: loaded?.answer_count ?? 0 })
+              : t('challenges.form.answersHint')
+          }
           value={answers}
           onChangeText={setAnswers}
           multiline
           autoCorrect={false}
           testID="new-challenge-answers"
         />
-        <TextField
-          label={t('challenges.form.hint')}
-          value={hint}
-          onChangeText={setHint}
-          maxLength={500}
-          testID="new-challenge-hint"
-        />
+        {editing ? null : (
+          <TextField
+            label={t('challenges.form.hint')}
+            value={hint}
+            onChangeText={setHint}
+            maxLength={500}
+            testID="new-challenge-hint"
+          />
+        )}
         <Text style={[theme.typography.label, { color: theme.colors.textPrimary }]}>
           {t('challenges.form.duration')}
         </Text>
@@ -185,26 +246,30 @@ export default function NewChallengeScreen() {
           keyboardType="number-pad"
           testID="new-challenge-attempts"
         />
-        <SwitchRow
-          label={t('challenges.form.teams')}
-          value={teams}
-          onValueChange={setTeams}
-          testID="new-challenge-teams"
-        />
-        <TextField
-          label={t('challenges.form.badge')}
-          hint={t('challenges.form.badgeHint')}
-          value={badge}
-          onChangeText={setBadge}
-          maxLength={80}
-          testID="new-challenge-badge"
-        />
+        {editing ? null : (
+          <>
+            <SwitchRow
+              label={t('challenges.form.teams')}
+              value={teams}
+              onValueChange={setTeams}
+              testID="new-challenge-teams"
+            />
+            <TextField
+              label={t('challenges.form.badge')}
+              hint={t('challenges.form.badgeHint')}
+              value={badge}
+              onChangeText={setBadge}
+              maxLength={80}
+              testID="new-challenge-badge"
+            />
+          </>
+        )}
         {error ? <Notice tone="error">{error}</Notice> : null}
         <Button
           label={t('challenges.form.save')}
-          onPress={() => create.mutate()}
+          onPress={() => (editing ? save.mutate() : create.mutate())}
           disabled={!valid}
-          busy={create.isPending}
+          busy={create.isPending || save.isPending}
           testID="new-challenge-save"
         />
       </ScrollView>

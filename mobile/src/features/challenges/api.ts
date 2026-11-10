@@ -168,6 +168,7 @@ export const challengeKeys = {
   results: (id: string) => ['challenges', 'results', id] as const,
   teams: (id: string) => ['challenges', 'teams', id] as const,
   rewards: ['challenges', 'rewards'] as const,
+  fulfillments: (id: string) => ['challenges', 'fulfillments', id] as const,
   review: (id: string) => ['challenges', 'review', id] as const,
 };
 
@@ -304,4 +305,68 @@ export function raiseDispute(
   reason: string,
 ): Promise<unknown> {
   return client.post(`/v1/challenges/${challengeId}/disputes`, { body: { reason } });
+}
+
+/** Contract `RewardFulfillment` (never the code itself). */
+export interface RewardFulfillment {
+  id: string;
+  challenge_reward_id: string;
+  winner_id: string;
+  recipient: UserSummary | null;
+  status: FulfillmentStatus;
+  issued_at: string | null;
+  delivered_at: string | null;
+  notes: string | null;
+  updated_at: string;
+}
+
+/** The fulfillment state machine (CHAL-015), mirrored for the buttons; the server decides. */
+export const FULFILLMENT_NEXT: Record<FulfillmentStatus, readonly FulfillmentStatus[]> = {
+  pending: ['issued', 'failed', 'cancelled'],
+  issued: ['delivered', 'failed', 'disputed'],
+  failed: ['pending'],
+  disputed: ['issued', 'cancelled'],
+  delivered: [],
+  cancelled: [],
+};
+
+export function listFulfillments(client: ApiClient, id: string): Promise<Page<RewardFulfillment>> {
+  return client.get<Page<RewardFulfillment>>(`/v1/challenges/${id}/fulfillments`, {
+    query: { limit: 100 },
+  });
+}
+
+export function moveFulfillment(
+  client: ApiClient,
+  challengeId: string,
+  fulfillmentId: string,
+  body: { to_status: FulfillmentStatus; secret?: string; note?: string },
+): Promise<RewardFulfillment> {
+  return client.post<RewardFulfillment>(
+    `/v1/challenges/${challengeId}/fulfillments/${fulfillmentId}/transitions`,
+    { body },
+  );
+}
+
+export interface ChallengeChanges {
+  title?: string;
+  description?: string;
+  accepted_answers?: string[];
+  starts_at?: string;
+  ends_at?: string;
+  max_attempts?: number;
+  winner_policy?: WinnerPolicy;
+}
+
+/** Edit a draft (or extend a live challenge's end); needs the version read (If-Match). */
+export function updateChallenge(
+  client: ApiClient,
+  id: string,
+  version: number,
+  body: ChallengeChanges,
+): Promise<ChallengeManagerView> {
+  return client.patch<ChallengeManagerView>(`/v1/challenges/${id}`, {
+    body,
+    ifMatchVersion: version,
+  });
 }

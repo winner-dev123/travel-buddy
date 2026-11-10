@@ -750,7 +750,12 @@
       "teams": "Résoudre en équipes",
       "badge": "Badge pour le gagnant (facultatif)",
       "badgeHint": "Le badge apparaît sur le profil du gagnant. Pas de récompense en argent.",
-      "save": "Enregistrer le brouillon"
+      "save": "Enregistrer le brouillon",
+      "edit": "Modifier le brouillon",
+      "answersKeep_one": "Laissez vide pour garder la {{count}} réponse actuelle.",
+      "answersKeep_many": "Laissez vide pour garder les {{count}} réponses actuelles.",
+      "answersKeep_other": "Laissez vide pour garder les {{count}} réponses actuelles.",
+      "stale": "Quelqu'un d'autre a modifié ce brouillon. Rouvrez-le et réessayez."
     },
     "policies": {
       "first_correct": "La première bonne réponse",
@@ -796,6 +801,22 @@
       "send": "Contester",
       "sent": "Merci. Les organisateurs vont examiner votre demande.",
       "limit": "Vous avez déjà des contestations ouvertes, ou le délai est passé."
+    },
+    "fulfill": {
+      "open": "Récompenses à remettre",
+      "title": "Récompenses à remettre",
+      "empty": "Aucune récompense réelle à remettre.",
+      "code": "Code de réduction (à l'émission)",
+      "codeNeeded": "Ajoutez le code de réduction pour l'émettre.",
+      "platform": "L'équipe de la plateforme remet cette récompense.",
+      "to": {
+        "issued": "Émettre",
+        "delivered": "Remise",
+        "failed": "Échec",
+        "cancelled": "Annuler",
+        "disputed": "Contestée",
+        "pending": "Réessayer"
+      }
     }
   }
 }

@@ -739,7 +739,11 @@
       "teams": "In Teams lösen",
       "badge": "Abzeichen für den Gewinn (optional)",
       "badgeHint": "Das Abzeichen erscheint im Profil. Keine Geldpreise.",
-      "save": "Entwurf speichern"
+      "save": "Entwurf speichern",
+      "edit": "Entwurf bearbeiten",
+      "answersKeep_one": "Leer lassen, um die {{count}} aktuelle Antwort zu behalten.",
+      "answersKeep_other": "Leer lassen, um die {{count}} aktuellen Antworten zu behalten.",
+      "stale": "Jemand anderes hat diesen Entwurf geändert. Öffne ihn neu und versuch es noch einmal."
     },
     "policies": {
       "first_correct": "Die erste richtige Antwort",
@@ -785,6 +789,22 @@
       "send": "Einspruch einlegen",
       "sent": "Danke. Die Organisatoren sehen sich das an.",
       "limit": "Du hast schon offene Einsprüche, oder die Frist ist vorbei."
+    },
+    "fulfill": {
+      "open": "Zu übergebende Belohnungen",
+      "title": "Zu übergebende Belohnungen",
+      "empty": "Keine echten Belohnungen zu übergeben.",
+      "code": "Rabattcode (beim Ausstellen)",
+      "codeNeeded": "Gib den Rabattcode ein, um ihn auszustellen.",
+      "platform": "Das Plattform-Team übergibt diese Belohnung.",
+      "to": {
+        "issued": "Ausstellen",
+        "delivered": "Zugestellt",
+        "failed": "Fehlgeschlagen",
+        "cancelled": "Stornieren",
+        "disputed": "Beanstandet",
+        "pending": "Erneut versuchen"
+      }
     }
   }
 }

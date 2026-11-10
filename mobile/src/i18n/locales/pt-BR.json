@@ -750,7 +750,12 @@
       "teams": "Resolver em equipes",
       "badge": "Selo para quem ganhar (opcional)",
       "badgeHint": "O selo aparece no perfil de quem ganhar. Sem prêmios em dinheiro.",
-      "save": "Salvar rascunho"
+      "save": "Salvar rascunho",
+      "edit": "Editar rascunho",
+      "answersKeep_one": "Deixe vazio para manter a {{count}} resposta atual.",
+      "answersKeep_many": "Deixe vazio para manter as {{count}} respostas atuais.",
+      "answersKeep_other": "Deixe vazio para manter as {{count}} respostas atuais.",
+      "stale": "Outra pessoa mudou este rascunho. Abra de novo e tente outra vez."
     },
     "policies": {
       "first_correct": "A primeira resposta certa",
@@ -796,6 +801,22 @@
       "send": "Abrir contestação",
       "sent": "Obrigado. Os organizadores vão analisar.",
       "limit": "Você já tem contestações abertas ou o prazo acabou."
+    },
+    "fulfill": {
+      "open": "Prêmios a entregar",
+      "title": "Prêmios a entregar",
+      "empty": "Não há prêmios reais a entregar.",
+      "code": "Código de desconto (ao emitir)",
+      "codeNeeded": "Informe o código de desconto para emitir.",
+      "platform": "A equipe da plataforma entrega este prêmio.",
+      "to": {
+        "issued": "Emitir",
+        "delivered": "Entregue",
+        "failed": "Falhou",
+        "cancelled": "Cancelar",
+        "disputed": "Em contestação",
+        "pending": "Tentar de novo"
+      }
     }
   }
 }

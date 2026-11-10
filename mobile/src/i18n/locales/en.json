@@ -739,7 +739,11 @@
       "teams": "Solve in teams",
       "badge": "Badge for the winner (optional)",
       "badgeHint": "The badge shows on the winner's profile. No cash prizes.",
-      "save": "Save draft"
+      "save": "Save draft",
+      "edit": "Edit draft",
+      "answersKeep_one": "Leave empty to keep the {{count}} current answer.",
+      "answersKeep_other": "Leave empty to keep the {{count}} current answers.",
+      "stale": "Someone else changed this draft. Reopen it and try again."
     },
     "policies": {
       "first_correct": "First correct answer",
@@ -785,6 +789,22 @@
       "send": "Raise a dispute",
       "sent": "Thanks. The organizers will look into it.",
       "limit": "You already have open disputes, or the time to dispute is over."
+    },
+    "fulfill": {
+      "open": "Rewards to deliver",
+      "title": "Rewards to deliver",
+      "empty": "No real-world rewards to deliver.",
+      "code": "Discount code (when issuing)",
+      "codeNeeded": "Add the discount code to issue it.",
+      "platform": "The platform team delivers this reward.",
+      "to": {
+        "issued": "Issue",
+        "delivered": "Delivered",
+        "failed": "Failed",
+        "cancelled": "Cancel",
+        "disputed": "Disputed",
+        "pending": "Retry"
+      }
     }
   }
 }
