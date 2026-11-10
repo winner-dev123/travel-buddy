@@ -2,14 +2,18 @@
 
 Defaults are OFF for everything not yet production-ready. Overrides come from the
 ``FEATURE_FLAGS`` setting (JSON). Unknown flag names fail at boot to catch typos.
+
+The API enforces them (BL-6.10): a route behind a disabled flag answers ``403 feature_disabled``
+with ``feature_key``. Data stays readable where noted; new activity is refused.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from enum import StrEnum
+from typing import Any
 
-from fastapi import Request
+from fastapi import Depends, Request
 
 from app.core.errors import AppError, ErrorCode
 
@@ -59,16 +63,36 @@ class FeatureFlags:
         return {flag.value: enabled for flag, enabled in self._values.items()}
 
 
+def feature_disabled(flag: Flag) -> AppError:
+    return AppError(
+        ErrorCode.FEATURE_DISABLED,
+        "This feature is not available yet.",
+        extensions={"feature_key": flag.value},
+    )
+
+
 def require_flag(flag: Flag) -> Callable[[Request], None]:
     """FastAPI dependency factory: reject requests to routes behind a disabled flag."""
 
     def _dependency(request: Request) -> None:
         flags: FeatureFlags = request.app.state.feature_flags
         if not flags.is_enabled(flag):
-            raise AppError(
-                ErrorCode.FEATURE_DISABLED,
-                "This feature is not available yet.",
-                extensions={"feature_key": flag.value},
-            )
+            raise feature_disabled(flag)
 
     return _dependency
+
+
+def require_any_flag(*flags: Flag) -> Callable[[Request], None]:
+    """Routes shared by several features (e.g. conversations: direct messages and group chats)."""
+
+    def _dependency(request: Request) -> None:
+        state: FeatureFlags = request.app.state.feature_flags
+        if not any(state.is_enabled(flag) for flag in flags):
+            raise feature_disabled(flags[0])
+
+    return _dependency
+
+
+def gate(flag: Flag) -> list[Any]:
+    """``dependencies=gate(Flag.X)`` for a route or router (BL-6.10)."""
+    return [Depends(require_flag(flag))]

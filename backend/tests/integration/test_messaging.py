@@ -589,3 +589,37 @@ def test_messages_of_deleted_accounts_lose_their_content(app: LiveApp) -> None: 
         )
         == 0
     )
+
+
+def test_turning_direct_messages_off_keeps_history_readable(app: LiveApp) -> None:  # noqa: F811
+    from datetime import UTC, datetime
+
+    from fastapi.testclient import TestClient
+
+    from app.core.time import FixedClock
+    from app.main import create_app
+    from tests.conftest import make_identity_settings, make_settings
+
+    ana, _, bo, bo_id, conversation = _pair(app)
+    _sent(app, ana, conversation, "Before the switch")
+
+    async def ok() -> bool:
+        return True
+
+    off = create_app(
+        make_settings(
+            database_url=app.db_url, dev_idp_enabled=True, feature_flags={"direct_messages": False}
+        ),
+        identity_settings=make_identity_settings(),
+        readiness_checks={"db": ok},
+        clock=FixedClock(datetime.now(tz=UTC).replace(microsecond=0)),
+    )
+    with TestClient(off, raise_server_exceptions=False) as client:
+        live = LiveApp(client=client, clock=app.clock, db_url=app.db_url)
+        refused = _send(live, bo, conversation, "After the switch")
+        _problem(refused, 403, "feature_disabled")
+        assert refused.json()["feature_key"] == "direct_messages"
+        assert [m["body"] for m in _messages(live, bo, conversation)["data"]] == [
+            "Before the switch"
+        ]
+        _problem(_open(live, bo, bo_id), 403, "feature_disabled")

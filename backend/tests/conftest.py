@@ -19,6 +19,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.core.config import AppEnv, Settings
+from app.core.feature_flags import Flag
 from app.main import create_app
 from app.modules.identity.config import IdentitySettings
 
@@ -46,6 +47,14 @@ def make_identity_settings(**overrides: object) -> IdentitySettings:
     return IdentitySettings(_env_file=None, **values)  # type: ignore[call-arg]
 
 
+# The API enforces feature flags (BL-6.10). Tests exercise every feature unless they turn one off;
+# public groups and join requests stay off as in v1. ``feature_flags=`` overrides merge into this.
+TEST_FEATURE_FLAGS: dict[str, bool] = {
+    flag.value: flag not in (Flag.GROUP_JOIN_REQUESTS, Flag.GROUP_PUBLIC_VISIBILITY)
+    for flag in Flag
+}
+
+
 def make_settings(**overrides: object) -> Settings:
     values: dict[str, object] = {
         "app_env": AppEnv.TEST,
@@ -53,8 +62,12 @@ def make_settings(**overrides: object) -> Settings:
         "log_level": "WARNING",
         "database_url": "postgresql+asyncpg://unused:unused@127.0.0.1:1/unused",
         "redis_url": "redis://127.0.0.1:1/0",
+        "feature_flags": TEST_FEATURE_FLAGS,
     }
+    flags = overrides.pop("feature_flags", None)
     values.update(overrides)
+    if isinstance(flags, dict):
+        values["feature_flags"] = {**TEST_FEATURE_FLAGS, **flags}
     return Settings(_env_file=None, **values)  # type: ignore[call-arg]
 
 

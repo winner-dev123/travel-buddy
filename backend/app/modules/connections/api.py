@@ -8,6 +8,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 
+from app.core.feature_flags import Flag, gate
 from app.core.pagination import Page
 from app.core.ratelimit import rate_limited
 from app.core.security.authn import get_principal
@@ -21,7 +22,9 @@ from app.modules.connections.schemas import (
 )
 from app.modules.connections.service import ConnectionService
 
-router = APIRouter(prefix="/v1/connections", tags=["connections"])
+router = APIRouter(
+    prefix="/v1/connections", tags=["connections"], dependencies=gate(Flag.CONNECTIONS)
+)
 
 CurrentPrincipal = Annotated[Principal, Depends(get_principal)]
 

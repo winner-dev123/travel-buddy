@@ -8,6 +8,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header, Query, Request, status
 from fastapi.responses import JSONResponse
 
+from app.core.feature_flags import Flag, gate, require_any_flag
 from app.core.i18n import negotiate_ui_locale, parse_accept_language
 from app.core.ratelimit.http import rate_limited
 from app.core.security.authn import get_principal
@@ -32,6 +33,7 @@ def _service(request: Request) -> AIService:
 
 @router.post(
     "/itineraries/generate",
+    dependencies=gate(Flag.AI_ITINERARIES),
     status_code=status.HTTP_202_ACCEPTED,
     response_model=AIGenerationOut,
     openapi_extra=rate_limited("ai"),
@@ -57,6 +59,7 @@ async def generate_itinerary(
 
 @router.post(
     "/trips/{trip_id}/replan",
+    dependencies=gate(Flag.AI_REPLANNING),
     status_code=status.HTTP_202_ACCEPTED,
     response_model=AIGenerationOut,
     openapi_extra=rate_limited("ai"),
@@ -84,7 +87,11 @@ async def replan_trip(
     )
 
 
-@router.get("/generations/{generation_id}", response_model=AIGenerationOut)
+@router.get(
+    "/generations/{generation_id}",
+    dependencies=[Depends(require_any_flag(Flag.AI_ITINERARIES, Flag.AI_REPLANNING))],
+    response_model=AIGenerationOut,
+)
 async def get_generation(
     generation_id: uuid.UUID, request: Request, principal: CurrentPrincipal
 ) -> AIGenerationOut:
@@ -97,7 +104,10 @@ posts_router = APIRouter(prefix="/v1/posts", tags=["posts"])
 
 
 @posts_router.get(
-    "/{post_id}/translation", response_model=TranslationOut, openapi_extra=rate_limited("ai")
+    "/{post_id}/translation",
+    dependencies=gate(Flag.POST_TRANSLATION),
+    response_model=TranslationOut,
+    openapi_extra=rate_limited("ai"),
 )
 async def translate_post(
     post_id: uuid.UUID,

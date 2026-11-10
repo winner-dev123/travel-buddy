@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Header, Path, Query, Request, Response, 
 from fastapi.responses import JSONResponse
 
 from app.core.errors import AppError, ErrorCode, FieldError
+from app.core.feature_flags import Flag, gate
 from app.core.i18n import parse_accept_language
 from app.core.pagination import Page
 from app.core.ratelimit import rate_limited
@@ -438,7 +439,12 @@ def _categories(raw: str | None) -> list[str]:
     return list(dict.fromkeys(kinds))
 
 
-@router.get("/v1/public/posts", tags=["feed"], openapi_extra=rate_limited("guest"))
+@router.get(
+    "/v1/public/posts",
+    dependencies=gate(Flag.GUEST_BROWSING),
+    tags=["feed"],
+    openapi_extra=rate_limited("guest"),
+)
 async def list_public_posts(
     request: Request,
     accept_language: AcceptLanguage = None,
@@ -460,7 +466,12 @@ async def list_public_posts(
     )
 
 
-@router.get("/v1/public/posts/{post_id}", tags=["feed"], openapi_extra=rate_limited("guest"))
+@router.get(
+    "/v1/public/posts/{post_id}",
+    dependencies=gate(Flag.GUEST_BROWSING),
+    tags=["feed"],
+    openapi_extra=rate_limited("guest"),
+)
 async def get_public_post(
     post_id: uuid.UUID, request: Request, accept_language: AcceptLanguage = None
 ) -> JSONResponse:

@@ -411,6 +411,7 @@ def create_app(
         publish=realtime_bus.publish,
         sign=media_service.private_signer(media_storage),
         group_policy=group_chat_policy,
+        flags=app.state.feature_flags,
     )
     app.state.group_service = groups_service.GroupService(
         sessionmaker=database.sessionmaker,

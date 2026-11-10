@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Header, Query, Request, status
 from fastapi.responses import JSONResponse
 
 from app.core.errors import AppError, ErrorCode, FieldError
+from app.core.feature_flags import Flag, gate
 from app.core.ratelimit.http import rate_limited
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
@@ -47,7 +48,7 @@ from app.modules.challenges.schemas import (
 )
 from app.modules.challenges.service import ChallengeService
 
-router = APIRouter(tags=["challenges"])
+router = APIRouter(tags=["challenges"], dependencies=gate(Flag.GROUP_CHALLENGES))
 
 CurrentPrincipal = Annotated[Principal, Depends(get_principal)]
 IfMatch = Annotated[str | None, Header(alias="If-Match")]

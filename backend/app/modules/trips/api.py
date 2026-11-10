@@ -8,6 +8,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 
+from app.core.feature_flags import Flag, gate
 from app.core.i18n import parse_accept_language
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
@@ -30,7 +31,7 @@ from app.modules.trips.schemas import (
 )
 from app.modules.trips.service import TripService
 
-router = APIRouter(prefix="/v1/trips", tags=["trips"])
+router = APIRouter(prefix="/v1/trips", tags=["trips"], dependencies=gate(Flag.TRIPS))
 
 CurrentPrincipal = Annotated[Principal, Depends(get_principal)]
 IfMatch = Annotated[str | None, Header(alias="If-Match")]
@@ -233,7 +234,9 @@ async def sync_trip(
 
 # ─────────────────────────────── saved places (TRIP-003) ───────────────────────────────
 
-saved_places_router = APIRouter(prefix="/v1/users/me/saved-places", tags=["trips"])
+saved_places_router = APIRouter(
+    prefix="/v1/users/me/saved-places", tags=["trips"], dependencies=gate(Flag.TRIPS)
+)
 AcceptLanguage = Annotated[str | None, Header(alias="Accept-Language", max_length=200)]
 Collection = Annotated[str, Query(min_length=1, max_length=40)]
 

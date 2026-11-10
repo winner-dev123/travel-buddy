@@ -3945,9 +3945,11 @@ export interface components {
             default_locale: components["schemas"]["LocaleTag"];
             /**
              * @description Client-relevant feature flags, keyed by the backend `Flag` names (`backend/app/core/feature_flags.py`).
-             *     Global values (no per-user targeting yet), for UI decisions. Today the API enforces only
-             *     `group_join_requests` (`403 feature_disabled`); the other features answer whatever the flag says, so
-             *     clients must not rely on the API to hide them. Internal-only flags are omitted.
+             *     Global values (no per-user targeting yet), for UI decisions. The API enforces them: requests to a
+             *     feature whose flag is off answer `403 feature_disabled` with `feature_key` (before authentication).
+             *     Conversations stay readable while either `direct_messages` or `travel_groups` is on, but new messages
+             *     need the flag of the conversation's kind. Billing entitlements and store webhooks, destinations and the
+             *     core feed are never behind a flag. Internal-only flags are omitted.
              * @example {
              *       "traveler_discovery": false,
              *       "travel_groups": false,

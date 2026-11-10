@@ -9,6 +9,7 @@ from fastapi import APIRouter, Body, Depends, Header, Request, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.feature_flags import Flag, gate
 from app.core.ratelimit import rate_limited
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
@@ -27,6 +28,8 @@ from app.modules.billing.schemas import (
 from app.modules.billing.service import BillingService
 
 router = APIRouter(prefix="/v1/billing", tags=["billing"])
+# Entitlements (everyone has the free plan) and store webhooks stay open when billing is off.
+_BILLING = gate(Flag.BILLING)
 dev_router = APIRouter(prefix="/v1/dev/billing", tags=["dev"])
 
 CurrentPrincipal = Annotated[Principal, Depends(get_principal)]
@@ -42,7 +45,7 @@ def _service(request: Request) -> BillingService:
     return service
 
 
-@router.get("/products", response_model=ProductList)
+@router.get("/products", dependencies=_BILLING, response_model=ProductList)
 async def list_products(
     request: Request, platform: Literal["ios", "android", "web"]
 ) -> ProductList:
@@ -57,6 +60,7 @@ async def get_entitlements(request: Request, principal: CurrentPrincipal) -> JSO
 
 @router.post(
     "/purchases/verify",
+    dependencies=_BILLING,
     response_model=VerifyPurchaseResult,
     response_model_by_alias=True,
     openapi_extra=rate_limited("billing"),
@@ -82,6 +86,7 @@ async def verify_purchase(
 
 @router.post(
     "/purchases/restore",
+    dependencies=_BILLING,
     response_model=Entitlements,
     response_model_by_alias=True,
     openapi_extra=rate_limited("billing"),
@@ -140,6 +145,7 @@ class PortalRequest(BaseModel):
 
 @router.post(
     "/checkout-sessions",
+    dependencies=_BILLING,
     status_code=201,
     openapi_extra=rate_limited("billing"),
 )
@@ -164,7 +170,12 @@ async def create_checkout_session(
     )
 
 
-@router.post("/portal-sessions", status_code=201, openapi_extra=rate_limited("billing"))
+@router.post(
+    "/portal-sessions",
+    dependencies=_BILLING,
+    status_code=201,
+    openapi_extra=rate_limited("billing"),
+)
 async def create_portal_session(
     request: Request,
     principal: CurrentPrincipal,

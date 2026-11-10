@@ -8,11 +8,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header, Request, status
 from fastapi.responses import JSONResponse
 
+from app.core.feature_flags import FeatureFlags, Flag, feature_disabled
 from app.core.ratelimit import rate_limited
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
 from app.modules.media.schemas import CreateMediaUploadRequest, MediaAssetOut
-from app.modules.media.service import MediaService
+from app.modules.media.service import VIDEOS, MediaService
 
 router = APIRouter(prefix="/v1/media", tags=["media"])
 
@@ -33,6 +34,9 @@ async def create_upload(
     principal: CurrentPrincipal,
     idempotency_key: Annotated[uuid.UUID, Header(alias="Idempotency-Key")],
 ) -> JSONResponse:
+    flags: FeatureFlags = request.app.state.feature_flags
+    if body.mime_type in VIDEOS and not flags.is_enabled(Flag.POST_VIDEO):
+        raise feature_disabled(Flag.POST_VIDEO)
     upload, replayed = await _service(request).create_upload(
         principal, body, idempotency_key=idempotency_key
     )

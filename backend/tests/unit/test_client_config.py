@@ -19,7 +19,7 @@ def test_client_config_matches_contract_and_serves_legal_versions(client: TestCl
     assert body["legal"]["terms_url"].endswith("/legal/terms")
     assert body["minimum_age"] == 18
     assert body["supported_locales"] == ["en", "es", "pt-BR", "fr", "de"]
-    assert body["feature_flags"]["traveler_discovery"] is False
+    assert body["feature_flags"]["traveler_discovery"] is True  # the test settings turn it on
     assert body["web_push_vapid_public_key"] is None
     assert body["support"] == {"email": "support@travelbuddy.app", "url": None}
     assert body["password_reset_url"] == "http://localhost:3000/forgot-password"  # AUTH-005

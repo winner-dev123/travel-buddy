@@ -32,6 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.core.errors import AppError, ErrorCode, FieldError
+from app.core.feature_flags import FeatureFlags, Flag, feature_disabled
 from app.core.ids import uuid7
 from app.core.pagination import CursorCodec, PageInfo
 from app.core.security.principal import Principal
@@ -594,12 +595,26 @@ class MessagingService:
         publish: Publish | None = None,
         sign: media.Signer | None = None,
         group_policy: GroupPolicy | None = None,
+        flags: FeatureFlags | None = None,
     ) -> None:
         self._sessionmaker = sessionmaker
         self._cursors = cursors
         self._publish = publish
         self._sign = sign
         self._group_policy = group_policy
+        self._flags = flags
+
+    def _ensure_kind_enabled(self, conversation: Conversation) -> None:
+        """BL-6.10: no new messages where the feature is off; history stays readable."""
+        if self._flags is None:
+            return
+        flag = (
+            Flag.DIRECT_MESSAGES
+            if conversation.kind == ConversationKind.DIRECT
+            else Flag.TRAVEL_GROUPS
+        )
+        if not self._flags.is_enabled(flag):
+            raise feature_disabled(flag)
 
     async def _permissions(
         self, session: AsyncSession, conversation: Conversation, user_id: uuid.UUID
@@ -927,6 +942,7 @@ class MessagingService:
                 message="Messaging is limited on your account right now.",
             )
             if kind != MessageKind.ANNOUNCEMENT:  # admins may announce in admins-only chats
+                self._ensure_kind_enabled(conversation)
                 await _ensure_can_send(session, me, conversation, self._group_policy)
             await _ensure_not_filtered(session, me, conversation, request.body)
             floor = _floor(member)
@@ -1048,6 +1064,7 @@ class MessagingService:
                     ErrorCode.MESSAGE_EDIT_WINDOW_EXPIRED,
                     "Messages can be edited for 15 minutes after sending.",
                 )
+            self._ensure_kind_enabled(conversation)
             await _ensure_can_send(session, user_id, conversation, self._group_policy)
             await _ensure_not_filtered(session, user_id, conversation, body)
             message.body = body

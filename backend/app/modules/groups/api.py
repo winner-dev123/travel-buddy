@@ -9,7 +9,7 @@ from fastapi import APIRouter, Body, Depends, Header, Query, Request, Response, 
 from fastapi.responses import JSONResponse
 from pydantic import Field
 
-from app.core.feature_flags import Flag, require_flag
+from app.core.feature_flags import Flag, gate, require_flag
 from app.core.ratelimit import rate_limited
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
@@ -41,8 +41,8 @@ from app.modules.groups.schemas import (
 )
 from app.modules.groups.service import GroupService
 
-router = APIRouter(prefix="/v1/groups", tags=["groups"])
-invitations_router = APIRouter(tags=["groups"])
+router = APIRouter(prefix="/v1/groups", tags=["groups"], dependencies=gate(Flag.TRAVEL_GROUPS))
+invitations_router = APIRouter(tags=["groups"], dependencies=gate(Flag.TRAVEL_GROUPS))
 
 CurrentPrincipal = Annotated[Principal, Depends(get_principal)]
 IfMatch = Annotated[str | None, Header(alias="If-Match")]

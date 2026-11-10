@@ -9,6 +9,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
 
+from app.core.feature_flags import Flag, gate
 from app.core.i18n import parse_accept_language
 from app.core.security.authn import get_optional_principal, get_principal
 from app.core.security.principal import Principal
@@ -26,6 +27,8 @@ from app.modules.guides.schemas import (
 from app.modules.guides.service import GuideService
 
 router = APIRouter(tags=["guides"])
+_GUIDES = gate(Flag.GUIDES)
+_OFFLINE = gate(Flag.OFFLINE_PACKAGES)
 
 OptionalPrincipal = Annotated[Principal | None, Depends(get_optional_principal)]
 CurrentPrincipal = Annotated[Principal, Depends(get_principal)]
@@ -41,7 +44,11 @@ def _viewer(principal: Principal | None) -> uuid.UUID | None:
     return principal.user_id if principal is not None else None
 
 
-@router.get("/v1/destinations/{destination_id}/guides", response_model=GuideSummaryList)
+@router.get(
+    "/v1/destinations/{destination_id}/guides",
+    dependencies=_GUIDES,
+    response_model=GuideSummaryList,
+)
 async def list_destination_guides(
     destination_id: uuid.UUID,
     request: Request,
@@ -53,7 +60,7 @@ async def list_destination_guides(
     )
 
 
-@router.get("/v1/guides/{guide_id}", response_model=Guide)
+@router.get("/v1/guides/{guide_id}", dependencies=_GUIDES, response_model=Guide)
 async def get_guide(
     guide_id: uuid.UUID,
     request: Request,
@@ -65,7 +72,11 @@ async def get_guide(
     )
 
 
-@router.get("/v1/destinations/{destination_id}/audio-tours", response_model=AudioTourSummaryList)
+@router.get(
+    "/v1/destinations/{destination_id}/audio-tours",
+    dependencies=_GUIDES,
+    response_model=AudioTourSummaryList,
+)
 async def list_destination_audio_tours(
     destination_id: uuid.UUID,
     request: Request,
@@ -77,7 +88,7 @@ async def list_destination_audio_tours(
     )
 
 
-@router.get("/v1/audio-tours/{tour_id}", response_model=AudioTour)
+@router.get("/v1/audio-tours/{tour_id}", dependencies=_GUIDES, response_model=AudioTour)
 async def get_audio_tour(
     tour_id: uuid.UUID,
     request: Request,
@@ -97,7 +108,11 @@ def _offline(request: Request) -> OfflinePackageService:
     return service
 
 
-@router.get("/v1/destinations/{destination_id}/offline-packages", response_model=OfflinePackageList)
+@router.get(
+    "/v1/destinations/{destination_id}/offline-packages",
+    dependencies=_OFFLINE,
+    response_model=OfflinePackageList,
+)
 async def list_offline_packages(
     destination_id: uuid.UUID, request: Request, principal: CurrentPrincipal
 ) -> OfflinePackageList:
@@ -106,6 +121,7 @@ async def list_offline_packages(
 
 @router.post(
     "/v1/offline-packages/{package_id}/licenses",
+    dependencies=_OFFLINE,
     status_code=status.HTTP_201_CREATED,
     response_model=OfflinePackageLicenseOut,
 )
@@ -122,6 +138,7 @@ async def license_offline_package(
 
 @router.delete(
     "/v1/offline-packages/{package_id}/licenses/{license_id}",
+    dependencies=_OFFLINE,
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def release_offline_license(
@@ -131,7 +148,7 @@ async def release_offline_license(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.get("/v1/offline-packages/{package_id}/manifest")
+@router.get("/v1/offline-packages/{package_id}/manifest", dependencies=_OFFLINE)
 async def get_offline_manifest(
     package_id: uuid.UUID, request: Request, principal: CurrentPrincipal
 ) -> JSONResponse:
@@ -139,14 +156,16 @@ async def get_offline_manifest(
     return JSONResponse(await _offline(request).manifest(principal.user_id, package_id))
 
 
-@router.get("/v1/users/me/offline-packages", response_model=OfflineLicenseList)
+@router.get(
+    "/v1/users/me/offline-packages", dependencies=_OFFLINE, response_model=OfflineLicenseList
+)
 async def list_my_offline_licenses(
     request: Request, principal: CurrentPrincipal
 ) -> OfflineLicenseList:
     return await _offline(request).my_licenses(principal.user_id)
 
 
-@router.get("/v1/offline-downloads/{token}/{file}")
+@router.get("/v1/offline-downloads/{token}/{file}", dependencies=_OFFLINE)
 async def download_offline_file(token: str, file: str, request: Request) -> RedirectResponse:
     """The token is the authorization (no bearer: download managers fetch these URLs)."""
     url = await _offline(request).download_url(token, file)

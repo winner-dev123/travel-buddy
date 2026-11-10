@@ -9,13 +9,16 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Header, Query, Request
 from fastapi.responses import JSONResponse
 
+from app.core.feature_flags import Flag, gate
 from app.core.i18n import parse_accept_language
 from app.core.ratelimit import rate_limited
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
 from app.modules.discovery.service import DiscoverParams, DiscoveryService
 
-router = APIRouter(prefix="/v1/travelers", tags=["discovery"])
+router = APIRouter(
+    prefix="/v1/travelers", tags=["discovery"], dependencies=gate(Flag.TRAVELER_DISCOVERY)
+)
 
 CurrentPrincipal = Annotated[Principal, Depends(get_principal)]
 

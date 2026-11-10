@@ -30,7 +30,9 @@ from tests.unit.test_media_processing import jpeg_with_gps
 pytestmark = [pytest.mark.integration, pytest.mark.req("POST-004", "SAFE-004")]
 
 
-def _media_app(db_url: str, storage: str) -> Iterator[LiveApp]:
+def _media_app(
+    db_url: str, storage: str, flags: dict[str, bool] | None = None
+) -> Iterator[LiveApp]:
     _truncate_users(db_url)
     clock = FixedClock(datetime.now(tz=UTC).replace(microsecond=0))
 
@@ -38,7 +40,12 @@ def _media_app(db_url: str, storage: str) -> Iterator[LiveApp]:
         return True
 
     app = create_app(
-        make_settings(database_url=db_url, dev_idp_enabled=True, cron_secret=SecretStr(CRON)),
+        make_settings(
+            database_url=db_url,
+            dev_idp_enabled=True,
+            cron_secret=SecretStr(CRON),
+            feature_flags=flags or {},
+        ),
         identity_settings=make_identity_settings(),
         media_settings=MediaSettings(
             _env_file=None,  # type: ignore[call-arg]
@@ -175,6 +182,17 @@ def test_type_and_size_limits_per_purpose(
 ) -> None:
     token, _ = _user(media)
     _problem(_request(media, token, b"\xff\xd8\xff\xe0", **body), status, code)
+
+
+@pytest.mark.req("POST-004")
+def test_video_uploads_wait_for_the_post_video_flag(schema_db_url: str) -> None:
+    for live in _media_app(schema_db_url, "local", {"post_video": False}):
+        token, _ = _user(live)
+        refused = _request(live, token, b"\x00\x00\x00\x18ftypmp42", mime_type="video/mp4")
+        _problem(refused, 403, "feature_disabled")
+        assert refused.json()["feature_key"] == "post_video"
+        photo = _request(live, token, b"\xff\xd8\xff\xe0")
+        assert photo.status_code == 201, photo.text
 
 
 def test_unverified_accounts_cannot_upload(media: LiveApp) -> None:

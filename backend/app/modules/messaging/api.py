@@ -8,6 +8,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header, Path, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 
+from app.core.feature_flags import Flag, gate, require_any_flag
 from app.core.ratelimit import rate_limited
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
@@ -27,7 +28,11 @@ from app.modules.messaging.schemas import (
 )
 from app.modules.messaging.service import MessagingService
 
-router = APIRouter(prefix="/v1/conversations", tags=["messaging"])
+router = APIRouter(
+    prefix="/v1/conversations",
+    tags=["messaging"],
+    dependencies=[Depends(require_any_flag(Flag.DIRECT_MESSAGES, Flag.TRAVEL_GROUPS))],
+)
 
 CurrentPrincipal = Annotated[Principal, Depends(get_principal)]
 Emoji = Annotated[str, Path(min_length=1, max_length=64)]
@@ -53,6 +58,7 @@ async def list_conversations(
 
 @router.post(
     "",
+    dependencies=gate(Flag.DIRECT_MESSAGES),
     response_model=ConversationOut,
     responses={201: {"model": ConversationOut}},
 )
