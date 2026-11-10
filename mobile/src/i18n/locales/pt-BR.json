@@ -356,7 +356,11 @@
     "photoCount": "{{number}} de {{total}}",
     "closePhoto": "Fechar foto",
     "save": "Salvar história",
-    "unsave": "Remover dos salvos"
+    "unsave": "Remover dos salvos",
+    "commentActions": "Comentário",
+    "commentActionsHint": "Toque e segure para ver opções",
+    "deleteComment": "Excluir comentário",
+    "reportComment": "Denunciar comentário"
   },
   "compose": {
     "open": "Compartilhar uma história",

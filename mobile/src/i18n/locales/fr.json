@@ -356,7 +356,11 @@
     "photoCount": "{{number}} sur {{total}}",
     "closePhoto": "Fermer la photo",
     "save": "Enregistrer l'histoire",
-    "unsave": "Retirer des enregistrements"
+    "unsave": "Retirer des enregistrements",
+    "commentActions": "Commentaire",
+    "commentActionsHint": "Appui long pour les options",
+    "deleteComment": "Supprimer le commentaire",
+    "reportComment": "Signaler le commentaire"
   },
   "compose": {
     "open": "Partager un récit",

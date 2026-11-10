@@ -353,7 +353,11 @@
     "photoCount": "{{number}} von {{total}}",
     "closePhoto": "Foto schließen",
     "save": "Story speichern",
-    "unsave": "Aus Gespeichertem entfernen"
+    "unsave": "Aus Gespeichertem entfernen",
+    "commentActions": "Kommentar",
+    "commentActionsHint": "Lange drücken für Optionen",
+    "deleteComment": "Kommentar löschen",
+    "reportComment": "Kommentar melden"
   },
   "compose": {
     "open": "Geschichte teilen",

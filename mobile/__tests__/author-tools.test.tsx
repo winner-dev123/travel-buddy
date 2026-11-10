@@ -1,7 +1,7 @@
-// req: POST-003
+// req: POST-003, POST-005, SAFE-002
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { Alert } from 'react-native';
+import { Alert, type AlertButton } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useSessionStore } from '@/auth/sessionStore';
@@ -96,7 +96,8 @@ async function renderPost() {
 }
 
 beforeEach(async () => {
-  for (const fn of [mockApi.get, mockApi.patch, mockApi.delete, mockRouter.back]) fn.mockReset();
+  for (const fn of [mockApi.get, mockApi.patch, mockApi.delete, mockRouter.back, mockRouter.push])
+    fn.mockReset();
   useSessionStore.getState().setSignedIn(me);
   await i18n.changeLanguage('en');
 });
@@ -150,4 +151,50 @@ it('shows no author tools on other people’s stories', async () => {
   expect(await screen.findByTestId('post-report')).toBeTruthy();
   expect(screen.queryByTestId('post-edit')).toBeNull();
   expect(screen.queryByTestId('post-delete')).toBeNull();
+});
+
+const comment = (id: string, authorId: string, canDelete: boolean) => ({
+  id,
+  post_id: 'p1',
+  author: {
+    id: authorId,
+    handle: authorId,
+    display_name: authorId === 'u9' ? 'Me' : 'Bo',
+    avatar: null,
+  },
+  body: `Comment ${id}`,
+  deleted: false,
+  created_at: '2026-11-09T11:00:00Z',
+  viewer: { can_edit: authorId === 'u9', can_delete: canDelete },
+});
+
+it('deletes comments where allowed and reports other people’s', async () => {
+  // On my own story I may delete any comment; I report the ones I didn't write.
+  mockApi.get.mockImplementation(async (path: string) =>
+    path === '/v1/posts/p1'
+      ? post(true)
+      : {
+          data: [comment('c1', 'u9', true), comment('c2', 'bo', true)],
+          page: { next_cursor: null, has_more: false },
+        },
+  );
+  mockApi.delete.mockResolvedValue(undefined);
+  let buttons: AlertButton[] = [];
+  jest.spyOn(Alert, 'alert').mockImplementation((_title, _body, given) => {
+    buttons = given ?? [];
+  });
+  await renderPost();
+
+  await fireEvent(await screen.findByTestId('comment-c1'), 'longPress');
+  expect(buttons.map((b) => b.text)).toEqual(['Delete comment', 'Cancel']);
+  buttons[0]?.onPress?.();
+  await waitFor(() => expect(mockApi.delete).toHaveBeenCalledWith('/v1/comments/c1'));
+
+  await fireEvent(screen.getByTestId('comment-c2'), 'longPress');
+  expect(buttons.map((b) => b.text)).toEqual(['Delete comment', 'Report comment', 'Cancel']);
+  buttons[1]?.onPress?.();
+  expect(mockRouter.push).toHaveBeenCalledWith({
+    pathname: '/report',
+    params: { type: 'comment', target: 'c2', name: 'Bo' },
+  });
 });

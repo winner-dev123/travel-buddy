@@ -356,7 +356,11 @@
     "photoCount": "{{number}} de {{total}}",
     "closePhoto": "Cerrar foto",
     "save": "Guardar historia",
-    "unsave": "Quitar de guardados"
+    "unsave": "Quitar de guardados",
+    "commentActions": "Comentario",
+    "commentActionsHint": "Mantén pulsado para ver opciones",
+    "deleteComment": "Eliminar comentario",
+    "reportComment": "Denunciar comentario"
   },
   "compose": {
     "open": "Compartir una historia",

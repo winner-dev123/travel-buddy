@@ -4,9 +4,11 @@ import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -16,7 +18,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getApiClient } from '@/api';
 import { useSessionStore } from '@/auth/sessionStore';
 import { Button, Notice, TextField } from '@/components/Form';
-import { createComment, feedKeys, fetchComments, fetchPost } from '@/features/feed/api';
+import {
+  createComment,
+  deleteComment,
+  feedKeys,
+  fetchComments,
+  fetchPost,
+} from '@/features/feed/api';
 import { AuthorTools } from '@/features/feed/AuthorTools';
 import { Avatar, PostCard } from '@/features/feed/PostCard';
 import type { Comment } from '@/features/feed/types';
@@ -53,6 +61,47 @@ export default function PostDetailScreen() {
   });
 
   const canComment = signedIn && (post.data?.viewer?.can_comment ?? false);
+  const meId = useSessionStore((state) => state.me?.account.id);
+  const removeComment = useMutation({
+    mutationFn: (commentId: string) => deleteComment(getApiClient(), commentId),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: feedKeys.comments(id) }),
+  });
+  const commentActions = (comment: Comment) => {
+    if (!signedIn || comment.deleted) return;
+    const mine = comment.author?.id === meId;
+    const options = [
+      ...(comment.viewer?.can_delete
+        ? [
+            {
+              text: t('post.deleteComment'),
+              style: 'destructive' as const,
+              onPress: () => removeComment.mutate(comment.id),
+            },
+          ]
+        : []),
+      ...(!mine
+        ? [
+            {
+              text: t('post.reportComment'),
+              onPress: () =>
+                router.push({
+                  pathname: '/report',
+                  params: {
+                    type: 'comment',
+                    target: comment.id,
+                    name: comment.author?.display_name ?? '',
+                  },
+                }),
+            },
+          ]
+        : []),
+    ];
+    if (options.length === 0) return;
+    Alert.alert(t('post.commentActions'), undefined, [
+      ...options,
+      { text: t('common.cancel'), style: 'cancel' },
+    ]);
+  };
   return (
     <SafeAreaView
       edges={['bottom']}
@@ -118,7 +167,12 @@ export default function PostDetailScreen() {
             )
           }
           renderItem={({ item }) => (
-            <View style={styles.comment} testID={`comment-${item.id}`}>
+            <Pressable
+              onLongPress={() => commentActions(item)}
+              accessibilityHint={signedIn ? t('post.commentActionsHint') : undefined}
+              style={styles.comment}
+              testID={`comment-${item.id}`}
+            >
               <Avatar user={item.author} size={32} />
               <View style={styles.fill}>
                 <Text style={[theme.typography.label, { color: theme.colors.textPrimary }]}>
@@ -133,7 +187,7 @@ export default function PostDetailScreen() {
                   {item.deleted ? t('post.commentDeleted') : item.body}
                 </Text>
               </View>
-            </View>
+            </Pressable>
           )}
           ListEmptyComponent={
             signedIn && comments.isSuccess ? (

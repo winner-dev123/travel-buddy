@@ -353,7 +353,11 @@
     "photoCount": "{{number}} of {{total}}",
     "closePhoto": "Close photo",
     "save": "Save story",
-    "unsave": "Remove from saved"
+    "unsave": "Remove from saved",
+    "commentActions": "Comment",
+    "commentActionsHint": "Long press for options",
+    "deleteComment": "Delete comment",
+    "reportComment": "Report comment"
   },
   "compose": {
     "open": "Share a story",

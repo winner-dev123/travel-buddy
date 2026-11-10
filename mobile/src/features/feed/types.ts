@@ -85,6 +85,7 @@ export interface Comment {
   body: string | null;
   deleted: boolean;
   created_at: string;
+  viewer?: { can_edit: boolean; can_delete: boolean };
 }
 
 export interface Page<T> {

@@ -77,6 +77,11 @@ export function setReaction(
     : client.post(`/v1/posts/${postId}/reactions`, { body: { reaction } });
 }
 
+/** `DELETE /v1/comments/{id}`: its author, or the author of the story it's on. */
+export function deleteComment(client: ApiClient, commentId: string): Promise<void> {
+  return client.delete(`/v1/comments/${commentId}`);
+}
+
 /** `PATCH /v1/posts/{id}`: the author edits the text or the audience (POST-003). */
 export function updatePost(
   client: ApiClient,
