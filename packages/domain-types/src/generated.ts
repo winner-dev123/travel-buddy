@@ -1522,7 +1522,8 @@ export interface paths {
          *     `connection_request_not_allowed`, to avoid revealing which rule applied) when the recipient's
          *     `connection_requests_from` setting disallows it, or when either party has blocked the other.
          *     `connection_request_cooldown` applies after a decline (default 30 days). `already_connected` if connected.
-         *     Strict rate limits apply to unsolicited contact.
+         *     Strict rate limits apply to unsolicited contact. A `note` containing a term from the staff-managed
+         *     filter is refused (`422 validation_failed`, `errors[].code = message_filtered`; SAFE-006).
          */
         post: operations["createConnectionRequest"];
         delete?: never;
@@ -3427,7 +3428,7 @@ export interface paths {
          * Verify or revoke the rights of editorial media
          * @description Editorial media (destination covers, guide imagery) can be published only after a staff member checked
          *     its license. Verification transfers the asset to the platform, so it outlives the uploader's account.
-         *     Revoking hides it everywhere at once and purges cached pages that show it.
+         *     Revoking deletes the stored image (a takedown) and purges cached pages that showed it.
          */
         post: operations["adminSetEditorialRights"];
         delete?: never;
@@ -4571,7 +4572,7 @@ export interface components {
             created_at: components["schemas"]["Timestamp"];
         };
         EditorialRightsRequest: {
-            /** @description `true` after checking the license; `false` revokes (the image disappears wherever it is shown). */
+            /** @description `true` after checking the license, once the image is processed (`409 conflict` before). `false` is a takedown: the stored image is deleted (upload it again if the rights are cleared later) and `status` becomes `deleted`. */
             verified: boolean;
             /** @description Corrected credit, if the uploaded one was wrong. */
             attribution?: components["schemas"]["MediaAttribution"];

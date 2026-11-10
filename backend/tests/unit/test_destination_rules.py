@@ -118,6 +118,10 @@ def test_device_fixes_older_than_15_minutes_are_stale() -> None:
         check_fix_age(now - timedelta(minutes=15, seconds=1), now)
     with pytest.raises(ValueError, match="future"):
         check_fix_age(now + timedelta(minutes=3), now)
+    # A timestamp without an offset is read as UTC instead of failing the comparison.
+    check_fix_age(datetime(2026, 11, 10, 11, 55), now)  # noqa: DTZ001 - naive on purpose
+    with pytest.raises(StaleLocationError):
+        check_fix_age(datetime(2026, 11, 10, 11, 0), now)  # noqa: DTZ001
 
 
 @pytest.mark.req("LOC-008")

@@ -537,6 +537,15 @@ async def update_message_filter(
     return before, await message_filter_policy(session)
 
 
+async def note_filtered_term(session: AsyncSession, note: str | None) -> str | None:
+    """The filtered term in a connection-request note, which reaches someone who isn't connected
+    at all (SAFE-006), or None."""
+    if not note:
+        return None
+    policy = await session.get(MessageFilterPolicy, 1)
+    return matched_term(note, list(policy.terms) if policy is not None else _DEFAULT_TERMS)
+
+
 async def filtered_term(
     session: AsyncSession, body: str | None, *, connected_at: datetime | None, now: datetime
 ) -> str | None:

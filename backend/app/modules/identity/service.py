@@ -275,17 +275,20 @@ class IdentityService:
                 await _cancel_deletion(session, user)  # signing in cancels it (AUTH-010)
             if identity.email_verified and user.email_verified_at is None:
                 user.email_verified_at = now
-            if identity.recovered_at is not None:
-                # AUTH-005: signing in from a password-recovery link ends every session opened
-                # before it, on all devices. Idempotent: a later sign-in with a token from the
-                # same recovery leaves the sessions opened since then alone.
+            if identity.recovered_at is not None and (
+                user.last_recovery_at is None or identity.recovered_at > user.last_recovery_at
+            ):
+                # AUTH-005: the first sign-in from a password-recovery link ends every session
+                # opened before it on all devices, including any opened while the owner was on
+                # the reset form. Later sign-ins with a token from the same recovery revoke
+                # nothing, so sessions opened since then stay.
                 await repo.revoke_sessions(
                     session,
                     user_id=user.id,
                     reason=RevokedReason.PASSWORD_CHANGED,
                     now=now,
-                    created_before=identity.recovered_at,
                 )
+                user.last_recovery_at = identity.recovered_at
             link.last_used_at = now
             tokens = await self._open_session(
                 session, user, identity, request.client, request.device, user_agent

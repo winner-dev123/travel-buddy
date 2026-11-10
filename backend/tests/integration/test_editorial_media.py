@@ -130,6 +130,17 @@ def test_a_cover_needs_verified_rights_and_disappears_when_revoked(media: LiveAp
         revoked = _rights(media, staff, cover, verified=False)
         assert revoked.status_code == 200, revoked.text
         assert revoked.json()["rights_verified_at"] is None
+        # A takedown deletes the stored renditions: their URLs may be cached anywhere.
+        assert revoked.json()["status"] == "deleted"
+        assert revoked.json()["ref"] is None
+        queued = db_scalar(
+            media.db_url,
+            "SELECT count(*) FROM asynchronous_jobs WHERE kind = 'media.delete_objects' "
+            "AND payload->>'public_keys' LIKE :m",
+            m=f"%{cover}%",
+        )
+        assert queued == 1
+        _problem(_rights(media, staff, cover, verified=True), 409, "conflict")
         assert media.client.get(f"/v1/destinations/{destination}").json()["cover"] is None
 
         audits = db_scalar(
@@ -155,6 +166,8 @@ def test_a_cover_needs_verified_rights_and_disappears_when_revoked(media: LiveAp
         pending = _upload(media, staff, jpeg_with_gps(), purpose="editorial", attribution=CREDIT)
         not_ready = media.client.patch(url, headers=_admin(staff), json={"cover_media_id": pending})
         assert not_ready.json()["errors"][0]["code"] == "not_ready"
+        # Rights are verified only once the image is processed (the uploader still owns it).
+        _problem(_rights(media, staff, pending, verified=True), 409, "conflict")
         cleared = media.client.patch(url, headers=_admin(staff), json={"cover_media_id": None})
         assert cleared.status_code == 200, cleared.text
         assert cleared.json()["cover"] is None

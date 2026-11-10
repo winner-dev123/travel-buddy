@@ -108,6 +108,8 @@ class User(Base):
     deletion_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Set by a temporary suspension; signing in after it lifts the suspension (ADM-002).
     suspended_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The password recovery whose sign-in already revoked older sessions (AUTH-005).
+    last_recovery_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

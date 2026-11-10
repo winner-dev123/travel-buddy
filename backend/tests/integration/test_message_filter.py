@@ -14,7 +14,7 @@ from tests.integration.test_destinations import catalog  # noqa: F401 - module-s
 from tests.integration.test_identity_flows import _auth
 from tests.integration.test_messaging import _pair, _send, _sent
 from tests.integration.test_moderation import _admin, _staff
-from tests.integration.test_posts import _problem, app  # noqa: F401
+from tests.integration.test_posts import _problem, _user, app  # noqa: F401
 
 pytestmark = [pytest.mark.integration, pytest.mark.req("SAFE-006")]
 
@@ -114,3 +114,20 @@ def test_staff_manage_the_terms_and_the_window(app: LiveApp) -> None:  # noqa: F
         "ORDER BY occurred_at DESC LIMIT 1",
     )
     assert audit == '["pasame tu numero"]'
+
+
+def test_connection_request_notes_are_filtered_too(app: LiveApp) -> None:  # noqa: F811
+    """Notes reach people who aren't connected at all."""
+    sender, _ = _user(app)
+    _recipient, recipient_id = _user(app)
+    refused = app.client.post(
+        "/v1/connections/requests",
+        headers={**_auth(sender), "Idempotency-Key": str(uuid.uuid4())},
+        json={"recipient_id": recipient_id, "context": "profile", "note": "S.E.N.D nudes?"},
+    )
+    problem = _problem(refused, 422, "validation_failed")
+    assert problem["errors"][0] == {
+        "field": "/note",
+        "code": "message_filtered",
+        "message": "This note can't be sent. Keep it friendly.",
+    }

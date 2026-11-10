@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 FALLBACK_LOCALE = "en"
 POINT_DECIMALS = 3  # ~110 m: device positions are coarsened before any server use (LOC-003)
@@ -25,6 +25,8 @@ def check_fix_age(captured_at: datetime | None, now: datetime) -> None:
     A fix without a timestamp is accepted (older clients)."""
     if captured_at is None:
         return
+    if captured_at.tzinfo is None:
+        captured_at = captured_at.replace(tzinfo=UTC)
     if captured_at > now + LOCATION_CLOCK_SKEW:
         raise ValueError("the location was captured in the future")
     if now - captured_at > LOCATION_MAX_AGE:

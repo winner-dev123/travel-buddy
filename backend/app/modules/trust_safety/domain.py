@@ -54,7 +54,11 @@ def normalize(text: str) -> str:
     """Case-folded, accent-free words separated by single spaces. Letters spelled out with
     punctuation inside one token ("n.u.d.e.s") are joined back into a word."""
     decomposed = unicodedata.normalize("NFKD", text.casefold())
-    stripped = "".join(c for c in decomposed if not unicodedata.combining(c))
+    # Accents and invisible format characters (zero-width space, soft hyphen, word joiner) go,
+    # so "only\u200bfans" can't slip past "onlyfans".
+    stripped = "".join(
+        c for c in decomposed if not unicodedata.combining(c) and unicodedata.category(c) != "Cf"
+    )
     words: list[str] = []
     for token in stripped.split():
         parts = [part for part in _SEPARATORS.split(token) if part]

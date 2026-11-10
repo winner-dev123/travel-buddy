@@ -374,16 +374,23 @@ def test_signing_in_from_a_recovery_link_ends_older_sessions(live_app: LiveApp) 
     live_app.clock.set(live_app.clock.now() + timedelta(minutes=5))
 
     recovery = _id_token(live_app, sub=sub, recovered=True)
+    # Someone signs in with the old password while the owner is still on the reset form.
+    live_app.clock.set(live_app.clock.now() + timedelta(minutes=1))
+    intruder = live_app.client.post(
+        "/v1/auth/login", json={"id_token": _id_token(live_app, sub=sub), "client": "android"}
+    ).json()["tokens"]
     after = live_app.client.post("/v1/auth/login", json={"id_token": recovery, "client": "web"})
     assert after.status_code == 200, after.text
     fresh = after.json()["tokens"]
-    for old in (phone, laptop):
+    for old in (phone, laptop, intruder):
         assert _refresh(live_app, old["refresh_token"]).json()["code"] == "session_revoked"
     reasons = db_scalar(
         live_app.db_url,
-        "SELECT string_agg(DISTINCT revoked_reason, ',') FROM user_sessions WHERE id IN (:a, :b)",
+        "SELECT string_agg(DISTINCT revoked_reason, ',') FROM user_sessions "
+        "WHERE id IN (:a, :b, :c)",
         a=uuid.UUID(phone["session_id"]),
         b=uuid.UUID(laptop["session_id"]),
+        c=uuid.UUID(intruder["session_id"]),
     )
     assert reasons == "password_changed"
     assert (

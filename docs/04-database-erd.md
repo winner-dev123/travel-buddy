@@ -75,6 +75,8 @@ erDiagram
 | primary_locale | text | BCP 47, e.g. `pt-BR` |
 | last_active_on | date NULL | Day granularity only |
 | deletion_requested_at | timestamptz NULL | Starts the deletion grace window |
+| suspended_until | timestamptz NULL | Temporary suspension end; signing in afterwards lifts it |
+| last_recovery_at | timestamptz NULL | The password recovery whose sign-in already revoked older sessions (AUTH-005, migration 0045): later sign-ins from the same recovery revoke nothing |
 | created_at / updated_at | timestamptz | |
 
 ### authentication_identities

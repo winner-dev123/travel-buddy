@@ -25,6 +25,8 @@ TERMS = clean_terms(DEFAULT_MESSAGE_FILTER_TERMS)
         ("Buy me a Gift-Card and I'll pay you back", "gift card"),
         ("Passa o código de verificação que chegou", "codigo de verificacao"),
         ("Une carte cadeau ?", "carte cadeau"),
+        ("join my only​fans", "onlyfans"),  # zero-width space
+        ("a gi­ft card please", "gift card"),  # soft hyphen
         ("Do you know a good café near the castle?", None),
         ("I love gift cards", None),  # whole words only: "cards" is not "card"
         ("", None),

@@ -510,6 +510,11 @@ async def set_editorial_rights(
         raise AppError(ErrorCode.NOT_FOUND, "Editorial media not found.")
     if asset.status in (MediaStatus.REJECTED, MediaStatus.DELETED):
         raise AppError(ErrorCode.CONFLICT, f"This media is {asset.status}.")
+    if verified and asset.status != MediaStatus.READY:
+        # Verifying earlier would hand the asset to the platform before the uploader finalized it.
+        raise AppError(
+            ErrorCode.CONFLICT, "Verify the rights once the image has finished processing."
+        )
     if attribution is not None:
         asset.attribution_text = attribution.text
         asset.attribution_license = attribution.license
@@ -519,8 +524,20 @@ async def set_editorial_rights(
         asset.rights_verified_by = staff_id
         asset.owner_id = None
     else:
+        # A takedown: the public renditions are deleted, not only unlisted, because their URLs
+        # may already be cached anywhere. Cleared rights mean uploading the image again.
+        public, private = _keys([asset])
+        if public or private:
+            await platform.enqueue(
+                session,
+                queue="default",
+                kind=DELETE_OBJECTS_JOB,
+                payload={"public_keys": public, "private_keys": private, "quarantine_keys": []},
+            )
         asset.rights_verified_at = None
         asset.rights_verified_by = None
+        asset.variants = []
+        asset.status = MediaStatus.DELETED
     await session.flush()
     await session.refresh(asset)
     return _editorial_out(asset)

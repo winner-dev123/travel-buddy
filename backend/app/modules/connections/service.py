@@ -354,13 +354,21 @@ class ConnectionService:
                         "New accounts can send a few requests a day. Try again tomorrow.",
                         headers={"Retry-After": "3600"},
                     )
+            note = (request.note or "").strip() or None
+            if await trust_safety.note_filtered_term(session, note) is not None:
+                message = "This note can't be sent. Keep it friendly."
+                raise AppError(
+                    ErrorCode.VALIDATION_FAILED,
+                    message,
+                    errors=[FieldError(field="/note", code="message_filtered", message=message)],
+                )
             row = ConnectionRequest(
                 requester_id=me,
                 recipient_id=them,
                 status=RequestStatus.PENDING,
                 context=request.context,
                 context_ref_id=request.context_ref_id,
-                note=(request.note or "").strip() or None,
+                note=note,
                 expires_at=now + REQUEST_TTL,
             )
             session.add(row)
