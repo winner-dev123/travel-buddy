@@ -8,6 +8,7 @@ import SignIn from '../app/(auth)/sign-in';
 const mockApi = { get: jest.fn(), post: jest.fn(), newIdempotencyKey: jest.fn(() => 'k1') };
 const mockRouter = { push: jest.fn(), back: jest.fn(), replace: jest.fn() };
 const mockOpenAuthSession = jest.fn();
+const mockOpenBrowser = jest.fn();
 const mockExchange = jest.fn();
 const mockFetch = jest.fn();
 
@@ -27,6 +28,7 @@ jest.mock('@/auth/session', () => ({
 }));
 jest.mock('expo-web-browser', () => ({
   openAuthSessionAsync: (...args: unknown[]) => mockOpenAuthSession(...args),
+  openBrowserAsync: (...args: unknown[]) => mockOpenBrowser(...args),
 }));
 jest.mock('expo-linking', () => ({ createURL: (path: string) => `travelbuddy://${path}` }));
 jest.mock('expo-crypto', () => ({
@@ -62,6 +64,7 @@ function appInfo(providers: string[]) {
     update_required: false,
     min_supported_version: '1.0.0',
     auth_providers: providers,
+    password_reset_url: 'https://travelbuddy.app/forgot-password',
   };
 }
 
@@ -82,6 +85,14 @@ it('hides social sign-in until the API lists a provider', async () => {
   await waitFor(() => expect(mockApi.get).toHaveBeenCalled());
   expect(screen.queryByTestId('sign-in-google')).toBeNull();
   expect(screen.queryByTestId('sign-in-apple')).toBeNull();
+});
+
+// req: AUTH-005
+it('opens the password reset page from sign-in', async () => {
+  mockApi.get.mockResolvedValue(appInfo([]));
+  await renderSignIn();
+  await fireEvent.press(await screen.findByTestId('sign-in-forgot-password'));
+  expect(mockOpenBrowser).toHaveBeenCalledWith('https://travelbuddy.app/forgot-password');
 });
 
 it('signs in with Google through the browser and a PKCE code exchange', async () => {

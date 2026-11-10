@@ -315,7 +315,7 @@ screen was folded into another one; ✅ built, ⚠️ partly, ⬜ not yet (reaso
 |---|---|---|
 | SCR-001 sign in, SCR-010 age gate and terms | ✅ | `/(auth)/sign-in` (email and password; Apple and Google once configured in Supabase), `/(auth)/complete-registration` |
 | SCR-002 email verification status | ⚠️ | Sign-in offers to resend the confirmation email after sign-up or when the email isn't confirmed; publishing explains an unverified email; no dedicated status screen |
-| SCR-003 password reset | ✅ | IdP-hosted |
+| SCR-003 password reset | ✅ | IdP flow on the web (`/forgot-password`), opened from sign-in (`password_reset_url` in `/v1/client-config`) |
 | SCR-011..014 onboarding steps | ✅ | One flow at `/(onboarding)/onboarding` (profile, language, interests, destination) |
 | SCR-015 location primer, SCR-016 discovery guidance | ✅ | Location asked in context on the Nearby tab; `/discovery/consent` |
 | SCR-020 home feed, SCR-021 filters | ✅ | `/(tabs)/index` (filters inline) |

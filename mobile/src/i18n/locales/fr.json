@@ -177,6 +177,7 @@
     "or": "ou",
     "continueGoogle": "Continuer avec Google",
     "continueApple": "Continuer avec Apple",
+    "forgotPassword": "Mot de passe oublié ?",
     "confirmationSent": "Consultez votre boîte de réception et ouvrez le lien de confirmation, puis connectez-vous ici.",
     "devPersonaTitle": "Connexion de développement",
     "devPersonaHint": "Utilise le fournisseur d'identité de développement du backend. Indisponible dans les versions publiées.",

@@ -198,6 +198,8 @@ export interface AppInfo {
   latest_version?: string;
   /** Social sign-in providers configured in Supabase (AUTH-002, AUTH-003). */
   auth_providers?: string[];
+  /** Web page running the IdP password reset (AUTH-005). */
+  password_reset_url?: string | null;
 }
 
 export const APP_INFO_KEY = ['client-config', 'app-info'] as const;

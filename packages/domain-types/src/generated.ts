@@ -3956,6 +3956,11 @@ export interface components {
             /** @description Base64url VAPID application server key for Web Push subscriptions (NOTIF-005). Null when Web Push is disabled. Rotations are announced here. */
             web_push_vapid_public_key?: string | null;
             /**
+             * Format: uri
+             * @description Web page that runs the identity provider's password reset (AUTH-005); the apps open it from sign-in. Its locale follows the browser.
+             */
+            password_reset_url?: string | null;
+            /**
              * @description Social sign-in providers configured in the identity provider (AUTH-002, AUTH-003). Clients show a
              *     "Continue with …" button for each and run the provider sign-in through the IdP (PKCE). Empty while
              *     none is configured.

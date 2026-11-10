@@ -176,6 +176,7 @@
     "or": "or",
     "continueGoogle": "Continue with Google",
     "continueApple": "Continue with Apple",
+    "forgotPassword": "Forgot your password?",
     "confirmationSent": "Check your inbox and open the confirmation link, then sign in here.",
     "devPersonaTitle": "Development sign-in",
     "devPersonaHint": "Uses the backend's development identity provider. Not available in release builds.",

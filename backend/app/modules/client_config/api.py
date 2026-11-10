@@ -69,6 +69,7 @@ class ClientConfig(BaseModel):
     web_push_vapid_public_key: str | None = None
     offline_manifest_keys: list[ManifestKey] = []
     auth_providers: list[Literal["apple", "google"]] = []
+    password_reset_url: str | None = None
 
 
 def _version(value: str) -> tuple[int, int, int]:
@@ -115,6 +116,8 @@ async def get_client_config(
             for key in (offline.public_keys() if offline is not None else [])
         ],
         auth_providers=sorted(set(settings.auth_social_providers)),
+        # The IdP reset flow runs on the web (ADR-0020); the apps open it from sign-in (AUTH-005).
+        password_reset_url=f"{site}/forgot-password",
     )
 
 

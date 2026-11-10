@@ -8,7 +8,7 @@ from tests.conftest import make_identity_settings, make_settings
 from tests.contract_schemas import assert_matches_contract
 
 
-@pytest.mark.req("I18N-001", "AUTH-009")
+@pytest.mark.req("I18N-001", "AUTH-009", "AUTH-005")
 def test_client_config_matches_contract_and_serves_legal_versions(client: TestClient) -> None:
     response = client.get("/v1/client-config", params={"platform": "web", "app_version": "0.1.0"})
     assert response.status_code == 200
@@ -22,6 +22,7 @@ def test_client_config_matches_contract_and_serves_legal_versions(client: TestCl
     assert body["feature_flags"]["traveler_discovery"] is False
     assert body["web_push_vapid_public_key"] is None
     assert body["support"] == {"email": "support@travelbuddy.app", "url": None}
+    assert body["password_reset_url"] == "http://localhost:3000/forgot-password"  # AUTH-005
 
 
 @pytest.mark.parametrize(

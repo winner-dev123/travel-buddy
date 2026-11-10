@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native';
@@ -52,6 +53,8 @@ export default function SignInScreen() {
     enabled: supabase !== null,
     staleTime: 5 * 60_000,
   });
+  // AUTH-005: the IdP reset flow runs on the web; the new password then works here too.
+  const resetUrl = appInfo.data?.password_reset_url ?? null;
   const order: Record<OAuthProvider, number> =
     Platform.OS === 'ios' ? { apple: 0, google: 1 } : { google: 0, apple: 1 };
   const socialProviders = (appInfo.data?.auth_providers ?? [])
@@ -238,6 +241,15 @@ export default function SignInScreen() {
             disabled={misconfigured}
             testID="sign-in-submit"
           />
+          {provider === 'supabase' && mode === 'signIn' && resetUrl ? (
+            <Button
+              variant="secondary"
+              label={t('auth.forgotPassword')}
+              onPress={() => void WebBrowser.openBrowserAsync(resetUrl)}
+              disabled={busy}
+              testID="sign-in-forgot-password"
+            />
+          ) : null}
           {provider === 'supabase' && canResend && mode === 'signIn' ? (
             <Button
               variant="secondary"
