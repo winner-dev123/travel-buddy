@@ -159,6 +159,22 @@ def test_job_status_check_constraint(migrated: str) -> None:
         )
 
 
+def test_check_constraint_names_are_not_doubled(migrated: str) -> None:
+    """BL-1.29: migration 0042 renames the ``ck_<table>__ck_<table>__...`` names that early
+    migrations produced, so migrated databases carry the names the models declare."""
+    (rows,) = _run(
+        migrated,
+        [
+            "SELECT c.conname FROM pg_constraint c JOIN pg_class t ON t.oid = c.conrelid "
+            "WHERE t.relnamespace = current_schema()::regnamespace AND c.contype = 'c'"
+        ],
+    )
+    doubled = sorted(name for (name,) in rows if name.startswith("ck_") and "__ck_" in name)
+    assert doubled == []
+    names = {name for (name,) in rows}
+    assert {"ck_asynchronous_jobs__status_enum", "ck_comments__body_length"} <= names
+
+
 def test_migrations_are_reversible(migrated: str) -> None:
     config = _alembic_config(migrated)
     command.downgrade(config, "base")
