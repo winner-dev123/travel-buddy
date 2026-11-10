@@ -648,7 +648,9 @@
     "announcement": "Aviso",
     "pinAnnouncement": "Fixar no chat",
     "sendAnnouncement": "Publicar aviso",
-    "announcementSent": "Aviso publicado no chat do grupo."
+    "announcementSent": "Aviso publicado no chat do grupo.",
+    "inviteTitle": "Convite para grupo",
+    "notNow": "Agora não"
   },
   "explore": {
     "plan": "Planeje uma viagem com IA",

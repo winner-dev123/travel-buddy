@@ -636,7 +636,9 @@
     "announcement": "Announcement",
     "pinAnnouncement": "Pin it in the chat",
     "sendAnnouncement": "Post announcement",
-    "announcementSent": "Announcement posted in the group chat."
+    "announcementSent": "Announcement posted in the group chat.",
+    "inviteTitle": "Group invitation",
+    "notNow": "Not now"
   },
   "explore": {
     "plan": "Plan a trip with AI",

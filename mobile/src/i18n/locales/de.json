@@ -636,7 +636,9 @@
     "announcement": "Ankündigung",
     "pinAnnouncement": "Im Chat anheften",
     "sendAnnouncement": "Ankündigung posten",
-    "announcementSent": "Ankündigung im Gruppenchat gepostet."
+    "announcementSent": "Ankündigung im Gruppenchat gepostet.",
+    "inviteTitle": "Gruppeneinladung",
+    "notNow": "Nicht jetzt"
   },
   "explore": {
     "plan": "Reise mit KI planen",

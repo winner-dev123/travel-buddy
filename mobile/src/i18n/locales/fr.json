@@ -648,7 +648,9 @@
     "announcement": "Annonce",
     "pinAnnouncement": "L'épingler dans le chat",
     "sendAnnouncement": "Publier l'annonce",
-    "announcementSent": "Annonce publiée dans le chat du groupe."
+    "announcementSent": "Annonce publiée dans le chat du groupe.",
+    "inviteTitle": "Invitation à un groupe",
+    "notNow": "Pas maintenant"
   },
   "explore": {
     "plan": "Planifier un voyage avec l'IA",
