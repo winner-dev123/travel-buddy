@@ -260,11 +260,11 @@ Offline: **Works offline** (fully functional from local data) · **Cached read-o
 | SCR-082 | Group chat | `/conversations/[id]` | 3 | Group member | Cached read-only (queued sends) | as above + pins and announcements | GCHAT |
 | SCR-083 | Reply thread | `/conversations/[id]/thread/[messageId]` | 3 | Group member | Cached read-only | messages `?thread_root_id=` | GCHAT |
 | SCR-084 | Pinned messages and announcements | `/conversations/[id]/pins` | 3 | Group member | Cached read-only | pins endpoint | GCHAT |
-| SCR-085 | Group challenges list | `/groups/[groupId]/challenges` | 5 | Group member | Cached read-only | `GET /v1/groups/{id}/challenges` | CHAL |
-| SCR-086 | Challenge detail and submit | `/groups/[groupId]/challenges/[id]` | 5 | Group member | Online only (submission) | `POST /v1/challenges/{id}/submissions` | CHAL |
-| SCR-087 | Create or edit challenge | `/groups/[groupId]/challenges/new` | 5 | Group role + owner premium | Online only | `POST /v1/groups/{id}/challenges` | CHAL, BILL |
-| SCR-088 | Results and rewards | `/challenges/[id]/results` | 5 | Group member | Cached read-only | `GET /v1/challenges/{id}/results` | CHAL |
-| SCR-089 | Team challenge thread | `/challenges/[id]/team` | 5 | Team member | Cached read-only | team conversation | CHAL, GCHAT |
+| SCR-085 | Group challenges list | `/challenges?groupId=` | 5 | Group member | Cached read-only | `GET /v1/groups/{id}/challenges` | CHAL |
+| SCR-086 | Challenge detail and submit | `/challenges/[id]` | 5 | Group member | Online only (submission) | `POST /v1/challenges/{id}/submissions` | CHAL |
+| SCR-087 | Create or edit challenge | `/challenges/new?groupId=` | 5 | Group role + owner premium | Online only | `POST /v1/groups/{id}/challenges` | CHAL, BILL |
+| SCR-088 | Results and rewards | results inline in `/challenges/[id]`; `/rewards` (my rewards and codes) | 5 | Group member | Cached read-only | `GET /v1/challenges/{id}/results` | CHAL |
+| SCR-089 | Team challenge thread | `/chat/[id]` (the team's conversation) | 5 | Team member | Cached read-only | team conversation | CHAL, GCHAT |
 | SCR-090 | Judge review queue | `/challenges/[id]/judge` | 5 | `challenges.judge` role | Online only | judging endpoints | CHAL |
 
 ### Profile and settings

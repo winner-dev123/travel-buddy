@@ -50,6 +50,8 @@ export default function NotificationsScreen() {
       router.push({ pathname: '/user/[id]', params: { id: item.entity_id } });
     } else if (item.entity_type === 'conversation' && item.entity_id) {
       router.push({ pathname: '/chat/[id]', params: { id: item.entity_id } });
+    } else if (item.entity_type === 'challenge' && item.entity_id) {
+      router.push({ pathname: '/challenges/[id]', params: { id: item.entity_id } });
     }
   };
 

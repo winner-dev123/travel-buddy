@@ -98,6 +98,12 @@ export default function GroupScreen() {
           }
           testID="group-open-chat"
         />
+        <Button
+          label={t('groups.challenges')}
+          variant="secondary"
+          onPress={() => router.push({ pathname: '/challenges', params: { groupId: data.id } })}
+          testID="group-challenges"
+        />
         {canInvite && data.status === 'active' ? (
           <Button
             label={t('groups.inviteLink')}
