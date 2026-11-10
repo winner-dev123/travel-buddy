@@ -1102,5 +1102,11 @@
     "decline": "Decline",
     "empty": "No one is waiting. People who ask to follow your private account appear here.",
     "error": "We couldn't load follow requests. Check your connection and try again."
+  },
+  "follows": {
+    "followers": "Followers",
+    "following": "Following",
+    "empty": "No one here yet.",
+    "error": "We couldn't load this list. Check your connection and try again."
   }
 }

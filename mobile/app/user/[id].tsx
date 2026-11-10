@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ApiProblem, getApiClient } from '@/api';
@@ -107,6 +107,32 @@ export default function UserProfileScreen() {
         >
           {t('user.counts', data.counts)}
         </Text>
+      ) : null}
+      {data.counts && !restricted ? (
+        <View style={styles.links}>
+          <Pressable
+            onPress={() =>
+              router.push({ pathname: '/user/follows', params: { id: data.id, kind: 'followers' } })
+            }
+            accessibilityRole="link"
+            testID="user-followers"
+          >
+            <Text style={[theme.typography.label, { color: theme.colors.primary }]}>
+              {t('follows.followers')}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() =>
+              router.push({ pathname: '/user/follows', params: { id: data.id, kind: 'following' } })
+            }
+            accessibilityRole="link"
+            testID="user-following"
+          >
+            <Text style={[theme.typography.label, { color: theme.colors.primary }]}>
+              {t('follows.following')}
+            </Text>
+          </Pressable>
+        </View>
       ) : null}
       {data.badges?.length ? (
         <View style={styles.badges} accessibilityLabel={t('user.badges')} testID="user-badges">
@@ -240,6 +266,7 @@ export default function UserProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  links: { flexDirection: 'row', gap: 16 },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   badge: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 4 },
   fill: { flex: 1 },

@@ -1118,5 +1118,11 @@
     "decline": "Refuser",
     "empty": "Personne n'attend. Les personnes qui demandent à suivre votre compte privé apparaissent ici.",
     "error": "Impossible de charger les demandes. Vérifiez votre connexion et réessayez."
+  },
+  "follows": {
+    "followers": "Abonnés",
+    "following": "Abonnements",
+    "empty": "Personne pour l'instant.",
+    "error": "Impossible de charger cette liste. Vérifiez votre connexion et réessayez."
   }
 }

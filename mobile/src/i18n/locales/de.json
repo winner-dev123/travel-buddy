@@ -1102,5 +1102,11 @@
     "decline": "Ablehnen",
     "empty": "Niemand wartet. Wer deinem privaten Konto folgen möchte, erscheint hier.",
     "error": "Die Anfragen konnten nicht geladen werden. Prüfe deine Verbindung und versuch es noch einmal."
+  },
+  "follows": {
+    "followers": "Follower",
+    "following": "Folgt",
+    "empty": "Noch niemand hier.",
+    "error": "Diese Liste konnte nicht geladen werden. Prüfe deine Verbindung und versuch es noch einmal."
   }
 }

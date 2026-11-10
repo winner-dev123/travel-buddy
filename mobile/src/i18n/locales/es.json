@@ -1118,5 +1118,11 @@
     "decline": "Rechazar",
     "empty": "No hay nadie esperando. Aquí aparecerán quienes pidan seguir tu cuenta privada.",
     "error": "No pudimos cargar las solicitudes. Revisa tu conexión e inténtalo de nuevo."
+  },
+  "follows": {
+    "followers": "Seguidores",
+    "following": "Siguiendo",
+    "empty": "Todavía no hay nadie.",
+    "error": "No pudimos cargar esta lista. Revisa tu conexión e inténtalo de nuevo."
   }
 }

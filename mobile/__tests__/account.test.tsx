@@ -15,6 +15,7 @@ import Blocked from '../app/settings/blocked';
 import DeleteAccount from '../app/settings/delete-account';
 import Privacy from '../app/settings/privacy';
 import EditProfile from '../app/settings/profile';
+import Follows from '../app/user/follows';
 import UserProfile from '../app/user/[id]';
 import Profile from '../app/(tabs)/profile';
 
@@ -435,4 +436,41 @@ it('shows the badges a traveller earned on their profile', async () => {
   expect(await screen.findByTestId('user-badge-lisbon-quiz')).toHaveTextContent(
     '🏅 Lisbon quiz winner',
   );
+});
+
+it('opens follower lists from a profile and lists people', async () => {
+  useSessionStore.getState().setSignedIn(makeMe());
+  mockParams = { id: 'u2' };
+  mockApi.get.mockImplementation(async (path: string) =>
+    path === '/v1/users/u2'
+      ? {
+          ...bo,
+          bio: null,
+          account_visibility: 'public',
+          is_restricted: false,
+          counts: { posts: 1, followers: 2, following: 0 },
+          follow_status: 'none',
+        }
+      : { data: [], page: { next_cursor: null, has_more: false } },
+  );
+  await renderScreen(<UserProfile />);
+  await fireEvent.press(await screen.findByTestId('user-followers'));
+  expect(mockRouter.push).toHaveBeenCalledWith({
+    pathname: '/user/follows',
+    params: { id: 'u2', kind: 'followers' },
+  });
+});
+
+it('lists followers and opens a profile', async () => {
+  mockParams = { id: 'u2', kind: 'followers' };
+  mockApi.get.mockResolvedValue({
+    data: [{ id: 'u3', handle: 'cy', display_name: 'Cy', avatar: null }],
+    page: { next_cursor: null, has_more: false },
+  });
+  await renderScreen(<Follows />);
+  await fireEvent.press(await screen.findByTestId('follows-u3'));
+  expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/user/[id]', params: { id: 'u3' } });
+  expect(mockApi.get).toHaveBeenCalledWith('/v1/users/u2/followers', {
+    query: { cursor: undefined, limit: 30 },
+  });
 });

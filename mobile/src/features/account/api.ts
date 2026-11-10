@@ -312,3 +312,16 @@ export async function answerFollowRequest(
 ): Promise<void> {
   await client.post(`/v1/users/me/follow-requests/${userId}/${approve ? 'approve' : 'decline'}`);
 }
+
+/** `GET /v1/users/{id}/followers|following`: hidden by the server for private accounts unless
+ * I'm an approved follower. */
+export function listFollows(
+  client: ApiClient,
+  userId: string,
+  kind: 'followers' | 'following',
+  cursor?: string,
+): Promise<Page<UserSummary>> {
+  return client.get<Page<UserSummary>>(`/v1/users/${userId}/${kind}`, {
+    query: { cursor, limit: 30 },
+  });
+}
