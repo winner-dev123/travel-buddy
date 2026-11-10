@@ -348,7 +348,10 @@
     "showOriginal": "Show original",
     "translationConsent": "Translations are made by AI and need your OK.",
     "allowTranslation": "Allow translations",
-    "translationFailed": "Translation didn't work."
+    "translationFailed": "Translation didn't work.",
+    "openPhoto": "Open photo {{number}}",
+    "photoCount": "{{number}} of {{total}}",
+    "closePhoto": "Close photo"
   },
   "compose": {
     "open": "Share a story",

@@ -348,7 +348,10 @@
     "showOriginal": "Original anzeigen",
     "translationConsent": "Übersetzungen erstellt eine KI und brauchen deine Zustimmung.",
     "allowTranslation": "Übersetzungen erlauben",
-    "translationFailed": "Die Übersetzung hat nicht funktioniert."
+    "translationFailed": "Die Übersetzung hat nicht funktioniert.",
+    "openPhoto": "Foto {{number}} öffnen",
+    "photoCount": "{{number}} von {{total}}",
+    "closePhoto": "Foto schließen"
   },
   "compose": {
     "open": "Geschichte teilen",

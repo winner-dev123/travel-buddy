@@ -351,7 +351,10 @@
     "showOriginal": "Ver original",
     "translationConsent": "As traduções são feitas por IA e precisam da sua permissão.",
     "allowTranslation": "Permitir traduções",
-    "translationFailed": "A tradução não funcionou."
+    "translationFailed": "A tradução não funcionou.",
+    "openPhoto": "Abrir a foto {{number}}",
+    "photoCount": "{{number}} de {{total}}",
+    "closePhoto": "Fechar foto"
   },
   "compose": {
     "open": "Compartilhar uma história",

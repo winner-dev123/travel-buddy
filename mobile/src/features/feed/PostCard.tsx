@@ -4,11 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getApiClient } from '@/api';
+import { PhotoGallery } from '@/features/feed/PhotoGallery';
 import { useAppTheme } from '@/theme/useAppTheme';
 
 import { setReaction } from './api';
 import { TranslatableBody } from './TranslatableBody';
-import type { MediaRef, Post, UserSummary } from './types';
+import type { Post, UserSummary } from './types';
 
 export function Avatar({ user, size = 40 }: { user: UserSummary | null; size?: number }) {
   const theme = useAppTheme();
@@ -24,34 +25,6 @@ export function Avatar({ user, size = 40 }: { user: UserSummary | null; size?: n
       importantForAccessibility="no"
     >
       <Text style={[theme.typography.label, { color: theme.colors.onPrimary }]}>{initial}</Text>
-    </View>
-  );
-}
-
-function MediaPreview({ media }: { media: MediaRef }) {
-  const { t } = useTranslation();
-  const theme = useAppTheme();
-  const ratio = media.width && media.height ? media.width / media.height : 4 / 3;
-  if (media.status === 'ready' && media.url) {
-    return (
-      <Image
-        source={{ uri: media.url }}
-        style={[styles.media, { aspectRatio: Math.max(0.6, Math.min(ratio, 2)) }]}
-        accessibilityLabel={media.alt_text ?? t('post.photo')}
-      />
-    );
-  }
-  return (
-    <View
-      style={[
-        styles.media,
-        styles.center,
-        { aspectRatio: 4 / 3, backgroundColor: theme.colors.surface },
-      ]}
-    >
-      <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
-        {media.status === 'processing' ? t('post.photoProcessing') : t('post.photoUnavailable')}
-      </Text>
     </View>
   );
 }
@@ -124,7 +97,7 @@ export function PostCard({ post, onOpen, onOpenAuthor, interactive = true }: Pos
         </View>
       </Pressable>
       {post.body ? <TranslatableBody post={post} enabled={interactive} /> : null}
-      {post.media[0] ? <MediaPreview media={post.media[0]} /> : null}
+      <PhotoGallery media={post.media} compact={onOpen !== undefined} />
       {post.tags.length > 0 ? (
         <Text style={[theme.typography.caption, { color: theme.colors.primary }]}>
           {post.tags.map((tag) => `#${tag}`).join('  ')}
