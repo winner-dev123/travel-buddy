@@ -134,7 +134,7 @@ export default function ChatScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: data?.counterpart?.display_name ?? t('messages.chatTitle'),
+          title: data?.title ?? data?.counterpart?.display_name ?? t('messages.chatTitle'),
         }}
       />
       <KeyboardAvoidingView
@@ -177,6 +177,7 @@ export default function ChatScreen() {
           renderItem={({ item }) => {
             const mine = item.sender?.id === me;
             const hidden = isHidden(item);
+            const group = data?.kind === 'group';
             return (
               <Pressable
                 onLongPress={() => actions(item)}
@@ -188,6 +189,22 @@ export default function ChatScreen() {
                 ]}
                 testID={`message-${item.id}`}
               >
+                {item.kind === 'announcement' ? (
+                  <Text
+                    style={[
+                      theme.typography.caption,
+                      { color: mine ? theme.colors.onPrimary : theme.colors.primary },
+                    ]}
+                    testID={`announcement-${item.id}`}
+                  >
+                    {t('messages.announcement')}
+                  </Text>
+                ) : null}
+                {group && !mine ? (
+                  <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+                    {item.sender?.display_name ?? t('messages.deletedUser')}
+                  </Text>
+                ) : null}
                 <Text
                   style={[
                     theme.typography.body,

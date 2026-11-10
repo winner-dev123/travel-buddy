@@ -12,8 +12,14 @@ beforeEach(async () => {
 });
 
 describe('feature flags', () => {
-  it('releases only the features that are built (feed, onboarding, companions, messaging)', () => {
-    const released = new Set<FeatureKey>(['feed', 'onboarding', 'companions', 'messaging']);
+  it('releases only the features that are built (feed, onboarding, companions, messaging, groups)', () => {
+    const released = new Set<FeatureKey>([
+      'feed',
+      'onboarding',
+      'companions',
+      'messaging',
+      'groups',
+    ]);
     for (const key of Object.keys(FEATURES) as FeatureKey[]) {
       expect(isFeatureEnabled(key, [])).toBe(released.has(key));
     }

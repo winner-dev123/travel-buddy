@@ -106,7 +106,7 @@ function Inbox() {
           )
         }
         renderItem={({ item }) => {
-          const name = item.counterpart?.display_name ?? t('messages.deletedUser');
+          const name = item.title ?? item.counterpart?.display_name ?? t('messages.deletedUser');
           const when = item.last_message_at
             ? new Date(item.last_message_at).toLocaleDateString(i18n.language, {
                 month: 'short',
@@ -125,7 +125,14 @@ function Inbox() {
               style={[styles.row, { borderBottomColor: theme.colors.divider }]}
               testID={`conversation-${item.id}`}
             >
-              <Avatar user={item.counterpart} />
+              <Avatar
+                user={
+                  item.counterpart ??
+                  (item.title
+                    ? { id: item.id, handle: '', display_name: item.title, avatar: null }
+                    : null)
+                }
+              />
               <View style={styles.fill}>
                 <View style={styles.top}>
                   <Text

@@ -46,6 +46,8 @@ export interface Me {
   privacy: { discovery_enabled: boolean; search_engine_indexing: boolean };
   roles: string[];
   onboarding_completed: boolean;
+  /** Server-computed; the UI uses it only for display (every gate is server-side). */
+  entitlements?: { plan: 'free' | 'premium'; features?: Record<string, boolean> };
 }
 
 export interface AuthResult {
