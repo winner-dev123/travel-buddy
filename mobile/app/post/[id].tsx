@@ -17,6 +17,7 @@ import { getApiClient } from '@/api';
 import { useSessionStore } from '@/auth/sessionStore';
 import { Button, Notice, TextField } from '@/components/Form';
 import { createComment, feedKeys, fetchComments, fetchPost } from '@/features/feed/api';
+import { AuthorTools } from '@/features/feed/AuthorTools';
 import { Avatar, PostCard } from '@/features/feed/PostCard';
 import type { Comment } from '@/features/feed/types';
 import { useAppTheme } from '@/theme/useAppTheme';
@@ -84,6 +85,7 @@ export default function PostDetailScreen() {
                       : undefined
                   }
                 />
+                {signedIn && post.data.viewer?.is_author ? <AuthorTools post={post.data} /> : null}
                 {signedIn && !post.data.viewer?.is_author ? (
                   <Button
                     label={t('post.report')}

@@ -1065,5 +1065,12 @@
     "title": "Histoires enregistrées",
     "empty": "Les histoires que vous enregistrez apparaissent ici. Vous seul pouvez les voir.",
     "error": "Impossible de charger vos histoires enregistrées. Vérifiez votre connexion et réessayez."
+  },
+  "authorTools": {
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "save": "Enregistrer",
+    "deleteTitle": "Supprimer cette histoire ?",
+    "deleteBody": "Elle disparaît immédiatement des fils et de votre profil, avec ses commentaires et réactions."
   }
 }

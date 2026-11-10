@@ -77,6 +77,20 @@ export function setReaction(
     : client.post(`/v1/posts/${postId}/reactions`, { body: { reaction } });
 }
 
+/** `PATCH /v1/posts/{id}`: the author edits the text or the audience (POST-003). */
+export function updatePost(
+  client: ApiClient,
+  postId: string,
+  changes: { body?: string; visibility?: 'public' | 'followers' | 'private' },
+): Promise<Post> {
+  return client.patch<Post>(`/v1/posts/${postId}`, { body: changes });
+}
+
+/** `DELETE /v1/posts/{id}`: gone from feeds and the profile at once. */
+export function deletePost(client: ApiClient, postId: string): Promise<void> {
+  return client.delete(`/v1/posts/${postId}`);
+}
+
 /** `PUT`/`DELETE /v1/posts/{id}/bookmark` (POST-005): private, only I see what I saved. */
 export function setBookmark(client: ApiClient, postId: string, on: boolean): Promise<unknown> {
   return on

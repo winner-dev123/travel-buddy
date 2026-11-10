@@ -1049,5 +1049,12 @@
     "title": "Saved stories",
     "empty": "Stories you save appear here. Only you can see them.",
     "error": "We couldn't load your saved stories. Check your connection and try again."
+  },
+  "authorTools": {
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save changes",
+    "deleteTitle": "Delete this story?",
+    "deleteBody": "It disappears from feeds and your profile at once, with its comments and reactions."
   }
 }

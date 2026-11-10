@@ -1065,5 +1065,12 @@
     "title": "Historias guardadas",
     "empty": "Las historias que guardes aparecerán aquí. Solo tú puedes verlas.",
     "error": "No pudimos cargar tus historias guardadas. Revisa tu conexión e inténtalo de nuevo."
+  },
+  "authorTools": {
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "save": "Guardar cambios",
+    "deleteTitle": "¿Eliminar esta historia?",
+    "deleteBody": "Desaparecerá al instante de los feeds y de tu perfil, con sus comentarios y reacciones."
   }
 }

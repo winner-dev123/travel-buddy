@@ -1049,5 +1049,12 @@
     "title": "Gespeicherte Storys",
     "empty": "Storys, die du speicherst, erscheinen hier. Nur du kannst sie sehen.",
     "error": "Deine gespeicherten Storys konnten nicht geladen werden. Prüfe deine Verbindung und versuch es noch einmal."
+  },
+  "authorTools": {
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "save": "Änderungen speichern",
+    "deleteTitle": "Diese Story löschen?",
+    "deleteBody": "Sie verschwindet sofort aus Feeds und deinem Profil, mit ihren Kommentaren und Reaktionen."
   }
 }

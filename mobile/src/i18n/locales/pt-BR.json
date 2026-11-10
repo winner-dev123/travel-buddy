@@ -1065,5 +1065,12 @@
     "title": "Histórias salvas",
     "empty": "As histórias que você salvar aparecem aqui. Só você pode vê-las.",
     "error": "Não conseguimos carregar suas histórias salvas. Verifique sua conexão e tente de novo."
+  },
+  "authorTools": {
+    "edit": "Editar",
+    "delete": "Excluir",
+    "save": "Salvar alterações",
+    "deleteTitle": "Excluir esta história?",
+    "deleteBody": "Ela some na hora dos feeds e do seu perfil, com os comentários e reações."
   }
 }
