@@ -327,7 +327,13 @@ def create_app(
     )
     app.state.guide_service = GuideService(sessionmaker=database.sessionmaker, clock=clock)
     app.state.challenge_service = challenges_service.ChallengeService(
-        sessionmaker=database.sessionmaker, clock=clock, cursors=cursor_codec
+        sessionmaker=database.sessionmaker,
+        clock=clock,
+        cursors=cursor_codec,
+        # Discount codes at rest: a key derived (own HKDF label) from the server secret.
+        cipher=challenges_service.RewardSecretCipher(
+            identity_settings.refresh_token_derivation_key.get_secret_value()
+        ),
     )
     app.state.offline_package_service = OfflinePackageService(
         sessionmaker=database.sessionmaker,

@@ -231,3 +231,50 @@ def test_other_user_schemas_never_expose_location_or_private_identity(
     }
     leaks = {name: fields for name, fields in leaks.items() if fields}
     assert not leaks, f"person schemas leak sensitive fields: {leaks}"
+
+
+# Challenge schemas members receive; answers, judging detail and reward secrets stay out of them.
+MEMBER_CHALLENGE_SCHEMAS = (
+    "Challenge",
+    "ChallengePage",
+    "ChallengeManagerView",
+    "ChallengeHint",
+    "ChallengeParticipation",
+    "SubmissionResult",
+    "ChallengeResults",
+    "ChallengeWinner",
+    "ChallengeTeam",
+    "ChallengeTeamPage",
+    "ChallengeDispute",
+    "RewardSummary",
+    "RewardFulfillment",
+    "RewardFulfillmentPage",
+)
+FORBIDDEN_CHALLENGE_FIELDS = frozenset(
+    {
+        "accepted_answers",
+        "answers",
+        "answer_display",
+        "answer_normalized",
+        "judging_criteria",
+        "secret",
+        "secret_ciphertext",
+    }
+)
+
+
+@pytest.mark.security
+@pytest.mark.req("CHAL-008", "CHAL-015", "T-CHAL-01")
+def test_member_challenge_schemas_never_carry_answers_or_secrets(spec: dict[str, Any]) -> None:
+    components: dict[str, Any] = spec.get("components", {}).get("schemas", {})
+    missing = [name for name in MEMBER_CHALLENGE_SCHEMAS if name not in components]
+    assert not missing, f"expected challenge schemas in contract: {missing}"
+    leaks = {
+        name: sorted(
+            set(_iter_property_names(components[name], components, {name}))
+            & FORBIDDEN_CHALLENGE_FIELDS
+        )
+        for name in MEMBER_CHALLENGE_SCHEMAS
+    }
+    leaks = {name: fields for name, fields in leaks.items() if fields}
+    assert not leaks, f"member challenge schemas leak answers or secrets: {leaks}"

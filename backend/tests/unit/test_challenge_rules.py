@@ -14,6 +14,7 @@ from app.modules.challenges.domain import (
     RewardInput,
     ai_outcome,
     attempt_block,
+    can_transition,
     first_evaluation,
     matches,
     next_attempt_at,
@@ -151,7 +152,7 @@ def test_winner_slots_follow_the_policy() -> None:
     assert winner_slots("first_correct", 5) == 1
     assert winner_slots("first_n_correct", 3) == 3
     assert winner_slots("all_correct", 1) is None
-    assert winner_slots("admin_selects", 3) == 0
+    assert winner_slots("admin_selects", 3) is None  # every correct answer is a candidate
 
 
 @pytest.mark.req("CHAL-007", "T-CHAL-05")
@@ -177,3 +178,25 @@ def test_winners_follow_submission_order_and_judges_decisions() -> None:
     # A confirmed winner keeps a slot wherever they are in the order.
     assert pick_winners(correct, slots=2, confirmed=frozenset({d})) == [(a, s[0]), (d, s[4])]
     assert pick_winners([], slots=1) == []
+
+
+@pytest.mark.req("CHAL-015")
+@pytest.mark.parametrize(
+    ("current", "target", "allowed"),
+    [
+        ("pending", "issued", True),
+        ("pending", "cancelled", True),
+        ("pending", "failed", True),
+        ("pending", "delivered", False),  # nothing is delivered before it is issued
+        ("issued", "delivered", True),
+        ("issued", "disputed", True),
+        ("issued", "pending", False),
+        ("failed", "pending", True),
+        ("disputed", "issued", True),
+        ("disputed", "cancelled", True),
+        ("delivered", "failed", False),  # delivered and cancelled are final
+        ("cancelled", "pending", False),
+    ],
+)
+def test_fulfillment_state_machine(current: str, target: str, allowed: bool) -> None:
+    assert can_transition(current, target) is allowed

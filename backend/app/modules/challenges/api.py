@@ -1,4 +1,5 @@
-"""``/v1/groups/{id}/challenges`` and ``/v1/challenges/{id}/…`` (BL-5.01..5.04)."""
+"""``/v1/groups/{id}/challenges``, ``/v1/challenges/{id}/…``, my rewards and badges
+(BL-5.01..5.07)."""
 
 from __future__ import annotations
 
@@ -16,6 +17,8 @@ from app.modules.challenges.domain import STATUSES
 from app.modules.challenges.schemas import (
     AcceptedAnswerList,
     CancelRequest,
+    ChallengeDisputeOut,
+    ChallengeDisputePage,
     ChallengeManagerView,
     ChallengeOut,
     ChallengePage,
@@ -24,14 +27,23 @@ from app.modules.challenges.schemas import (
     ChallengeSubmissionPage,
     ChallengeTeamOut,
     ChallengeTeamPage,
+    ChallengeWinnerOut,
     CreateChallengeRequest,
+    CreateDisputeRequest,
     CreateTeamRequest,
     EvaluationStatus,
+    FulfillmentTransitionRequest,
     HintList,
     JudgeSubmissionRequest,
+    MyRewardPage,
+    ResolveDisputeRequest,
+    RewardFulfillmentOut,
+    RewardFulfillmentPage,
     SubmissionResult,
     SubmitAnswerRequest,
     UpdateChallengeRequest,
+    UserBadgeList,
+    WinnerActionRequest,
 )
 from app.modules.challenges.service import ChallengeService
 
@@ -250,3 +262,118 @@ async def get_challenge_results(
     challenge_id: uuid.UUID, request: Request, principal: CurrentPrincipal
 ) -> ChallengeResults:
     return await _service(request).results(principal.user_id, challenge_id)
+
+
+@router.post("/v1/challenges/{challenge_id}/results/publish", response_model=ChallengeResults)
+async def publish_challenge_results(
+    challenge_id: uuid.UUID, request: Request, principal: CurrentPrincipal
+) -> ChallengeResults:
+    return await _service(request).publish_results(principal.user_id, challenge_id)
+
+
+@router.post(
+    "/v1/challenges/{challenge_id}/winners/{winner_id}/{action}",
+    response_model=ChallengeWinnerOut,
+)
+async def update_challenge_winner(
+    challenge_id: uuid.UUID,
+    winner_id: uuid.UUID,
+    action: Literal["confirm", "revoke"],
+    request: Request,
+    principal: CurrentPrincipal,
+    body: WinnerActionRequest | None = None,
+) -> ChallengeWinnerOut:
+    return await _service(request).winner_action(
+        principal.user_id, challenge_id, winner_id, action, body.note if body else None
+    )
+
+
+@router.get("/v1/challenges/{challenge_id}/disputes", response_model=ChallengeDisputePage)
+async def list_challenge_disputes(
+    challenge_id: uuid.UUID,
+    request: Request,
+    principal: CurrentPrincipal,
+    cursor: Annotated[str | None, Query(max_length=1024)] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> ChallengeDisputePage:
+    return await _service(request).list_disputes(
+        principal.user_id, challenge_id, cursor=cursor, limit=limit
+    )
+
+
+@router.post(
+    "/v1/challenges/{challenge_id}/disputes",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ChallengeDisputeOut,
+    openapi_extra=rate_limited("sensitive"),
+)
+async def create_challenge_dispute(
+    challenge_id: uuid.UUID,
+    body: CreateDisputeRequest,
+    request: Request,
+    principal: CurrentPrincipal,
+) -> ChallengeDisputeOut:
+    return await _service(request).create_dispute(principal.user_id, challenge_id, body)
+
+
+@router.post(
+    "/v1/challenges/{challenge_id}/disputes/{dispute_id}/resolve",
+    response_model=ChallengeDisputeOut,
+)
+async def resolve_challenge_dispute(
+    challenge_id: uuid.UUID,
+    dispute_id: uuid.UUID,
+    body: ResolveDisputeRequest,
+    request: Request,
+    principal: CurrentPrincipal,
+) -> ChallengeDisputeOut:
+    return await _service(request).resolve_dispute(
+        principal.user_id, challenge_id, dispute_id, body
+    )
+
+
+@router.get("/v1/challenges/{challenge_id}/fulfillments", response_model=RewardFulfillmentPage)
+async def list_reward_fulfillments(
+    challenge_id: uuid.UUID,
+    request: Request,
+    principal: CurrentPrincipal,
+    cursor: Annotated[str | None, Query(max_length=1024)] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> RewardFulfillmentPage:
+    return await _service(request).list_fulfillments(
+        principal.user_id, challenge_id, cursor=cursor, limit=limit
+    )
+
+
+@router.post(
+    "/v1/challenges/{challenge_id}/fulfillments/{fulfillment_id}/transitions",
+    response_model=RewardFulfillmentOut,
+)
+async def transition_reward_fulfillment(
+    challenge_id: uuid.UUID,
+    fulfillment_id: uuid.UUID,
+    body: FulfillmentTransitionRequest,
+    request: Request,
+    principal: CurrentPrincipal,
+) -> RewardFulfillmentOut:
+    return await _service(request).transition_fulfillment(
+        principal.user_id, challenge_id, fulfillment_id, body
+    )
+
+
+@router.get("/v1/users/me/rewards", response_model=MyRewardPage)
+async def list_my_rewards(
+    request: Request,
+    principal: CurrentPrincipal,
+    cursor: Annotated[str | None, Query(max_length=1024)] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> JSONResponse:
+    page = await _service(request).my_rewards(principal.user_id, cursor=cursor, limit=limit)
+    return JSONResponse(page.model_dump(mode="json"), headers={"Cache-Control": "no-store"})
+
+
+@router.get("/v1/users/{user_id}/badges", response_model=UserBadgeList)
+async def list_user_badges(
+    user_id: uuid.UUID, request: Request, principal: CurrentPrincipal
+) -> UserBadgeList:
+    return await _service(request).user_badges(principal.user_id, user_id)

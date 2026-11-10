@@ -416,7 +416,10 @@ def test_review_methods_wait_and_admin_selects_picks_no_one(store: LiveApp) -> N
     assert picked["evaluation_status"] == "correct"
     assert picked["is_provisional_winner"] is False
     results = store.client.get(f"/v1/challenges/{chosen}/results", headers=_auth(admin)).json()
-    assert results["winners"] == []
+    # A candidate for the judges to pick (BL-5.07), not a winner yet.
+    assert [(w["status"], w["determined_by"]) for w in results["winners"]] == [
+        ("provisional", "system")
+    ]
 
 
 def _team(live: LiveApp, token: str, challenge_id: str, name: str) -> Any:

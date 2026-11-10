@@ -27,6 +27,8 @@ from app.modules.admin.schemas import (
     ResolveReportRequest,
     SuspendUserRequest,
 )
+from app.modules.challenges import service as challenges
+from app.modules.challenges.schemas import RewardDetail, RewardReviewRequest
 from app.modules.identity import service as identity
 from app.modules.messaging import service as messaging
 from app.modules.observability import service as observability
@@ -337,6 +339,23 @@ class AdminService:
             out = await self._user(session, user_id)
             _audit(session, staff, "user.viewed", "user", user_id)
             return out
+
+    async def review_challenge_reward(
+        self, staff: Staff, reward_id: uuid.UUID, request: RewardReviewRequest
+    ) -> RewardDetail:
+        """Discount and promotional rewards need this before their challenge is published
+        (CHAL-014); audited with the staff justification."""
+        async with self._sessionmaker() as session, session.begin():
+            reviewed = await challenges.review_reward(session, reward_id, decision=request.decision)
+            _audit(
+                session,
+                staff,
+                f"challenge_reward.{request.decision}",
+                "challenge_reward",
+                reward_id,
+                note=request.note,
+            )
+            return reviewed
 
     async def suspend(
         self, staff: Staff, user_id: uuid.UUID, request: SuspendUserRequest

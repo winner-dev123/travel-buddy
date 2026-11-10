@@ -23,6 +23,7 @@ from app.modules.admin.schemas import (
     TargetType,
 )
 from app.modules.admin.service import AdminService
+from app.modules.challenges.schemas import RewardDetail, RewardReviewRequest
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
 
@@ -141,6 +142,16 @@ async def admin_get_user(
     who: Annotated[Staff, Depends(staff(Permission.USERS_READ, justified=True))],
 ) -> AdminUser:
     return await _service(request).get_user(who, user_id)
+
+
+@router.post("/challenge-rewards/{reward_id}/review", response_model=RewardDetail)
+async def admin_review_challenge_reward(
+    reward_id: uuid.UUID,
+    body: RewardReviewRequest,
+    request: Request,
+    who: Annotated[Staff, Depends(staff(Permission.CONTENT_REWARDS_REVIEW, justified=True))],
+) -> RewardDetail:
+    return await _service(request).review_challenge_reward(who, reward_id, body)
 
 
 @router.post("/users/{user_id}/suspend", response_model=AdminUser)

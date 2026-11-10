@@ -356,6 +356,38 @@ CHALLENGE_TEXTS: Final[dict[str, tuple[Text, Text]]] = {
             "de": "{title} läuft jetzt in deiner Gruppe. Viel Glück!",
         },
     ),
+    "published": (
+        {
+            "en": "Challenge results are in",
+            "es": "Ya hay resultados del desafío",
+            "pt-BR": "Saiu o resultado do desafio",
+            "fr": "Les résultats du défi sont là",
+            "de": "Die Ergebnisse der Challenge sind da",
+        },
+        {
+            "en": "See who solved {title}.",
+            "es": "Mira quién resolvió {title}.",
+            "pt-BR": "Veja quem resolveu {title}.",
+            "fr": "Découvrez qui a résolu {title}.",
+            "de": "Sieh nach, wer {title} gelöst hat.",
+        },
+    ),
+    "reward_issued": (
+        {
+            "en": "Your reward is ready",
+            "es": "Tu premio está listo",
+            "pt-BR": "Seu prêmio está pronto",
+            "fr": "Votre récompense est prête",
+            "de": "Deine Belohnung ist bereit",
+        },
+        {
+            "en": "Your reward for {title} is waiting in My rewards.",
+            "es": "Tu premio de {title} te espera en Mis premios.",
+            "pt-BR": "Seu prêmio de {title} está em Meus prêmios.",
+            "fr": "Votre récompense pour {title} vous attend dans Mes récompenses.",
+            "de": "Deine Belohnung für {title} wartet unter Meine Belohnungen.",
+        },
+    ),
     "cancelled": (
         {
             "en": "Challenge cancelled",

@@ -38,6 +38,7 @@ from decimal import Decimal
 from typing import Any, Protocol
 
 from sqlalchemy import delete, func, literal, or_, select, tuple_
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.errors import AppError, ErrorCode, FieldError
@@ -45,13 +46,17 @@ from app.core.pagination import CursorCodec, PageInfo
 from app.core.security.principal import Principal
 from app.core.time import Clock
 from app.modules.challenges.domain import (
+    DISPUTE_WINDOW,
     EDITABLE,
+    IN_APP_REWARDS,
+    MAX_OPEN_DISPUTES,
     REVIEWED_REWARDS,
     Normalization,
     Recipient,
     RewardInput,
     ai_outcome,
     attempt_block,
+    can_transition,
     first_evaluation,
     next_attempt_at,
     normalize,
@@ -67,6 +72,7 @@ from app.modules.challenges.domain import (
 from app.modules.challenges.models import (
     Badge,
     ChallengeAnswer,
+    ChallengeDispute,
     ChallengeHint,
     ChallengeParticipant,
     ChallengeReward,
@@ -74,12 +80,16 @@ from app.modules.challenges.models import (
     ChallengeTeam,
     ChallengeWinner,
     GroupChallenge,
+    RewardFulfillment,
+    UserBadge,
 )
 from app.modules.challenges.schemas import (
     AcceptedAnswerList,
     AcceptedAnswerOut,
     AnswerNormalization,
     BadgeSummary,
+    ChallengeDisputeOut,
+    ChallengeDisputePage,
     ChallengeHintOut,
     ChallengeManagerView,
     ChallengeOut,
@@ -91,25 +101,40 @@ from app.modules.challenges.schemas import (
     ChallengeTeamPage,
     ChallengeWinnerOut,
     CreateChallengeRequest,
+    CreateDisputeRequest,
     CreateTeamRequest,
+    FulfillmentTransitionRequest,
     HintList,
     JudgeSubmissionRequest,
     ManagedHint,
+    MyRewardOut,
+    MyRewardPage,
     Participation,
+    ResolveDisputeRequest,
+    RewardChallenge,
     RewardDetail,
+    RewardFulfillmentOut,
+    RewardFulfillmentPage,
     RewardSummary,
     SubmissionResult,
     SubmitAnswerRequest,
     UpdateChallengeRequest,
+    UserBadgeList,
+    UserBadgeOut,
     WinnerTeam,
 )
+from app.modules.challenges.secrets import (
+    RewardSecretCipher as RewardSecretCipher,  # re-exported for the composition root
+)
 from app.modules.groups import service as groups
+from app.modules.identity import service as identity
 from app.modules.media import service as media
 from app.modules.messaging import service as messaging
 from app.modules.observability import service as observability
 from app.modules.platform import service as platform
 from app.modules.profiles import service as profiles
 from app.modules.profiles.schemas import UserSummary
+from app.modules.trust_safety import service as trust_safety
 
 CREATE_ROUTE = "POST /v1/groups/{id}/challenges"
 SUBMIT_ROUTE = "POST /v1/challenges/{id}/submissions"
@@ -117,6 +142,8 @@ MANAGE = "challenges.manage"
 JUDGE = "challenges.judge"
 STARTED_EVENT = "challenge.started"
 CANCELLED_EVENT = "challenge.cancelled"
+RESULTS_EVENT = "challenge.results_published"
+REWARD_ISSUED_EVENT = "challenge.reward_issued"
 LIFECYCLE_JOB = "challenges.lifecycle"
 MEMBER_GONE_JOB = "challenges.member_gone"
 AI_JUDGE_JOB = "challenges.ai_judge"
@@ -185,10 +212,12 @@ class ChallengeService:
         sessionmaker: async_sessionmaker[AsyncSession],
         clock: Clock,
         cursors: CursorCodec,
+        cipher: RewardSecretCipher | None = None,
     ) -> None:
         self._sessionmaker = sessionmaker
         self._clock = clock
         self._cursors = cursors
+        self._cipher = cipher
 
     # ─────────────────────────────── access ───────────────────────────────
 
@@ -374,30 +403,7 @@ class ChallengeService:
                 "participant_count": int(participants or 0),
                 "pending_review_count": int(pending or 0),
                 "reward_details": [
-                    RewardDetail(
-                        id=r.id,
-                        challenge_id=r.challenge_id,
-                        reward_type=r.reward_type,
-                        title=r.title,
-                        description=r.description,
-                        badge=(
-                            BadgeSummary(
-                                id=badges[r.badge_id].id,
-                                key=badges[r.badge_id].key,
-                                name=badges[r.badge_id].name,
-                            )
-                            if r.badge_id in badges
-                            else None
-                        ),
-                        sponsor_name=r.sponsor_name,
-                        quantity=r.quantity,
-                        eligibility_rules=r.eligibility_rules,
-                        terms_url=r.terms_url,
-                        fulfillment_owner=r.fulfillment_owner,
-                        requires_platform_review=r.requires_platform_review,
-                        review_status=r.review_status,
-                        created_at=r.created_at,
-                    )
+                    reward_detail(r, badges.get(r.badge_id) if r.badge_id else None)
                     for r in rewards
                 ],
                 "version": row.version,
@@ -1019,17 +1025,22 @@ class ChallengeService:
             won = False
             if evaluation == "correct":
                 await _sync_winners(session, row, now)
+                # Under admin_selects a correct answer is only a candidate until judges pick.
                 won = (
-                    await session.scalar(
-                        select(func.count())
-                        .select_from(ChallengeWinner)
-                        .where(
-                            ChallengeWinner.submission_id == submission.id,
-                            ChallengeWinner.status != "revoked",
+                    row.winner_policy != "admin_selects"
+                    and (
+                        await session.scalar(
+                            select(func.count())
+                            .select_from(ChallengeWinner)
+                            .where(
+                                ChallengeWinner.submission_id == submission.id,
+                                ChallengeWinner.status != "revoked",
+                            )
                         )
+                        or 0
                     )
-                    or 0
-                ) > 0
+                    > 0
+                )
             remaining = max(0, row.max_attempts - holder.attempts_used)
             out = SubmissionResult(
                 submission_id=submission.id,
@@ -1230,6 +1241,34 @@ class ChallengeService:
                 ]
             )
 
+    async def _winners_out(
+        self, session: AsyncSession, winners: Sequence[ChallengeWinner]
+    ) -> list[ChallengeWinnerOut]:
+        users = await profiles.authors(session, [w.user_id for w in winners if w.user_id])
+        team_ids = [w.team_id for w in winners if w.team_id]
+        teams = {
+            t.id: t
+            for t in (
+                await session.scalars(select(ChallengeTeam).where(ChallengeTeam.id.in_(team_ids)))
+            ).all()
+        }
+        return [
+            ChallengeWinnerOut(
+                id=w.id,
+                rank=w.rank,
+                user=profiles.user_summary(users[w.user_id]) if w.user_id in users else None,
+                team=(
+                    WinnerTeam(id=teams[w.team_id].id, name=teams[w.team_id].name)
+                    if w.team_id in teams
+                    else None
+                ),
+                status=w.status,  # type: ignore[arg-type]
+                determined_by=w.determined_by,  # type: ignore[arg-type]
+                determined_at=w.determined_at,
+            )
+            for w in winners
+        ]
+
     async def results(self, user_id: uuid.UUID, challenge_id: uuid.UUID) -> ChallengeResults:
         """Members see confirmed winners once results are published; judges see provisional and
         revoked winners at any time (CHAL-011)."""
@@ -1254,39 +1293,685 @@ class ChallengeService:
                 .select_from(ChallengeParticipant)
                 .where(ChallengeParticipant.challenge_id == row.id)
             )
-            users = await profiles.authors(session, [w.user_id for w in winners if w.user_id])
-            team_ids = [w.team_id for w in winners if w.team_id]
-            teams = {
-                t.id: t
-                for t in (
-                    await session.scalars(
-                        select(ChallengeTeam).where(ChallengeTeam.id.in_(team_ids))
-                    )
-                ).all()
-            }
+            out = await self._winners_out(session, winners)
         return ChallengeResults(
             challenge_id=row.id,
             status=row.status,  # type: ignore[arg-type]
             published=published,
             results_published_at=row.results_published_at,
             participant_count=int(participants or 0),
-            winners=[
-                ChallengeWinnerOut(
-                    id=w.id,
-                    rank=w.rank,
-                    user=profiles.user_summary(users[w.user_id]) if w.user_id in users else None,
-                    team=(
-                        WinnerTeam(id=teams[w.team_id].id, name=teams[w.team_id].name)
-                        if w.team_id in teams
-                        else None
-                    ),
-                    status=w.status,  # type: ignore[arg-type]
-                    determined_by=w.determined_by,  # type: ignore[arg-type]
-                    determined_at=w.determined_at,
-                )
-                for w in winners
-            ],
+            winners=out,
         )
+
+    @staticmethod
+    def _require_judge(access: groups.MemberAccess) -> None:
+        if JUDGE not in access.permissions:
+            raise AppError(ErrorCode.FORBIDDEN, "Only judges can do that.")
+
+    async def winner_action(
+        self,
+        user_id: uuid.UUID,
+        challenge_id: uuid.UUID,
+        winner_id: uuid.UUID,
+        action: str,
+        note: str | None,
+    ) -> ChallengeWinnerOut:
+        """Confirm or revoke a winner before results are published (CHAL-010; audited). Under
+        ``admin_selects`` confirming picks a candidate, up to ``max_winners``; revoking under the
+        other policies lets the next correct answer move up."""
+        async with self._sessionmaker() as session, session.begin():
+            row, access = await self._challenge(session, challenge_id, user_id, lock=True)
+            self._require_judge(access)
+            _require_unpublished(row)
+            winner = await session.get(ChallengeWinner, winner_id, with_for_update=True)
+            if winner is None or winner.challenge_id != row.id:
+                raise AppError(ErrorCode.NOT_FOUND, "Winner not found.")
+            now = self._clock.now()
+            if action == "confirm":
+                if winner.status == "revoked":
+                    raise AppError(ErrorCode.CONFLICT, "A revoked winner can't be confirmed.")
+                if winner.status == "provisional":
+                    if row.winner_policy == "admin_selects":
+                        picked = await session.scalar(
+                            select(func.count())
+                            .select_from(ChallengeWinner)
+                            .where(
+                                ChallengeWinner.challenge_id == row.id,
+                                ChallengeWinner.status == "confirmed",
+                            )
+                        )
+                        if int(picked or 0) >= row.max_winners:
+                            raise AppError(
+                                ErrorCode.CONFLICT,
+                                f"Up to {row.max_winners} winner(s) can be picked.",
+                            )
+                        winner.determined_by = "admin"
+                    winner.status = "confirmed"
+                    winner.confirmed_by = user_id
+            elif winner.status != "revoked":
+                winner.status = "revoked"
+            observability.audit(
+                session,
+                actor_id=user_id,
+                actor_type="user",
+                action=f"challenge.winner_{'confirmed' if action == 'confirm' else 'revoked'}",
+                resource_type="challenge_winner",
+                resource_id=winner.id,
+                metadata={"challenge_id": str(row.id), "note": note},
+            )
+            await session.flush()
+            if action == "revoke":
+                await _sync_winners(session, row, now)
+            await session.refresh(winner)
+            [out] = await self._winners_out(session, [winner])
+            return out
+
+    async def publish_results(
+        self, user_id: uuid.UUID, challenge_id: uuid.UUID
+    ) -> ChallengeResults:
+        """Final winners, badges, reward fulfillments and a note to the group (CHAL-011, CHAL-012,
+        CHAL-015). Needs every answer decided and no open dispute."""
+        async with self._sessionmaker() as session, session.begin():
+            row, access = await self._challenge(session, challenge_id, user_id, lock=True)
+            self._require_judge(access)
+            if row.results_published_at is not None:
+                raise AppError(ErrorCode.CONFLICT, "Results are already published.")
+            if row.status not in ("active", "judging"):
+                raise AppError(ErrorCode.CONFLICT, "Results come once the challenge has run.")
+            undecided = await session.scalar(
+                select(func.count())
+                .select_from(ChallengeSubmission)
+                .where(
+                    ChallengeSubmission.challenge_id == row.id,
+                    ChallengeSubmission.evaluation_status.in_(("pending", "needs_review")),
+                )
+            )
+            if undecided:
+                raise AppError(ErrorCode.CONFLICT, "Some answers still need a decision.")
+            disputed = await session.scalar(
+                select(func.count())
+                .select_from(ChallengeDispute)
+                .where(ChallengeDispute.challenge_id == row.id, ChallengeDispute.status == "open")
+            )
+            if disputed:
+                raise AppError(ErrorCode.CONFLICT, "Resolve the open disputes first.")
+            now = self._clock.now()
+            live = list(
+                (
+                    await session.scalars(
+                        select(ChallengeWinner)
+                        .where(
+                            ChallengeWinner.challenge_id == row.id,
+                            ChallengeWinner.status != "revoked",
+                        )
+                        .order_by(ChallengeWinner.rank)
+                    )
+                ).all()
+            )
+            for winner in live:
+                if winner.status != "provisional":
+                    continue
+                if row.winner_policy == "admin_selects":
+                    winner.status = "revoked"  # candidates the judges didn't pick
+                else:
+                    winner.status = "confirmed"
+                    winner.confirmed_by = user_id
+            final = [w for w in live if w.status == "confirmed"]
+            await session.flush()
+            for offset, winner in enumerate(final):  # compact ranks: park, then renumber
+                winner.rank = 1000 + offset
+            await session.flush()
+            for rank, winner in enumerate(final, start=1):
+                winner.rank = rank
+            await session.flush()
+            await self._award_rewards(session, row, final, now)
+            row.status = "completed"
+            row.results_published_at = now
+            row.version += 1
+            row.updated_at = now
+            observability.audit(
+                session,
+                actor_id=user_id,
+                actor_type="user",
+                action="challenge.results_published",
+                resource_type="challenge",
+                resource_id=row.id,
+                metadata={"winners": len(final)},
+            )
+            platform.record_event(
+                session,
+                aggregate_type="challenge",
+                aggregate_id=row.id,
+                event_type=RESULTS_EVENT,
+                payload={
+                    "challenge_id": str(row.id),
+                    "group_id": str(row.group_id),
+                    "title": row.title,
+                    "recipient_ids": [
+                        str(m) for m in await groups.member_ids(session, row.group_id)
+                    ],
+                },
+            )
+            await session.flush()
+        return await self.results(user_id, challenge_id)
+
+    async def _award_rewards(
+        self,
+        session: AsyncSession,
+        row: GroupChallenge,
+        winners: Sequence[ChallengeWinner],
+        now: datetime,
+    ) -> None:
+        """Each reward goes to the top ``quantity`` winners: badges and achievements straight to
+        the people (every member of a winning team), real-world rewards into fulfillment for the
+        winner or the team captain (CHAL-012, CHAL-015)."""
+        rewards = (
+            await session.scalars(
+                select(ChallengeReward)
+                .where(ChallengeReward.challenge_id == row.id)
+                .order_by(ChallengeReward.created_at, ChallengeReward.id)
+            )
+        ).all()
+        for reward in rewards:
+            recipients = list(winners[: reward.quantity])
+            if reward.reward_type in IN_APP_REWARDS:
+                if reward.badge_id is None:  # an achievement: an in-app badge of its own
+                    reward.badge_id = (
+                        await self._badge(session, f"achievement-{reward.id}", reward.title)
+                    ).id
+                for winner in recipients:
+                    for person in await _winner_people(session, winner):
+                        await session.execute(
+                            insert(UserBadge)
+                            .values(
+                                user_id=person,
+                                badge_id=reward.badge_id,
+                                source_type="challenge",
+                                source_id=row.id,
+                                awarded_at=now,
+                            )
+                            .on_conflict_do_nothing()
+                        )
+            elif reward.review_status == "approved":
+                for winner in recipients:
+                    recipient = winner.user_id
+                    if winner.team_id is not None:
+                        team = await session.get(ChallengeTeam, winner.team_id)
+                        recipient = team.captain_id if team else None
+                    session.add(
+                        RewardFulfillment(
+                            challenge_id=row.id,
+                            challenge_reward_id=reward.id,
+                            winner_id=winner.id,
+                            recipient_user_id=recipient,
+                            status="pending",
+                            created_at=now,
+                            updated_at=now,
+                        )
+                    )
+        await session.flush()
+
+    # ─────────────────────────────── disputes ───────────────────────────────
+
+    async def _disputes_out(
+        self, session: AsyncSession, rows: Sequence[ChallengeDispute]
+    ) -> list[ChallengeDisputeOut]:
+        users = await profiles.authors(session, [d.raised_by for d in rows if d.raised_by])
+        return [
+            ChallengeDisputeOut(
+                id=d.id,
+                challenge_id=d.challenge_id,
+                raised_by=profiles.user_summary(users[d.raised_by])
+                if d.raised_by in users
+                else None,
+                submission_id=d.submission_id,
+                reason=d.reason,
+                status=d.status,  # type: ignore[arg-type]
+                resolution_note=d.resolution_note,
+                created_at=d.created_at,
+                resolved_at=d.resolved_at,
+            )
+            for d in rows
+        ]
+
+    async def create_dispute(
+        self, user_id: uuid.UUID, challenge_id: uuid.UUID, request: CreateDisputeRequest
+    ) -> ChallengeDisputeOut:
+        """Participants dispute a judgement or the results (CHAL-016)."""
+        async with self._sessionmaker() as session, session.begin():
+            row, _ = await self._challenge(session, challenge_id, user_id, lock=False)
+            participant = await session.get(ChallengeParticipant, (row.id, user_id))
+            if participant is None:
+                raise AppError(ErrorCode.FORBIDDEN, "Only participants can raise a dispute.")
+            now = self._clock.now()
+            if row.status in ("draft", "scheduled", "cancelled"):
+                raise AppError(ErrorCode.CONFLICT, "There is nothing to dispute yet.")
+            if row.results_published_at and now > row.results_published_at + DISPUTE_WINDOW:
+                raise AppError(ErrorCode.CONFLICT, "The time to dispute these results is over.")
+            if request.submission_id is not None:
+                submission = await session.get(ChallengeSubmission, request.submission_id)
+                if (
+                    submission is None
+                    or submission.challenge_id != row.id
+                    or not (
+                        submission.submitted_by == user_id
+                        or (
+                            submission.team_id is not None
+                            and submission.team_id == participant.team_id
+                        )
+                    )
+                ):
+                    raise AppError(ErrorCode.NOT_FOUND, "Submission not found.")
+            open_count = await session.scalar(
+                select(func.count())
+                .select_from(ChallengeDispute)
+                .where(
+                    ChallengeDispute.challenge_id == row.id,
+                    ChallengeDispute.raised_by == user_id,
+                    ChallengeDispute.status == "open",
+                )
+            )
+            if int(open_count or 0) >= MAX_OPEN_DISPUTES:
+                raise AppError(ErrorCode.CONFLICT, "You already have open disputes here.")
+            dispute = ChallengeDispute(
+                challenge_id=row.id,
+                raised_by=user_id,
+                submission_id=request.submission_id,
+                reason=request.reason.strip(),
+                status="open",
+                created_at=now,
+            )
+            session.add(dispute)
+            await session.flush()
+            [out] = await self._disputes_out(session, [dispute])
+            return out
+
+    async def list_disputes(
+        self, user_id: uuid.UUID, challenge_id: uuid.UUID, *, cursor: str | None, limit: int
+    ) -> ChallengeDisputePage:
+        """Judges see every dispute; members see their own."""
+        async with self._sessionmaker() as session:
+            row, access = await self._challenge(session, challenge_id, user_id, lock=False)
+            conditions: list[Any] = [ChallengeDispute.challenge_id == row.id]
+            judge = JUDGE in access.permissions
+            if not judge:
+                conditions.append(ChallengeDispute.raised_by == user_id)
+            filters = {"c": str(row.id), "j": judge}
+            if cursor is not None:
+                decoded = self._cursors.decode(cursor, scope="challenge-disputes")
+                if decoded.get("f") != filters:
+                    raise AppError(ErrorCode.INVALID_CURSOR, "The cursor belongs to another query.")
+                conditions.append(
+                    tuple_(ChallengeDispute.created_at, ChallengeDispute.id)
+                    > tuple_(
+                        literal(datetime.fromisoformat(decoded["t"])),
+                        literal(uuid.UUID(decoded["i"])),
+                    )
+                )
+            rows = list(
+                (
+                    await session.scalars(
+                        select(ChallengeDispute)
+                        .where(*conditions)
+                        .order_by(ChallengeDispute.created_at, ChallengeDispute.id)
+                        .limit(limit + 1)
+                    )
+                ).all()
+            )
+            more = len(rows) > limit
+            rows = rows[:limit]
+            data = await self._disputes_out(session, rows)
+        next_cursor = (
+            self._cursors.encode(
+                {"f": filters, "t": rows[-1].created_at.isoformat(), "i": str(rows[-1].id)},
+                scope="challenge-disputes",
+            )
+            if more and rows
+            else None
+        )
+        return ChallengeDisputePage(data=data, page=PageInfo(next_cursor=next_cursor))
+
+    async def resolve_dispute(
+        self,
+        user_id: uuid.UUID,
+        challenge_id: uuid.UUID,
+        dispute_id: uuid.UUID,
+        request: ResolveDisputeRequest,
+    ) -> ChallengeDisputeOut:
+        """A judge closes a dispute (audited); never one they raised themselves (CHAL-016)."""
+        async with self._sessionmaker() as session, session.begin():
+            row, access = await self._challenge(session, challenge_id, user_id, lock=True)
+            self._require_judge(access)
+            dispute = await session.get(ChallengeDispute, dispute_id, with_for_update=True)
+            if dispute is None or dispute.challenge_id != row.id:
+                raise AppError(ErrorCode.NOT_FOUND, "Dispute not found.")
+            if dispute.raised_by == user_id:
+                raise AppError(ErrorCode.FORBIDDEN, "Another judge has to resolve your dispute.")
+            if dispute.status != "open":
+                raise AppError(ErrorCode.CONFLICT, "This dispute is already resolved.")
+            dispute.status = request.status
+            dispute.resolution_note = request.resolution_note.strip()
+            dispute.resolved_by = user_id
+            dispute.resolved_at = self._clock.now()
+            observability.audit(
+                session,
+                actor_id=user_id,
+                actor_type="user",
+                action=f"challenge.dispute_{request.status}",
+                resource_type="challenge_dispute",
+                resource_id=dispute.id,
+                metadata={"challenge_id": str(row.id)},
+            )
+            await session.flush()
+            [out] = await self._disputes_out(session, [dispute])
+            return out
+
+    # ─────────────────────────────── fulfillment ───────────────────────────────
+
+    async def _fulfillments_out(
+        self, session: AsyncSession, rows: Sequence[RewardFulfillment]
+    ) -> list[RewardFulfillmentOut]:
+        users = await profiles.authors(
+            session, [f.recipient_user_id for f in rows if f.recipient_user_id]
+        )
+        return [
+            RewardFulfillmentOut(
+                id=f.id,
+                challenge_reward_id=f.challenge_reward_id,
+                winner_id=f.winner_id,
+                recipient=(
+                    profiles.user_summary(users[f.recipient_user_id])
+                    if f.recipient_user_id in users
+                    else None
+                ),
+                status=f.status,  # type: ignore[arg-type]
+                issued_at=f.issued_at,
+                delivered_at=f.delivered_at,
+                notes=f.notes,
+                updated_at=f.updated_at,
+            )
+            for f in rows
+        ]
+
+    async def list_fulfillments(
+        self, user_id: uuid.UUID, challenge_id: uuid.UUID, *, cursor: str | None, limit: int
+    ) -> RewardFulfillmentPage:
+        async with self._sessionmaker() as session:
+            row, access = await self._challenge(session, challenge_id, user_id, lock=False)
+            self._require_judge(access)
+            conditions: list[Any] = [RewardFulfillment.challenge_id == row.id]
+            filters = {"c": str(row.id)}
+            if cursor is not None:
+                decoded = self._cursors.decode(cursor, scope="reward-fulfillments")
+                if decoded.get("f") != filters:
+                    raise AppError(ErrorCode.INVALID_CURSOR, "The cursor belongs to another query.")
+                conditions.append(
+                    tuple_(RewardFulfillment.created_at, RewardFulfillment.id)
+                    > tuple_(
+                        literal(datetime.fromisoformat(decoded["t"])),
+                        literal(uuid.UUID(decoded["i"])),
+                    )
+                )
+            rows = list(
+                (
+                    await session.scalars(
+                        select(RewardFulfillment)
+                        .where(*conditions)
+                        .order_by(RewardFulfillment.created_at, RewardFulfillment.id)
+                        .limit(limit + 1)
+                    )
+                ).all()
+            )
+            more = len(rows) > limit
+            rows = rows[:limit]
+            data = await self._fulfillments_out(session, rows)
+        next_cursor = (
+            self._cursors.encode(
+                {"f": filters, "t": rows[-1].created_at.isoformat(), "i": str(rows[-1].id)},
+                scope="reward-fulfillments",
+            )
+            if more and rows
+            else None
+        )
+        return RewardFulfillmentPage(data=data, page=PageInfo(next_cursor=next_cursor))
+
+    async def transition_fulfillment(
+        self,
+        user_id: uuid.UUID,
+        challenge_id: uuid.UUID,
+        fulfillment_id: uuid.UUID,
+        request: FulfillmentTransitionRequest,
+    ) -> RewardFulfillmentOut:
+        """Group admins move group- and sponsor-fulfilled rewards through the state machine
+        (CHAL-015; audited without the secret). A discount code goes in when it is issued."""
+        async with self._sessionmaker() as session, session.begin():
+            row, access = await self._challenge(session, challenge_id, user_id, lock=False)
+            if MANAGE not in access.role_permissions:
+                raise AppError(ErrorCode.FORBIDDEN, "Only group admins handle rewards.")
+            fulfillment = await session.get(RewardFulfillment, fulfillment_id, with_for_update=True)
+            if fulfillment is None or fulfillment.challenge_id != row.id:
+                raise AppError(ErrorCode.NOT_FOUND, "Fulfillment not found.")
+            reward = await session.get(ChallengeReward, fulfillment.challenge_reward_id)
+            assert reward is not None
+            if reward.fulfillment_owner == "platform":
+                raise AppError(ErrorCode.FORBIDDEN, "The platform team handles this reward.")
+            before, target = fulfillment.status, request.to_status
+            if not can_transition(before, target):
+                raise AppError(ErrorCode.CONFLICT, f"A reward can't go from {before} to {target}.")
+            if request.secret is not None and target != "issued":
+                raise _invalid("/secret", "A code goes with issuing the reward only.")
+            now = self._clock.now()
+            if target == "issued":
+                if request.secret is not None:
+                    if self._cipher is None:
+                        raise AppError(
+                            ErrorCode.SERVICE_UNAVAILABLE, "Reward codes can't be stored now."
+                        )
+                    fulfillment.secret_ciphertext = self._cipher.encrypt(
+                        request.secret.strip(), fulfillment_id=fulfillment.id
+                    )
+                elif (
+                    reward.reward_type == "discount_code" and fulfillment.secret_ciphertext is None
+                ):
+                    raise _invalid("/secret", "Add the discount code to issue it.")
+                fulfillment.issued_by = user_id
+                fulfillment.issued_at = now
+            if target == "delivered":
+                fulfillment.delivered_at = now
+            fulfillment.status = target
+            if request.note:
+                fulfillment.notes = request.note.strip()
+            fulfillment.updated_at = now
+            observability.audit(
+                session,
+                actor_id=user_id,
+                actor_type="user",
+                action="challenge.fulfillment_transitioned",
+                resource_type="reward_fulfillment",
+                resource_id=fulfillment.id,
+                metadata={"challenge_id": str(row.id), "from": before, "to": target},
+            )
+            if target == "issued" and fulfillment.recipient_user_id is not None:
+                platform.record_event(
+                    session,
+                    aggregate_type="challenge",
+                    aggregate_id=row.id,
+                    event_type=REWARD_ISSUED_EVENT,
+                    payload={
+                        "challenge_id": str(row.id),
+                        "group_id": str(row.group_id),
+                        "title": row.title,
+                        "recipient_ids": [str(fulfillment.recipient_user_id)],
+                    },
+                )
+            await session.flush()
+            [out] = await self._fulfillments_out(session, [fulfillment])
+            return out
+
+    async def my_rewards(
+        self, user_id: uuid.UUID, *, cursor: str | None, limit: int
+    ) -> MyRewardPage:
+        """Rewards I won; a discount code shows only to me, once issued (CHAL-015)."""
+        async with self._sessionmaker() as session:
+            conditions: list[Any] = [RewardFulfillment.recipient_user_id == user_id]
+            if cursor is not None:
+                decoded = self._cursors.decode(cursor, scope="my-rewards")
+                conditions.append(
+                    tuple_(RewardFulfillment.created_at, RewardFulfillment.id)
+                    < tuple_(
+                        literal(datetime.fromisoformat(decoded["t"])),
+                        literal(uuid.UUID(decoded["i"])),
+                    )
+                )
+            rows = list(
+                (
+                    await session.execute(
+                        select(RewardFulfillment, ChallengeReward, GroupChallenge)
+                        .join(
+                            ChallengeReward,
+                            ChallengeReward.id == RewardFulfillment.challenge_reward_id,
+                        )
+                        .join(GroupChallenge, GroupChallenge.id == RewardFulfillment.challenge_id)
+                        .where(*conditions)
+                        .order_by(RewardFulfillment.created_at.desc(), RewardFulfillment.id.desc())
+                        .limit(limit + 1)
+                    )
+                ).all()
+            )
+        more = len(rows) > limit
+        rows = rows[:limit]
+        data = []
+        for fulfillment, reward, challenge in rows:
+            secret = None
+            if (
+                fulfillment.status in ("issued", "delivered")
+                and fulfillment.secret_ciphertext is not None
+                and self._cipher is not None
+            ):
+                secret = self._cipher.decrypt(
+                    fulfillment.secret_ciphertext, fulfillment_id=fulfillment.id
+                )
+            data.append(
+                MyRewardOut(
+                    fulfillment_id=fulfillment.id,
+                    challenge=RewardChallenge(
+                        id=challenge.id, title=challenge.title, group_id=challenge.group_id
+                    ),
+                    reward=RewardSummary(
+                        id=reward.id,
+                        reward_type=reward.reward_type,
+                        title=reward.title,
+                        description=reward.description,
+                        sponsor_name=reward.sponsor_name,
+                        quantity=reward.quantity,
+                        terms_url=reward.terms_url,
+                    ),
+                    status=fulfillment.status,
+                    secret=secret,
+                    issued_at=fulfillment.issued_at,
+                    delivered_at=fulfillment.delivered_at,
+                )
+            )
+        last = rows[-1][0] if rows else None
+        next_cursor = (
+            self._cursors.encode(
+                {"t": last.created_at.isoformat(), "i": str(last.id)}, scope="my-rewards"
+            )
+            if more and last is not None
+            else None
+        )
+        return MyRewardPage(data=data, page=PageInfo(next_cursor=next_cursor))
+
+    async def user_badges(self, viewer_id: uuid.UUID, user_id: uuid.UUID) -> UserBadgeList:
+        """A user's badges and achievements: non-transferable, hidden across blocks (CHAL-012)."""
+        async with self._sessionmaker() as session:
+            blocked_by_me, blocked_me = await trust_safety.blocks_of(session, viewer_id)
+            if (
+                user_id in blocked_by_me
+                or user_id in blocked_me
+                or user_id not in await identity.active_ids(session, [user_id])
+            ):
+                raise AppError(ErrorCode.NOT_FOUND, "User not found.")
+            rows = (
+                await session.execute(
+                    select(UserBadge, Badge)
+                    .join(Badge, Badge.id == UserBadge.badge_id)
+                    .where(UserBadge.user_id == user_id)
+                    .order_by(UserBadge.awarded_at.desc(), Badge.key)
+                )
+            ).all()
+            icons = await media.refs(session, [b.icon_media_id for _, b in rows if b.icon_media_id])
+        return UserBadgeList(
+            data=[
+                UserBadgeOut(
+                    badge=BadgeSummary(
+                        id=badge.id,
+                        key=badge.key,
+                        name=badge.name,
+                        icon=icons.get(badge.icon_media_id) if badge.icon_media_id else None,
+                    ),
+                    awarded_at=owned.awarded_at,
+                    source_type=owned.source_type,
+                    source_id=owned.source_id,
+                )
+                for owned, badge in rows
+            ]
+        )
+
+
+def _require_unpublished(row: GroupChallenge) -> None:
+    if row.results_published_at is not None or row.status in ("completed", "cancelled"):
+        raise AppError(ErrorCode.CONFLICT, "Results are final. Raise a dispute instead.")
+
+
+async def _winner_people(session: AsyncSession, winner: ChallengeWinner) -> list[uuid.UUID]:
+    """Who a winner is: the user, or every active member of the winning team."""
+    if winner.team_id is None:
+        return [winner.user_id] if winner.user_id else []
+    return list(
+        await session.scalars(
+            select(ChallengeParticipant.user_id).where(
+                ChallengeParticipant.team_id == winner.team_id,
+                ChallengeParticipant.status == "active",
+            )
+        )
+    )
+
+
+def reward_detail(reward: ChallengeReward, badge: Badge | None) -> RewardDetail:
+    return RewardDetail(
+        id=reward.id,
+        challenge_id=reward.challenge_id,
+        reward_type=reward.reward_type,  # type: ignore[arg-type]
+        title=reward.title,
+        description=reward.description,
+        badge=BadgeSummary(id=badge.id, key=badge.key, name=badge.name) if badge else None,
+        sponsor_name=reward.sponsor_name,
+        quantity=reward.quantity,
+        eligibility_rules=reward.eligibility_rules,
+        terms_url=reward.terms_url,
+        fulfillment_owner=reward.fulfillment_owner,  # type: ignore[arg-type]
+        requires_platform_review=reward.requires_platform_review,
+        review_status=reward.review_status,  # type: ignore[arg-type]
+        created_at=reward.created_at,
+    )
+
+
+async def review_reward(
+    session: AsyncSession, reward_id: uuid.UUID, *, decision: str
+) -> RewardDetail:
+    """Platform review of a discount or promotional reward before its challenge is published
+    (CHAL-014); the admin module audits it in the same transaction."""
+    reward = await session.get(ChallengeReward, reward_id, with_for_update=True)
+    if reward is None or not reward.requires_platform_review:
+        raise AppError(ErrorCode.NOT_FOUND, "Reward not found.")
+    challenge = await session.get(GroupChallenge, reward.challenge_id)
+    if challenge is None or challenge.status != "draft":
+        raise AppError(ErrorCode.CONFLICT, "Only rewards of unpublished challenges are reviewed.")
+    reward.review_status = decision
+    await session.flush()
+    badge = await session.get(Badge, reward.badge_id) if reward.badge_id else None
+    return reward_detail(reward, badge)
 
 
 def _require_open_teams(row: GroupChallenge) -> None:

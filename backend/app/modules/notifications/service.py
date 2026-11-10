@@ -187,7 +187,7 @@ async def notify_from_event(
                 dedupe_key=f"{data.get('variant')}:{group}:{event_id}",
             )
         return created
-    if event_type in ("challenge.started", "challenge.cancelled"):
+    if event_type in CHALLENGE_VARIANTS:
         challenge = _uuid(data.get("challenge_id"))
         kind = "challenge_started" if event_type == "challenge.started" else "challenge_result"
         created = False
@@ -205,7 +205,7 @@ async def notify_from_event(
                     "challenge_id": str(challenge),
                     "group_id": data.get("group_id"),
                     "title": data.get("title"),
-                    "variant": "started" if kind == "challenge_started" else "cancelled",
+                    "variant": CHALLENGE_VARIANTS[event_type],
                 },
                 dedupe_key=f"{kind}:{challenge}:{event_id}",
             )
@@ -294,10 +294,16 @@ async def _new_message(session: AsyncSession, data: Mapping[str, Any]) -> bool:
     return created
 
 
+CHALLENGE_VARIANTS = {
+    "challenge.started": "started",
+    "challenge.cancelled": "cancelled",
+    "challenge.results_published": "published",
+    "challenge.reward_issued": "reward_issued",
+}
+
 EVENTS = (
     "ai.generation_completed",
-    "challenge.started",
-    "challenge.cancelled",
+    *CHALLENGE_VARIANTS,
     "group.premium_notice",
     "message.sent",
     "conversation.read",

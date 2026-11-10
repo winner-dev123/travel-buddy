@@ -296,6 +296,102 @@ class ChallengeWinnerOut(_Out):
     determined_at: datetime
 
 
+class WinnerActionRequest(_Request):
+    note: str | None = Field(default=None, max_length=500)
+
+
+class CreateDisputeRequest(_Request):
+    submission_id: uuid.UUID | None = None
+    reason: str = Field(min_length=10, max_length=1000)
+
+
+class ResolveDisputeRequest(_Request):
+    status: Literal["upheld", "rejected"]
+    resolution_note: str = Field(min_length=3, max_length=1000)
+
+
+class ChallengeDisputeOut(_Out):
+    id: uuid.UUID
+    challenge_id: uuid.UUID
+    raised_by: UserSummary | None
+    submission_id: uuid.UUID | None
+    reason: str
+    status: Literal["open", "upheld", "rejected"]
+    resolution_note: str | None
+    created_at: datetime
+    resolved_at: datetime | None
+
+
+class ChallengeDisputePage(_Out):
+    data: list[ChallengeDisputeOut]
+    page: PageInfo
+
+
+FulfillmentStatus = Literal["pending", "issued", "delivered", "failed", "cancelled", "disputed"]
+
+
+class FulfillmentTransitionRequest(_Request):
+    to_status: FulfillmentStatus
+    note: str | None = Field(default=None, max_length=1000)
+    secret: str | None = Field(default=None, min_length=1, max_length=200)
+
+
+class RewardFulfillmentOut(_Out):
+    """Never carries the secret (CHAL-015)."""
+
+    id: uuid.UUID
+    challenge_reward_id: uuid.UUID
+    winner_id: uuid.UUID
+    recipient: UserSummary | None
+    status: FulfillmentStatus
+    issued_at: datetime | None
+    delivered_at: datetime | None
+    notes: str | None
+    updated_at: datetime
+
+
+class RewardFulfillmentPage(_Out):
+    data: list[RewardFulfillmentOut]
+    page: PageInfo
+
+
+class RewardChallenge(_Out):
+    id: uuid.UUID
+    title: str
+    group_id: uuid.UUID
+
+
+class MyRewardOut(_Out):
+    fulfillment_id: uuid.UUID
+    challenge: RewardChallenge
+    reward: RewardSummary
+    status: FulfillmentStatus
+    secret: str | None
+    issued_at: datetime | None
+    delivered_at: datetime | None
+
+
+class MyRewardPage(_Out):
+    data: list[MyRewardOut]
+    page: PageInfo
+
+
+class UserBadgeOut(_Out):
+    badge: BadgeSummary
+    awarded_at: datetime
+    source_type: Literal["challenge", "platform"]
+    source_id: uuid.UUID | None
+
+
+class UserBadgeList(_Out):
+    data: list[UserBadgeOut]
+
+
+class RewardReviewRequest(_Request):
+    decision: Literal["approved", "rejected"]
+    note: str | None = Field(default=None, max_length=1000)
+
+
 class ChallengeResults(_Out):
     challenge_id: uuid.UUID
     status: ChallengeStatus

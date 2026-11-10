@@ -1,6 +1,6 @@
 """Challenge rules (pure): answer normalization, reward policy, lifecycle, attempts, AI verdicts
-and winner selection (BL-5.01..5.05; CHAL-002, CHAL-003, CHAL-005..007, CHAL-009, CHAL-010,
-CHAL-012..014)."""
+winner selection and reward fulfillment (BL-5.01..5.07; CHAL-002, CHAL-003, CHAL-005..007,
+CHAL-009, CHAL-010, CHAL-012..016)."""
 
 from __future__ import annotations
 
@@ -167,15 +167,14 @@ def first_evaluation(validation_method: str, matched: bool) -> tuple[str, str | 
 
 
 def winner_slots(policy: str, max_winners: int) -> int | None:
-    """How many winners the system may pick by itself (CHAL-010); ``None`` means no limit.
-    ``admin_selects`` leaves every pick to the judges."""
+    """How many provisional winners correct answers produce (CHAL-010); ``None`` means no limit.
+    Under ``admin_selects`` every correct answer is a candidate: judges confirm up to
+    ``max_winners`` and publishing drops the rest."""
     if policy == "first_correct":
         return 1
     if policy == "first_n_correct":
         return max_winners
-    if policy == "all_correct":
-        return None
-    return 0
+    return None
 
 
 # An AI verdict settles an answer only at this confidence or above (CHAL-007).
@@ -231,6 +230,26 @@ def pick_winners(
                 budget -= 1
         chosen.append((recipient, submission_id))
     return chosen
+
+
+# Badges and achievements are awarded in the app; the rest go through fulfillment (CHAL-015).
+IN_APP_REWARDS: Final = frozenset({"badge", "achievement"})
+FULFILLMENT_TRANSITIONS: Final[Mapping[str, frozenset[str]]] = {
+    "pending": frozenset({"issued", "cancelled", "failed"}),
+    "issued": frozenset({"delivered", "failed", "disputed"}),
+    "failed": frozenset({"pending"}),
+    "disputed": frozenset({"issued", "cancelled"}),
+    "delivered": frozenset(),
+    "cancelled": frozenset(),
+}
+# Participants may dispute results for this long after they are published (CHAL-016).
+DISPUTE_WINDOW: Final = timedelta(days=14)
+MAX_OPEN_DISPUTES: Final = 3
+
+
+def can_transition(current: str, target: str) -> bool:
+    """The fulfillment state machine (CHAL-015)."""
+    return target in FULFILLMENT_TRANSITIONS.get(current, frozenset())
 
 
 def status_at(status: str, starts_at: datetime, ends_at: datetime, now: datetime) -> str:
