@@ -511,3 +511,51 @@ def test_removed_members_are_told_at_once_and_members_can_report_groups(store: L
             group["id"],
             group["conversation_id"],
         )
+
+
+def _watch(live: LiveApp) -> None:
+    db_scalar(
+        live.db_url,
+        "UPDATE periodic_tasks SET next_run_at = now() - interval '1 second' "
+        "WHERE name = 'groups.premium_watch' RETURNING 1",
+    )
+    _tick(live)  # creates or schedules the task
+    db_scalar(
+        live.db_url,
+        "UPDATE periodic_tasks SET next_run_at = now() - interval '1 second' "
+        "WHERE name = 'groups.premium_watch' RETURNING 1",
+    )
+    _tick(live)  # runs it and relays its events
+    _tick(live)  # notifications
+
+
+@pytest.mark.req("GRP-009")
+def test_owner_and_admins_hear_about_the_lapse_members_do_not(store: LiveApp) -> None:  # noqa: F811
+    owner, _, transaction = _premium(store)
+    group = _group(store, owner, name="Porto weekend")
+    admin, admin_id = _join(store, owner, group["id"])
+    member, _ = _join(store, owner, group["id"])
+    store.client.patch(
+        f"/v1/groups/{group['id']}/members/{admin_id}", headers=_auth(owner), json={"role": "admin"}
+    )
+
+    def notices(token: str) -> list[dict[str, Any]]:
+        items = store.client.get("/v1/notifications", headers=_auth(token)).json()["data"]
+        return [n for n in items if n["type"] == "subscription_notice"]
+
+    _watch(store)
+    assert notices(owner) == []  # premium is active
+
+    assert _event(store, owner, transaction, "billing_retry") == "processed"
+    _watch(store)
+    [grace] = notices(owner)
+    assert "Porto weekend" in grace["body"]
+    assert grace["entity_id"] == group["id"]
+    assert len(notices(admin)) == 1
+    assert notices(member) == []  # the owner's billing state stays private
+    _watch(store)
+    assert len(notices(owner)) == 1  # once per stage
+
+    assert _event(store, owner, transaction, "refunded") == "processed"
+    _watch(store)
+    assert len(notices(owner)) == 2

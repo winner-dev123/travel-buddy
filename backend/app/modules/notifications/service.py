@@ -166,6 +166,27 @@ async def notify_from_event(
             .values(read_at=func.now())
         )
         return False
+    if event_type == "group.premium_notice":
+        group = _uuid(data.get("group_id"))
+        created = False
+        for raw in data.get("recipient_ids") or []:
+            recipient = _uuid(raw)
+            if recipient is None or group is None:
+                continue
+            created |= await notify(
+                session,
+                user_id=recipient,
+                kind="subscription_notice",
+                entity_type="group",
+                entity_id=group,
+                payload={
+                    "variant": data.get("variant"),
+                    "group_name": data.get("group_name"),
+                    "grace_until": data.get("grace_until"),
+                },
+                dedupe_key=f"{data.get('variant')}:{group}:{event_id}",
+            )
+        return created
     if event_type == "moderation.action_applied":
         affected = _uuid(data.get("user_id"))
         target_type = str(data.get("target_type"))
@@ -234,6 +255,7 @@ async def _new_message(session: AsyncSession, data: Mapping[str, Any]) -> bool:
 
 
 EVENTS = (
+    "group.premium_notice",
     "message.sent",
     "conversation.read",
     "follow.requested",

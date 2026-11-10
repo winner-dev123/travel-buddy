@@ -554,6 +554,7 @@ def build_job_runner(
         )
     )
     handlers.update(abuse_signals.make_handlers(database.sessionmaker))
+    handlers.update(groups_service.make_handlers(database.sessionmaker, clock))
     handlers.update(
         media_service.make_handlers(
             database.sessionmaker, media_storage, media_service.NoopScanner()
@@ -576,6 +577,13 @@ def build_job_runner(
     }
     periodic = [Periodic(f"retention.{name}", f"retention.{name}", DAILY) for name in purges]
     periodic.append(Periodic(abuse_signals.JOB_KIND, abuse_signals.JOB_KIND, timedelta(hours=1)))
+    periodic.append(
+        Periodic(
+            groups_service.PREMIUM_WATCH_JOB,
+            groups_service.PREMIUM_WATCH_JOB,
+            timedelta(hours=6),
+        )
+    )
     # Accounts whose 30-day grace ended are erased within the hour (AUTH-010: 30 + 7 days).
     periodic.append(
         Periodic(

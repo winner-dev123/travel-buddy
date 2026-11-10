@@ -85,6 +85,8 @@ class TravelGroup(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Last owner-lapse notice sent (None, grace, grace_ending, lapsed); docs/07 §5.
+    premium_notice: Mapped[str | None] = mapped_column(Text)
 
 
 class GroupSettings(Base):

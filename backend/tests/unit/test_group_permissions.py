@@ -66,3 +66,21 @@ def test_rank_rules() -> None:
     assert assignable(Role.ADMIN, Role.MODERATOR)
     assert not assignable(Role.ADMIN, Role.ADMIN)
     assert not assignable(Role.OWNER, Role.OWNER)  # ownership moves only by transfer
+
+
+@pytest.mark.req("GRP-009")
+def test_lapse_notices_fire_once_per_stage() -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from app.modules.groups.service import lapse_notice
+
+    now = datetime(2026, 11, 10, tzinfo=UTC)
+    far, near = now + timedelta(days=10), now + timedelta(days=2)
+    assert lapse_notice("active", None, now, None) is None
+    assert lapse_notice("grace", far, now, None) == "grace"
+    assert lapse_notice("grace", far, now, "grace") is None
+    assert lapse_notice("grace", near, now, "grace") == "grace_ending"
+    assert lapse_notice("grace", near, now, "grace_ending") is None
+    assert lapse_notice("lapsed", None, now, "grace_ending") == "lapsed"
+    assert lapse_notice("lapsed", None, now, None) == "lapsed"  # refunds skip the grace
+    assert lapse_notice("lapsed", None, now, "lapsed") is None

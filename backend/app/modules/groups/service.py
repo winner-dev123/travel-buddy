@@ -1428,6 +1428,82 @@ async def hand_over_owned_groups(session: AsyncSession, owner_id: uuid.UUID) -> 
         await session.flush()
 
 
+PREMIUM_WATCH_JOB = "groups.premium_watch"
+GRACE_ENDING_NOTICE = timedelta(days=3)
+
+
+def lapse_notice(
+    state: str, grace_until: datetime | None, now: datetime, sent: str | None
+) -> str | None:
+    """Which notice is due (docs/07 §5): at the lapse (grace starts), 3 days before the grace
+    ends, and when it ended. ``None`` when nothing new is due."""
+    if state == "active":
+        return None
+    if state == "grace":
+        if sent is None:
+            return "grace"
+        if sent == "grace" and grace_until is not None and grace_until - now <= GRACE_ENDING_NOTICE:
+            return "grace_ending"
+        return None
+    return None if sent == "lapsed" else "lapsed"
+
+
+async def watch_premium(session: AsyncSession, *, now: datetime) -> int:
+    """Notify owners and admins as their group's premium status changes; members are never told
+    about the owner's billing state. Returns how many notices were queued."""
+    sent = 0
+    groups = (
+        await session.scalars(
+            select(TravelGroup)
+            .where(TravelGroup.status == GroupStatus.ACTIVE, TravelGroup.owner_id.is_not(None))
+            .with_for_update(skip_locked=True)
+        )
+    ).all()
+    for group in groups:
+        status = await billing.group_premium(session, group.owner_id, at=now)
+        if status.state.value == "active":
+            group.premium_notice = None  # premium is back: start over next time
+            continue
+        notice = lapse_notice(status.state.value, status.grace_until, now, group.premium_notice)
+        if notice is None:
+            continue
+        recipients = list(
+            await session.scalars(
+                select(GroupMembership.user_id).where(
+                    GroupMembership.group_id == group.id,
+                    GroupMembership.status.in_(_MEMBER),
+                    GroupMembership.role.in_([Role.OWNER, Role.ADMIN]),
+                )
+            )
+        )
+        platform.record_event(
+            session,
+            aggregate_type="group",
+            aggregate_id=group.id,
+            event_type="group.premium_notice",
+            payload={
+                "group_id": str(group.id),
+                "group_name": group.name,
+                "variant": f"group_premium_{notice}",
+                "grace_until": status.grace_until.isoformat() if status.grace_until else None,
+                "recipient_ids": [str(u) for u in recipients],
+            },
+        )
+        group.premium_notice = notice
+        sent += 1
+    return sent
+
+
+def make_handlers(
+    sessionmaker: async_sessionmaker[AsyncSession], clock: Clock
+) -> dict[str, platform.JobHandler]:
+    async def handle(job: platform.Job) -> None:
+        async with sessionmaker() as session, session.begin():
+            await watch_premium(session, now=clock.now())
+
+    return {PREMIUM_WATCH_JOB: handle}
+
+
 async def purge_expired(session: AsyncSession) -> int:
     """Mark expired invitations and pending transfers (rows are kept for the group's history)."""
     invitations = await session.execute(

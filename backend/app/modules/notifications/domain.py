@@ -254,10 +254,63 @@ def _pick(text: Text, locale: str) -> str:
     return text.get(locale) or text[DEFAULT_LOCALE]
 
 
+_PREMIUM_TITLE: Final[Text] = {
+    "en": "Group premium",
+    "es": "Premium del grupo",
+    "pt-BR": "Premium do grupo",
+    "fr": "Premium du groupe",
+    "de": "Gruppen-Premium",
+}
+
+# subscription_notice variants; bodies may use {group}.
+SUBSCRIPTION_BODIES: Final[dict[str, Text]] = {
+    "group_premium_grace": {
+        "en": "The owner's Premium has ended. {group} keeps its admin tools for a grace period.",
+        "es": "El Premium del propietario ha terminado. {group} conserva sus herramientas de "
+        "administración durante un periodo de gracia.",
+        "pt-BR": "O Premium do dono terminou. {group} mantém as ferramentas de administração "
+        "por um período de carência.",
+        "fr": "Le Premium du propriétaire a pris fin. {group} garde ses outils d'administration "
+        "pendant une période de grâce.",
+        "de": "Das Premium des Eigentümers ist abgelaufen. {group} behält die Admin-Werkzeuge "
+        "für eine Übergangszeit.",
+    },
+    "group_premium_grace_ending": {
+        "en": "{group}'s grace period ends in 3 days. Invitations will pause unless Premium is "
+        "renewed or ownership moves to a Premium member.",
+        "es": "El periodo de gracia de {group} termina en 3 días. Las invitaciones se pausarán "
+        "salvo que se renueve Premium o la propiedad pase a un miembro Premium.",
+        "pt-BR": "O período de carência de {group} termina em 3 dias. Os convites serão pausados "
+        "a menos que o Premium seja renovado ou a propriedade passe a um membro Premium.",
+        "fr": "La période de grâce de {group} se termine dans 3 jours. Les invitations seront "
+        "suspendues sauf si Premium est renouvelé ou si un membre Premium devient propriétaire.",
+        "de": "Die Übergangszeit von {group} endet in 3 Tagen. Einladungen werden pausiert, "
+        "sofern Premium nicht verlängert oder die Gruppe an ein Premium-Mitglied übertragen wird.",
+    },
+    "group_premium_lapsed": {
+        "en": "Premium tools in {group} are paused. Chat, members and safety tools keep working.",
+        "es": "Las herramientas Premium de {group} están en pausa. El chat, los miembros y las "
+        "herramientas de seguridad siguen funcionando.",
+        "pt-BR": "As ferramentas Premium de {group} estão pausadas. Chat, membros e ferramentas "
+        "de segurança continuam funcionando.",
+        "fr": "Les outils Premium de {group} sont suspendus. La discussion, les membres et les "
+        "outils de sécurité continuent de fonctionner.",
+        "de": "Die Premium-Werkzeuge von {group} sind pausiert. Chat, Mitglieder und "
+        "Sicherheitswerkzeuge funktionieren weiter.",
+    },
+}
+
+
 def render(
     kind: str, payload: Mapping[str, Any], *, actor: str | None, locale: str
 ) -> tuple[str, str]:
     """(title, body) for a stored notification in ``locale``."""
+    if kind == "subscription_notice":
+        body = SUBSCRIPTION_BODIES.get(
+            str(payload.get("variant")), SUBSCRIPTION_BODIES["group_premium_lapsed"]
+        )
+        group = str(payload.get("group_name") or "")
+        return _pick(_PREMIUM_TITLE, locale), _pick(body, locale).format(group=group)
     if kind == "moderation_notice":
         body = MODERATION_BODIES.get(str(payload.get("variant")), MODERATION_BODIES["warned"])
         return _pick(_GUIDELINES, locale), _pick(body, locale)
@@ -267,7 +320,7 @@ def render(
 
 
 def renderable_kinds() -> frozenset[str]:
-    return frozenset({*_TEMPLATES, "moderation_notice"})
+    return frozenset({*_TEMPLATES, "moderation_notice", "subscription_notice"})
 
 
 def in_quiet_hours(now_local_minutes: int, start: str, end: str) -> bool:
