@@ -13,9 +13,9 @@ from app.core.pagination import Page
 from app.core.ratelimit import rate_limited
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
-from app.modules.destinations.models import Continent, DestinationKind
-from app.modules.destinations.schemas import Destination, DestinationSummary
-from app.modules.destinations.service import DestinationService, ListFilters
+from app.modules.destinations.models import PLACE_CATEGORIES, Continent, DestinationKind
+from app.modules.destinations.schemas import Destination, DestinationSummary, Place, PlaceSummary
+from app.modules.destinations.service import DestinationService, ListFilters, PlaceService
 
 router = APIRouter(prefix="/v1/destinations", tags=["destinations"])
 
@@ -155,3 +155,83 @@ async def destination_children(
     return await _service(request).children(
         destination_id, cursor=cursor, limit=limit, preferences=_preferences(accept_language)
     )
+
+
+# ─────────────────────────────── places (BL-4.01) ───────────────────────────────
+
+places_router = APIRouter(prefix="/v1/places", tags=["places"])
+_PLACE_CATEGORIES = set(PLACE_CATEGORIES)
+
+
+def _places(request: Request) -> PlaceService:
+    service: PlaceService = request.app.state.place_service
+    return service
+
+
+def _categories(raw: str | None) -> tuple[str, ...]:
+    if not raw:
+        return ()
+    categories = tuple(dict.fromkeys(c.strip() for c in raw.split(",") if c.strip()))
+    unknown = [c for c in categories if c not in _PLACE_CATEGORIES]
+    if unknown:
+        raise AppError(
+            ErrorCode.VALIDATION_FAILED,
+            "Unknown place category.",
+            errors=[
+                FieldError(
+                    field="/category",
+                    code="enum",
+                    message=f"Unknown category: {', '.join(unknown)}",
+                )
+            ],
+        )
+    return categories
+
+
+@places_router.get("/nearby", response_model=Page[PlaceSummary])
+async def nearby_places(
+    request: Request,
+    principal: Annotated[Principal, Depends(get_principal)],
+    near: Annotated[str, Query(max_length=64)],
+    accept_language: AcceptLanguage = None,
+    radius_m: Annotated[int, Query(ge=50, le=20000)] = 1500,
+    category: Annotated[str | None, Query(max_length=300)] = None,
+    cursor: CursorParam = None,
+    limit: Limit = 20,
+) -> Page[PlaceSummary]:
+    return await _places(request).nearby(
+        near,
+        radius_m=radius_m,
+        categories=_categories(category),
+        cursor=cursor,
+        limit=limit,
+        preferences=_preferences(accept_language),
+    )
+
+
+@places_router.get(
+    "/search", response_model=Page[PlaceSummary], openapi_extra=rate_limited("search")
+)
+async def search_places(
+    request: Request,
+    principal: Annotated[Principal, Depends(get_principal)],
+    q: Annotated[str, Query(min_length=2, max_length=80)],
+    destination_id: uuid.UUID,
+    accept_language: AcceptLanguage = None,
+    category: Annotated[str | None, Query(max_length=300)] = None,
+    limit: Limit = 20,
+) -> Page[PlaceSummary]:
+    return await _places(request).search(
+        q,
+        destination_id=destination_id,
+        categories=_categories(category),
+        limit=limit,
+        preferences=_preferences(accept_language),
+    )
+
+
+@places_router.get("/{place_id}", response_model=Place)
+async def get_place(
+    place_id: uuid.UUID, request: Request, accept_language: AcceptLanguage = None
+) -> Place:
+    return await _places(request).get(place_id, preferences=_preferences(accept_language))

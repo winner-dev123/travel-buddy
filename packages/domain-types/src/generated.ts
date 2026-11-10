@@ -4163,6 +4163,8 @@ export interface components {
                 [key: string]: unknown;
             };
             data_freshness_at: components["schemas"]["Timestamp"];
+            /** @description True when the provider data is older than the freshness threshold (180 days): show `attributes` with a "may be out of date" notice (DEST-003). */
+            data_stale?: boolean;
             attribution: components["schemas"]["PlaceAttribution"];
             /** @enum {string} */
             status: "active" | "closed_permanently";

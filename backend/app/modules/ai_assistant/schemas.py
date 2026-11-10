@@ -9,7 +9,7 @@ from typing import Any, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.modules.billing.schemas import QuotaStatusOut
-from app.modules.destinations.schemas import DestinationSummary
+from app.modules.destinations.schemas import DestinationSummary, PlaceSummary
 
 TravelStyle = Literal[
     "adventure",
@@ -112,7 +112,7 @@ class ProposedActivity(_Out):
     rationale: str
     social_opportunity: bool
     source_attribution: list[SourceAttribution]
-    place: None = None  # joined from the licensed catalog (BL-4.01)
+    place: PlaceSummary | None = None  # joined from the licensed catalog, never generated
     place_data_freshness_at: datetime | None = None
 
 

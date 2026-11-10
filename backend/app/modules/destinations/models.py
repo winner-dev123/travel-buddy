@@ -10,6 +10,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from enum import StrEnum
+from typing import Any
 
 from geoalchemy2 import Geography
 from sqlalchemy import (
@@ -23,11 +24,12 @@ from sqlalchemy import (
     Index,
     SmallInteger,
     Text,
+    UniqueConstraint,
     Uuid,
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, enum_check
@@ -165,3 +167,71 @@ class DestinationBoundary(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+PLACE_CATEGORIES = (
+    "attraction",
+    "restaurant",
+    "cafe",
+    "bar",
+    "museum",
+    "beach",
+    "trail",
+    "viewpoint",
+    "park",
+    "market",
+    "lodging",
+    "transit_hub",
+    "other",
+)
+PLACE_STATUSES = ("active", "closed_permanently", "hidden")
+
+
+class Place(Base):
+    """A public place from a licensed source (BL-4.01, DEST-003). Like destination centroids, the
+    position is plain latitude/longitude (a public place, never a user position), so nearby search
+    works without PostGIS: a bounding-box prefilter on the index, then great-circle distance."""
+
+    __tablename__ = "places"
+    # The trigram index on f_unaccent(lower(default_name)) is created by migration 0031.
+    __table_args__ = (
+        UniqueConstraint("provider", "provider_place_id"),
+        enum_check("category", PLACE_CATEGORIES, "category_enum"),
+        enum_check("status", PLACE_STATUSES, "status_enum"),
+        CheckConstraint("lat BETWEEN -90 AND 90 AND lng BETWEEN -180 AND 180", name="coordinates"),
+        Index("ix_places__destination_category", "destination_id", "category"),
+        Index("ix_places__lat_lng", "lat", "lng"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
+    # The most specific destination containing the place.
+    destination_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("destinations.id", ondelete="RESTRICT"), nullable=False
+    )
+    category: Mapped[str] = mapped_column(Text)
+    default_name: Mapped[str] = mapped_column(Text)
+    lat: Mapped[float] = mapped_column(Double)
+    lng: Mapped[float] = mapped_column(Double)
+    address: Mapped[dict[str, str] | None] = mapped_column(JSONB)
+    provider: Mapped[str] = mapped_column(Text)
+    provider_place_id: Mapped[str] = mapped_column(Text)
+    license: Mapped[str] = mapped_column(Text)
+    attribution_text: Mapped[str] = mapped_column(Text)
+    attribution_url: Mapped[str | None] = mapped_column(Text)
+    # When the provider data was last read; attributes are always shown with it.
+    data_freshness_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    attributes: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+    status: Mapped[str] = mapped_column(Text, server_default=text("'active'"))
+    popularity_score: Mapped[float] = mapped_column(Float, server_default=text("0"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class PlaceLocalization(Base):
+    __tablename__ = "place_localizations"
+
+    place_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("places.id", ondelete="CASCADE"), primary_key=True
+    )
+    locale: Mapped[str] = mapped_column(Text, primary_key=True)
+    name: Mapped[str] = mapped_column(Text)

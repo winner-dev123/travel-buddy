@@ -143,7 +143,9 @@ class ItineraryItem(Base):
     )
     sort_order: Mapped[Decimal] = mapped_column(Numeric(30, 15))
     kind: Mapped[str] = mapped_column(Text)
-    place_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)  # FK arrives with places (BL-4.01)
+    place_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("places.id", ondelete="SET NULL")
+    )
     title: Mapped[str] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
     start_time: Mapped[time | None] = mapped_column(Time)

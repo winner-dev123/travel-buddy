@@ -124,6 +124,7 @@ class PlannedItem:
     confidence: float
     unverified: bool
     source_attribution: tuple[dict[str, Any], ...]
+    data_freshness_at: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,6 +144,11 @@ class ItineraryPlan:
 
 # (session, user, generation) -> the user's own succeeded proposal, or None.
 PlanLoader = Callable[[AsyncSession, uuid.UUID, uuid.UUID], Awaitable[ItineraryPlan | None]]
+
+
+async def _check_place(session: AsyncSession, place_id: uuid.UUID | None) -> None:
+    if place_id is not None and not await destinations.place_is_listed(session, place_id):
+        raise _invalid("/place_id", "Pick a place from the catalog.")
 
 
 class TripService:
@@ -237,6 +243,9 @@ class TripService:
         users = await profiles.authors(
             session, [trip.owner_id, *[c.user_id for c in collaborators]]
         )
+        catalog = await destinations.place_summaries(
+            session, list({i.place_id for i in items if i.place_id}), [locale]
+        )
         by_day: dict[uuid.UUID, list[ItemOut]] = {d.id: [] for d in days}
         for item in items:
             by_day[item.day_id].append(
@@ -244,6 +253,7 @@ class TripService:
                     id=item.id,
                     sort_order=format(item.sort_order.normalize(), "f"),
                     kind=item.kind,  # type: ignore[arg-type]
+                    place=catalog.get(item.place_id) if item.place_id else None,
                     title=item.title,
                     notes=item.notes,
                     start_time=item.start_time.strftime("%H:%M") if item.start_time else None,
@@ -638,6 +648,7 @@ class TripService:
         item_id: uuid.UUID | None = None,
         client_updated_at: datetime | None = None,
     ) -> ItineraryItem:
+        await _check_place(session, request.place_id)
         item = ItineraryItem(
             day_id=day.id,
             sort_order=await self._order_after(session, day.id, request.after_item_id),
@@ -660,6 +671,8 @@ class TripService:
         self, session: AsyncSession, trip: Trip, item: ItineraryItem, request: ItemPatch
     ) -> None:
         changes = request.model_dump(exclude_unset=True)
+        if changes.get("place_id") is not None and changes["place_id"] != item.place_id:
+            await _check_place(session, changes["place_id"])
         if "day_id" in changes or "after_item_id" in changes:
             day_id = changes.get("day_id") or item.day_id
             day = await self._day(session, trip, day_id)
@@ -781,6 +794,7 @@ class TripService:
                             ai_confidence=Decimal(str(round(item.confidence, 3))),
                             unverified=item.unverified,
                             source_attribution=list(item.source_attribution),
+                            data_freshness_at=item.data_freshness_at,
                             updated_at=now,
                         )
                     )

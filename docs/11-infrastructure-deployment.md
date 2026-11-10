@@ -57,6 +57,10 @@ Without `ANTHROPIC_API_KEY`, staging and production answer `503 ai_unavailable` 
 2. Set on the API project (and on any worker): `ANTHROPIC_API_KEY`, plus `AI_DAILY_BUDGET_USD` (the server's own daily spend breaker, default 25). `AI_ITINERARY_MODEL` (default `claude-opus-5-5`) and `AI_ITINERARY_EFFORT` (default `medium`) are optional.
 3. Generations run as jobs. On the serverless API, set `JOBS_INLINE_AFTER_RESPONSE=true` so a generation starts right after its request, and allow a function duration long enough for one provider call (about 60 to 180 s). The daily cron alone would leave generations pending until they fail after 30 minutes.
 
+### 1.6 Places catalog (BL-4.01, ADR-0025)
+
+Places come from OpenStreetMap through the public Overpass API. Load or refresh a destination with `python -m app.modules.destinations.place_ingestion --destination portugal/lisbon` (optional `--radius` metres, `--limit`, or `--file` for a JSON document), run against the target database. Ingestion is idempotent and keeps editorial takedowns. Refresh at least every 180 days, after which place data is flagged as stale. Keep runs occasional: the public Overpass instance is rate-limited.
+
 ## 2. Runtime topology (production reference)
 
 ```mermaid

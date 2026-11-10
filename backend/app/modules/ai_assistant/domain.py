@@ -79,11 +79,17 @@ DRAFT_SCHEMA: Final[Mapping[str, Any]] = ItineraryDraft.model_json_schema()
 
 @dataclass(frozen=True, slots=True)
 class Candidate:
-    """A catalog place the plan may reference (BL-4.01 supplies them)."""
+    """A catalog place the plan may reference. Only ``id``, ``name`` and ``category`` reach the
+    prompt; the rest is joined into the proposal (licensed data with its freshness)."""
 
     id: str
     name: str
     category: str | None
+    summary: Mapping[str, Any] | None = None  # contract PlaceSummary
+    provider: str | None = None
+    license: str | None = None
+    attribution_url: str | None = None
+    data_freshness_at: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -268,14 +274,18 @@ def build_proposal(
     generated_at: datetime,
 ) -> dict[str, Any]:
     """The contract ``ItineraryProposal`` (JSON-ready) for a draft that passed every check."""
-    known = {c.id for c in context.candidates}
+    known = {c.id: c for c in context.candidates}
     days = []
     unverified = 0
+    used: dict[str, Candidate] = {}
     for day in draft.days:
         items = []
         for item in day.items:
-            place_id = item.place_id if item.place_id in known else None
-            unverified += place_id is None
+            place = known.get(item.place_id) if item.place_id else None
+            place_id = place.id if place else None
+            unverified += place is None
+            if place is not None:
+                used[place.id] = place
             items.append(
                 {
                     "kind": item.kind,
@@ -291,12 +301,16 @@ def build_proposal(
                     "social_opportunity": item.social_opportunity
                     and context.include_social_opportunities,
                     "source_attribution": (
-                        [{"kind": "catalog_place", "ref_id": place_id}]
-                        if place_id
+                        [_catalog_attribution(place)]
+                        if place
                         else [{"kind": "ai_general_knowledge"}]
                     ),
-                    "place": None,
-                    "place_data_freshness_at": None,
+                    "place": dict(place.summary) if place and place.summary else None,
+                    "place_data_freshness_at": (
+                        place.data_freshness_at.isoformat()
+                        if place and place.data_freshness_at
+                        else None
+                    ),
                 }
             )
         days.append(
@@ -311,6 +325,16 @@ def build_proposal(
     warnings = [w.strip() for w in draft.warnings if w.strip()]
     if unverified:
         warnings.append(_pick(UNVERIFIED_WARNING, context.locale))
+    sources: list[dict[str, Any]] = [
+        {"kind": "licensed_provider", "provider": provider, "license": license_, "url": url}
+        for provider, license_, url in sorted(
+            {(p.provider, p.license or "", p.attribution_url) for p in used.values() if p.provider},
+            key=lambda source: (source[0], source[1]),
+        )
+    ]
+    if unverified or not sources:
+        sources.append({"kind": "ai_general_knowledge"})
+    freshness = [p.data_freshness_at for p in used.values() if p.data_freshness_at]
     return {
         "itinerary": {
             "destination": dict(destination),
@@ -318,12 +342,23 @@ def build_proposal(
             "end_date": context.end_date.isoformat(),
             "time_zone": context.time_zone,
             "days": days,
-            "sources": [{"kind": "ai_general_knowledge"}],
+            "sources": sources,
             "generated_at": generated_at.isoformat(),
         },
         "warnings": warnings,
         "disclaimer": _pick(DISCLAIMER, context.locale),
         "prompt_version": PROMPT_VERSION,
         "confidence": round(draft.confidence, 3),
-        "freshness": {"catalog_data_as_of": None},
+        "freshness": {"catalog_data_as_of": min(freshness).isoformat() if freshness else None},
     }
+
+
+def _catalog_attribution(place: Candidate) -> dict[str, Any]:
+    attribution: dict[str, Any] = {"kind": "catalog_place", "ref_id": place.id}
+    if place.provider:
+        attribution["provider"] = place.provider
+        attribution["license"] = place.license
+        attribution["url"] = place.attribution_url
+    if place.data_freshness_at:
+        attribution["retrieved_at"] = place.data_freshness_at.isoformat()
+    return attribution

@@ -25,6 +25,16 @@ from app.modules.destinations.models import (
     DestinationLocalization,
     DestinationStatus,
 )
+
+# The places catalog (BL-4.01) belongs to this module; other modules use it through here.
+from app.modules.destinations.places import STALE_AFTER as PLACE_STALE_AFTER
+from app.modules.destinations.places import (
+    PlaceCandidate,
+    PlaceService,
+    place_candidates,
+    place_summaries,
+)
+from app.modules.destinations.places import is_listed as place_is_listed
 from app.modules.destinations.schemas import Destination, DestinationSummary, GeoPoint
 
 _ACTIVE = DestinationRow.status == DestinationStatus.ACTIVE
@@ -522,3 +532,15 @@ async def kind_of(session: AsyncSession, destination_id: uuid.UUID) -> str | Non
         select(DestinationRow.kind).where(DestinationRow.id == destination_id, _ACTIVE)
     )
     return kind
+
+
+__all__ = [
+    "PLACE_STALE_AFTER",
+    "DestinationService",
+    "ListFilters",
+    "PlaceCandidate",
+    "PlaceService",
+    "place_candidates",
+    "place_is_listed",
+    "place_summaries",
+]

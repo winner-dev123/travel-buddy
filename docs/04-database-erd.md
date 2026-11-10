@@ -227,6 +227,8 @@ erDiagram
 
 `place_localizations` mirrors `destination_localizations`.
 
+As built (migration 0031, ADR-0025): the position is `lat`/`lng` doubles with a b-tree index instead of `geography(Point)` (bbox prefilter + haversine, so the catalog works without PostGIS, like destination centroids). Additional columns: `attribution_text`, `attribution_url`, `popularity_score` (ranking hint for search ties and AI candidates), `created_at`, `updated_at`. Trigram indexes on `f_unaccent(lower(default_name))` and on localized names serve search. `itinerary_items.place_id` references `places` with `ON DELETE SET NULL`.
+
 ### user_selected_locations
 | Column | Notes |
 |---|---|

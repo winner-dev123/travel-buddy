@@ -56,8 +56,9 @@ from app.modules.billing.stripe import StripeClient
 from app.modules.client_config.api import router as client_config_router
 from app.modules.connections import service as connections_service
 from app.modules.connections.api import router as connections_router
+from app.modules.destinations.api import places_router
 from app.modules.destinations.api import router as destinations_router
-from app.modules.destinations.service import DestinationService
+from app.modules.destinations.service import DestinationService, PlaceService
 from app.modules.discovery import signals as abuse_signals
 from app.modules.discovery.api import router as discovery_router
 from app.modules.discovery.service import DiscoveryService
@@ -257,6 +258,9 @@ def create_app(
     app.state.destination_service = DestinationService(
         sessionmaker=database.sessionmaker, cursors=cursor_codec
     )
+    app.state.place_service = PlaceService(
+        sessionmaker=database.sessionmaker, cursors=cursor_codec, clock=clock
+    )
     app.state.location_service = location_service.LocationService(
         sessionmaker=database.sessionmaker
     )
@@ -414,6 +418,7 @@ def create_app(
     app.include_router(auth_router)
     app.include_router(me_router)
     app.include_router(destinations_router)
+    app.include_router(places_router)
     app.include_router(location_router)
     app.include_router(social_router)
     app.include_router(trust_safety_router)
@@ -585,6 +590,11 @@ async def itinerary_plan(
                         confidence=item["confidence"],
                         unverified=item["unverified"],
                         source_attribution=tuple(item["source_attribution"]),
+                        data_freshness_at=(
+                            datetime.fromisoformat(item["place_data_freshness_at"])
+                            if item.get("place_data_freshness_at")
+                            else None
+                        ),
                     )
                     for item in day["items"]
                 ),

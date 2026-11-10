@@ -10,7 +10,7 @@ from typing import Any, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.core.pagination import PageInfo
-from app.modules.destinations.schemas import DestinationSummary
+from app.modules.destinations.schemas import DestinationSummary, PlaceSummary
 from app.modules.profiles.schemas import UserSummary
 
 Visibility = Literal["private", "connections", "group", "public"]
@@ -114,7 +114,7 @@ class ItemOut(_Response):
     id: uuid.UUID
     sort_order: str
     kind: Kind
-    place: None = None  # catalog places arrive with BL-4.01
+    place: PlaceSummary | None = None
     title: str
     notes: str | None
     start_time: str | None

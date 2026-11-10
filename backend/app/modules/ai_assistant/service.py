@@ -38,6 +38,7 @@ from app.modules.ai_assistant.domain import (
     DRAFT_SCHEMA,
     MAX_DAYS,
     PROMPT_VERSION,
+    Candidate,
     ItineraryContext,
     ItineraryDraft,
     build_prompt,
@@ -429,6 +430,9 @@ class AIService:
                 self._completed(session, row)
                 return
             summary, time_zone = found
+            catalog = await destinations.place_candidates(
+                session, request.destination_id, [row.locale]
+            )
             task = AITask(row.feature)
             config = self._tasks[task]
             context = ItineraryContext(
@@ -447,6 +451,19 @@ class AIService:
                 preferences=request.preferences,
                 include_social_opportunities=request.include_social_opportunities,
                 locale=row.locale,
+                candidates=tuple(
+                    Candidate(
+                        id=str(place.summary.id),
+                        name=place.summary.name,
+                        category=place.summary.category,
+                        summary=place.summary.model_dump(mode="json"),
+                        provider=place.provider,
+                        license=place.license,
+                        attribution_url=place.attribution_url,
+                        data_freshness_at=place.data_freshness_at,
+                    )
+                    for place in catalog
+                ),
             )
 
         run = _Run(model=config.model)

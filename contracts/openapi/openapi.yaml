@@ -7046,6 +7046,9 @@ components:
               description: Licensed provider data (e.g. opening hours, website, phone), always shown with `data_freshness_at`. Never AI-generated.
               additionalProperties: true
             data_freshness_at: { $ref: '#/components/schemas/Timestamp' }
+            data_stale:
+              type: boolean
+              description: 'True when the provider data is older than the freshness threshold (180 days): show `attributes` with a "may be out of date" notice (DEST-003).'
             attribution: { $ref: '#/components/schemas/PlaceAttribution' }
             status: { type: string, enum: [active, closed_permanently] }
     PlacePage:
