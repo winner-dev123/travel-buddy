@@ -234,7 +234,12 @@ it('offers pinning in a group chat only with the permission', async () => {
   await screen.findByTestId('message-m1');
   await waitFor(() => expect(mockApi.get).toHaveBeenCalledWith('/v1/groups/g1'));
   await fireEvent(screen.getByTestId('message-m1'), 'longPress');
-  expect(buttons.map((button) => button.text)).toEqual(['Reply', 'Report message', 'Cancel']);
+  expect(buttons.map((button) => button.text)).toEqual([
+    'React',
+    'Reply',
+    'Report message',
+    'Cancel',
+  ]);
 });
 
 it.each([
@@ -285,4 +290,41 @@ it('mutes a chat for a chosen time and unmutes it', async () => {
     }),
   );
   await waitFor(() => expect(screen.queryByTestId('chat-muted')).toBeNull());
+});
+
+it('reacts to a message and toggles a reaction from its chip', async () => {
+  const liked = message('m1', 1, bo, 'Rossio at 8', {
+    reactions: [{ emoji: '👍', count: 2, reacted_by_me: true }],
+  });
+  serve(conversation(), [liked, message('m2', 2, bo, 'ok')]);
+  mockApi.delete.mockResolvedValue(undefined);
+  await renderChat();
+  await fireEvent.press(await screen.findByTestId('reaction-m1-👍')); // mine: removes it
+  await waitFor(() =>
+    expect(mockApi.delete).toHaveBeenCalledWith(
+      `/v1/conversations/c1/messages/m1/reactions/${encodeURIComponent('👍')}`,
+    ),
+  );
+  await fireEvent(screen.getByTestId('message-m2'), 'longPress');
+  press('React');
+  expect(buttons.map((b) => b.text)).toEqual(['👍', '❤️', '😂', '😮', '🙏', '🎉', 'Cancel']);
+  press('🎉');
+  await waitFor(() =>
+    expect(mockApi.put).toHaveBeenCalledWith(
+      `/v1/conversations/c1/messages/m2/reactions/${encodeURIComponent('🎉')}`,
+    ),
+  );
+});
+
+it('clears the chat for me after confirming', async () => {
+  serve(conversation(), [message('m1', 1, bo, 'hi'), message('m2', 2, bo, 'there')]);
+  mockApi.post.mockResolvedValue(undefined);
+  await renderChat();
+  await fireEvent.press(await screen.findByTestId('chat-clear'));
+  press('Clear');
+  await waitFor(() =>
+    expect(mockApi.post).toHaveBeenCalledWith('/v1/conversations/c1/clear', {
+      body: { through_seq: 2 },
+    }),
+  );
 });

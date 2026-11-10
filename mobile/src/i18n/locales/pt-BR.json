@@ -566,7 +566,14 @@
       "1": "Por 1 hora",
       "8": "Por 8 horas",
       "168": "Por 1 semana"
-    }
+    },
+    "react": "Reagir",
+    "reactionA11y_one": "{{emoji}}, {{count}} reação",
+    "reactionA11y_many": "{{emoji}}, {{count}} reações",
+    "reactionA11y_other": "{{emoji}}, {{count}} reações",
+    "clear": "Limpar",
+    "clearTitle": "Limpar este chat?",
+    "clearBody": "As mensagens até agora somem só para você. Os outros continuam vendo."
   },
   "groups": {
     "title": "Grupos",

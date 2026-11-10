@@ -20,6 +20,7 @@ import { useSessionStore } from '@/auth/sessionStore';
 import { Button, Notice, TextField } from '@/components/Form';
 import { getGroup, groupKeys } from '@/features/groups/api';
 import {
+  clearConversation,
   deleteMessage,
   getConversation,
   isHidden,
@@ -30,7 +31,9 @@ import {
   muteConversation,
   pinMessage,
   POLL_CHAT_MS,
+  QUICK_REACTIONS,
   sendMessage,
+  setMessageReaction,
   unpinMessage,
   type Message,
   type MessageList,
@@ -131,6 +134,36 @@ export default function ChatScreen() {
       { text: t('common.cancel'), style: 'cancel' as const },
     ]);
 
+  const react = useMutation({
+    mutationFn: ({ message, emoji, on }: { message: Message; emoji: string; on: boolean }) =>
+      setMessageReaction(getApiClient(), id, message.id, emoji, on),
+    onSettled: () => void queryClient.invalidateQueries({ queryKey: messageKeys.history(id) }),
+  });
+  const toggleReaction = (message: Message, emoji: string) => {
+    const mine = message.reactions.some((r) => r.emoji === emoji && r.reacted_by_me);
+    react.mutate({ message, emoji, on: !mine });
+  };
+  const chooseReaction = (message: Message) =>
+    Alert.alert(t('messages.react'), undefined, [
+      ...QUICK_REACTIONS.map((emoji) => ({
+        text: emoji,
+        onPress: () => toggleReaction(message, emoji),
+      })),
+      { text: t('common.cancel'), style: 'cancel' as const },
+    ]);
+  const clear = useMutation({
+    mutationFn: (throughSeq: number) => clearConversation(getApiClient(), id, throughSeq),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: messageKeys.history(id) });
+      void queryClient.invalidateQueries({ queryKey: messageKeys.inbox });
+    },
+  });
+  const confirmClear = (throughSeq: number) =>
+    Alert.alert(t('messages.clearTitle'), t('messages.clearBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('messages.clear'), style: 'destructive', onPress: () => clear.mutate(throughSeq) },
+    ]);
+
   const send = useMutation({
     mutationFn: (body: string) =>
       sendMessage(getApiClient(), id, pending.current, body, replyTo?.id),
@@ -157,6 +190,7 @@ export default function ChatScreen() {
   const actions = (message: Message) => {
     if (isHidden(message)) return;
     const common = [
+      { text: t('messages.react'), onPress: () => chooseReaction(message) },
       ...(conversation.data?.can_send
         ? [{ text: t('messages.reply'), onPress: () => setReplyTo(message) }]
         : []),
@@ -247,6 +281,18 @@ export default function ChatScreen() {
             ) : (
               <View style={styles.fill} />
             )}
+            {newest > 0 ? (
+              <Pressable
+                onPress={() => confirmClear(newest)}
+                accessibilityRole="button"
+                hitSlop={8}
+                testID="chat-clear"
+              >
+                <Text style={[theme.typography.label, { color: theme.colors.textSecondary }]}>
+                  {t('messages.clear')}
+                </Text>
+              </Pressable>
+            ) : null}
             <Pressable
               onPress={() => (muted ? mute.mutate(null) : chooseMute())}
               accessibilityRole="button"
@@ -408,6 +454,40 @@ export default function ChatScreen() {
                     {t('messages.edited')}
                   </Text>
                 ) : null}
+                {item.reactions.length > 0 && !hidden ? (
+                  <View style={styles.reactions}>
+                    {item.reactions.map((reaction) => (
+                      <Pressable
+                        key={reaction.emoji}
+                        onPress={() => toggleReaction(item, reaction.emoji)}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: reaction.reacted_by_me }}
+                        accessibilityLabel={t('messages.reactionA11y', {
+                          emoji: reaction.emoji,
+                          count: reaction.count,
+                        })}
+                        style={[
+                          styles.reaction,
+                          {
+                            borderColor: reaction.reacted_by_me
+                              ? theme.colors.onPrimary
+                              : theme.colors.divider,
+                          },
+                        ]}
+                        testID={`reaction-${item.id}-${reaction.emoji}`}
+                      >
+                        <Text
+                          style={[
+                            theme.typography.caption,
+                            { color: mine ? theme.colors.onPrimary : theme.colors.textPrimary },
+                          ]}
+                        >
+                          {`${reaction.emoji} ${reaction.count}`}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : null}
                 {mine && item.id === lastMine?.id && peerRead !== null && peerRead >= item.seq ? (
                   <Text
                     style={[theme.typography.caption, { color: theme.colors.onPrimary }]}
@@ -495,6 +575,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   pinRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  reactions: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 },
+  reaction: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 6, paddingVertical: 1 },
   muteBar: {
     flexDirection: 'row',
     alignItems: 'center',

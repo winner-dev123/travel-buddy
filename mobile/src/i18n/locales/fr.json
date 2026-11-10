@@ -566,7 +566,14 @@
       "1": "Pendant 1 heure",
       "8": "Pendant 8 heures",
       "168": "Pendant 1 semaine"
-    }
+    },
+    "react": "Réagir",
+    "reactionA11y_one": "{{emoji}}, {{count}} réaction",
+    "reactionA11y_many": "{{emoji}}, {{count}} réactions",
+    "reactionA11y_other": "{{emoji}}, {{count}} réactions",
+    "clear": "Effacer",
+    "clearTitle": "Effacer ce chat ?",
+    "clearBody": "Les messages échangés disparaissent pour vous seulement. Les autres les voient toujours."
   },
   "groups": {
     "title": "Groupes",

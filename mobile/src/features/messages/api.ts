@@ -122,6 +122,30 @@ export function muteConversation(
   });
 }
 
+/** Quick reactions offered in the app (a subset of the server's allow-list). */
+export const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '🙏', '🎉'] as const;
+
+/** `PUT`/`DELETE …/reactions/{emoji}` (idempotent; the emoji is percent-encoded). */
+export function setMessageReaction(
+  client: ApiClient,
+  id: string,
+  messageId: string,
+  emoji: string,
+  on: boolean,
+): Promise<unknown> {
+  const path = `/v1/conversations/${id}/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`;
+  return on ? client.put(path) : client.delete(path);
+}
+
+/** `POST /v1/conversations/{id}/clear`: hides messages up to `throughSeq` for me only. */
+export async function clearConversation(
+  client: ApiClient,
+  id: string,
+  throughSeq: number,
+): Promise<void> {
+  await client.post(`/v1/conversations/${id}/clear`, { body: { through_seq: throughSeq } });
+}
+
 /** SCR-084: pinned messages (at most 10, newest pin first). */
 export function listPins(client: ApiClient, id: string): Promise<MessageList> {
   return client.get<MessageList>(`/v1/conversations/${id}/pins`);

@@ -566,7 +566,14 @@
       "1": "Durante 1 hora",
       "8": "Durante 8 horas",
       "168": "Durante 1 semana"
-    }
+    },
+    "react": "Reaccionar",
+    "reactionA11y_one": "{{emoji}}, {{count}} reacción",
+    "reactionA11y_many": "{{emoji}}, {{count}} reacciones",
+    "reactionA11y_other": "{{emoji}}, {{count}} reacciones",
+    "clear": "Vaciar",
+    "clearTitle": "¿Vaciar este chat?",
+    "clearBody": "Los mensajes hasta ahora desaparecen solo para ti. Los demás los siguen viendo."
   },
   "groups": {
     "title": "Grupos",

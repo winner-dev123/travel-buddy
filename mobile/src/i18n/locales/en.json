@@ -558,7 +558,13 @@
       "1": "For 1 hour",
       "8": "For 8 hours",
       "168": "For 1 week"
-    }
+    },
+    "react": "React",
+    "reactionA11y_one": "{{emoji}}, {{count}} reaction",
+    "reactionA11y_other": "{{emoji}}, {{count}} reactions",
+    "clear": "Clear",
+    "clearTitle": "Clear this chat?",
+    "clearBody": "The messages so far disappear for you only. Everyone else still sees them."
   },
   "groups": {
     "title": "Groups",

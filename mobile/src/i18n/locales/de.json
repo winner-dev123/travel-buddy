@@ -558,7 +558,13 @@
       "1": "Für 1 Stunde",
       "8": "Für 8 Stunden",
       "168": "Für 1 Woche"
-    }
+    },
+    "react": "Reagieren",
+    "reactionA11y_one": "{{emoji}}, {{count}} Reaktion",
+    "reactionA11y_other": "{{emoji}}, {{count}} Reaktionen",
+    "clear": "Leeren",
+    "clearTitle": "Diesen Chat leeren?",
+    "clearBody": "Die bisherigen Nachrichten verschwinden nur für dich. Alle anderen sehen sie weiterhin."
   },
   "groups": {
     "title": "Gruppen",
