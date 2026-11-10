@@ -26,6 +26,8 @@ jobs:
   check:
     name: typecheck + lint + test
     runs-on: ubuntu-24.04
+    # A stuck test run must fail fast instead of holding a runner for the 6-hour default.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
