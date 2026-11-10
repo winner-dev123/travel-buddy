@@ -52,7 +52,7 @@ Purchased content (`content:*`) grants access to that specific item regardless o
 | `offline.packages` | 1 | 15 | None (concurrent) | Active `offline_package_licenses` across devices |
 | `groups.owned` | 0 | 10 | None (concurrent) | Active groups where the user is owner |
 
-All numbers are **configuration** (`ENTITLEMENT_*` settings), not code. Changing them requires no deploy of the mobile app.
+The numbers are **runtime configuration**: defaults in code (`DEFAULT_QUOTAS`), overrides edited by superadmins through `GET/PUT /v1/admin/billing/policy` (`billing.configure`; justified, audited with the values before and after, optimistic `version`) and stored in `entitlement_policy_overrides`. Every evaluation reads the policy, so a change applies to the next request on every instance, with no deploy of the backend or the apps. Periods are fixed, and a free limit may not exceed the premium one.
 
 ### 3.3 Group-level limits (configuration)
 
@@ -60,7 +60,7 @@ All numbers are **configuration** (`ENTITLEMENT_*` settings), not code. Changing
 |---|---|
 | `group_max_capacity` | 50 members |
 | `group_max_active_challenges` | 3 |
-| `group_admin_grace_period_days` | 14 |
+| `group_admin_grace_period_days` | 14 (runtime override 0–90 through `/v1/admin/billing/policy`) |
 | `invitation_link_max_ttl_days` | 30 |
 | `invitation_link_max_uses` | 100 |
 

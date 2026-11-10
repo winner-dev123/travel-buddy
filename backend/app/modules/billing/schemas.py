@@ -213,3 +213,52 @@ class UpdateProductRequest(BaseModel):
 
     active: bool | None = None
     entitlement_keys: list[EntitlementKey] | None = Field(default=None, min_length=1, max_length=10)
+
+
+QuotaKey = Literal[
+    "ai.itinerary_generations", "ai.trip_replans", "offline.packages", "groups.owned"
+]
+QuotaValue = Annotated[int, Field(ge=0, le=100_000)]
+
+
+class QuotaLimits(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    free: QuotaValue
+    premium: QuotaValue
+
+
+class PolicyQuotaOut(BaseModel):
+    """Contract ``BillingPolicy.quotas[]``: the value in force and the code default."""
+
+    model_config = ConfigDict(frozen=True)
+
+    key: QuotaKey
+    period: Literal["monthly", "none"]
+    free: int
+    premium: int
+    default_free: int
+    default_premium: int
+
+
+class BillingPolicyOut(BaseModel):
+    """Contract ``BillingPolicy`` (BL-6.02)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    quotas: list[PolicyQuotaOut]
+    group_admin_grace_days: int
+    default_group_admin_grace_days: int
+    version: int
+    updated_at: datetime | None
+    updated_by: uuid.UUID | None
+
+
+class UpdateBillingPolicyRequest(BaseModel):
+    """Replaces every override: quotas left out, and a null grace, go back to the defaults."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    version: int = Field(ge=0)
+    quotas: dict[QuotaKey, QuotaLimits] = Field(default_factory=dict)
+    group_admin_grace_days: int | None = Field(default=None, ge=0, le=90)

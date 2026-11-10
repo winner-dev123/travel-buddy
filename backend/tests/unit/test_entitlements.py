@@ -182,3 +182,51 @@ def test_naive_datetimes_rejected() -> None:
 def test_grant_end_must_follow_start() -> None:
     with pytest.raises(ValueError, match="after starts_at"):
         premium(starts=NOW, ends=NOW)
+
+
+@pytest.mark.req("BILL-007", "ADM-005")
+def test_runtime_overrides_apply_over_the_defaults() -> None:
+    from app.modules.billing.entitlements import (
+        DEFAULT_POLICY,
+        Grant,
+        GrantSource,
+        GroupPremiumState,
+        Quota,
+        group_premium_status,
+    )
+    from app.modules.billing.models import EntitlementPolicyOverride
+    from app.modules.billing.service import _policy_from
+
+    assert _policy_from(None) is DEFAULT_POLICY
+    row = EntitlementPolicyOverride(
+        id=1,
+        quotas={
+            "ai.trip_replans": {"free": 2, "premium": 90},
+            "retired.quota": {"free": 1, "premium": 1},  # from a newer deploy: ignored
+            "offline.packages": {"free": "x"},  # malformed: the default stays
+        },
+        group_admin_grace_days=30,
+        version=3,
+    )
+    policy = _policy_from(row)
+    assert (
+        policy.quotas[Quota.AI_TRIP_REPLANS].free,
+        policy.quotas[Quota.AI_TRIP_REPLANS].premium,
+    ) == (2, 90)
+    assert policy.quotas[Quota.OFFLINE_PACKAGES] == DEFAULT_POLICY.quotas[Quota.OFFLINE_PACKAGES]
+    assert (
+        policy.quotas[Quota.AI_TRIP_REPLANS].period
+        == DEFAULT_POLICY.quotas[Quota.AI_TRIP_REPLANS].period
+    )
+
+    # The longer grace keeps a lapsed owner's group premium features for 30 days, not 14.
+    ended = datetime(2026, 11, 1, tzinfo=UTC)
+    grant = Grant(
+        entitlement_key="premium",
+        source_type=GrantSource.SUBSCRIPTION,
+        starts_at=ended - timedelta(days=30),
+        ends_at=ended,
+    )
+    at = ended + timedelta(days=20)
+    assert group_premium_status([grant], at=at).state is GroupPremiumState.LAPSED
+    assert group_premium_status([grant], at=at, policy=policy).state is not GroupPremiumState.LAPSED

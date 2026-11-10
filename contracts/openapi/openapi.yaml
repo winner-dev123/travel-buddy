@@ -6082,6 +6082,59 @@ paths:
               schema: { $ref: '#/components/schemas/Problem' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/admin/billing/policy:
+    get:
+      tags: [admin]
+      operationId: adminGetBillingPolicy
+      summary: Quota limits and the group admin grace in force, with the code defaults
+      x-phase: 6
+      x-requirements: [ADM-005, BILL-007]
+      x-rate-limit-class: admin
+      x-platform-permission: billing.configure
+      responses:
+        '200':
+          description: The policy in force. `version` is 0 while nothing has been overridden.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BillingPolicy' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      tags: [admin]
+      operationId: adminUpdateBillingPolicy
+      summary: Replace the quota and grace overrides (audited, effective at once)
+      description: |
+        Replaces every override: quotas left out, and a null `group_admin_grace_days`, return to the code
+        defaults. Periods are fixed. `version` must be the one last read (`409 conflict` otherwise). Every
+        evaluation reads the policy, so changes apply to the next request; the audit entry keeps the values
+        before and after.
+      x-phase: 6
+      x-requirements: [ADM-005, BILL-007, ADM-007, ADM-008]
+      x-rate-limit-class: admin
+      x-platform-permission: billing.configure
+      parameters:
+        - $ref: '#/components/parameters/AuditJustification'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateBillingPolicyRequest' }
+      responses:
+        '200':
+          description: Saved.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BillingPolicy' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: '`conflict` — the policy changed since `version` was read.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/admin/products:
     get:
       tags: [admin]
@@ -9629,6 +9682,49 @@ components:
       properties:
         status: { type: string, enum: [completed, rejected] }
         resolution: { type: string, minLength: 1, maxLength: 2000, description: The outcome as told to the user. }
+    QuotaKey: { type: string, enum: [ai.itinerary_generations, ai.trip_replans, offline.packages, groups.owned] }
+    BillingPolicy:
+      type: object
+      required: [quotas, group_admin_grace_days, default_group_admin_grace_days, version, updated_at, updated_by]
+      properties:
+        quotas:
+          type: array
+          items:
+            type: object
+            required: [key, period, free, premium, default_free, default_premium]
+            properties:
+              key: { $ref: '#/components/schemas/QuotaKey' }
+              period: { type: string, enum: [monthly, none], description: '`monthly` is the calendar month (UTC); `none` is a concurrent limit.' }
+              free: { type: integer, minimum: 0 }
+              premium: { type: integer, minimum: 0 }
+              default_free: { type: integer, minimum: 0 }
+              default_premium: { type: integer, minimum: 0 }
+        group_admin_grace_days: { type: integer, minimum: 0, maximum: 90 }
+        default_group_admin_grace_days: { type: integer, minimum: 0 }
+        version: { type: integer, minimum: 0 }
+        updated_at: { $ref: '#/components/schemas/NullableTimestamp' }
+        updated_by:
+          anyOf:
+            - { $ref: '#/components/schemas/Uuid' }
+            - { type: 'null' }
+    UpdateBillingPolicyRequest:
+      type: object
+      additionalProperties: false
+      required: [version]
+      properties:
+        version: { type: integer, minimum: 0 }
+        quotas:
+          type: object
+          description: Overrides by quota key; `free` may not exceed `premium`.
+          propertyNames: { $ref: '#/components/schemas/QuotaKey' }
+          additionalProperties:
+            type: object
+            additionalProperties: false
+            required: [free, premium]
+            properties:
+              free: { type: integer, minimum: 0, maximum: 100000 }
+              premium: { type: integer, minimum: 0, maximum: 100000 }
+        group_admin_grace_days: { type: [integer, 'null'], minimum: 0, maximum: 90 }
     EntitlementGrantList:
       type: object
       required: [data]

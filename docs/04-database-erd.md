@@ -774,6 +774,9 @@ erDiagram
 ### billing_customers
 `user_id FK RESTRICT`, `provider` (`stripe`), `provider_customer_id`, `created_at`. PK `(user_id, provider)`, `uq (provider, provider_customer_id)`. Maps a user to the Stripe Customer used for Checkout and the Customer Portal. Card data is never stored (hosted Checkout, PCI SAQ-A).
 
+### entitlement_policy_overrides (runtime policy, at most one row)
+`id smallint` (always 1, `CHECK (id = 1)`), `quotas jsonb` (`{"<quota key>": {"free": n, "premium": n}}`; keys left out use the code defaults), `group_admin_grace_days NULL` (null: default), `version` (optimistic concurrency), `updated_at`, `updated_by NULL` (staff; no FK). Migration 0041; read on every entitlement evaluation (docs/07 §3).
+
 ### billing_events (webhook inbox, idempotent)
 `id`, `provider`, `provider_event_id` (`notificationUUID` / Pub/Sub `messageId`), `event_type`, `subtype`, `subscription_id NULL`, `signed_date`, `payload jsonb` (verified, decoded), `received_at`, `processed_at`, `processing_status` (`pending`, `processed`, `ignored`, `failed`), `error`, `attempts`. `uq (provider, provider_event_id)`.
 

@@ -34,10 +34,12 @@ from app.modules.billing import service as billing
 from app.modules.billing.schemas import (
     AdminProductList,
     AdminProductOut,
+    BillingPolicyOut,
     CreateProductRequest,
     EntitlementGrantList,
     EntitlementGrantOut,
     GrantEntitlementRequest,
+    UpdateBillingPolicyRequest,
     UpdateProductRequest,
 )
 from app.modules.challenges import service as challenges
@@ -486,6 +488,30 @@ class AdminService:
                 status=resolution.status,
             )
         return resolved
+
+    async def billing_policy(self) -> BillingPolicyOut:
+        async with self._sessionmaker() as session:
+            return await billing.billing_policy(session)
+
+    async def update_billing_policy(
+        self, staff: Staff, request: UpdateBillingPolicyRequest
+    ) -> BillingPolicyOut:
+        """Quota limits and the group admin grace, effective at once (BL-6.02); audited with
+        the values before and after."""
+        async with self._sessionmaker() as session, session.begin():
+            before, after = await billing.update_billing_policy(
+                session, request, staff_id=staff.principal.user_id, now=self._clock.now()
+            )
+            _audit(
+                session,
+                staff,
+                "billing_policy.updated",
+                "billing_policy",
+                "entitlements",
+                before=before.model_dump(mode="json", exclude={"updated_at", "updated_by"}),
+                after=after.model_dump(mode="json", exclude={"updated_at", "updated_by"}),
+            )
+        return after
 
     async def revoke_grant(self, staff: Staff, grant_id: uuid.UUID) -> EntitlementGrantOut:
         async with self._sessionmaker() as session, session.begin():

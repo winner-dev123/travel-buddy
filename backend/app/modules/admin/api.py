@@ -30,10 +30,12 @@ from app.modules.admin.service import AdminService
 from app.modules.billing.schemas import (
     AdminProductList,
     AdminProductOut,
+    BillingPolicyOut,
     CreateProductRequest,
     EntitlementGrantList,
     EntitlementGrantOut,
     GrantEntitlementRequest,
+    UpdateBillingPolicyRequest,
     UpdateProductRequest,
 )
 from app.modules.challenges.schemas import RewardDetail, RewardReviewRequest
@@ -233,6 +235,23 @@ async def admin_resolve_data_request(
     who: Annotated[Staff, Depends(staff(Permission.PRIVACY_REQUESTS_MANAGE, justified=True))],
 ) -> AdminDataRequest:
     return await _service(request).resolve_data_request(who, request_id, body)
+
+
+@router.get("/billing/policy", response_model=BillingPolicyOut)
+async def admin_get_billing_policy(
+    request: Request,
+    _who: Annotated[Staff, Depends(staff(Permission.BILLING_CONFIGURE))],
+) -> BillingPolicyOut:
+    return await _service(request).billing_policy()
+
+
+@router.put("/billing/policy", response_model=BillingPolicyOut)
+async def admin_update_billing_policy(
+    body: UpdateBillingPolicyRequest,
+    request: Request,
+    who: Annotated[Staff, Depends(staff(Permission.BILLING_CONFIGURE, justified=True))],
+) -> BillingPolicyOut:
+    return await _service(request).update_billing_policy(who, body)
 
 
 @router.get("/products", response_model=AdminProductList)

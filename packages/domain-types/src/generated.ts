@@ -3521,6 +3521,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/billing/policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Quota limits and the group admin grace in force, with the code defaults */
+        get: operations["adminGetBillingPolicy"];
+        /**
+         * Replace the quota and grace overrides (audited, effective at once)
+         * @description Replaces every override: quotas left out, and a null `group_admin_grace_days`, return to the code
+         *     defaults. Periods are fixed. `version` must be the one last read (`409 conflict` otherwise). Every
+         *     evaluation reads the policy, so changes apply to the next request; the audit entry keeps the values
+         *     before and after.
+         */
+        put: operations["adminUpdateBillingPolicy"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/products": {
         parameters: {
             query?: never;
@@ -6146,6 +6170,38 @@ export interface components {
             status: "completed" | "rejected";
             /** @description The outcome as told to the user. */
             resolution: string;
+        };
+        /** @enum {string} */
+        QuotaKey: "ai.itinerary_generations" | "ai.trip_replans" | "offline.packages" | "groups.owned";
+        BillingPolicy: {
+            quotas: {
+                key: components["schemas"]["QuotaKey"];
+                /**
+                 * @description `monthly` is the calendar month (UTC); `none` is a concurrent limit.
+                 * @enum {string}
+                 */
+                period: "monthly" | "none";
+                free: number;
+                premium: number;
+                default_free: number;
+                default_premium: number;
+            }[];
+            group_admin_grace_days: number;
+            default_group_admin_grace_days: number;
+            version: number;
+            updated_at: components["schemas"]["NullableTimestamp"];
+            updated_by: components["schemas"]["Uuid"] | null;
+        };
+        UpdateBillingPolicyRequest: {
+            version: number;
+            /** @description Overrides by quota key; `free` may not exceed `premium`. */
+            quotas?: {
+                [key: string]: {
+                    free: number;
+                    premium: number;
+                };
+            };
+            group_admin_grace_days?: number | null;
         };
         EntitlementGrantList: {
             data: components["schemas"]["EntitlementGrant"][];
@@ -13582,6 +13638,72 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description `conflict` — not a rectification, or already closed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminGetBillingPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The policy in force. `version` is 0 while nothing has been overridden. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingPolicy"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminUpdateBillingPolicy: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Why the staff member is performing this action or viewing sensitive data (ADM-009). Stored verbatim
+                 *     in `audit_logs.metadata.justification`. Missing or blank → `400 justification_required`.
+                 */
+                "X-Audit-Justification": components["parameters"]["AuditJustification"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBillingPolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingPolicy"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            /** @description `conflict` — the policy changed since `version` was read. */
             409: {
                 headers: {
                     [name: string]: unknown;

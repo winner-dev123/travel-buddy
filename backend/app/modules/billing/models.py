@@ -10,11 +10,13 @@ from typing import Any
 from sqlalchemy import (
     ARRAY,
     Boolean,
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
     Integer,
     PrimaryKeyConstraint,
+    SmallInteger,
     Text,
     UniqueConstraint,
     Uuid,
@@ -198,3 +200,19 @@ class BillingCustomer(Base):
     provider: Mapped[str] = mapped_column(Text, server_default=text("'stripe'"))
     provider_customer_id: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class EntitlementPolicyOverride(Base):
+    """Runtime overrides of the entitlement policy defaults (docs/07 section 3; BL-6.02). At most
+    one row; no row, or a quota missing from ``quotas``, means the code default."""
+
+    __tablename__ = "entitlement_policy_overrides"
+    __table_args__ = (CheckConstraint("id = 1", name="singleton"),)
+
+    id: Mapped[int] = mapped_column(SmallInteger, primary_key=True, default=1)
+    # {"ai.itinerary_generations": {"free": 5, "premium": 60}, ...}
+    quotas: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+    group_admin_grace_days: Mapped[int | None] = mapped_column(Integer)
+    version: Mapped[int] = mapped_column(Integer, server_default=text("1"))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)  # staff; no FK, like audit actors

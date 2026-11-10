@@ -19,6 +19,7 @@ from typing import Any
 
 from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.errors import AppError, ErrorCode, FieldError
@@ -42,6 +43,7 @@ from app.modules.billing.domain import (
 )
 from app.modules.billing.entitlements import (
     DEFAULT_POLICY,
+    DEFAULT_QUOTAS,
     EntitlementPolicy,
     EntitlementSnapshot,
     Feature,
@@ -50,12 +52,14 @@ from app.modules.billing.entitlements import (
     GroupPremiumStatus,
     Plan,
     Quota,
+    QuotaRule,
     evaluate,
     group_premium_status,
 )
 from app.modules.billing.models import (
     BillingCustomer,
     BillingEvent,
+    EntitlementPolicyOverride,
     Product,
     Purchase,
     Subscription,
@@ -65,14 +69,17 @@ from app.modules.billing.providers import BillingProvider, PurchaseClaim, StoreT
 from app.modules.billing.schemas import (
     ActiveSubscription,
     AdminProductOut,
+    BillingPolicyOut,
     CreateProductRequest,
     EntitlementFeatures,
     EntitlementGrantOut,
     EntitlementQuotas,
     Entitlements,
+    PolicyQuotaOut,
     ProductOut,
     PurchaseOut,
     QuotaStatusOut,
+    UpdateBillingPolicyRequest,
     UpdateProductRequest,
     VerifyPurchaseResult,
 )
@@ -109,13 +116,49 @@ async def _load_grants(session: AsyncSession, user_id: uuid.UUID) -> list[Grant]
     ]
 
 
+def _policy_from(row: EntitlementPolicyOverride | None) -> EntitlementPolicy:
+    """The code defaults with the stored overrides applied (unknown keys are ignored, so a
+    rolled-back deploy still reads a newer row)."""
+    if row is None:
+        return DEFAULT_POLICY
+    quotas: dict[Quota, QuotaRule] = dict(DEFAULT_QUOTAS)
+    for key, limits in (row.quotas or {}).items():
+        try:
+            quota = Quota(key)
+            quotas[quota] = QuotaRule(
+                free=int(limits["free"]),
+                premium=int(limits["premium"]),
+                period=DEFAULT_QUOTAS[quota].period,
+            )
+        except (ValueError, KeyError, TypeError):
+            continue
+    grace = (
+        timedelta(days=row.group_admin_grace_days)
+        if row.group_admin_grace_days is not None
+        else DEFAULT_POLICY.group_admin_grace_period
+    )
+    return EntitlementPolicy(
+        free_features=DEFAULT_POLICY.free_features,
+        premium_features=DEFAULT_POLICY.premium_features,
+        quotas=quotas,
+        group_admin_grace_period=grace,
+    )
+
+
+async def current_policy(session: AsyncSession) -> EntitlementPolicy:
+    """The policy in force: defaults in code, overrides edited at runtime by staff (BL-6.02)."""
+    return _policy_from(await session.get(EntitlementPolicyOverride, 1))
+
+
 async def snapshot(
     session: AsyncSession,
     user_id: uuid.UUID,
     *,
     at: datetime,
-    policy: EntitlementPolicy = DEFAULT_POLICY,
+    policy: EntitlementPolicy | None = None,
 ) -> EntitlementSnapshot:
+    if policy is None:
+        policy = await current_policy(session)
     return evaluate(await _load_grants(session, user_id), at=at, policy=policy)
 
 
@@ -129,7 +172,7 @@ async def group_premium(
     """A group's premium status from its owner's grants, with the admin grace (docs/07 §5). A
     group without an owner (archived after the owner's account was erased) has none."""
     grants = await _load_grants(session, owner_id) if owner_id is not None else []
-    return group_premium_status(grants, at=at)
+    return group_premium_status(grants, at=at, policy=await current_policy(session))
 
 
 async def quota_limit(
@@ -1021,6 +1064,76 @@ async def create_product(session: AsyncSession, request: CreateProductRequest) -
     session.add(row)
     await session.flush()
     return _admin_product(row)
+
+
+def _days(period: timedelta) -> int:
+    return period // timedelta(days=1)
+
+
+async def billing_policy(session: AsyncSession) -> BillingPolicyOut:
+    row = await session.get(EntitlementPolicyOverride, 1)
+    policy = _policy_from(row)
+    return BillingPolicyOut(
+        quotas=[
+            PolicyQuotaOut(
+                key=quota.value,
+                period=default.period.value,
+                free=policy.quotas[quota].free,
+                premium=policy.quotas[quota].premium,
+                default_free=default.free,
+                default_premium=default.premium,
+            )
+            for quota, default in DEFAULT_QUOTAS.items()
+        ],
+        group_admin_grace_days=_days(policy.group_admin_grace_period),
+        default_group_admin_grace_days=_days(DEFAULT_POLICY.group_admin_grace_period),
+        version=row.version if row is not None else 0,
+        updated_at=row.updated_at if row is not None else None,
+        updated_by=row.updated_by if row is not None else None,
+    )
+
+
+async def update_billing_policy(
+    session: AsyncSession,
+    request: UpdateBillingPolicyRequest,
+    *,
+    staff_id: uuid.UUID,
+    now: datetime,
+) -> tuple[BillingPolicyOut, BillingPolicyOut]:
+    """Replace the overrides (optimistic: ``version`` must match). Returns (before, after)."""
+    for key, limits in request.quotas.items():
+        if limits.free > limits.premium:
+            message = "The free limit cannot be higher than the premium limit."
+            raise AppError(
+                ErrorCode.VALIDATION_FAILED,
+                message,
+                errors=[FieldError(field=f"/quotas/{key}", code="invalid", message=message)],
+            )
+    row = await session.get(EntitlementPolicyOverride, 1, with_for_update=True)
+    before = await billing_policy(session)
+    if request.version != before.version:
+        raise AppError(
+            ErrorCode.CONFLICT, "The policy changed since you loaded it. Reload and try again."
+        )
+    overrides: dict[str, Any] = {
+        key: {"free": limits.free, "premium": limits.premium}
+        for key, limits in request.quotas.items()
+    }
+    if row is None:
+        row = EntitlementPolicyOverride(id=1, version=0)
+        session.add(row)
+    row.quotas = overrides
+    row.group_admin_grace_days = request.group_admin_grace_days
+    row.version = before.version + 1
+    row.updated_at = now
+    row.updated_by = staff_id
+    try:
+        await session.flush()
+    except IntegrityError as exc:  # another first save won the singleton row
+        raise AppError(
+            ErrorCode.CONFLICT, "The policy changed since you loaded it. Reload and try again."
+        ) from exc
+    return before, await billing_policy(session)
 
 
 async def update_product(
