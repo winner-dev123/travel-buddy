@@ -3844,6 +3844,13 @@ export interface components {
             notification_settings: {
                 [key: string]: components["schemas"]["NotificationChannelSettings"];
             };
+            /** @description Push is held back in this local-time window (NOTIF-003); in-app notifications are unaffected. Null = off. */
+            quiet_hours?: components["schemas"]["QuietHours"] | null;
+        };
+        /** @description Local times (`HH:MM`, 24 h) in the user's `time_zone`. The window may cross midnight; start and end differ. */
+        QuietHours: {
+            start: string;
+            end: string;
         };
         UpdatePreferencesRequest: {
             ui_locale?: components["schemas"]["LocaleTag"];
@@ -3856,6 +3863,7 @@ export interface components {
             notification_settings?: {
                 [key: string]: components["schemas"]["NotificationChannelSettings"];
             };
+            quiet_hours?: components["schemas"]["QuietHours"] | null;
         };
         ConsentState: {
             version: string;

@@ -27,6 +27,7 @@ from app.core.security.principal import ROLE_PERMISSIONS, Permission, PlatformRo
 from app.core.time import Clock
 from app.modules.billing import service as billing_service
 from app.modules.destinations.schemas import DestinationSummary
+from app.modules.identity import push_tokens
 from app.modules.identity import repository as repo
 from app.modules.identity.adapters.oidc import OidcVerifier, VerifiedIdentity
 from app.modules.identity.adapters.supabase_admin import IdpAccountDeleter
@@ -55,6 +56,8 @@ from app.modules.identity.models import (
     UserSession,
     UserStatus,
 )
+from app.modules.identity.push_tokens import PushTarget as PushTarget
+from app.modules.identity.push_tokens import PushTokenCipher as PushTokenCipher
 from app.modules.identity.schemas import (
     AccountDeletionRequest,
     AccountRestriction,
@@ -67,10 +70,13 @@ from app.modules.identity.schemas import (
     LoginRequest,
     Me,
     MyAccount,
+    NativePushRegistration,
+    PushDeviceOut,
     RegisterRequest,
     SessionList,
     SessionOut,
     SessionTokens,
+    WebPushRegistration,
 )
 from app.modules.media import service as media
 from app.modules.platform import service as platform
@@ -131,6 +137,7 @@ class IdentityService:
         self._settings = settings
         self._clock = clock
         self._derivation_key = settings.refresh_token_derivation_key.get_secret_value().encode()
+        self._push_cipher = push_cipher(settings)
 
     def legal_requirements(self) -> LegalRequirements:
         return LegalRequirements(
@@ -510,6 +517,54 @@ class IdentityService:
         if revoked == 0:
             raise AppError(ErrorCode.NOT_FOUND, "Session not found.")
 
+    # ─────────────────────────────── push devices (BL-3.06) ───────────────────────────────
+
+    async def register_push_device(
+        self, principal: Principal, request: NativePushRegistration | WebPushRegistration
+    ) -> PushDeviceOut:
+        async with self._sessionmaker() as session, session.begin():
+            if isinstance(request, WebPushRegistration):
+                row = await push_tokens.register(
+                    session,
+                    self._push_cipher,
+                    user_id=principal.user_id,
+                    session_id=principal.session_id,
+                    provider=request.provider,
+                    device_id=request.device_id,
+                    token=request.subscription.endpoint,
+                    p256dh=request.subscription.keys.p256dh,
+                    auth=request.subscription.keys.auth,
+                )
+            else:
+                row = await push_tokens.register(
+                    session,
+                    self._push_cipher,
+                    user_id=principal.user_id,
+                    session_id=principal.session_id,
+                    provider=request.provider,
+                    device_id=request.device_id,
+                    token=request.token,
+                )
+            return PushDeviceOut.model_validate(
+                {
+                    "id": row.id,
+                    "provider": row.provider,
+                    "device_id": row.device_id,
+                    "created_at": row.created_at,
+                    "last_seen_at": row.last_seen_at,
+                }
+            )
+
+    async def unregister_push_device(
+        self, principal: Principal, device_token_id: uuid.UUID
+    ) -> None:
+        async with self._sessionmaker() as session, session.begin():
+            removed = await push_tokens.unregister(
+                session, user_id=principal.user_id, device_token_id=device_token_id
+            )
+        if not removed:
+            raise AppError(ErrorCode.NOT_FOUND, "Device not found.")
+
     async def get_me(self, principal: Principal) -> Me:
         async with self._sessionmaker() as session:
             user = await repo.get_user(session, principal.user_id)
@@ -773,7 +828,7 @@ async def purge_expired(session: AsyncSession) -> int:
         .where(UserSession.last_ip.is_not(None), UserSession.last_used_at < platform.ago(days=30))
         .values(last_ip=None)
     )
-    return await platform.delete_batch(
+    return await push_tokens.purge(session) + await platform.delete_batch(
         session,
         UserSession,
         or_(
@@ -781,6 +836,22 @@ async def purge_expired(session: AsyncSession) -> int:
             UserSession.expires_at < platform.ago(days=90),
         ),
     )
+
+
+def push_cipher(settings: IdentitySettings) -> PushTokenCipher:
+    """Encrypts push tokens with a key derived from the refresh-token secret (HKDF, own label)."""
+    return PushTokenCipher(settings.refresh_token_derivation_key.get_secret_value())
+
+
+async def push_targets(
+    session: AsyncSession, cipher: PushTokenCipher, user_id: uuid.UUID
+) -> list[PushTarget]:
+    """Where to push for ``user_id`` (live sessions only), for the notifications module."""
+    return await push_tokens.targets(session, cipher, user_id)
+
+
+async def disable_push_targets(session: AsyncSession, ids: Sequence[uuid.UUID]) -> None:
+    await push_tokens.disable(session, ids)
 
 
 def _request_out(record: DataSubjectRequest) -> DataSubjectRequestOut:

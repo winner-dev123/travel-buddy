@@ -70,6 +70,8 @@ from app.modules.messaging import service as messaging_service
 from app.modules.messaging.api import router as messaging_router
 from app.modules.notifications import service as notifications_service
 from app.modules.notifications.api import router as notifications_router
+from app.modules.notifications.push import PushSender
+from app.modules.notifications.push import build_sender as build_push_sender
 from app.modules.platform.api import AfterResponseTickMiddleware, internal_router
 from app.modules.platform.service import (
     DAILY,
@@ -188,6 +190,11 @@ def create_app(
     )
 
     media_storage = build_media_storage(media_settings, http_client, clock)
+    push_sender = build_push_sender(
+        settings.resolved_push_provider,
+        http_client,
+        settings.expo_access_token.get_secret_value() if settings.expo_access_token else None,
+    )
     job_runner = build_job_runner(
         database=database,
         web_cache_settings=web_cache_settings,
@@ -195,6 +202,7 @@ def create_app(
         http_client=http_client,
         clock=clock,
         media_storage=media_storage,
+        push_sender=push_sender,
     )
 
     app = FastAPI(
@@ -264,6 +272,7 @@ def create_app(
         providers=evidence_providers(),
     )
     app.state.media_storage = media_storage
+    app.state.push_sender = push_sender
     app.state.media_service = media_service.MediaService(
         sessionmaker=database.sessionmaker,
         storage=media_storage,
@@ -418,6 +427,7 @@ def build_job_runner(
     http_client: httpx.AsyncClient,
     clock: Clock,
     media_storage: ObjectStorage | None = None,
+    push_sender: PushSender | None = None,
 ) -> JobRunner:
     """Event subscriptions and job handlers for every module (shared by the API and workers)."""
     router = EventRouter()
@@ -429,7 +439,13 @@ def build_job_runner(
     social_service.subscribe(router)
     handlers.update(social_service.make_handlers(database.sessionmaker))
     notifications_service.subscribe(router)
-    handlers.update(notifications_service.make_handlers(database.sessionmaker))
+    handlers.update(
+        notifications_service.make_handlers(
+            database.sessionmaker,
+            push_sender=push_sender,
+            push_cipher=identity_module.push_cipher(identity_settings),
+        )
+    )
     handlers.update(
         identity_module.make_handlers(
             database.sessionmaker, build_idp_deleter(identity_settings, http_client)

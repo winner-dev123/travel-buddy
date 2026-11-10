@@ -102,6 +102,12 @@ class Settings(BaseSettings):
     realtime_auth_timeout_seconds: float = Field(default=5.0, gt=0, le=30)
     realtime_idle_timeout_seconds: float = Field(default=60.0, gt=0, le=600)
 
+    # Push (BL-3.06). "auto": record pushes in memory in development and test (nothing leaves
+    # the process), the Expo push service elsewhere. EXPO_ACCESS_TOKEN is optional (enhanced
+    # push security in the Expo dashboard).
+    push_provider: Literal["auto", "expo", "log", "disabled"] = "auto"
+    expo_access_token: SecretStr | None = None
+
     # Development-only adapters (never allowed in staging/production).
     dev_idp_enabled: bool = False
     dev_billing_enabled: bool = False
@@ -133,6 +139,12 @@ class Settings(BaseSettings):
         if self.app_env in (AppEnv.TEST, AppEnv.DEVELOPMENT) or not self.redis_url:
             return "memory"
         return "redis"
+
+    @property
+    def resolved_push_provider(self) -> str:
+        if self.push_provider != "auto":
+            return self.push_provider
+        return "log" if self.app_env in (AppEnv.TEST, AppEnv.DEVELOPMENT) else "expo"
 
     @property
     def expose_api_docs(self) -> bool:

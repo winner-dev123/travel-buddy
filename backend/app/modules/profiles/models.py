@@ -107,6 +107,8 @@ class UserPreferences(Base):
     notification_settings: Mapped[dict[str, Any]] = mapped_column(
         JSONB, server_default=text("'{}'::jsonb")
     )
+    # {"start": "HH:MM", "end": "HH:MM"} in time_zone, or NULL (NOTIF-003).
+    quiet_hours: Mapped[dict[str, str] | None] = mapped_column(JSONB)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

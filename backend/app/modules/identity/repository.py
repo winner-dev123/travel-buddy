@@ -5,13 +5,14 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.identity.models import (
     AdminRoleAssignment,
     AuthenticationIdentity,
     ConsentRecord,
+    DevicePushToken,
     RetiredRefreshToken,
     User,
     UserSession,
@@ -97,11 +98,16 @@ async def revoke_sessions(
     if session_id is not None:
         stmt = stmt.where(UserSession.id == session_id)
     result = await session.execute(
-        stmt.values(revoked_at=now, revoked_reason=reason).execution_options(
-            synchronize_session=False
-        )
+        stmt.values(revoked_at=now, revoked_reason=reason)
+        .returning(UserSession.id)
+        .execution_options(synchronize_session=False)
     )
-    return int(getattr(result, "rowcount", 0) or 0)
+    revoked = list(result.scalars())
+    if revoked:  # a revoked session receives no more pushes (docs/04 §3)
+        await session.execute(
+            delete(DevicePushToken).where(DevicePushToken.session_id.in_(revoked))
+        )
+    return len(revoked)
 
 
 async def latest_consents(session: AsyncSession, user_id: uuid.UUID) -> list[ConsentRecord]:

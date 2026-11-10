@@ -21,14 +21,18 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.core.pagination import CursorCodec, PageInfo
+from app.modules.identity import service as identity
+from app.modules.notifications import push
 from app.modules.notifications.domain import moderation_variant, render
 from app.modules.notifications.models import Notification
+from app.modules.notifications.push import PushSender
 from app.modules.notifications.schemas import NotificationOut, NotificationPage
 from app.modules.platform import service as platform
 from app.modules.profiles import service as profiles
 from app.modules.trust_safety import service as trust_safety
 
 JOB_KIND = "notifications.from_event"
+PUSH_JOB = "notifications.push"
 
 
 async def notify(
@@ -63,7 +67,18 @@ async def notify(
         .on_conflict_do_nothing(index_elements=[Notification.user_id, Notification.dedupe_key])
         .returning(Notification.id)
     )
-    return inserted.first() is not None
+    created = inserted.first()
+    if created is None:
+        return False
+    # Push is decided when the job runs (preferences, quiet hours, live devices; BL-3.06).
+    await platform.enqueue(
+        session,
+        queue="default",
+        kind=PUSH_JOB,
+        payload={"notification_id": str(created[0])},
+        dedupe_key=f"push:{created[0]}",
+    )
+    return True
 
 
 def _uuid(value: Any) -> uuid.UUID | None:
@@ -238,6 +253,9 @@ def subscribe(router: platform.EventRouter) -> None:
 
 def make_handlers(
     sessionmaker: async_sessionmaker[AsyncSession],
+    *,
+    push_sender: PushSender | None = None,
+    push_cipher: identity.PushTokenCipher | None = None,
 ) -> dict[str, platform.JobHandler]:
     async def handle(job: platform.Job) -> None:
         payload = job.payload
@@ -249,7 +267,10 @@ def make_handlers(
                 payload.get("data") or {},
             )
 
-    return {JOB_KIND: handle}
+    handlers: dict[str, platform.JobHandler] = {JOB_KIND: handle}
+    if push_cipher is not None:
+        handlers[PUSH_JOB] = push.make_handler(sessionmaker, push_sender, push_cipher)
+    return handlers
 
 
 class NotificationService:

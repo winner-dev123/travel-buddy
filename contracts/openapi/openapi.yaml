@@ -6651,6 +6651,19 @@ components:
           type: object
           propertyNames: { $ref: '#/components/schemas/NotificationType' }
           additionalProperties: { $ref: '#/components/schemas/NotificationChannelSettings' }
+        quiet_hours:
+          description: Push is held back in this local-time window (NOTIF-003); in-app notifications are unaffected. Null = off.
+          anyOf:
+            - { $ref: '#/components/schemas/QuietHours' }
+            - { type: 'null' }
+    QuietHours:
+      type: object
+      additionalProperties: false
+      required: [start, end]
+      description: Local times (`HH:MM`, 24 h) in the user's `time_zone`. The window may cross midnight; start and end differ.
+      properties:
+        start: { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        end: { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
     UpdatePreferencesRequest:
       type: object
       additionalProperties: false
@@ -6666,6 +6679,10 @@ components:
           type: object
           propertyNames: { $ref: '#/components/schemas/NotificationType' }
           additionalProperties: { $ref: '#/components/schemas/NotificationChannelSettings' }
+        quiet_hours:
+          anyOf:
+            - { $ref: '#/components/schemas/QuietHours' }
+            - { type: 'null' }
     ConsentState:
       type: object
       required: [version, granted_at]

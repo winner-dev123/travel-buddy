@@ -47,6 +47,7 @@ from app.modules.profiles.schemas import (
     PrivacyUpdate,
     ProfileBundle,
     ProfileCounts,
+    QuietHours,
     UpdateMyProfileRequest,
     UpdatePreferencesRequest,
     UpdatePrivacySettingsRequest,
@@ -169,6 +170,7 @@ async def get_profile_bundle(session: AsyncSession, user_id: uuid.UUID) -> Profi
             distance_unit="mi" if preferences.distance_unit == "mi" else "km",
             auto_translate=preferences.auto_translate,
             notification_settings=_notification_matrix(preferences.notification_settings),
+            quiet_hours=QuietHours(**preferences.quiet_hours) if preferences.quiet_hours else None,
         ),
         privacy=PrivacySettings.model_validate(
             {
@@ -353,6 +355,8 @@ async def update_preferences(
         for kind, channels in changes["notification_settings"].items():
             merged[kind] = {**merged.get(kind, {}), **channels}
         preferences.notification_settings = merged
+    if "quiet_hours" in changes:
+        preferences.quiet_hours = changes["quiet_hours"]
     await session.flush()
     return (await get_profile_bundle(session, user_id)).preferences
 
@@ -730,3 +734,24 @@ async def read_receipts_enabled(
     )
     found = {user: bool(enabled) for user, enabled in rows.all()}
     return {user: found.get(user, False) for user in user_ids}
+
+
+@dataclass(frozen=True, slots=True)
+class PushContext:
+    """What a push needs from preferences: the reader's language and quiet hours."""
+
+    ui_locale: str
+    time_zone: str
+    quiet_hours: tuple[str, str] | None
+
+
+async def push_context(session: AsyncSession, user_id: uuid.UUID) -> PushContext | None:
+    preferences = await session.get(UserPreferences, user_id)
+    if preferences is None:
+        return None
+    quiet = preferences.quiet_hours
+    return PushContext(
+        ui_locale=preferences.ui_locale,
+        time_zone=preferences.time_zone,
+        quiet_hours=(str(quiet["start"]), str(quiet["end"])) if quiet else None,
+    )

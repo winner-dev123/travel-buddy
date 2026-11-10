@@ -268,3 +268,17 @@ def render(
 
 def renderable_kinds() -> frozenset[str]:
     return frozenset({*_TEMPLATES, "moderation_notice"})
+
+
+def in_quiet_hours(now_local_minutes: int, start: str, end: str) -> bool:
+    """Whether a local time (minutes after midnight) falls in ``[start, end)``; the window may
+    cross midnight (NOTIF-003)."""
+
+    def minutes(value: str) -> int:
+        hours, mins = value.split(":")
+        return int(hours) * 60 + int(mins)
+
+    begin, finish = minutes(start), minutes(end)
+    if begin < finish:
+        return begin <= now_local_minutes < finish
+    return now_local_minutes >= begin or now_local_minutes < finish

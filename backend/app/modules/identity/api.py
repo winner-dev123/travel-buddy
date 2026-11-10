@@ -25,7 +25,9 @@ from app.modules.identity.schemas import (
     LoginRequest,
     LogoutRequest,
     Me,
+    PushDeviceOut,
     RefreshRequest,
+    RegisterPushDeviceRequest,
     RegisterRequest,
     SessionList,
     SessionTokens,
@@ -180,6 +182,21 @@ async def revoke_my_session(
     session_id: uuid.UUID, request: Request, principal: CurrentPrincipal
 ) -> Response:
     await _service(request).revoke_session(principal, session_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@me_router.post("/devices", status_code=status.HTTP_201_CREATED, response_model=PushDeviceOut)
+async def register_push_device(
+    body: RegisterPushDeviceRequest, request: Request, principal: CurrentPrincipal
+) -> PushDeviceOut:
+    return await _service(request).register_push_device(principal, body)
+
+
+@me_router.delete("/devices/{device_token_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def unregister_push_device(
+    device_token_id: uuid.UUID, request: Request, principal: CurrentPrincipal
+) -> Response:
+    await _service(request).unregister_push_device(principal, device_token_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

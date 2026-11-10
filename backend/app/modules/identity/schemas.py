@@ -205,3 +205,41 @@ class DataSubjectRequestOut(_Response):
     completed_at: datetime | None
     scheduled_for: datetime | None = None
     download: None = None
+
+
+class WebPushKeys(_Request):
+    p256dh: str = Field(min_length=1, max_length=256)
+    auth: str = Field(min_length=1, max_length=256)
+
+
+class WebPushSubscription(_Request):
+    endpoint: str = Field(pattern=r"^https://", max_length=2048)
+    expiration_time: int | None = None
+    keys: WebPushKeys
+
+
+class NativePushRegistration(_Request):
+    provider: Literal["expo", "fcm", "apns"]
+    token: str = Field(min_length=8, max_length=4096)
+    device_id: str = Field(min_length=8, max_length=128)
+
+
+class WebPushRegistration(_Request):
+    provider: Literal["webpush"]
+    subscription: WebPushSubscription
+    device_id: str = Field(min_length=8, max_length=128)
+
+
+RegisterPushDeviceRequest = Annotated[
+    NativePushRegistration | WebPushRegistration, Field(discriminator="provider")
+]
+
+
+class PushDeviceOut(_Response):
+    """Contract ``PushDevice``: never includes the token or endpoint."""
+
+    id: uuid.UUID
+    provider: Literal["expo", "fcm", "apns", "webpush"]
+    device_id: str
+    created_at: datetime
+    last_seen_at: datetime

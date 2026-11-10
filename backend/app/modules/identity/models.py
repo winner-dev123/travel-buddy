@@ -265,3 +265,43 @@ class DataSubjectRequest(Base):
     )
     scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class PushProvider(StrEnum):
+    EXPO = "expo"
+    FCM = "fcm"
+    APNS = "apns"
+    WEBPUSH = "webpush"
+
+
+class DevicePushToken(Base):
+    """A push destination scoped to one session (NOTIF-002/005, docs/04 §3). Tokens and Web Push
+    endpoints are capability secrets: stored encrypted, looked up by hash, never logged or
+    returned. Revoking the session ends delivery."""
+
+    __tablename__ = "device_push_tokens"
+    __table_args__ = (
+        enum_check("provider", PushProvider, "provider_enum"),
+        UniqueConstraint("token_hash"),
+        Index("ix_device_push_tokens__user_id", "user_id"),
+        Index("ix_device_push_tokens__session_id", "session_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("user_sessions.id", ondelete="CASCADE"), nullable=False
+    )
+    provider: Mapped[str] = mapped_column(Text)
+    token_ciphertext: Mapped[bytes] = mapped_column(LargeBinary)
+    token_hash: Mapped[bytes] = mapped_column(LargeBinary)
+    webpush_p256dh: Mapped[bytes | None] = mapped_column(LargeBinary)
+    webpush_auth: Mapped[bytes | None] = mapped_column(LargeBinary)
+    device_id: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

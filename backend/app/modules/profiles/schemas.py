@@ -87,7 +87,28 @@ class UpdateMyProfileRequest(_Patch):
     account_visibility: Literal["public", "private"] | None = None
 
 
+_HHMM = r"^([01]\d|2[0-3]):[0-5]\d$"
+
+
+class QuietHours(BaseModel):
+    """Push is held back between ``start`` and ``end`` (local time in ``time_zone``; the window
+    may cross midnight). In-app notifications are unaffected (NOTIF-003)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    start: str = Field(pattern=_HHMM)
+    end: str = Field(pattern=_HHMM)
+
+    @model_validator(mode="after")
+    def _distinct(self) -> QuietHours:
+        if self.start == self.end:
+            raise ValueError("start and end must differ")
+        return self
+
+
 class UpdatePreferencesRequest(_Patch):
+    nullable_fields: ClassVar[frozenset[str]] = frozenset({"quiet_hours"})
+
     ui_locale: LocaleTag | None = None
     content_languages: list[LocaleTag] | None = Field(default=None, max_length=10)
     time_zone: str | None = Field(default=None, max_length=64)
@@ -96,6 +117,8 @@ class UpdatePreferencesRequest(_Patch):
     auto_translate: StrictBool | None = None
     # Merged per notification type and channel; omitted entries keep their value.
     notification_settings: NotificationMatrix | None = None
+    # null turns quiet hours off.
+    quiet_hours: QuietHours | None = None
 
 
 class UpdatePrivacySettingsRequest(_Patch):
@@ -140,6 +163,7 @@ class Preferences(_Model):
     auto_translate: bool
     # Only explicit choices are stored; clients apply defaults for missing entries.
     notification_settings: dict[str, dict[str, bool]]
+    quiet_hours: QuietHours | None = None
 
 
 class ConsentState(_Model):
