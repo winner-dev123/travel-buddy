@@ -481,3 +481,33 @@ def test_erasing_an_owner_hands_groups_over_and_keeps_billing_records(store: Liv
         t=transaction,
     )
     assert kept == 1  # billing records are kept, pseudonymized
+
+
+@pytest.mark.req("GCHAT-007", "SAFE-002")
+def test_removed_members_are_told_at_once_and_members_can_report_groups(store: LiveApp) -> None:  # noqa: F811
+    from tests.integration.test_realtime import PROTOCOL, Reader
+
+    owner, _, _ = _premium(store)
+    group = _group(store, owner)
+    member, member_id = _join(store, owner, group["id"])
+    outsider, _ = _user(store)
+    report = {"target_type": "group", "target_id": group["id"], "reason": "scam"}
+    _problem(
+        store.client.post("/v1/reports", headers=_auth(outsider), json=report), 404, "not_found"
+    )
+    assert store.client.post("/v1/reports", headers=_auth(member), json=report).status_code == 202
+
+    with store.client.websocket_connect("/v1/realtime", subprotocols=[PROTOCOL]) as ws:
+        reader = Reader(ws)
+        reader.send("auth", {"access_token": member})
+        reader.expect("auth.ok")
+        removed = store.client.delete(
+            f"/v1/groups/{group['id']}/members/{member_id}", headers=_auth(owner)
+        )
+        assert removed.status_code == 204
+        frame = reader.expect("membership.changed")["data"]
+        assert (frame["change"], frame["group_id"], frame["conversation_id"]) == (
+            "removed",
+            group["id"],
+            group["conversation_id"],
+        )

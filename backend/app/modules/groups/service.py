@@ -108,6 +108,9 @@ class GroupChat(Protocol):
     ) -> None: ...
 
 
+# Realtime delivery to users (the messaging bus, injected by main; best effort).
+Publish = Callable[[Sequence[uuid.UUID], dict[str, Any]], Awaitable[None]]
+
 # Posts an announcement as ``sender`` (permission already checked); returns the Message JSON.
 Announce = Callable[[Principal, uuid.UUID, uuid.UUID, str, bool], Awaitable[dict[str, Any]]]
 
@@ -192,6 +195,7 @@ class GroupService:
         chat: GroupChat,
         announce: Announce | None = None,
         public_site_url: str = "http://localhost:3000",
+        publish: Publish | None = None,
     ) -> None:
         self._sessionmaker = sessionmaker
         self._clock = clock
@@ -199,6 +203,35 @@ class GroupService:
         self._chat = chat
         self._announce = announce
         self._site = public_site_url.rstrip("/")
+        self._publish = publish
+
+    async def _membership_changed(
+        self,
+        group: TravelGroup,
+        user_id: uuid.UUID,
+        change: str,
+        *,
+        role: str | None = None,
+        restricted_until: datetime | None = None,
+    ) -> None:
+        """Tell the member's devices at once (docs/06 §12.2); access is already enforced."""
+        if self._publish is None or group.conversation_id is None:
+            return
+        data: dict[str, Any] = {
+            "conversation_id": str(group.conversation_id),
+            "group_id": str(group.id),
+            "user_id": str(user_id),
+            "change": change,
+            "effective_at": self._clock.now().isoformat(),
+        }
+        if role is not None:
+            data["role"] = role
+        if change in ("restricted", "unrestricted"):
+            data["restricted_until"] = restricted_until.isoformat() if restricted_until else None
+        try:
+            await self._publish([user_id], {"type": "membership.changed", "data": data})
+        except Exception:  # pragma: no cover - delivery is best effort
+            return
 
     # ─────────────────────────────── loading ───────────────────────────────
 
@@ -676,7 +709,9 @@ class GroupService:
             target.role = new_role
             await session.flush()
             [out] = await self._members_out(session, [target])
-            return out
+            group = context.group
+        await self._membership_changed(group, user_id, "role_changed", role=new_role.value)
+        return out
 
     async def remove_member(
         self, actor_id: uuid.UUID, group_id: uuid.UUID, user_id: uuid.UUID, *, reason: str | None
@@ -715,6 +750,8 @@ class GroupService:
                 event_type="group.member_removed",
                 payload={"group_id": str(group_id), "user_id": str(user_id)},
             )
+            group = context.group
+        await self._membership_changed(group, user_id, "removed")
 
     async def restrict(
         self,
@@ -756,7 +793,11 @@ class GroupService:
                 )
             await session.flush()
             [out] = await self._members_out(session, [target])
-            return out if until else None
+            group = context.group
+        await self._membership_changed(
+            group, user_id, "restricted" if until else "unrestricted", restricted_until=until
+        )
+        return out if until else None
 
     async def leave(self, user_id: uuid.UUID, group_id: uuid.UUID) -> None:
         async with self._sessionmaker() as session, session.begin():
@@ -768,6 +809,8 @@ class GroupService:
             membership.status = MembershipStatus.LEFT
             membership.removed_at = self._clock.now()
             await self._chat.remove_member(session, context.group.conversation_id, user_id)  # type: ignore[arg-type]
+            group = context.group
+        await self._membership_changed(group, user_id, "left")
 
     async def _join(
         self,
@@ -1306,6 +1349,21 @@ async def chat_policy(
         permissions=frozenset(p.value for p in granted),
         title=group.name,
     )
+
+
+async def group_evidence(
+    session: AsyncSession, group_id: uuid.UUID, reporter_id: uuid.UUID
+) -> tuple[uuid.UUID | None, dict[str, Any]] | None:
+    """Report evidence for a group (SAFE-002): only members can report it."""
+    group = await session.get(TravelGroup, group_id)
+    if group is None or not await is_group_member(session, group_id, reporter_id):
+        return None
+    return group.owner_id, {
+        "name": group.name,
+        "description": group.description,
+        "status": group.status,
+        "owner_id": str(group.owner_id) if group.owner_id else None,
+    }
 
 
 async def is_group_member(session: AsyncSession, group_id: uuid.UUID, user_id: uuid.UUID) -> bool:

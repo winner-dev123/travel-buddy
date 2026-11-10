@@ -336,6 +336,7 @@ def create_app(
         chat=GroupChatRooms(),
         announce=app.state.messaging_service.announce,
         public_site_url=settings.public_site_url,
+        publish=realtime_bus.publish,
     )
     app.state.notification_service = notifications_service.NotificationService(
         sessionmaker=database.sessionmaker, cursors=cursor_codec
@@ -634,4 +635,16 @@ def evidence_providers() -> dict[str, trust_safety_service.EvidenceProvider]:
         found = await messaging_service.message_evidence(session, target_id, reporter_id)
         return trust_safety_service.Evidence(*found) if found else None
 
-    return {"post": post, "comment": comment, "user": user, "message": message}
+    async def group(
+        session: AsyncSession, target_id: uuid.UUID, reporter_id: uuid.UUID
+    ) -> trust_safety_service.Evidence | None:
+        found = await groups_service.group_evidence(session, target_id, reporter_id)
+        return trust_safety_service.Evidence(*found) if found else None
+
+    return {
+        "post": post,
+        "comment": comment,
+        "user": user,
+        "message": message,
+        "group": group,
+    }
