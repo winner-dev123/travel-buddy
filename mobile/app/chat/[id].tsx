@@ -27,6 +27,7 @@ import {
   listPins,
   markRead,
   messageKeys,
+  muteConversation,
   pinMessage,
   POLL_CHAT_MS,
   sendMessage,
@@ -37,9 +38,15 @@ import {
 import { useAppTheme } from '@/theme/useAppTheme';
 
 /** SCR-081 Direct message thread (DM-001..013), refreshed by polling (ADR-0023). */
+const MUTE_FOR = [
+  { hours: 1, label: 'messages.muteFor.1' },
+  { hours: 8, label: 'messages.muteFor.8' },
+  { hours: 168, label: 'messages.muteFor.168' },
+] as const;
+
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const theme = useAppTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -99,6 +106,30 @@ export default function ChatScreen() {
       void queryClient.invalidateQueries({ queryKey: messageKeys.history(id) });
     },
   });
+
+  const mute = useMutation({
+    mutationFn: (hours: number | null) =>
+      muteConversation(
+        getApiClient(),
+        id,
+        hours === null ? null : new Date(Date.now() + hours * 3_600_000),
+      ),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(messageKeys.conversation(id), updated);
+      void queryClient.invalidateQueries({ queryKey: messageKeys.inbox });
+    },
+  });
+  const mutedUntil = conversation.data?.muted_until ?? null;
+  // Compared with the last fetch, not the render time (renders must stay pure).
+  const muted = mutedUntil !== null && Date.parse(mutedUntil) > conversation.dataUpdatedAt;
+  const chooseMute = () =>
+    Alert.alert(t('messages.muteTitle'), t('messages.muteBody'), [
+      ...MUTE_FOR.map(({ hours, label }) => ({
+        text: t(label),
+        onPress: () => mute.mutate(hours),
+      })),
+      { text: t('common.cancel'), style: 'cancel' as const },
+    ]);
 
   const send = useMutation({
     mutationFn: (body: string) =>
@@ -195,6 +226,41 @@ export default function ChatScreen() {
         style={styles.fill}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
+        {data ? (
+          <View style={[styles.muteBar, { borderBottomColor: theme.colors.divider }]}>
+            {muted ? (
+              <Text
+                style={[
+                  styles.fill,
+                  theme.typography.caption,
+                  { color: theme.colors.textSecondary },
+                ]}
+                testID="chat-muted"
+              >
+                {t('messages.mutedUntil', {
+                  when: new Date(mutedUntil as string).toLocaleString(i18n.language, {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  }),
+                })}
+              </Text>
+            ) : (
+              <View style={styles.fill} />
+            )}
+            <Pressable
+              onPress={() => (muted ? mute.mutate(null) : chooseMute())}
+              accessibilityRole="button"
+              accessibilityLabel={muted ? t('messages.unmute') : t('messages.mute')}
+              hitSlop={8}
+              testID="chat-mute"
+            >
+              <Text style={[theme.typography.label, { color: theme.colors.primary }]}>
+                {muted ? `🔔 ${t('messages.unmute')}` : `🔕 ${t('messages.mute')}`}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+        {mute.isError ? <Notice tone="error">{t('user.actionFailed')}</Notice> : null}
         {pinned.length > 0 ? (
           <View
             style={[styles.pins, { borderBottomColor: theme.colors.divider }]}
@@ -429,5 +495,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   pinRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  muteBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
   quote: { borderLeftWidth: 2, paddingLeft: 6, opacity: 0.9 },
 });

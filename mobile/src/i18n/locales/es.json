@@ -556,7 +556,17 @@
     "pinnedCount_other": "{{count}} fijados",
     "memberRestricted": "No puedes escribir en este grupo por ahora. Un administrador del grupo restringió tu cuenta aquí.",
     "adminsOnly": "Solo los administradores pueden escribir en este chat.",
-    "archived": "Este grupo está archivado. Su chat es de solo lectura."
+    "archived": "Este grupo está archivado. Su chat es de solo lectura.",
+    "mute": "Silenciar",
+    "unmute": "Activar sonido",
+    "muteTitle": "¿Silenciar este chat?",
+    "muteBody": "Sin notificaciones push de este chat. Los mensajes nuevos seguirán apareciendo como no leídos.",
+    "mutedUntil": "Silenciado hasta {{when}}",
+    "muteFor": {
+      "1": "Durante 1 hora",
+      "8": "Durante 8 horas",
+      "168": "Durante 1 semana"
+    }
   },
   "groups": {
     "title": "Grupos",

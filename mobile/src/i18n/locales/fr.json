@@ -556,7 +556,17 @@
     "pinnedCount_other": "{{count}} épinglés",
     "memberRestricted": "Vous ne pouvez pas écrire dans ce groupe pour le moment. Un administrateur du groupe a restreint votre compte ici.",
     "adminsOnly": "Seuls les administrateurs peuvent écrire dans ce chat.",
-    "archived": "Ce groupe est archivé. Son chat est en lecture seule."
+    "archived": "Ce groupe est archivé. Son chat est en lecture seule.",
+    "mute": "Mettre en sourdine",
+    "unmute": "Réactiver",
+    "muteTitle": "Mettre ce chat en sourdine ?",
+    "muteBody": "Plus de notifications push pour ce chat. Les nouveaux messages restent marqués comme non lus.",
+    "mutedUntil": "En sourdine jusqu'au {{when}}",
+    "muteFor": {
+      "1": "Pendant 1 heure",
+      "8": "Pendant 8 heures",
+      "168": "Pendant 1 semaine"
+    }
   },
   "groups": {
     "title": "Groupes",

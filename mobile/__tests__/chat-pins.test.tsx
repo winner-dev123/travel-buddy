@@ -253,3 +253,36 @@ it.each([
   await renderChat();
   expect(await screen.findByTestId('chat-restricted')).toHaveTextContent(text);
 });
+
+it('mutes a chat for a chosen time and unmutes it', async () => {
+  serve(conversation(), [message('m1', 1, bo, 'hi')]);
+  const muted = conversation({ muted_until: '2099-01-01T00:00:00Z' });
+  mockApi.put.mockImplementation(
+    async (path: string, options?: { body: { muted_until: string | null } }) =>
+      path === '/v1/conversations/c1/mute'
+        ? options?.body.muted_until
+          ? muted
+          : conversation()
+        : undefined,
+  );
+  await renderChat();
+  await fireEvent.press(await screen.findByTestId('chat-mute'));
+  expect(buttons.map((b) => b.text)).toEqual(['For 1 hour', 'For 8 hours', 'For 1 week', 'Cancel']);
+  const before = Date.now();
+  press('For 8 hours');
+  await waitFor(() =>
+    expect(mockApi.put).toHaveBeenCalledWith('/v1/conversations/c1/mute', expect.anything()),
+  );
+  const call = mockApi.put.mock.calls.find(([path]) => path === '/v1/conversations/c1/mute');
+  const until = Date.parse(call![1].body.muted_until);
+  expect(until - before).toBeGreaterThanOrEqual(8 * 3_600_000 - 1000);
+  expect(await screen.findByTestId('chat-muted')).toHaveTextContent(/^Muted until /);
+
+  await fireEvent.press(screen.getByTestId('chat-mute')); // now "Unmute"
+  await waitFor(() =>
+    expect(mockApi.put).toHaveBeenLastCalledWith('/v1/conversations/c1/mute', {
+      body: { muted_until: null },
+    }),
+  );
+  await waitFor(() => expect(screen.queryByTestId('chat-muted')).toBeNull());
+});

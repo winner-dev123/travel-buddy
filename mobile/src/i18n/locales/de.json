@@ -548,7 +548,17 @@
     "pinnedCount_other": "{{count}} angeheftet",
     "memberRestricted": "Du kannst in dieser Gruppe gerade nicht schreiben. Ein Gruppenadmin hat dein Konto hier eingeschränkt.",
     "adminsOnly": "Nur Admins können in diesem Chat schreiben.",
-    "archived": "Diese Gruppe ist archiviert. Ihr Chat ist schreibgeschützt."
+    "archived": "Diese Gruppe ist archiviert. Ihr Chat ist schreibgeschützt.",
+    "mute": "Stummschalten",
+    "unmute": "Ton an",
+    "muteTitle": "Diesen Chat stummschalten?",
+    "muteBody": "Keine Push-Benachrichtigungen aus diesem Chat. Neue Nachrichten werden weiter als ungelesen angezeigt.",
+    "mutedUntil": "Stumm bis {{when}}",
+    "muteFor": {
+      "1": "Für 1 Stunde",
+      "8": "Für 8 Stunden",
+      "168": "Für 1 Woche"
+    }
   },
   "groups": {
     "title": "Gruppen",

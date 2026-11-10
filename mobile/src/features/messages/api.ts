@@ -111,6 +111,17 @@ export function sendMessage(
   });
 }
 
+/** `PUT /v1/conversations/{id}/mute`: no push until `until` (null unmutes); in-app badges stay. */
+export function muteConversation(
+  client: ApiClient,
+  id: string,
+  until: Date | null,
+): Promise<Conversation> {
+  return client.put<Conversation>(`/v1/conversations/${id}/mute`, {
+    body: { muted_until: until ? until.toISOString() : null },
+  });
+}
+
 /** SCR-084: pinned messages (at most 10, newest pin first). */
 export function listPins(client: ApiClient, id: string): Promise<MessageList> {
   return client.get<MessageList>(`/v1/conversations/${id}/pins`);

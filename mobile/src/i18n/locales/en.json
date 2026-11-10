@@ -548,7 +548,17 @@
     "pinnedCount_other": "{{count}} pinned",
     "memberRestricted": "You can't post in this group for now. A group admin restricted your account here.",
     "adminsOnly": "Only admins can post in this chat.",
-    "archived": "This group is archived. Its chat is read-only."
+    "archived": "This group is archived. Its chat is read-only.",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "muteTitle": "Mute this chat?",
+    "muteBody": "No push notifications from this chat. New messages still show as unread.",
+    "mutedUntil": "Muted until {{when}}",
+    "muteFor": {
+      "1": "For 1 hour",
+      "8": "For 8 hours",
+      "168": "For 1 week"
+    }
   },
   "groups": {
     "title": "Groups",
