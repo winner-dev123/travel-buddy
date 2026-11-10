@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ApiProblem, getApiClient } from '@/api';
 import { useSessionStore } from '@/auth/sessionStore';
-import { Button, Notice } from '@/components/Form';
+import { Button, Notice, SwitchRow, TextField } from '@/components/Form';
 import { Avatar } from '@/features/feed/PostCard';
 import {
   answerTransfer,
@@ -15,6 +16,7 @@ import {
   groupKeys,
   leaveGroup,
   listMembers,
+  postAnnouncement,
 } from '@/features/groups/api';
 import { useAppTheme } from '@/theme/useAppTheme';
 
@@ -53,6 +55,23 @@ export default function GroupScreen() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: groupKeys.detail(id) });
       void queryClient.invalidateQueries({ queryKey: groupKeys.members(id) });
+    },
+  });
+  const [announcement, setAnnouncement] = useState<string | null>(null);
+  const [pinIt, setPinIt] = useState(true);
+  const announcementKey = useRef(getApiClient().newIdempotencyKey());
+  const announce = useMutation({
+    mutationFn: () =>
+      postAnnouncement(
+        getApiClient(),
+        id,
+        announcementKey.current,
+        (announcement ?? '').trim(),
+        pinIt,
+      ),
+    onSuccess: () => {
+      setAnnouncement(null);
+      announcementKey.current = getApiClient().newIdempotencyKey();
     },
   });
   const leave = useMutation({
@@ -157,6 +176,52 @@ export default function GroupScreen() {
           </View>
         ) : null}
         {answer.isError ? <Notice tone="error">{t('user.actionFailed')}</Notice> : null}
+        {permissions.includes('announcements.post') && data.status === 'active' ? (
+          announcement === null ? (
+            <Button
+              label={t('groups.announce')}
+              variant="secondary"
+              onPress={() => setAnnouncement('')}
+              testID="group-announce"
+            />
+          ) : (
+            <View style={{ gap: theme.spacing[2] }} testID="group-announce-form">
+              <TextField
+                label={t('groups.announcement')}
+                value={announcement}
+                onChangeText={setAnnouncement}
+                multiline
+                maxLength={4000}
+                testID="group-announce-body"
+              />
+              <SwitchRow
+                label={t('groups.pinAnnouncement')}
+                value={pinIt}
+                onValueChange={setPinIt}
+                testID="group-announce-pin"
+              />
+              {announce.isError ? <Notice tone="error">{t('user.actionFailed')}</Notice> : null}
+              <Button
+                label={t('groups.sendAnnouncement')}
+                onPress={() => announce.mutate()}
+                disabled={announcement.trim().length === 0}
+                busy={announce.isPending}
+                testID="group-announce-send"
+              />
+              <Button
+                label={t('common.cancel')}
+                variant="secondary"
+                onPress={() => setAnnouncement(null)}
+                testID="group-announce-cancel"
+              />
+            </View>
+          )
+        ) : null}
+        {announce.isSuccess && announcement === null ? (
+          <Notice tone="success" testID="group-announce-sent">
+            {t('groups.announcementSent')}
+          </Notice>
+        ) : null}
         {canManage && data.status === 'active' ? (
           <Button
             label={t('manageGroup.title')}

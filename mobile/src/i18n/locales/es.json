@@ -610,7 +610,12 @@
     "destination": "Destino",
     "where": "Destino: {{place}} (toca para cambiar)",
     "capacity": "Máximo de miembros (2–50)",
-    "challenges": "Desafíos"
+    "challenges": "Desafíos",
+    "announce": "Publicar un anuncio",
+    "announcement": "Anuncio",
+    "pinAnnouncement": "Fijarlo en el chat",
+    "sendAnnouncement": "Publicar anuncio",
+    "announcementSent": "Anuncio publicado en el chat del grupo."
   },
   "explore": {
     "plan": "Planifica un viaje con IA",

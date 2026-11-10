@@ -610,7 +610,12 @@
     "destination": "Destination",
     "where": "Destination : {{place}} (touchez pour changer)",
     "capacity": "Nombre maximum de membres (2–50)",
-    "challenges": "Défis"
+    "challenges": "Défis",
+    "announce": "Publier une annonce",
+    "announcement": "Annonce",
+    "pinAnnouncement": "L'épingler dans le chat",
+    "sendAnnouncement": "Publier l'annonce",
+    "announcementSent": "Annonce publiée dans le chat du groupe."
   },
   "explore": {
     "plan": "Planifier un voyage avec l'IA",

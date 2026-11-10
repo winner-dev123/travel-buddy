@@ -601,7 +601,12 @@
     "destination": "Destination",
     "where": "Destination: {{place}} (tap to change)",
     "capacity": "Maximum members (2–50)",
-    "challenges": "Challenges"
+    "challenges": "Challenges",
+    "announce": "Post an announcement",
+    "announcement": "Announcement",
+    "pinAnnouncement": "Pin it in the chat",
+    "sendAnnouncement": "Post announcement",
+    "announcementSent": "Announcement posted in the group chat."
   },
   "explore": {
     "plan": "Plan a trip with AI",

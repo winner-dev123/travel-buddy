@@ -235,3 +235,18 @@ export function restrictMember(
 export function liftRestriction(client: ApiClient, groupId: string, userId: string): Promise<void> {
   return client.delete(`/v1/groups/${groupId}/members/${userId}/restriction`);
 }
+
+/** `POST /v1/groups/{id}/announcements` (`announcements.post`): highlighted in the group chat
+ * and optionally pinned. One client message id per announcement makes retries safe. */
+export async function postAnnouncement(
+  client: ApiClient,
+  groupId: string,
+  clientMessageId: string,
+  body: string,
+  pin: boolean,
+): Promise<void> {
+  await client.post(`/v1/groups/${groupId}/announcements`, {
+    idempotencyKey: clientMessageId,
+    body: { client_message_id: clientMessageId, body, pin },
+  });
+}

@@ -346,3 +346,31 @@ describe('restricting members', () => {
     jest.restoreAllMocks();
   });
 });
+
+describe('announcements', () => {
+  it('lets admins post a pinned announcement once', async () => {
+    useSessionStore.getState().setSignedIn(me('bo'));
+    serve(group('admin', ['announcements.post', 'members.remove']));
+    mockApi.post.mockResolvedValue({});
+    await renderUi(<GroupScreen />);
+    await fireEvent.press(await screen.findByTestId('group-announce'));
+    expect(screen.getByTestId('group-announce-send')).toBeDisabled();
+    await fireEvent.changeText(screen.getByTestId('group-announce-body'), 'Dinner moved to 9pm');
+    await fireEvent.press(screen.getByTestId('group-announce-send'));
+    await waitFor(() =>
+      expect(mockApi.post).toHaveBeenCalledWith('/v1/groups/g1/announcements', {
+        idempotencyKey: 'key-1',
+        body: { client_message_id: 'key-1', body: 'Dinner moved to 9pm', pin: true },
+      }),
+    );
+    expect(await screen.findByTestId('group-announce-sent')).toBeTruthy();
+  });
+
+  it('offers no announcements to members', async () => {
+    useSessionStore.getState().setSignedIn(me('dee'));
+    serve(group('member', []));
+    await renderUi(<GroupScreen />);
+    await screen.findByTestId('group-summary');
+    expect(screen.queryByTestId('group-announce')).toBeNull();
+  });
+});

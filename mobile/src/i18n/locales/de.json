@@ -601,7 +601,12 @@
     "destination": "Reiseziel",
     "where": "Reiseziel: {{place}} (zum Ändern tippen)",
     "capacity": "Maximale Mitgliederzahl (2–50)",
-    "challenges": "Challenges"
+    "challenges": "Challenges",
+    "announce": "Ankündigung posten",
+    "announcement": "Ankündigung",
+    "pinAnnouncement": "Im Chat anheften",
+    "sendAnnouncement": "Ankündigung posten",
+    "announcementSent": "Ankündigung im Gruppenchat gepostet."
   },
   "explore": {
     "plan": "Reise mit KI planen",
