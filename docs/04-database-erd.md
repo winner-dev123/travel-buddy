@@ -205,7 +205,7 @@ erDiagram
 | created_at, updated_at | | |
 
 ### destination_boundaries (PostGIS)
-`destination_id PK FK CASCADE`, `boundary geography(MultiPolygon, 4326)` (GiST), `source` (license/provenance key, e.g. `approximate-bbox`, `osm:<relation>`), `updated_at`. Used only for `ST_Covers` point resolution (LOC-005), so databases without PostGIS still run everything else. Launch rows are approximate bounding boxes (docs/09 BL-1.05).
+`destination_id PK FK CASCADE`, `boundary geography(MultiPolygon, 4326)` (GiST), `source` (license/provenance key, e.g. `approximate-bbox`, `osm:<relation>`), `updated_at`. Used only for `ST_Covers` point resolution (LOC-005), so databases without PostGIS still run everything else. Launch rows start as approximate bounding boxes; licensed OSM relation polygons replace them (ADR-0027) and re-seeding never overwrites a polygon from another source.
 
 ### destination_localizations
 `destination_id FK CASCADE`, `locale`, `name`, `alt_names text[]`, `tagline text NULL` (≤ 140, editorial one-liner for directory cards), PK `(destination_id, locale)`. Trigram GIN on `unaccent(lower(name))` for search.

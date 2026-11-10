@@ -50,8 +50,21 @@ licensed polygons where edge accuracy matters (nearby resolution near borders).
 python -m app.modules.destinations.seeding --file path/to/catalog.json
 ```
 
-The loader upserts by slug and replaces localizations and the boundary: re-running it after a
-copy fix is safe.
+The loader upserts by slug and replaces localizations and the approximate boundary: re-running
+it after a copy fix is safe, and it never overwrites a licensed polygon.
+
+Then load the city's licensed boundary (ADR-0027). Find the city's OSM administrative relation
+(osm.org → search the city → "Relation"), check on the map that it covers the city as people
+understand it, add it to the entry as `osm_relation_id` and run:
+
+```bash
+python -m app.modules.destinations.boundary_ingestion --destination country/city --relation <id>
+# or every entry that names one:
+python -m app.modules.destinations.boundary_ingestion --all
+```
+
+Do the same for neighbourhoods offered in discovery. Afterwards, resolve a few points near the
+edges with `GET /v1/destinations/resolve` to confirm.
 
 ### 3.2 Places
 

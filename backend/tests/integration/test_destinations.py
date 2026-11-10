@@ -6,6 +6,7 @@ Point resolution needs PostGIS (CI); those tests skip on databases without it.
 from __future__ import annotations
 
 import asyncio
+import uuid
 from datetime import timedelta
 from typing import Any
 
@@ -13,6 +14,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.modules.destinations.boundaries import multipolygon_wkt, store_boundary
 from app.modules.destinations.seeding import SeedResult, load_catalog, read_document
 from tests.contract_schemas import assert_matches_contract
 from tests.integration.conftest import LiveApp, db_scalar
@@ -351,6 +353,56 @@ def test_coarse_readings_resolve_to_the_city(catalog: str, live_app: LiveApp) ->
         "/v1/destinations/resolve", params={**params, "near_accuracy_m": 8000}, headers=_auth(token)
     )
     assert _ok(coarse, "Destination")["path"] == "brazil/rio-de-janeiro"
+
+
+@pytest.mark.req("DEST-005", "LOC-005")
+def test_licensed_osm_boundaries_replace_the_box_and_survive_reseeding(
+    catalog: str, live_app: LiveApp
+) -> None:
+    if not _postgis(catalog):
+        pytest.skip("PostGIS not installed on this PostgreSQL (runs in CI)")
+    lookup = _get(live_app, "/v1/destinations/lookup", path="iceland/reykjavik")
+    reykjavik = uuid.UUID(_ok(lookup, "Destination")["id"])
+    # A western half of the old box, as an OSM relation would describe the real city limits.
+    west = [(-22.05, 64.07), (-21.87, 64.07), (-21.87, 64.18), (-22.05, 64.18), (-22.05, 64.07)]
+
+    async def store() -> None:
+        engine = create_async_engine(catalog)
+        try:
+            async with async_sessionmaker(engine)() as session, session.begin():
+                await store_boundary(
+                    session, reykjavik, multipolygon_wkt([west], []), source="osm:2580605"
+                )
+        finally:
+            await engine.dispose()
+
+    try:
+        asyncio.run(store())
+        token = _token(live_app)
+
+        def resolved(near: str) -> str:
+            response = live_app.client.get(
+                "/v1/destinations/resolve", params={"near": near}, headers=_auth(token)
+            )
+            return str(_ok(response, "Destination")["path"])
+
+        assert resolved("64.12,-21.95") == "iceland/reykjavik"
+        assert resolved("64.12,-21.75") == "iceland"  # inside the old box, outside the city
+        _seed(catalog)  # re-seeding keeps the licensed polygon
+        source = db_scalar(
+            catalog,
+            "SELECT source FROM destination_boundaries WHERE destination_id = :d",
+            d=reykjavik,
+        )
+        assert source == "osm:2580605"
+        assert resolved("64.12,-21.75") == "iceland"
+    finally:  # back to the seeded box for the other tests
+        db_scalar(
+            catalog,
+            "DELETE FROM destination_boundaries WHERE destination_id = :d RETURNING 1",
+            d=reykjavik,
+        )
+        _seed(catalog)
 
 
 def test_points_outside_the_catalog_are_unresolvable(catalog: str, live_app: LiveApp) -> None:

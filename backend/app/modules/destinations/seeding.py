@@ -1,7 +1,8 @@
 """Idempotent destination catalog loader (BL-1.05).
 
 ``python -m app.modules.destinations.seeding [--file PATH]`` upserts every destination by slug,
-replaces its localizations and, where PostGIS is available, its boundary. Safe to re-run.
+replaces its localizations and, where PostGIS is available, its approximate boundary (licensed
+OSM polygons loaded by ``boundary_ingestion`` are kept). Safe to re-run.
 """
 
 from __future__ import annotations
@@ -89,6 +90,8 @@ async def load_catalog(session: AsyncSession, document: dict[str, Any]) -> SeedR
             _FEATURED_BONUS if row.is_featured else 0.0
         )
         row.status = "active"
+        # Licensed polygons loaded by boundary_ingestion survive re-seeding (ADR-0027).
+        row.osm_relation_id = entry.get("osm_relation_id")
         await session.flush()
 
         await session.execute(
@@ -115,6 +118,7 @@ async def load_catalog(session: AsyncSession, document: dict[str, Any]) -> SeedR
                     ON CONFLICT (destination_id) DO UPDATE
                        SET boundary = EXCLUDED.boundary, source = EXCLUDED.source,
                            updated_at = now()
+                     WHERE destination_boundaries.source = EXCLUDED.source
                     """
                 ),
                 {"id": row.id, "wkt": f"SRID=4326;{box.as_multipolygon_wkt()}", "source": source},

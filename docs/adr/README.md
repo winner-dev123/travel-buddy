@@ -32,5 +32,6 @@ ADRs use the format **Context → Decision → Consequences → Alternatives**. 
 | [0024](0024-ai-provider-and-cost-controls.md) | AI provider port with a Claude adapter (official SDK, structured outputs), asynchronous generations, quotas and database-backed spend/provider breakers | AI | Accepted |
 | [0025](0025-place-data-from-openstreetmap.md) | Place data from OpenStreetMap (ODbL) through a PlaceSource port, stored as lat/lng with bbox + haversine nearby search | Destinations / AI | Accepted |
 | [0026](0026-offline-packages-signed-manifests.md) | Offline packages: prebuilt, Ed25519-signed manifests (key in client-config), per-device licenses with quota, token download URLs redirecting to storage | Guides / Mobile | Accepted |
+| [0027](0027-destination-boundaries-from-openstreetmap.md) | Destination boundaries from OSM administrative relations (ODbL), assembled and repaired in PostGIS, loaded by an operator command; source recorded per polygon | Destinations | Accepted |
 
 Template: [`template.md`](template.md).
