@@ -10,14 +10,15 @@ Rules on sending, checked in this order:
 - accounts younger than 7 days send at most 5 a day (``429``), on top of the route's
   ``contact`` rate limit.
 
-"Shared context" currently means the two travellers are exploring the same destination (browse
-or upcoming); groups and discovery add their own contexts when they land.
+"Shared context" means the two travellers discover the same city, explore the same destination
+(browse or upcoming), or share an active travel group; higher-layer features register their own
+checks with ``add_shared_context`` (wired in main.py).
 """
 
 from __future__ import annotations
 
 import uuid
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -98,6 +99,17 @@ async def _expire_stale(session: AsyncSession, a: uuid.UUID, b: uuid.UUID) -> No
     )
 
 
+SharedContext = Callable[[AsyncSession, uuid.UUID, uuid.UUID], Awaitable[bool]]
+_EXTRA_CONTEXTS: list[SharedContext] = []
+
+
+def add_shared_context(check: SharedContext) -> None:
+    """Let a higher-layer feature (travel groups) count as a shared context (CONN-004). The
+    module boundaries forbid importing it here, so main.py registers it; idempotent."""
+    if check not in _EXTRA_CONTEXTS:
+        _EXTRA_CONTEXTS.append(check)
+
+
 async def _shared_context(session: AsyncSession, a: uuid.UUID, b: uuid.UUID) -> bool:
     a_discovery = await location.active_discovery_destination(session, a)
     if a_discovery is not None and a_discovery == await location.active_discovery_destination(
@@ -108,7 +120,12 @@ async def _shared_context(session: AsyncSession, a: uuid.UUID, b: uuid.UUID) -> 
     b_browse, b_upcoming = await location.selected_destinations(session, b)
     mine = {d for d in [a_browse, *a_upcoming] if d is not None}
     theirs = {d for d in [b_browse, *b_upcoming] if d is not None}
-    return bool(mine & theirs)
+    if mine & theirs:
+        return True
+    for check in _EXTRA_CONTEXTS:
+        if await check(session, a, b):
+            return True
+    return False
 
 
 async def _facts(

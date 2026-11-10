@@ -559,3 +559,33 @@ def test_owner_and_admins_hear_about_the_lapse_members_do_not(store: LiveApp) ->
     assert _event(store, owner, transaction, "refunded") == "processed"
     _watch(store)
     assert len(notices(owner)) == 2
+
+
+@pytest.mark.req("CONN-004")
+def test_group_members_share_a_context_for_connection_requests(store: LiveApp) -> None:  # noqa: F811
+    owner, owner_id, _ = _premium(store)
+    group = _group(store, owner)
+    member, member_id = _join(store, owner, group["id"])
+    stranger, _ = _user(store)
+    store.client.patch(
+        "/v1/users/me/privacy",
+        headers=_auth(owner),
+        json={"connection_requests_from": "shared_context"},
+    )
+
+    def ask(token: str) -> Any:
+        return store.client.post(
+            "/v1/connections/requests",
+            headers={**_auth(token), "Idempotency-Key": str(uuid.uuid4())},
+            json={"recipient_id": owner_id, "context": "group", "context_ref_id": group["id"]},
+        )
+
+    _problem(ask(stranger), 403, "connection_request_not_allowed")  # no group in common
+    assert ask(member).status_code == 201, "fellow members may ask"
+
+    # Someone who left the group no longer shares it.
+    leaver, leaver_id = _join(store, owner, group["id"])
+    left = store.client.post(f"/v1/groups/{group['id']}/leave", headers=_auth(leaver))
+    assert left.status_code == 204, left.text
+    _problem(ask(leaver), 403, "connection_request_not_allowed")
+    del member_id, leaver_id

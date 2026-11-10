@@ -1399,6 +1399,30 @@ class MemberAccess:
     restricted: bool
 
 
+async def share_active_group(session: AsyncSession, a: uuid.UUID, b: uuid.UUID) -> bool:
+    """Both are current members (active or restricted) of the same active group: a shared
+    context for connection requests (CONN-004). Removed and departed members don't count."""
+    mine = (
+        select(GroupMembership.group_id)
+        .join(TravelGroup, TravelGroup.id == GroupMembership.group_id)
+        .where(
+            GroupMembership.user_id == a,
+            GroupMembership.status.in_(_MEMBER),
+            TravelGroup.status == GroupStatus.ACTIVE,
+        )
+    )
+    shared = await session.scalar(
+        select(GroupMembership.group_id)
+        .where(
+            GroupMembership.user_id == b,
+            GroupMembership.status.in_(_MEMBER),
+            GroupMembership.group_id.in_(mine),
+        )
+        .limit(1)
+    )
+    return shared is not None
+
+
 async def member_access(
     session: AsyncSession, group_id: uuid.UUID, user_id: uuid.UUID, *, now: datetime
 ) -> MemberAccess | None:

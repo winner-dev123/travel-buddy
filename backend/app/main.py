@@ -309,6 +309,8 @@ def create_app(
         sessionmaker=database.sessionmaker
     )
     app.state.discovery_service = DiscoveryService(sessionmaker=database.sessionmaker, clock=clock)
+    # Group co-members share a context for connection requests (groups sit above connections).
+    connections_service.add_shared_context(groups_service.share_active_group)
     app.state.connection_service = connections_service.ConnectionService(
         sessionmaker=database.sessionmaker, cursors=cursor_codec, clock=clock
     )
