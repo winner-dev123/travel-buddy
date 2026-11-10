@@ -1,0 +1,13 @@
+# Files `railway up` does not upload (ADR-0028). The image is built from the Dockerfile.
+.venv
+**/__pycache__
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+tests
+load
+.env
+.env.*
+!.env.example

@@ -1,0 +1,53 @@
+name: deploy-staging
+
+# Deploys the backend to the Railway staging services (ADR-0028) after the backend workflow passes
+# on main. The api service runs `alembic upgrade head` as its pre-deploy command, then the worker
+# is redeployed from the same commit. Needs the RAILWAY_TOKEN secret: a Railway PROJECT token for
+# the travel-buddy project's environment (scoped to that project only); skipped until it is set.
+
+on:
+  workflow_run:
+    workflows: [backend]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: railway
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - name: Check the deploy token
+        id: token
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "::notice::RAILWAY_TOKEN is not set yet; skipping the deploy (deploy with 'railway up' meanwhile)."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.token.outputs.enabled == 'true'
+        run: npm install -g @railway/cli@5.71.0
+      - name: Deploy api (migrations run before it starts)
+        if: steps.token.outputs.enabled == 'true'
+        run: railway up --service api --ci
+      - name: Deploy worker
+        if: steps.token.outputs.enabled == 'true'
+        run: railway up --service worker --ci

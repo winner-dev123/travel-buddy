@@ -12,7 +12,7 @@ on:
       api_base_url:
         description: Platform API base URL
         required: true
-        default: https://travel-buddy-api-jet.vercel.app
+        default: https://api-production-9dfc555a.up.railway.app
       identity_provider:
         description: Sign-in provider
         required: true

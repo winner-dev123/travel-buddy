@@ -94,7 +94,8 @@ uvicorn app.main:create_app --factory --reload
 
 | Environment | URL | Notes |
 |---|---|---|
-| Staging API | https://travel-buddy-api-jet.vercel.app | Vercel serverless (`iad1`), `APP_ENV=staging`, Supabase via the transaction pooler, Supabase Auth as trusted issuer ([ADR-0019](../docs/adr/0019-backend-api-hosting.md)) |
+| Staging API | https://api-production-9dfc555a.up.railway.app | Railway project `travel-buddy` ([ADR-0028](../docs/adr/0028-firebase-platform-and-railway-hosting.md)): services `api` (pre-deploy `alembic upgrade head`, health `/health/live`) and `worker` (`python -m app.worker`), region `us-east4-eqdc4a`, `APP_ENV=staging`. Database: Railway PostGIS **temporarily**, until Cloud SQL billing is on. Sign-in: Supabase Auth until Firebase is added. Deploy with `railway up --service api` / `--service worker` from `backend/` |
+| Old staging API | https://travel-buddy-api-jet.vercel.app | Vercel serverless (ADR-0019), no background jobs; replaced by Railway, kept until the cutover is confirmed |
 | Database | Supabase project `dmvhbgxxxilcniadoqvb` (`us-east-1`) | Migrations `0001`–`0004` applied. RLS lockdown verified. Data API disabled ([ADR-0018](../docs/adr/0018-supabase-managed-postgres.md)) |
 | Identity | Supabase Auth, same project | Trusted issuer in staging ([ADR-0020](../docs/adr/0020-supabase-auth-identity-provider.md)). Dashboard checklist below |
 
