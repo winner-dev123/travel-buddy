@@ -2712,6 +2712,28 @@ export interface paths {
         patch: operations["updateTrip"];
         trace?: never;
     };
+    "/v1/trips/{tripId}/collaborators/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Share a trip with a connection or a member of its group, or change their role (owner)
+         * @description The person must be one of the owner's connections or a member of the trip's group, and neither
+         *     may have blocked the other. At most 20 collaborators. Editors change the plan; viewers read it.
+         */
+        put: operations["setTripCollaborator"];
+        post?: never;
+        /** Stop sharing a trip with someone (owner) or leave a shared trip (the collaborator) */
+        delete: operations["removeTripCollaborator"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/trips/{tripId}/days": {
         parameters: {
             query?: never;
@@ -11652,6 +11674,75 @@ export interface operations {
             404: components["responses"]["NotFound"];
             412: components["responses"]["PreconditionFailed"];
             428: components["responses"]["PreconditionRequired"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    setTripCollaborator: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tripId: components["parameters"]["TripId"];
+                userId: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    role: "editor" | "viewer";
+                };
+            };
+        };
+        responses: {
+            /** @description The trip with its collaborators. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Trip"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            /** @description `forbidden` (not the owner) or `connection_required` (not a connection or group member). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    removeTripCollaborator: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tripId: components["parameters"]["TripId"];
+                userId: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
             default: components["responses"]["Problem"];
         };
     };

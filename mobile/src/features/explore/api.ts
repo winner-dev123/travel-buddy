@@ -1,5 +1,5 @@
 import type { ApiClient } from '@/api';
-import type { DestinationSummary, Page } from '@/features/feed/types';
+import type { DestinationSummary, Page, UserSummary } from '@/features/feed/types';
 
 export type PlaceCategory =
   | 'attraction'
@@ -129,8 +129,15 @@ export interface Trip {
   origin: 'manual' | 'ai_generated' | 'ai_assisted';
   destinations: { destination: DestinationSummary }[];
   days: { id: string; day_index: number; date: string | null; items: TripItem[] }[];
+  owner: UserSummary;
+  visibility: TripVisibility;
+  group_id: string | null;
+  collaborators: { user: UserSummary; role: CollaboratorRole }[];
   version: number;
 }
+
+export type TripVisibility = 'private' | 'connections' | 'group' | 'public';
+export type CollaboratorRole = 'editor' | 'viewer';
 
 export interface TripSummary {
   id: string;
@@ -243,6 +250,32 @@ export interface ReplanTrip {
   instruction: string;
   base_version: number;
   day_indexes?: number[];
+}
+
+export function setTripVisibility(
+  client: ApiClient,
+  tripId: string,
+  version: number,
+  visibility: TripVisibility,
+): Promise<Trip> {
+  return client.patch<Trip>(`/v1/trips/${tripId}`, {
+    body: { visibility },
+    ifMatchVersion: version,
+  });
+}
+
+/** Share with a connection or a member of the trip's group, or change their role (TRIP-005). */
+export function shareTrip(
+  client: ApiClient,
+  tripId: string,
+  userId: string,
+  role: CollaboratorRole,
+): Promise<Trip> {
+  return client.put<Trip>(`/v1/trips/${tripId}/collaborators/${userId}`, { body: { role } });
+}
+
+export function unshareTrip(client: ApiClient, tripId: string, userId: string): Promise<void> {
+  return client.delete(`/v1/trips/${tripId}/collaborators/${userId}`);
 }
 
 export function replanTrip(

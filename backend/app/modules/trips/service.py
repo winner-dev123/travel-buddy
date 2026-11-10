@@ -1,8 +1,9 @@
 """Trips and itineraries (BL-4.04; TRIP-001, TRIP-004, TRIP-005).
 
 - A trip belongs to its owner; collaborators are editors or viewers. Private trips are visible to
-  them only, public trips to every signed-in traveller (``connections`` and ``group`` visibility
-  arrive with their modules and answer ``feature_disabled`` until then).
+  them only, ``connections`` trips also to the owner's connections, ``group`` trips to members of
+  the trip's group (the owner must belong to it), public trips to every signed-in traveller.
+  Anyone the owner blocked, or who blocked the owner, sees none of them.
 - Every change bumps ``version``; REST edits need ``If-Match`` (``428``/``412``).
 - Items keep a fractional ``sort_order`` (one row per move) and tombstones (``deleted_at``) so an
   offline client can sync. ``POST /sync`` applies a batch: for each entity, the newer write wins;
@@ -17,7 +18,7 @@ from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 
 from pydantic import ValidationError
 from sqlalchemy import delete, func, or_, select, update
@@ -28,6 +29,7 @@ from app.core.pagination import CursorCodec, PageInfo
 from app.core.security.principal import Principal
 from app.core.time import Clock
 from app.modules.destinations import service as destinations
+from app.modules.identity import service as identity
 from app.modules.platform import service as platform
 from app.modules.profiles import service as profiles
 from app.modules.trips.models import (
@@ -57,11 +59,13 @@ from app.modules.trips.schemas import (
     TripSummaryPage,
     UpdateTripRequest,
 )
+from app.modules.trust_safety import service as trust_safety
 
 CREATE_ROUTE = "POST /v1/trips"
 ConflictReason = Literal["modified_on_server", "deleted_on_server", "invalid"]
 SYNC_ROUTE = "POST /v1/trips/{id}/sync"
-SUPPORTED_VISIBILITY = ("private", "public")
+SUPPORTED_VISIBILITY = ("private", "connections", "group", "public")
+MAX_COLLABORATORS = 20
 MAX_DAYS = 90
 
 
@@ -88,7 +92,19 @@ def _check_version(current: int, if_match: str | None) -> None:
 
 def _visibility(value: str | None) -> None:
     if value is not None and value not in SUPPORTED_VISIBILITY:
-        raise AppError(ErrorCode.FEATURE_DISABLED, "Trips can be private or public for now.")
+        raise AppError(ErrorCode.FEATURE_DISABLED, "That visibility isn't available.")
+
+
+class TripAudience(Protocol):
+    """Who else may read a trip, answered by connections and groups (same layer, injected)."""
+
+    async def connected(
+        self, session: AsyncSession, owner_id: uuid.UUID, viewer_id: uuid.UUID
+    ) -> bool: ...
+
+    async def in_group(
+        self, session: AsyncSession, group_id: uuid.UUID, user_id: uuid.UUID
+    ) -> bool: ...
 
 
 def _hhmm(value: str | None) -> time | None:
@@ -159,11 +175,13 @@ class TripService:
         cursors: CursorCodec,
         clock: Clock,
         plans: PlanLoader | None = None,
+        audience: TripAudience | None = None,
     ) -> None:
         self._sessionmaker = sessionmaker
         self._cursors = cursors
         self._clock = clock
         self._plans = plans
+        self._audience = audience
 
     # ─────────────────────────────── access ───────────────────────────────
 
@@ -186,11 +204,42 @@ class TripService:
                     TripCollaborator.trip_id == trip_id, TripCollaborator.user_id == user_id
                 )
             )
-        if role is None and trip.visibility != "public":
+        if role is None and not await self._may_read(session, trip, user_id):
             raise _not_found()
         if write and role not in ("owner", "editor"):
             raise AppError(ErrorCode.FORBIDDEN, "You can view this trip but not edit it.")
         return trip, role
+
+    async def _may_read(self, session: AsyncSession, trip: Trip, user_id: uuid.UUID) -> bool:
+        """For someone who is neither owner nor collaborator (TRIP-005)."""
+        if trip.visibility == "private" or await trust_safety.is_blocked(
+            session, trip.owner_id, user_id
+        ):
+            return False
+        if trip.visibility == "public":
+            return True
+        if self._audience is None:
+            return False
+        if trip.visibility == "connections":
+            return await self._audience.connected(session, trip.owner_id, user_id)
+        if trip.visibility == "group" and trip.group_id is not None:
+            return await self._audience.in_group(session, trip.group_id, user_id)
+        return False
+
+    async def _check_group(
+        self,
+        session: AsyncSession,
+        owner_id: uuid.UUID,
+        group_id: uuid.UUID | None,
+        visibility: str,
+    ) -> None:
+        """A group trip names a group its owner belongs to."""
+        if visibility == "group" and group_id is None:
+            raise _invalid("/group_id", "Pick the group that can see this trip.")
+        if group_id is not None and (
+            self._audience is None or not await self._audience.in_group(session, group_id, owner_id)
+        ):
+            raise _invalid("/group_id", "You can only share a trip with a group you belong to.")
 
     def _touch(self, trip: Trip) -> None:
         trip.version += 1
@@ -334,8 +383,6 @@ class TripService:
         self, principal: Principal, request: CreateTripRequest, *, idempotency_key: uuid.UUID
     ) -> TripOut:
         _visibility(request.visibility)
-        if request.group_id is not None:
-            raise AppError(ErrorCode.FEATURE_DISABLED, "Group trips arrive later.")
         if (request.end_date - request.start_date).days >= MAX_DAYS:
             raise _invalid("/end_date", f"Trips can last up to {MAX_DAYS} days.")
         async with self._sessionmaker() as session, session.begin():
@@ -348,12 +395,16 @@ class TripService:
             )
             if replay is not None:
                 return TripOut.model_validate(replay.body)
+            await self._check_group(
+                session, principal.user_id, request.group_id, request.visibility
+            )
             trip = Trip(
                 owner_id=principal.user_id,
                 title=request.title.strip(),
                 start_date=request.start_date,
                 end_date=request.end_date,
                 visibility=request.visibility,
+                group_id=request.group_id,
                 updated_at=self._clock.now(),
             )
             session.add(trip)
@@ -494,12 +545,18 @@ class TripService:
     ) -> None:
         changes = request.model_dump(exclude_unset=True)
         _visibility(changes.get("visibility"))
-        if changes.get("group_id") is not None:
-            raise AppError(ErrorCode.FEATURE_DISABLED, "Group trips arrive later.")
+        await self._check_group(
+            session,
+            trip.owner_id,
+            changes.get("group_id", trip.group_id),
+            changes.get("visibility", trip.visibility),
+        )
         start = changes.get("start_date", trip.start_date)
         end = changes.get("end_date", trip.end_date)
         if start > end:
             raise _invalid("/end_date", "The end date must be on or after the start date.")
+        if "group_id" in changes:
+            trip.group_id = changes["group_id"]
         for field in ("title", "start_date", "end_date", "visibility", "status"):
             if field in changes and changes[field] is not None:
                 setattr(trip, field, changes[field].strip() if field == "title" else changes[field])
@@ -512,6 +569,75 @@ class TripService:
             if role != "owner":
                 raise AppError(ErrorCode.FORBIDDEN, "Only the owner can delete the trip.")
             trip.deleted_at = self._clock.now()
+            self._touch(trip)
+
+    # ─────────────────────────────── collaborators ───────────────────────────────
+
+    async def set_collaborator(
+        self, user_id: uuid.UUID, trip_id: uuid.UUID, member_id: uuid.UUID, role: str
+    ) -> TripOut:
+        """Share with a connection or a member of the trip's group, or change their role
+        (TRIP-005). Owner only; at most ``MAX_COLLABORATORS``."""
+        async with self._sessionmaker() as session, session.begin():
+            trip, my_role = await self._load(session, trip_id, user_id, lock=True)
+            if my_role != "owner":
+                raise AppError(ErrorCode.FORBIDDEN, "Only the owner can share the trip.")
+            if member_id == trip.owner_id:
+                raise _invalid("/user_id", "You already own this trip.")
+            if not await identity.is_active(session, member_id) or await trust_safety.is_blocked(
+                session, trip.owner_id, member_id
+            ):
+                raise AppError(ErrorCode.NOT_FOUND, "User not found.")
+            existing = await session.get(TripCollaborator, (trip.id, member_id))
+            if existing is None:
+                allowed = self._audience is not None and (
+                    await self._audience.connected(session, trip.owner_id, member_id)
+                    or (
+                        trip.group_id is not None
+                        and await self._audience.in_group(session, trip.group_id, member_id)
+                    )
+                )
+                if not allowed:
+                    raise AppError(
+                        ErrorCode.CONNECTION_REQUIRED,
+                        "Share trips with your connections or the members of the trip's group.",
+                    )
+                count = await session.scalar(
+                    select(func.count())
+                    .select_from(TripCollaborator)
+                    .where(TripCollaborator.trip_id == trip.id)
+                )
+                if int(count or 0) >= MAX_COLLABORATORS:
+                    raise AppError(
+                        ErrorCode.CONFLICT, f"A trip can have up to {MAX_COLLABORATORS} people."
+                    )
+                session.add(
+                    TripCollaborator(
+                        trip_id=trip.id,
+                        user_id=member_id,
+                        role=role,
+                        added_by=user_id,
+                        added_at=self._clock.now(),
+                    )
+                )
+            else:
+                existing.role = role
+            self._touch(trip)
+            await session.flush()
+            return await self._out(session, trip)
+
+    async def remove_collaborator(
+        self, user_id: uuid.UUID, trip_id: uuid.UUID, member_id: uuid.UUID
+    ) -> None:
+        """The owner stops sharing, or a collaborator leaves (TRIP-005)."""
+        async with self._sessionmaker() as session, session.begin():
+            trip, _ = await self._load(session, trip_id, user_id, lock=True)
+            if user_id not in (trip.owner_id, member_id):
+                raise AppError(ErrorCode.FORBIDDEN, "Only the owner can remove people.")
+            existing = await session.get(TripCollaborator, (trip.id, member_id))
+            if existing is None:
+                raise AppError(ErrorCode.NOT_FOUND, "This person isn't on the trip.")
+            await session.delete(existing)
             self._touch(trip)
 
     # ─────────────────────────────── days ───────────────────────────────

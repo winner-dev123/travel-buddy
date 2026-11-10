@@ -182,6 +182,10 @@ const trip: Trip = {
   status: 'planning',
   origin: 'ai_assisted',
   destinations: [{ destination: lisbon }],
+  owner: { id: 'u1', handle: 'ana', display_name: 'Ana', avatar: null },
+  visibility: 'private',
+  group_id: null,
+  collaborators: [],
   days: [
     {
       id: 'day-1',

@@ -14,6 +14,7 @@ from app.core.security.principal import Principal
 from app.modules.trips.saved_places import SavedPlaceService
 from app.modules.trips.schemas import (
     ApplyItineraryRequest,
+    CollaboratorRequest,
     CreateTripRequest,
     DayInput,
     ItemInput,
@@ -97,6 +98,25 @@ async def delete_trip(
     trip_id: uuid.UUID, request: Request, principal: CurrentPrincipal
 ) -> Response:
     await _service(request).delete(principal.user_id, trip_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put("/{trip_id}/collaborators/{user_id}", response_model=TripOut)
+async def set_trip_collaborator(
+    trip_id: uuid.UUID,
+    user_id: uuid.UUID,
+    body: CollaboratorRequest,
+    request: Request,
+    principal: CurrentPrincipal,
+) -> TripOut:
+    return await _service(request).set_collaborator(principal.user_id, trip_id, user_id, body.role)
+
+
+@router.delete("/{trip_id}/collaborators/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_trip_collaborator(
+    trip_id: uuid.UUID, user_id: uuid.UUID, request: Request, principal: CurrentPrincipal
+) -> Response:
+    await _service(request).remove_collaborator(principal.user_id, trip_id, user_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

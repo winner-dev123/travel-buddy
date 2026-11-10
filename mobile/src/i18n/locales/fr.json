@@ -639,7 +639,24 @@
     "replanDays": "Jours à modifier (aucun sélectionné : tous)",
     "replanSubmit": "Proposer des changements",
     "replanConflict": "Ce voyage a changé entre-temps. Rechargez-le et réessayez.",
-    "dayShort": "Jour {{number}}"
+    "dayShort": "Jour {{number}}",
+    "shareTitle": "Qui peut voir ce voyage",
+    "visibility": {
+      "private": "Moi et les personnes ajoutées",
+      "connections": "Mes connexions",
+      "group": "Le groupe du voyage",
+      "public": "Tout le monde"
+    },
+    "roles": {
+      "editor": "Peut modifier",
+      "viewer": "Peut voir"
+    },
+    "remove": "Retirer",
+    "removePerson": "Retirer {{name}}",
+    "addPeople": "Ajouter des connexions",
+    "add": "Ajouter",
+    "leave": "Quitter ce voyage",
+    "shareStale": "Le voyage a changé entre-temps. Réessayez."
   },
   "guides": {
     "title": "Guides",

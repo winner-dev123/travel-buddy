@@ -632,7 +632,24 @@
     "replanDays": "Zu ändernde Tage (keiner ausgewählt: alle)",
     "replanSubmit": "Änderungen vorschlagen",
     "replanConflict": "Diese Reise wurde inzwischen geändert. Lade sie neu und versuch es erneut.",
-    "dayShort": "Tag {{number}}"
+    "dayShort": "Tag {{number}}",
+    "shareTitle": "Wer diese Reise sehen kann",
+    "visibility": {
+      "private": "Nur ich und hinzugefügte Personen",
+      "connections": "Meine Kontakte",
+      "group": "Die Gruppe der Reise",
+      "public": "Alle"
+    },
+    "roles": {
+      "editor": "Darf bearbeiten",
+      "viewer": "Darf ansehen"
+    },
+    "remove": "Entfernen",
+    "removePerson": "{{name}} entfernen",
+    "addPeople": "Kontakte hinzufügen",
+    "add": "Hinzufügen",
+    "leave": "Reise verlassen",
+    "shareStale": "Die Reise hat sich inzwischen geändert. Versuch es noch einmal."
   },
   "guides": {
     "title": "Reiseführer",

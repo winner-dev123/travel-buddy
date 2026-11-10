@@ -4688,6 +4688,62 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/trips/{tripId}/collaborators/{userId}:
+    put:
+      tags: [trips]
+      operationId: setTripCollaborator
+      summary: Share a trip with a connection or a member of its group, or change their role (owner)
+      description: |
+        The person must be one of the owner's connections or a member of the trip's group, and neither
+        may have blocked the other. At most 20 collaborators. Editors change the plan; viewers read it.
+      x-phase: 4
+      x-requirements: [TRIP-005]
+      x-rate-limit-class: write
+      parameters:
+        - $ref: '#/components/parameters/TripId'
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [role]
+              properties:
+                role: { type: string, enum: [editor, viewer] }
+      responses:
+        '200':
+          description: The trip with its collaborators.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Trip' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403':
+          description: '`forbidden` (not the owner) or `connection_required` (not a connection or group member).'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [trips]
+      operationId: removeTripCollaborator
+      summary: Stop sharing a trip with someone (owner) or leave a shared trip (the collaborator)
+      x-phase: 4
+      x-requirements: [TRIP-005]
+      x-rate-limit-class: write
+      parameters:
+        - $ref: '#/components/parameters/TripId'
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '204': { description: Removed. }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/trips/{tripId}/days:
     post:
       tags: [trips]

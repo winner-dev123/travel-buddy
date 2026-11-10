@@ -632,7 +632,24 @@
     "replanDays": "Days to change (none selected: all days)",
     "replanSubmit": "Suggest changes",
     "replanConflict": "This trip changed meanwhile. Reload it and try again.",
-    "dayShort": "Day {{number}}"
+    "dayShort": "Day {{number}}",
+    "shareTitle": "Who can see this trip",
+    "visibility": {
+      "private": "Only me and people I add",
+      "connections": "My connections",
+      "group": "The trip's group",
+      "public": "Everyone"
+    },
+    "roles": {
+      "editor": "Can edit",
+      "viewer": "Can view"
+    },
+    "remove": "Remove",
+    "removePerson": "Remove {{name}}",
+    "addPeople": "Add connections",
+    "add": "Add",
+    "leave": "Leave this trip",
+    "shareStale": "The trip changed meanwhile. Try again."
   },
   "guides": {
     "title": "Guides",

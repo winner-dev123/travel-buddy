@@ -60,7 +60,7 @@ def test_create_a_trip_with_a_day_per_date(app: LiveApp) -> None:  # noqa: F811
     assert [d["date"] for d in trip["days"]] == ["2026-12-04", "2026-12-05", "2026-12-06"]
     assert trip["destinations"][0]["destination"]["path"] == "portugal/lisbon"
     _problem(_create(app, token, end_date="2026-12-01"), 422, "validation_failed")
-    _problem(_create(app, token, visibility="connections"), 403, "feature_disabled")
+    _problem(_create(app, token, visibility="group"), 422, "validation_failed")  # no group
 
     listed = app.client.get("/v1/trips", headers=_auth(token)).json()
     assert_matches_contract(listed, "TripSummaryPage")

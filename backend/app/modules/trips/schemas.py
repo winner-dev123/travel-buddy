@@ -213,3 +213,9 @@ class SavedPlaceOut(_Response):
 class SavedPlacePage(_Response):
     data: list[SavedPlaceOut]
     page: PageInfo
+
+
+class CollaboratorRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    role: Literal["editor", "viewer"]

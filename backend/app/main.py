@@ -328,7 +328,11 @@ def create_app(
         max_pending=media_settings.media_max_pending_uploads,
     )
     app.state.trip_service = trips_service.TripService(
-        sessionmaker=database.sessionmaker, cursors=cursor_codec, clock=clock, plans=itinerary_plan
+        sessionmaker=database.sessionmaker,
+        cursors=cursor_codec,
+        clock=clock,
+        plans=itinerary_plan,
+        audience=TripAudience(clock),
     )
     app.state.guide_service = GuideService(sessionmaker=database.sessionmaker, clock=clock)
     app.state.data_export_service = data_exports.DataExportService(
@@ -580,6 +584,26 @@ DATA_EXPORTERS: tuple[data_exports.Exporter, ...] = (
     notifications_service.export_user_data,
     guides_service.export_user_data,
 )
+
+
+class TripAudience:
+    """Connections and group membership for trip visibility (trips, same layer; TRIP-005)."""
+
+    def __init__(self, clock: Clock) -> None:
+        self._clock = clock
+
+    async def connected(
+        self, session: AsyncSession, owner_id: uuid.UUID, viewer_id: uuid.UUID
+    ) -> bool:
+        return viewer_id in await connections_service.connected_ids(session, owner_id, [viewer_id])
+
+    async def in_group(
+        self, session: AsyncSession, group_id: uuid.UUID, user_id: uuid.UUID
+    ) -> bool:
+        access = await groups_service.member_access(
+            session, group_id, user_id, now=self._clock.now()
+        )
+        return access is not None
 
 
 class GroupChatRooms:
