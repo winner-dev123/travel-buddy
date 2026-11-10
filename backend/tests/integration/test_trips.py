@@ -117,6 +117,33 @@ def test_items_order_move_and_tombstone_with_versions(app: LiveApp) -> None:  # 
     assert trip["version"] == 4
     assert trip["days"][0]["items"][0]["start_time"] == "09:30"
 
+    # Per the contract, an explicit null puts the item first; leaving the field out appends it.
+    alfama = trip["days"][0]["items"][1]["id"]
+    trip = _write(
+        app, token, "patch", f"/v1/trips/{tid}/items/{alfama}", 4, {"after_item_id": None}
+    ).json()
+    assert _items(trip) == ["Alfama walk", "Pastéis de Belém", "Tram 28"]
+    trip = _write(
+        app,
+        token,
+        "post",
+        url,
+        trip["version"],
+        {"kind": "note", "title": "Coffee", "after_item_id": None},
+    ).json()
+    assert _items(trip) == ["Coffee", "Alfama walk", "Pastéis de Belém", "Tram 28"]
+    coffee = trip["days"][0]["items"][0]["id"]
+    trip = _write(app, token, "delete", f"/v1/trips/{tid}/items/{coffee}", trip["version"]).json()
+    trip = _write(
+        app,
+        token,
+        "patch",
+        f"/v1/trips/{tid}/items/{first}",
+        trip["version"],
+        {"after_item_id": None},
+    ).json()
+    assert _items(trip) == ["Pastéis de Belém", "Alfama walk", "Tram 28"]
+
     tram = trip["days"][0]["items"][2]["id"]
     moved = _write(
         app, token, "patch", f"/v1/trips/{tid}/items/{tram}", trip["version"], {"day_id": day1}

@@ -21,11 +21,15 @@ import {
   type TripVisibility,
   unshareTrip,
 } from '@/features/explore/api';
+import { newEdit } from '@/features/trips/editor';
+import { ItemEditor } from '@/features/trips/ItemEditor';
+import { type TripEditor, useTripEditor } from '@/features/trips/useTripEditor';
 import { useAppTheme } from '@/theme/useAppTheme';
 
 const VISIBILITIES: readonly TripVisibility[] = ['private', 'connections', 'public'];
 
-/** SCR-104 Trip detail: days and their items, sharing (TRIP-005), replanning. */
+/** SCR-104 Trip detail: days and their items, offline-first editing (TRIP-004), sharing
+ * (TRIP-005), replanning. */
 export default function TripScreen() {
   const { t } = useTranslation();
   const theme = useAppTheme();
@@ -35,6 +39,32 @@ export default function TripScreen() {
     queryFn: () => getTrip(getApiClient(), id),
   });
   const data = trip.data;
+  const editor = useTripEditor(data);
+  const view = editor.view;
+  const meId = useSessionStore((state) => state.me?.account.id);
+  const canEdit =
+    view !== undefined &&
+    (view.owner.id === meId ||
+      view.collaborators.some((c) => c.user.id === meId && c.role === 'editor'));
+  const [editing, setEditing] = useState<{ dayId: string; item?: TripItem } | null>(null);
+  const editingDay = view?.days.find((day) => day.id === editing?.dayId);
+  const editingIndex =
+    editing?.item && editingDay
+      ? editingDay.items.findIndex((other) => other.id === editing.item?.id)
+      : -1;
+  const move = (direction: 'up' | 'down') => {
+    if (!editing?.item || !editingDay || editingIndex < 0) return;
+    const items = editingDay.items;
+    // `null` puts it first in the day; otherwise it goes right after the given item.
+    const after =
+      direction === 'up'
+        ? editingIndex >= 2
+          ? (items[editingIndex - 2]?.id ?? null)
+          : null
+        : items[editingIndex + 1]?.id;
+    if (after === undefined) return;
+    editor.edit(newEdit('update', editing.item.id, { after_item_id: after }));
+  };
 
   return (
     <SafeAreaView
@@ -55,7 +85,8 @@ export default function TripScreen() {
             <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>
               {t('trips.dates', { start: data.start_date, end: data.end_date })}
             </Text>
-            {data.days.map((day) => (
+            {canEdit ? <EditorStatusLine editor={editor} /> : null}
+            {(view ?? data).days.map((day) => (
               <View key={day.id} style={{ gap: theme.spacing[1] }}>
                 <Text
                   accessibilityRole="header"
@@ -69,8 +100,24 @@ export default function TripScreen() {
                   </Text>
                 ) : null}
                 {day.items.map((item) => (
-                  <ItemRow key={item.id} item={item} />
+                  <ItemRow
+                    key={item.id}
+                    item={item}
+                    onEdit={canEdit ? () => setEditing({ dayId: day.id, item }) : undefined}
+                  />
                 ))}
+                {canEdit ? (
+                  <Pressable
+                    onPress={() => setEditing({ dayId: day.id })}
+                    accessibilityRole="button"
+                    style={styles.add}
+                    testID={`trip-add-item-${day.day_index}`}
+                  >
+                    <Text style={[theme.typography.label, { color: theme.colors.primary }]}>
+                      {t('tripEditor.add')}
+                    </Text>
+                  </Pressable>
+                ) : null}
               </View>
             ))}
             <Sharing trip={data} />
@@ -78,6 +125,31 @@ export default function TripScreen() {
           </>
         ) : null}
       </ScrollView>
+      {editing ? (
+        <ItemEditor
+          item={editing.item}
+          canMoveUp={editingIndex > 0}
+          canMoveDown={
+            editingDay !== undefined &&
+            editingIndex >= 0 &&
+            editingIndex < editingDay.items.length - 1
+          }
+          onSave={(fields) =>
+            editor.edit(
+              editing.item
+                ? newEdit('update', editing.item.id, fields)
+                : newEdit('create', null, fields, editing.dayId),
+            )
+          }
+          onDelete={
+            editing.item
+              ? () => editing.item && editor.edit(newEdit('delete', editing.item.id, {}))
+              : undefined
+          }
+          onMove={move}
+          onClose={() => setEditing(null)}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -330,7 +402,47 @@ function Replan({ trip }: { trip: Trip }) {
   );
 }
 
-function ItemRow({ item }: { item: TripItem }) {
+/** Where this device's edits stand: saved, on their way, waiting for a connection, or refused
+ * (with a way out), plus edits that someone else's newer change replaced. */
+function EditorStatusLine({ editor }: { editor: TripEditor }) {
+  const { t } = useTranslation();
+  const theme = useAppTheme();
+  return (
+    <View style={{ gap: theme.spacing[2] }}>
+      {editor.conflicts > 0 ? (
+        <Notice tone="info" testID="trip-edit-conflicts">
+          {t('tripEditor.conflicts', { count: editor.conflicts })}
+        </Notice>
+      ) : null}
+      {editor.status === 'saving' ? (
+        <Text
+          style={[theme.typography.caption, { color: theme.colors.textSecondary }]}
+          testID="trip-edit-saving"
+        >
+          {t('tripEditor.saving')}
+        </Text>
+      ) : null}
+      {editor.status === 'offline' ? (
+        <Notice tone="info" testID="trip-edit-offline">
+          {t('tripEditor.offline', { count: editor.pending })}
+        </Notice>
+      ) : null}
+      {editor.status === 'failed' ? (
+        <View style={{ gap: theme.spacing[2] }} testID="trip-edit-failed">
+          <Notice tone="error">{t('tripEditor.failed')}</Notice>
+          <Button
+            label={t('tripEditor.discard')}
+            variant="secondary"
+            onPress={editor.discard}
+            testID="trip-edit-discard"
+          />
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function ItemRow({ item, onEdit }: { item: TripItem; onEdit?: () => void }) {
   const { t } = useTranslation();
   const theme = useAppTheme();
   const router = useRouter();
@@ -339,24 +451,39 @@ function ItemRow({ item }: { item: TripItem }) {
     item.origin === 'ai' ? t('trips.aiSuggested') : null,
   ].filter(Boolean);
   return (
-    <Pressable
-      disabled={!item.place}
-      onPress={() =>
-        item.place && router.push({ pathname: '/places/[id]', params: { id: item.place.id } })
-      }
-      accessibilityRole={item.place ? 'link' : undefined}
-      style={[styles.item, { borderColor: theme.colors.divider }]}
-      testID={`trip-item-${item.id}`}
-    >
-      <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>
-        {[item.start_time, item.title].filter(Boolean).join(' · ')}
-      </Text>
-      {details.length ? (
-        <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
-          {details.join(' · ')}
+    <View style={[styles.row, styles.itemRow, { borderBottomColor: theme.colors.divider }]}>
+      <Pressable
+        disabled={!item.place}
+        onPress={() =>
+          item.place && router.push({ pathname: '/places/[id]', params: { id: item.place.id } })
+        }
+        accessibilityRole={item.place ? 'link' : undefined}
+        style={[styles.item, styles.fill]}
+        testID={`trip-item-${item.id}`}
+      >
+        <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>
+          {[item.start_time, item.title].filter(Boolean).join(' · ')}
         </Text>
+        {details.length ? (
+          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+            {details.join(' · ')}
+          </Text>
+        ) : null}
+      </Pressable>
+      {onEdit ? (
+        <Pressable
+          onPress={onEdit}
+          accessibilityRole="button"
+          accessibilityLabel={t('tripEditor.editA11y', { title: item.title })}
+          hitSlop={8}
+          testID={`trip-edit-item-${item.id}`}
+        >
+          <Text style={[theme.typography.label, { color: theme.colors.primary }]}>
+            {t('tripEditor.edit')}
+          </Text>
+        </Pressable>
       ) : null}
-    </Pressable>
+    </View>
   );
 }
 
@@ -365,5 +492,7 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   chip: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
-  item: { borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: 8, gap: 2 },
+  item: { paddingVertical: 8, gap: 2 },
+  itemRow: { borderBottomWidth: StyleSheet.hairlineWidth },
+  add: { paddingVertical: 8 },
 });

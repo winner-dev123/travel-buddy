@@ -884,5 +884,35 @@
       "groups_owned": "Groups you own"
     },
     "error": "We couldn't load your subscription. Check your connection and try again."
+  },
+  "tripEditor": {
+    "add": "+ Add to this day",
+    "edit": "Edit",
+    "editA11y": "Edit {{title}}",
+    "newItem": "New item",
+    "editItem": "Edit item",
+    "title": "What",
+    "time": "Time (optional, 24-hour)",
+    "timeInvalid": "Use a 24-hour time like 09:30.",
+    "notes": "Notes (optional)",
+    "save": "Save",
+    "delete": "Delete",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "saving": "Saving your changes…",
+    "offline_one": "You're offline. {{count}} change will be saved when you're back online.",
+    "offline_other": "You're offline. {{count}} changes will be saved when you're back online.",
+    "failed": "Your changes couldn't be saved. You may no longer be allowed to edit this trip.",
+    "discard": "Discard my unsaved changes",
+    "conflicts_one": "{{count}} of your changes was replaced by a newer edit from someone else.",
+    "conflicts_other": "{{count}} of your changes were replaced by newer edits from someone else.",
+    "kinds": {
+      "activity": "Activity",
+      "meal": "Meal",
+      "transit": "Getting around",
+      "lodging": "Stay",
+      "note": "Note",
+      "free_time": "Free time"
+    }
   }
 }

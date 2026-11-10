@@ -884,5 +884,35 @@
       "groups_owned": "Deine Gruppen"
     },
     "error": "Dein Abo konnte nicht geladen werden. Prüfe deine Verbindung und versuch es noch einmal."
+  },
+  "tripEditor": {
+    "add": "+ Zu diesem Tag hinzufügen",
+    "edit": "Bearbeiten",
+    "editA11y": "{{title}} bearbeiten",
+    "newItem": "Neuer Eintrag",
+    "editItem": "Eintrag bearbeiten",
+    "title": "Was",
+    "time": "Uhrzeit (optional, 24 Std.)",
+    "timeInvalid": "Gib eine Uhrzeit im 24-Stunden-Format an, z. B. 09:30.",
+    "notes": "Notizen (optional)",
+    "save": "Speichern",
+    "delete": "Löschen",
+    "moveUp": "Nach oben",
+    "moveDown": "Nach unten",
+    "saving": "Deine Änderungen werden gespeichert …",
+    "offline_one": "Du bist offline. {{count}} Änderung wird gespeichert, sobald du wieder online bist.",
+    "offline_other": "Du bist offline. {{count}} Änderungen werden gespeichert, sobald du wieder online bist.",
+    "failed": "Deine Änderungen konnten nicht gespeichert werden. Vielleicht darfst du diese Reise nicht mehr bearbeiten.",
+    "discard": "Meine ungespeicherten Änderungen verwerfen",
+    "conflicts_one": "{{count}} deiner Änderungen wurde durch eine neuere Änderung einer anderen Person ersetzt.",
+    "conflicts_other": "{{count}} deiner Änderungen wurden durch neuere Änderungen einer anderen Person ersetzt.",
+    "kinds": {
+      "activity": "Aktivität",
+      "meal": "Essen",
+      "transit": "Unterwegs",
+      "lodging": "Unterkunft",
+      "note": "Notiz",
+      "free_time": "Freizeit"
+    }
   }
 }

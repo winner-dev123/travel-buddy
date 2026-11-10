@@ -734,15 +734,20 @@ class TripService:
         day_id: uuid.UUID,
         after_item_id: uuid.UUID | None,
         *,
+        first: bool = False,
         exclude: uuid.UUID | None = None,
     ) -> Decimal:
-        """A fractional position after ``after_item_id`` (``None``: at the end of the day)."""
+        """A fractional position after ``after_item_id``; with ``first`` (an explicit ``null`` in
+        the request, per the contract) before every other item; otherwise at the end."""
         live = [
             ItineraryItem.day_id == day_id,
             ItineraryItem.deleted_at.is_(None),
         ]
         if exclude is not None:
             live.append(ItineraryItem.id != exclude)
+        if after_item_id is None and first:
+            lowest = await session.scalar(select(func.min(ItineraryItem.sort_order)).where(*live))
+            return Decimal(1) if lowest is None else lowest - 1
         if after_item_id is None:
             last = await session.scalar(select(func.max(ItineraryItem.sort_order)).where(*live))
             return (last or Decimal(0)) + 1
@@ -777,7 +782,12 @@ class TripService:
         await _check_place(session, request.place_id)
         item = ItineraryItem(
             day_id=day.id,
-            sort_order=await self._order_after(session, day.id, request.after_item_id),
+            sort_order=await self._order_after(
+                session,
+                day.id,
+                request.after_item_id,
+                first="after_item_id" in request.model_fields_set,
+            ),
             kind=request.kind,
             place_id=request.place_id,
             title=request.title.strip(),
@@ -804,7 +814,11 @@ class TripService:
             day = await self._day(session, trip, day_id)
             item.day_id = day.id
             item.sort_order = await self._order_after(
-                session, day.id, changes.get("after_item_id"), exclude=item.id
+                session,
+                day.id,
+                changes.get("after_item_id"),
+                first="after_item_id" in changes,  # an explicit null moves it to the top
+                exclude=item.id,
             )
         for field in ("kind", "place_id", "title", "notes", "duration_minutes"):
             if field in changes:

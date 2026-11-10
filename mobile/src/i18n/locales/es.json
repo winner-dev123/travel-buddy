@@ -897,5 +897,37 @@
       "groups_owned": "Grupos que administras"
     },
     "error": "No pudimos cargar tu suscripción. Revisa tu conexión e inténtalo de nuevo."
+  },
+  "tripEditor": {
+    "add": "+ Añadir a este día",
+    "edit": "Editar",
+    "editA11y": "Editar {{title}}",
+    "newItem": "Nuevo elemento",
+    "editItem": "Editar elemento",
+    "title": "Qué",
+    "time": "Hora (opcional, formato 24 h)",
+    "timeInvalid": "Usa una hora en formato 24 h, como 09:30.",
+    "notes": "Notas (opcional)",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "moveUp": "Subir",
+    "moveDown": "Bajar",
+    "saving": "Guardando tus cambios…",
+    "offline_one": "No tienes conexión. {{count}} cambio se guardará cuando vuelvas a estar en línea.",
+    "offline_many": "No tienes conexión. {{count}} cambios se guardarán cuando vuelvas a estar en línea.",
+    "offline_other": "No tienes conexión. {{count}} cambios se guardarán cuando vuelvas a estar en línea.",
+    "failed": "No se pudieron guardar tus cambios. Puede que ya no tengas permiso para editar este viaje.",
+    "discard": "Descartar mis cambios sin guardar",
+    "conflicts_one": "{{count}} de tus cambios fue reemplazado por una edición más reciente de otra persona.",
+    "conflicts_many": "{{count}} de tus cambios fueron reemplazados por ediciones más recientes de otra persona.",
+    "conflicts_other": "{{count}} de tus cambios fueron reemplazados por ediciones más recientes de otra persona.",
+    "kinds": {
+      "activity": "Actividad",
+      "meal": "Comida",
+      "transit": "Desplazamiento",
+      "lodging": "Alojamiento",
+      "note": "Nota",
+      "free_time": "Tiempo libre"
+    }
   }
 }

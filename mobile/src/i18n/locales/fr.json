@@ -897,5 +897,37 @@
       "groups_owned": "Groupes dont vous êtes propriétaire"
     },
     "error": "Impossible de charger votre abonnement. Vérifiez votre connexion et réessayez."
+  },
+  "tripEditor": {
+    "add": "+ Ajouter à ce jour",
+    "edit": "Modifier",
+    "editA11y": "Modifier {{title}}",
+    "newItem": "Nouvel élément",
+    "editItem": "Modifier l'élément",
+    "title": "Quoi",
+    "time": "Heure (facultatif, format 24 h)",
+    "timeInvalid": "Utilisez une heure au format 24 h, comme 09:30.",
+    "notes": "Notes (facultatif)",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "moveUp": "Monter",
+    "moveDown": "Descendre",
+    "saving": "Enregistrement de vos modifications…",
+    "offline_one": "Vous êtes hors ligne. {{count}} modification sera enregistrée à votre retour en ligne.",
+    "offline_many": "Vous êtes hors ligne. {{count}} modifications seront enregistrées à votre retour en ligne.",
+    "offline_other": "Vous êtes hors ligne. {{count}} modifications seront enregistrées à votre retour en ligne.",
+    "failed": "Impossible d'enregistrer vos modifications. Vous n'avez peut-être plus le droit de modifier ce voyage.",
+    "discard": "Abandonner mes modifications non enregistrées",
+    "conflicts_one": "{{count}} de vos modifications a été remplacée par une modification plus récente d'une autre personne.",
+    "conflicts_many": "{{count}} de vos modifications ont été remplacées par des modifications plus récentes d'une autre personne.",
+    "conflicts_other": "{{count}} de vos modifications ont été remplacées par des modifications plus récentes d'une autre personne.",
+    "kinds": {
+      "activity": "Activité",
+      "meal": "Repas",
+      "transit": "Trajet",
+      "lodging": "Hébergement",
+      "note": "Note",
+      "free_time": "Temps libre"
+    }
   }
 }

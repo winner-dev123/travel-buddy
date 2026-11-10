@@ -897,5 +897,37 @@
       "groups_owned": "Grupos que você administra"
     },
     "error": "Não conseguimos carregar sua assinatura. Verifique sua conexão e tente de novo."
+  },
+  "tripEditor": {
+    "add": "+ Adicionar a este dia",
+    "edit": "Editar",
+    "editA11y": "Editar {{title}}",
+    "newItem": "Novo item",
+    "editItem": "Editar item",
+    "title": "O quê",
+    "time": "Horário (opcional, 24 h)",
+    "timeInvalid": "Use um horário de 24 h, como 09:30.",
+    "notes": "Notas (opcional)",
+    "save": "Salvar",
+    "delete": "Excluir",
+    "moveUp": "Mover para cima",
+    "moveDown": "Mover para baixo",
+    "saving": "Salvando suas alterações…",
+    "offline_one": "Você está offline. {{count}} alteração será salva quando você voltar a ficar online.",
+    "offline_many": "Você está offline. {{count}} alterações serão salvas quando você voltar a ficar online.",
+    "offline_other": "Você está offline. {{count}} alterações serão salvas quando você voltar a ficar online.",
+    "failed": "Não foi possível salvar suas alterações. Talvez você não tenha mais permissão para editar esta viagem.",
+    "discard": "Descartar minhas alterações não salvas",
+    "conflicts_one": "{{count}} das suas alterações foi substituída por uma edição mais recente de outra pessoa.",
+    "conflicts_many": "{{count}} das suas alterações foram substituídas por edições mais recentes de outra pessoa.",
+    "conflicts_other": "{{count}} das suas alterações foram substituídas por edições mais recentes de outra pessoa.",
+    "kinds": {
+      "activity": "Atividade",
+      "meal": "Refeição",
+      "transit": "Deslocamento",
+      "lodging": "Hospedagem",
+      "note": "Nota",
+      "free_time": "Tempo livre"
+    }
   }
 }
