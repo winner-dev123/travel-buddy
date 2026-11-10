@@ -161,7 +161,8 @@ def test_public_trips_are_read_only_and_collaborators_edit(app: LiveApp) -> None
     editor, editor_id = _user(app)
     db_scalar(
         app.db_url,
-        "INSERT INTO trip_collaborators (trip_id, user_id, role) VALUES (:t, :u, 'editor') RETURNING 1",
+        "INSERT INTO trip_collaborators (trip_id, user_id, role) "
+        "VALUES (:t, :u, 'editor') RETURNING 1",
         t=uuid.UUID(trip["id"]),
         u=uuid.UUID(editor_id),
     )
