@@ -37,6 +37,7 @@ from app.modules.destinations.places import (
 from app.modules.destinations.places import ids_within as place_ids_within
 from app.modules.destinations.places import is_listed as place_is_listed
 from app.modules.destinations.schemas import Destination, DestinationSummary, GeoPoint
+from app.modules.platform import service as platform
 
 _ACTIVE = DestinationRow.status == DestinationStatus.ACTIVE
 _SEARCH_LIMIT_MAX = 20
@@ -550,15 +551,33 @@ async def admin_update(
     status: str | None,
 ) -> Destination:
     """Featured flag and visibility, set by content staff (DEST-004); the admin module audits it
-    in the same transaction. Hidden destinations drop out of every public read."""
+    in the same transaction. Hidden destinations drop out of every public read; the
+    ``destination.updated`` event purges the cached web pages at once (SAFE-012)."""
     row = await session.get(DestinationRow, destination_id, with_for_update=True)
     if row is None:
         raise _not_found()
-    if is_featured is not None:
+    changed: list[str] = []
+    if is_featured is not None and row.is_featured != is_featured:
         row.is_featured = is_featured
-    if status is not None:
+        changed.append("is_featured")
+    if status is not None and row.status != status:
         row.status = status
+        changed.append("status")
     await session.flush()
+    if changed:
+        platform.record_event(
+            session,
+            aggregate_type="destination",
+            aggregate_id=row.id,
+            event_type="destination.updated",
+            payload={
+                "destination_id": str(row.id),
+                "slug": row.slug,
+                "changed": changed,
+                "status": row.status,
+                "is_featured": row.is_featured,
+            },
+        )
     return await _detail(session, row, ("en",))
 
 

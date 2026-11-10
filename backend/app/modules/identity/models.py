@@ -237,6 +237,14 @@ class DataSubjectRequestKind(StrEnum):
     RECTIFICATION = "rectification"
 
 
+class DataSubjectRequestChannel(StrEnum):
+    """How the request reached us: the app, or staff recording one received by email/post."""
+
+    APP = "app"
+    EMAIL = "email"
+    OTHER = "other"
+
+
 class DataSubjectRequestStatus(StrEnum):
     RECEIVED = "received"
     PROCESSING = "processing"
@@ -246,7 +254,8 @@ class DataSubjectRequestStatus(StrEnum):
 
 
 class DataSubjectRequest(Base):
-    """GDPR requests: deletion and export. ``user_id`` has no foreign key on purpose: the record
+    """GDPR requests: export, deletion and rectification. ``user_id`` (and the staff
+    ``handled_by``) have no foreign key on purpose: the record
     of a completed deletion outlives the account (accountability, docs/04 §12). An export keeps
     its archive's storage key until the 7-day link expires (BL-6.03)."""
 
@@ -254,12 +263,18 @@ class DataSubjectRequest(Base):
     __table_args__ = (
         enum_check("kind", DataSubjectRequestKind, "kind_enum"),
         enum_check("status", DataSubjectRequestStatus, "status_enum"),
+        enum_check("channel", DataSubjectRequestChannel, "channel_enum"),
         Index("ix_data_subject_requests__user_id", "user_id", text("requested_at DESC")),
         Index(
             "uq_data_subject_requests__active_export",
             "user_id",
             unique=True,
             postgresql_where=text("kind = 'export' AND status IN ('received', 'processing')"),
+        ),
+        Index(
+            "ix_data_subject_requests__open",
+            "requested_at",
+            postgresql_where=text("status IN ('received', 'processing')"),
         ),
     )
 
@@ -275,6 +290,12 @@ class DataSubjectRequest(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     artifact_key: Mapped[str | None] = mapped_column(Text)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Staff handling (SAFE-010): who closed a manual request and the outcome told to the user.
+    channel: Mapped[str] = mapped_column(
+        Text, default=DataSubjectRequestChannel.APP, server_default="app"
+    )
+    handled_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    resolution: Mapped[str | None] = mapped_column(Text)
 
 
 class PushProvider(StrEnum):

@@ -41,6 +41,7 @@ class Permission(StrEnum):
     ENTITLEMENTS_GRANT = "entitlements.grant"
     BILLING_CONFIGURE = "billing.configure"
     AUDIT_READ = "audit.read"
+    PRIVACY_REQUESTS_MANAGE = "privacy.requests.manage"  # GDPR requests: justified + audited
     ROLES_ASSIGN = "roles.assign"
 
 
@@ -64,6 +65,7 @@ _ADMIN = _MODERATOR | {
     Permission.CONTENT_FEATURE,
     Permission.ENTITLEMENTS_GRANT,
     Permission.AUDIT_READ,
+    Permission.PRIVACY_REQUESTS_MANAGE,
 }
 _SUPERADMIN = _ADMIN | {Permission.BILLING_CONFIGURE, Permission.ROLES_ASSIGN}
 

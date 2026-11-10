@@ -61,6 +61,9 @@ from app.modules.identity.models import (
 )
 from app.modules.identity.push_tokens import PushTarget as PushTarget
 from app.modules.identity.push_tokens import PushTokenCipher as PushTokenCipher
+from app.modules.identity.requests import record_data_request as record_data_request
+from app.modules.identity.requests import resolve_data_request as resolve_data_request
+from app.modules.identity.requests import staff_data_requests as staff_data_requests
 from app.modules.identity.schemas import (
     AccountDeletionRequest,
     AccountRestriction,
@@ -1147,7 +1150,7 @@ async def export_user_data(
             session,
             DataSubjectRequest,
             DataSubjectRequest.user_id == user_id,
-            exclude=("artifact_key",),
+            exclude=("artifact_key", "handled_by"),  # staff identity is not the subject's data
         ),
         "staff_roles": await platform.export_rows(
             session, AdminRoleAssignment, AdminRoleAssignment.user_id == user_id

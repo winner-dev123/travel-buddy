@@ -124,6 +124,12 @@ def test_staff_feature_and_hide_destinations_with_an_audit(app: LiveApp) -> None
     member, _ = _user(app)
     destination = _destination(app, "brazil/rio-de-janeiro/copacabana")
     url = f"/v1/admin/destinations/{destination}"
+    db_scalar(  # the local catalog outlives runs: start from this run's events only
+        app.db_url,
+        "DELETE FROM outbox_events WHERE event_type = 'destination.updated' "
+        "AND aggregate_id = :d RETURNING 1",
+        d=uuid.UUID(destination),
+    )
     try:
         featured = app.client.patch(url, headers=_admin(staff), json={"is_featured": True})
         assert featured.status_code == 200, featured.text
@@ -146,6 +152,14 @@ def test_staff_feature_and_hide_destinations_with_an_audit(app: LiveApp) -> None
             d=destination,
         )
         assert audits == 2
+        # Both changes purge the cached web pages (SAFE-012): the page, the lists, the sitemap.
+        events = db_scalar(
+            app.db_url,
+            "SELECT string_agg(payload->>'changed', '|' ORDER BY occurred_at) FROM outbox_events "
+            "WHERE event_type = 'destination.updated' AND aggregate_id = :d",
+            d=uuid.UUID(destination),
+        )
+        assert events == '["is_featured"]|["status"]'
     finally:  # the seeded catalog is shared by other tests
         db_scalar(
             app.db_url,

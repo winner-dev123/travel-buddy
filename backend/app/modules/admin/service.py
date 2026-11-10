@@ -45,6 +45,12 @@ from app.modules.challenges.schemas import RewardDetail, RewardReviewRequest
 from app.modules.destinations import service as destinations
 from app.modules.destinations.schemas import Destination
 from app.modules.identity import service as identity
+from app.modules.identity.schemas import (
+    AdminDataRequest,
+    AdminDataRequestPage,
+    RecordDataRequest,
+    ResolveDataRequest,
+)
 from app.modules.messaging import service as messaging
 from app.modules.observability import service as observability
 from app.modules.platform import service as platform
@@ -396,6 +402,90 @@ class AdminService:
                 reason=request.reason,
             )
         return grant
+
+    async def data_requests(
+        self,
+        staff: Staff,
+        *,
+        state: str,
+        kind: str | None,
+        user_id: uuid.UUID | None,
+        cursor: str | None,
+        limit: int,
+    ) -> AdminDataRequestPage:
+        """SAFE-010 work queue; reading it is audited (the requests name people)."""
+        filters = {"state": state, "kind": kind, "user_id": str(user_id) if user_id else None}
+        after = None
+        if cursor:
+            position = self._cursors.decode(cursor, scope="admin.dsr")
+            if position.get("f") != filters:
+                raise AppError(ErrorCode.INVALID_CURSOR, "The cursor belongs to another query.")
+            after = (datetime.fromisoformat(str(position["t"])), uuid.UUID(str(position["i"])))
+        async with self._sessionmaker() as session, session.begin():
+            rows = await identity.staff_data_requests(
+                session,
+                state=state,
+                kind=kind,
+                user_id=user_id,
+                after=after,
+                limit=limit + 1,
+                now=self._clock.now(),
+            )
+            _audit(session, staff, "data_requests.viewed", "data_request", "query", filters=filters)
+        more = len(rows) > limit
+        rows = rows[:limit]
+        next_cursor = (
+            self._cursors.encode(
+                {"f": filters, "t": rows[-1].requested_at.isoformat(), "i": str(rows[-1].id)},
+                scope="admin.dsr",
+            )
+            if more and rows
+            else None
+        )
+        return AdminDataRequestPage(
+            data=rows, page=PageInfo(next_cursor=next_cursor, has_more=more)
+        )
+
+    async def record_data_request(
+        self, staff: Staff, user_id: uuid.UUID, request: RecordDataRequest
+    ) -> AdminDataRequest:
+        async with self._sessionmaker() as session, session.begin():
+            recorded = await identity.record_data_request(
+                session, user_id, request, now=self._clock.now()
+            )
+            _audit(
+                session,
+                staff,
+                "data_request.recorded",
+                "data_request",
+                recorded.id,
+                user_id=str(user_id),
+                kind=request.kind,
+                channel=request.channel,
+            )
+        return recorded
+
+    async def resolve_data_request(
+        self, staff: Staff, request_id: uuid.UUID, resolution: ResolveDataRequest
+    ) -> AdminDataRequest:
+        async with self._sessionmaker() as session, session.begin():
+            resolved = await identity.resolve_data_request(
+                session,
+                request_id,
+                resolution,
+                staff_id=staff.principal.user_id,
+                now=self._clock.now(),
+            )
+            _audit(
+                session,
+                staff,
+                "data_request.resolved",
+                "data_request",
+                request_id,
+                user_id=str(resolved.user_id),
+                status=resolution.status,
+            )
+        return resolved
 
     async def revoke_grant(self, staff: Staff, grant_id: uuid.UUID) -> EntitlementGrantOut:
         async with self._sessionmaker() as session, session.begin():

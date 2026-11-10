@@ -70,6 +70,13 @@ def test_backoff_doubles_to_a_cap_and_spans_about_an_hour() -> None:
             {"handle": "ana", "changed": ["profile_visibility", "search_engine_indexing"]},
             ("profile_visibility_changed", ("profile:ana", "stories", "sitemap")),
         ),
+        (
+            "destination.updated",
+            {"slug": "lisbon-pt", "changed": ["status"], "status": "hidden"},
+            ("destination_changed", ("destination:lisbon-pt", "destinations", "sitemap")),
+        ),
+        ("destination.updated", {"slug": "lisbon-pt", "changed": []}, None),
+        ("destination.updated", {"slug": "Lisbon PT", "changed": ["status"]}, None),
         ("discovery.disabled", {"user_id": "x"}, None),
         ("privacy.updated", {"handle": "ana", "changed": "not-a-list"}, None),
     ],

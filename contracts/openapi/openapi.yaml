@@ -5969,6 +5969,119 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/admin/data-requests:
+    get:
+      tags: [admin]
+      operationId: adminListDataRequests
+      summary: Data subject requests queue (audited)
+      description: |
+        `open` (the default) lists received and processing requests oldest first, the order to work
+        them in; `closed` and `all` list newest first. `due_at` is one month after the request
+        (GDPR Art. 12(3)); `overdue` flags open requests past it. Every query is audited.
+      x-phase: 6
+      x-requirements: [SAFE-010, AUTH-011, ADM-007]
+      x-rate-limit-class: admin
+      x-platform-permission: privacy.requests.manage
+      parameters:
+        - $ref: '#/components/parameters/AuditJustification'
+        - name: state
+          in: query
+          required: false
+          schema: { type: string, enum: [open, closed, all], default: open }
+        - name: kind
+          in: query
+          required: false
+          schema: { type: string, enum: [export, deletion, rectification] }
+        - name: user_id
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: One page of requests.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminDataRequestPage' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/admin/users/{userId}/data-requests:
+    post:
+      tags: [admin]
+      operationId: adminRecordDataRequest
+      summary: Record a data request received outside the app (audited)
+      description: |
+        For requests that reach support by email or post. `export` starts the same archive job as
+        the in-app request (the user gets the notice and the 7-day link in the app); `rectification`
+        needs `details` and is closed with `/resolve`. Deletion is confirmed by the user in the app
+        (30-day grace, AUTH-010), so it cannot be recorded here.
+      x-phase: 6
+      x-requirements: [SAFE-010, AUTH-011, ADM-007, ADM-008]
+      x-rate-limit-class: admin
+      x-platform-permission: privacy.requests.manage
+      parameters:
+        - $ref: '#/components/parameters/AuditJustification'
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordDataRequest' }
+      responses:
+        '201':
+          description: Recorded.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminDataRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: '`conflict` — an export for this user is already under way.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/admin/data-requests/{requestId}/resolve:
+    post:
+      tags: [admin]
+      operationId: adminResolveDataRequest
+      summary: Close a rectification request with its outcome (audited)
+      description: Records who handled it and the outcome told to the user. Exports and deletions complete by themselves (`409`).
+      x-phase: 6
+      x-requirements: [SAFE-010, ADM-007, ADM-008]
+      x-rate-limit-class: admin
+      x-platform-permission: privacy.requests.manage
+      parameters:
+        - $ref: '#/components/parameters/AuditJustification'
+        - name: requestId
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResolveDataRequest' }
+      responses:
+        '200':
+          description: Closed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminDataRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: '`conflict` — not a rectification, or already closed.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/admin/products:
     get:
       tags: [admin]
@@ -6617,6 +6730,7 @@ components:
         - entitlements.grant
         - billing.configure
         - audit.read
+        - privacy.requests.manage
         - roles.assign
     TravelStyle: { type: string, enum: [adventure, backpacking, luxury, food, culture, photography, digital_nomad, nature, family] }
     DestinationKind: { type: string, enum: [country, admin_region, city, district, neighborhood, area] }
@@ -9474,6 +9588,47 @@ components:
         ends_at: { $ref: '#/components/schemas/NullableTimestamp' }
         revoked_at: { $ref: '#/components/schemas/NullableTimestamp' }
         created_at: { $ref: '#/components/schemas/Timestamp' }
+    AdminDataRequest:
+      type: object
+      required: [id, user_id, kind, status, channel, details, requested_at, due_at, overdue, scheduled_for, completed_at, handled_by, resolution]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        user_id: { $ref: '#/components/schemas/Uuid' }
+        kind: { type: string, enum: [export, deletion, rectification] }
+        status: { type: string, enum: [received, processing, completed, rejected, cancelled] }
+        channel: { type: string, enum: [app, email, other], description: Where the request came from. }
+        details: { type: [string, 'null'], description: 'What the user asked (rectification), or the deletion reason they gave.' }
+        requested_at: { $ref: '#/components/schemas/Timestamp' }
+        due_at: { $ref: '#/components/schemas/Timestamp' }
+        overdue: { type: boolean }
+        scheduled_for: { $ref: '#/components/schemas/NullableTimestamp' }
+        completed_at: { $ref: '#/components/schemas/NullableTimestamp' }
+        handled_by:
+          anyOf:
+            - { $ref: '#/components/schemas/Uuid' }
+            - { type: 'null' }
+        resolution: { type: [string, 'null'] }
+    AdminDataRequestPage:
+      type: object
+      required: [data, page]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/AdminDataRequest' } }
+        page: { $ref: '#/components/schemas/PageInfo' }
+    RecordDataRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, channel]
+      properties:
+        kind: { type: string, enum: [export, rectification] }
+        channel: { type: string, enum: [email, other] }
+        details: { type: string, minLength: 1, maxLength: 2000, description: Required for `rectification`. }
+    ResolveDataRequest:
+      type: object
+      additionalProperties: false
+      required: [status, resolution]
+      properties:
+        status: { type: string, enum: [completed, rejected] }
+        resolution: { type: string, minLength: 1, maxLength: 2000, description: The outcome as told to the user. }
     EntitlementGrantList:
       type: object
       required: [data]

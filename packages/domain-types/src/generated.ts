@@ -3456,6 +3456,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/data-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Data subject requests queue (audited)
+         * @description `open` (the default) lists received and processing requests oldest first, the order to work
+         *     them in; `closed` and `all` list newest first. `due_at` is one month after the request
+         *     (GDPR Art. 12(3)); `overdue` flags open requests past it. Every query is audited.
+         */
+        get: operations["adminListDataRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/users/{userId}/data-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record a data request received outside the app (audited)
+         * @description For requests that reach support by email or post. `export` starts the same archive job as
+         *     the in-app request (the user gets the notice and the 7-day link in the app); `rectification`
+         *     needs `details` and is closed with `/resolve`. Deletion is confirmed by the user in the app
+         *     (30-day grace, AUTH-010), so it cannot be recorded here.
+         */
+        post: operations["adminRecordDataRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/data-requests/{requestId}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close a rectification request with its outcome (audited)
+         * @description Records who handled it and the outcome told to the user. Exports and deletions complete by themselves (`409`).
+         */
+        post: operations["adminResolveDataRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/products": {
         parameters: {
             query?: never;
@@ -3663,7 +3728,7 @@ export interface components {
          *     support ⊂ moderator ⊂ admin ⊂ superadmin. Admin operations name their permission in `x-platform-permission`.
          * @enum {string}
          */
-        PlatformPermission: "users.read" | "users.read_sensitive" | "users.suspend" | "users.ban" | "moderation.reports.read" | "moderation.reports.manage" | "moderation.actions.read" | "moderation.actions.write" | "content.destinations.write" | "content.feature" | "content.rewards.review" | "entitlements.grant" | "billing.configure" | "audit.read" | "roles.assign";
+        PlatformPermission: "users.read" | "users.read_sensitive" | "users.suspend" | "users.ban" | "moderation.reports.read" | "moderation.reports.manage" | "moderation.actions.read" | "moderation.actions.write" | "content.destinations.write" | "content.feature" | "content.rewards.review" | "entitlements.grant" | "billing.configure" | "audit.read" | "privacy.requests.manage" | "roles.assign";
         /** @enum {string} */
         TravelStyle: "adventure" | "backpacking" | "luxury" | "food" | "culture" | "photography" | "digital_nomad" | "nature" | "family";
         /** @enum {string} */
@@ -6041,6 +6106,46 @@ export interface components {
             ends_at: components["schemas"]["NullableTimestamp"];
             revoked_at: components["schemas"]["NullableTimestamp"];
             created_at: components["schemas"]["Timestamp"];
+        };
+        AdminDataRequest: {
+            id: components["schemas"]["Uuid"];
+            user_id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            kind: "export" | "deletion" | "rectification";
+            /** @enum {string} */
+            status: "received" | "processing" | "completed" | "rejected" | "cancelled";
+            /**
+             * @description Where the request came from.
+             * @enum {string}
+             */
+            channel: "app" | "email" | "other";
+            /** @description What the user asked (rectification), or the deletion reason they gave. */
+            details: string | null;
+            requested_at: components["schemas"]["Timestamp"];
+            due_at: components["schemas"]["Timestamp"];
+            overdue: boolean;
+            scheduled_for: components["schemas"]["NullableTimestamp"];
+            completed_at: components["schemas"]["NullableTimestamp"];
+            handled_by: components["schemas"]["Uuid"] | null;
+            resolution: string | null;
+        };
+        AdminDataRequestPage: {
+            data: components["schemas"]["AdminDataRequest"][];
+            page: components["schemas"]["PageInfo"];
+        };
+        RecordDataRequest: {
+            /** @enum {string} */
+            kind: "export" | "rectification";
+            /** @enum {string} */
+            channel: "email" | "other";
+            /** @description Required for `rectification`. */
+            details?: string;
+        };
+        ResolveDataRequest: {
+            /** @enum {string} */
+            status: "completed" | "rejected";
+            /** @description The outcome as told to the user. */
+            resolution: string;
         };
         EntitlementGrantList: {
             data: components["schemas"]["EntitlementGrant"][];
@@ -13358,6 +13463,134 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminListDataRequests: {
+        parameters: {
+            query?: {
+                state?: "open" | "closed" | "all";
+                kind?: "export" | "deletion" | "rectification";
+                user_id?: components["schemas"]["Uuid"];
+                /** @description Opaque, HMAC-signed, expiring cursor from `page.next_cursor`. Never construct or modify it. */
+                cursor?: components["parameters"]["Cursor"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header: {
+                /**
+                 * @description Why the staff member is performing this action or viewing sensitive data (ADM-009). Stored verbatim
+                 *     in `audit_logs.metadata.justification`. Missing or blank → `400 justification_required`.
+                 */
+                "X-Audit-Justification": components["parameters"]["AuditJustification"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of requests. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDataRequestPage"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminRecordDataRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Why the staff member is performing this action or viewing sensitive data (ADM-009). Stored verbatim
+                 *     in `audit_logs.metadata.justification`. Missing or blank → `400 justification_required`.
+                 */
+                "X-Audit-Justification": components["parameters"]["AuditJustification"];
+            };
+            path: {
+                userId: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordDataRequest"];
+            };
+        };
+        responses: {
+            /** @description Recorded. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDataRequest"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description `conflict` — an export for this user is already under way. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminResolveDataRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Why the staff member is performing this action or viewing sensitive data (ADM-009). Stored verbatim
+                 *     in `audit_logs.metadata.justification`. Missing or blank → `400 justification_required`.
+                 */
+                "X-Audit-Justification": components["parameters"]["AuditJustification"];
+            };
+            path: {
+                requestId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveDataRequest"];
+            };
+        };
+        responses: {
+            /** @description Closed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDataRequest"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description `conflict` — not a rectification, or already closed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
             default: components["responses"]["Problem"];
         };
     };

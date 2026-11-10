@@ -38,6 +38,12 @@ from app.modules.billing.schemas import (
 )
 from app.modules.challenges.schemas import RewardDetail, RewardReviewRequest
 from app.modules.destinations.schemas import Destination
+from app.modules.identity.schemas import (
+    AdminDataRequest,
+    AdminDataRequestPage,
+    RecordDataRequest,
+    ResolveDataRequest,
+)
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
 
@@ -188,6 +194,45 @@ async def admin_revoke_entitlement_grant(
     who: Annotated[Staff, Depends(staff(Permission.ENTITLEMENTS_GRANT, justified=True))],
 ) -> EntitlementGrantOut:
     return await _service(request).revoke_grant(who, grant_id)
+
+
+@router.get("/data-requests", response_model=AdminDataRequestPage)
+async def admin_list_data_requests(
+    request: Request,
+    who: Annotated[Staff, Depends(staff(Permission.PRIVACY_REQUESTS_MANAGE, justified=True))],
+    state: Literal["open", "closed", "all"] = "open",
+    kind: Literal["export", "deletion", "rectification"] | None = None,
+    user_id: uuid.UUID | None = None,
+    cursor: Cursor = None,
+    limit: Limit = 20,
+) -> AdminDataRequestPage:
+    return await _service(request).data_requests(
+        who, state=state, kind=kind, user_id=user_id, cursor=cursor, limit=limit
+    )
+
+
+@router.post(
+    "/users/{user_id}/data-requests",
+    status_code=status.HTTP_201_CREATED,
+    response_model=AdminDataRequest,
+)
+async def admin_record_data_request(
+    user_id: uuid.UUID,
+    body: RecordDataRequest,
+    request: Request,
+    who: Annotated[Staff, Depends(staff(Permission.PRIVACY_REQUESTS_MANAGE, justified=True))],
+) -> AdminDataRequest:
+    return await _service(request).record_data_request(who, user_id, body)
+
+
+@router.post("/data-requests/{request_id}/resolve", response_model=AdminDataRequest)
+async def admin_resolve_data_request(
+    request_id: uuid.UUID,
+    body: ResolveDataRequest,
+    request: Request,
+    who: Annotated[Staff, Depends(staff(Permission.PRIVACY_REQUESTS_MANAGE, justified=True))],
+) -> AdminDataRequest:
+    return await _service(request).resolve_data_request(who, request_id, body)
 
 
 @router.get("/products", response_model=AdminProductList)

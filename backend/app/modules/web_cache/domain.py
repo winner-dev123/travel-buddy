@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -15,6 +16,7 @@ from typing import Any
 # Receiver-side tag grammar is `profile:[a-z0-9_.]{3,30}`; anything else would be ignored there.
 _PROFILE_VISIBILITY_FIELDS = frozenset({"handle", "account_visibility"})
 _PRIVACY_VISIBILITY_FIELDS = frozenset({"profile_visibility", "show_trips_on_profile"})
+_DESTINATION_SLUG = re.compile(r"[a-z0-9-]{1,120}")  # receiver grammar: destination:<slug>
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,6 +60,14 @@ def revalidation_for(event_type: str, data: Mapping[str, Any]) -> Revalidation |
     if event_type.startswith("post."):
         return _post_revalidation(event_type, data)
     changed = _changed(data)
+    if event_type == "destination.updated":
+        slug = data.get("slug")
+        if not changed or not isinstance(slug, str) or not _DESTINATION_SLUG.fullmatch(slug):
+            return None
+        # Hidden or shown again, featured or not: the destination page, the lists and the sitemap.
+        return Revalidation(
+            reason="destination_changed", tags=(f"destination:{slug}", "destinations", "sitemap")
+        )
     tags: list[str] = []
     if event_type == "profile.updated":
         if not changed & _PROFILE_VISIBILITY_FIELDS:

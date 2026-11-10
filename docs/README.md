@@ -19,6 +19,7 @@ Phase 0 engineering artifacts (master prompt §26), all at **v1.0 draft for appr
 | 13 | DPIA: traveler discovery (draft for review) | [13-dpia-traveler-discovery.md](13-dpia-traveler-discovery.md) |
 | 14 | App Store and Google Play readiness | [14-store-readiness.md](14-store-readiness.md) |
 | 15 | Records of processing activities (GDPR Art. 30, draft) | [15-records-of-processing.md](15-records-of-processing.md) |
+| 16 | Destination launch playbook | [16-destination-launch-playbook.md](16-destination-launch-playbook.md) |
 | — | Architecture decision records | [adr/](adr/README.md) |
 | — | Web application (web workstream) | [web/](web/01-architecture.md) |
 

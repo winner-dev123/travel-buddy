@@ -56,8 +56,16 @@ recovery (NFR-004, BL-6.09); dependency and secret scanning in CI (NFR-006); thr
 |---|---|
 | Access, portability (Art. 15, 20) | Settings → Your data: ZIP archive of every module's records (AUTH-011) |
 | Erasure (Art. 17) | Settings → Delete account: 30-day grace, then deletion or anonymization across modules (AUTH-010) |
-| Rectification (Art. 16) | Profile and settings screens; other corrections through support |
+| Rectification (Art. 16) | Profile and settings screens; other corrections through support, recorded as a request and closed with the outcome |
 | Objection, restriction | Discovery and translation consents withdrawable at once; support for the rest |
+
+Requests that reach support by email or post are recorded in the admin API
+(`POST /v1/admin/users/{id}/data-requests`, permission `privacy.requests.manage`): an export
+starts the same archive job as the in-app request, a rectification is closed with
+`/resolve` and the outcome told to the user. Deletion is always confirmed by the user in the
+app. The staff queue (`GET /v1/admin/data-requests`) lists open requests oldest first with the
+one-month deadline of Art. 12(3) (`due_at`, `overdue`); every read and change is audited with
+a justification. The user sees each request and its status under Settings → Your data.
 
 ## 5. Open items for the privacy review
 

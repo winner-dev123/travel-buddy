@@ -218,6 +218,46 @@ class DataSubjectRequestPage(_Response):
     page: PageInfo
 
 
+DsrNote = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
+
+
+class AdminDataRequest(_Response):
+    """Contract ``AdminDataRequest``: a GDPR request as staff see it (SAFE-010)."""
+
+    id: uuid.UUID
+    user_id: uuid.UUID
+    kind: Literal["export", "deletion", "rectification"]
+    status: Literal["received", "processing", "completed", "rejected", "cancelled"]
+    channel: Literal["app", "email", "other"]
+    details: str | None
+    requested_at: datetime
+    due_at: datetime
+    overdue: bool
+    scheduled_for: datetime | None
+    completed_at: datetime | None
+    handled_by: uuid.UUID | None
+    resolution: str | None
+
+
+class AdminDataRequestPage(_Response):
+    data: list[AdminDataRequest]
+    page: PageInfo
+
+
+class RecordDataRequest(_Request):
+    """A request that reached support outside the app (email, post). Deletion stays in the app:
+    the user confirms it there, with the 30-day grace period (AUTH-010)."""
+
+    kind: Literal["export", "rectification"]
+    channel: Literal["email", "other"]
+    details: DsrNote | None = None
+
+
+class ResolveDataRequest(_Request):
+    status: Literal["completed", "rejected"]
+    resolution: DsrNote
+
+
 class WebPushKeys(_Request):
     p256dh: str = Field(min_length=1, max_length=256)
     auth: str = Field(min_length=1, max_length=256)

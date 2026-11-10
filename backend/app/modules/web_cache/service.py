@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 JOB_KIND = "web_cache.revalidate"
 QUEUE = "default"
 _EVENT_TYPES = (
+    "destination.updated",
     "profile.updated",
     "privacy.updated",
     "user.deleted",
