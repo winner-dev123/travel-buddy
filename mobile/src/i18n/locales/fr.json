@@ -672,7 +672,8 @@
       "lodging": "Hébergement",
       "transit_hub": "Gare",
       "other": "Autre"
-    }
+    },
+    "neighbourhoods": "Quartiers de {{place}}"
   },
   "planner": {
     "title": "Planifier un voyage",

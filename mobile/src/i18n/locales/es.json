@@ -672,7 +672,8 @@
       "lodging": "Alojamiento",
       "transit_hub": "Estación",
       "other": "Otro"
-    }
+    },
+    "neighbourhoods": "Barrios de {{place}}"
   },
   "planner": {
     "title": "Planifica un viaje",

@@ -11,6 +11,8 @@ import { FeatureGate } from '@/components/FeatureGate';
 import { Button, Notice, TextField } from '@/components/Form';
 import {
   exploreKeys,
+  destinationChildren,
+  featuredDestinations,
   getDestination,
   listGuides,
   nearbyPlaces,
@@ -49,6 +51,24 @@ function Explore() {
     queryFn: () => getDestination(getApiClient(), destination!.id),
     enabled: destination !== null,
   });
+  const featured = useQuery({
+    queryKey: ['destinations', 'featured'],
+    queryFn: () => featuredDestinations(getApiClient()),
+    enabled: destination === null,
+    staleTime: 10 * 60 * 1000,
+  });
+  const children = useQuery({
+    queryKey: ['destinations', 'children', destination?.id ?? ''],
+    queryFn: () => destinationChildren(getApiClient(), destination!.id),
+    enabled: destination !== null && destination.kind === 'city',
+    staleTime: 10 * 60 * 1000,
+  });
+  const choose = (value: DestinationSummary | null) => {
+    setDestination(value);
+    setNear(null);
+    setQ('');
+  };
+  const chip = [styles.chip, { borderColor: theme.colors.divider }];
   const guides = useQuery({
     queryKey: ['guides', 'destination', destination?.id ?? ''],
     queryFn: () => listGuides(getApiClient(), destination!.id),
@@ -129,15 +149,46 @@ function Explore() {
         )}
 
         {heading(t('explore.places'))}
-        <DestinationPicker
-          value={destination}
-          onChange={(value) => {
-            setDestination(value);
-            setNear(null);
-            setQ('');
-          }}
-          testID="explore-destination"
-        />
+        <DestinationPicker value={destination} onChange={choose} testID="explore-destination" />
+        {destination === null && (featured.data ?? []).length > 0 ? (
+          <View style={styles.chips} testID="explore-featured">
+            {(featured.data ?? []).map((item) => (
+              <Pressable
+                key={item.id}
+                onPress={() => choose(item)}
+                accessibilityRole="button"
+                style={chip}
+                testID={`explore-featured-${item.slug}`}
+              >
+                <Text style={[theme.typography.label, { color: theme.colors.textPrimary }]}>
+                  {item.name}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+        {destination && (children.data ?? []).length > 0 ? (
+          <View style={{ gap: theme.spacing[2] }}>
+            <Text style={[theme.typography.label, { color: theme.colors.textSecondary }]}>
+              {t('explore.neighbourhoods', { place: destination.name })}
+            </Text>
+            <View style={styles.chips} testID="explore-children">
+              {(children.data ?? []).map((item) => (
+                <Pressable
+                  key={item.id}
+                  onPress={() => choose(item)}
+                  accessibilityRole="button"
+                  style={chip}
+                  testID={`explore-child-${item.slug}`}
+                >
+                  <Text style={[theme.typography.label, { color: theme.colors.textPrimary }]}>
+                    {item.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        ) : null}
         {(guides.data ?? []).length > 0 ? heading(t('guides.title')) : null}
         {(guides.data ?? []).map((guide) => (
           <Pressable
@@ -196,4 +247,6 @@ function Explore() {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   row: { borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: 10, gap: 2 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
 });

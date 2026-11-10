@@ -661,7 +661,8 @@
       "lodging": "Unterkunft",
       "transit_hub": "Verkehrsknoten",
       "other": "Sonstiges"
-    }
+    },
+    "neighbourhoods": "Stadtteile von {{place}}"
   },
   "planner": {
     "title": "Reise planen",

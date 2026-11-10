@@ -661,7 +661,8 @@
       "lodging": "Lodging",
       "transit_hub": "Transport hub",
       "other": "Other"
-    }
+    },
+    "neighbourhoods": "Neighbourhoods in {{place}}"
   },
   "planner": {
     "title": "Plan a trip",

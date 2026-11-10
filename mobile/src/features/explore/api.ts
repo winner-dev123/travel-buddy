@@ -161,6 +161,27 @@ export const exploreKeys = {
   trip: (id: string) => ['trips', id] as const,
 };
 
+/** Editorially featured destinations (DEST-004), to start exploring without typing. */
+export async function featuredDestinations(client: ApiClient): Promise<DestinationSummary[]> {
+  return (
+    await client.get<{ data: DestinationSummary[] }>('/v1/destinations/featured', {
+      query: { limit: 12 },
+    })
+  ).data;
+}
+
+/** Neighbourhoods and districts of a city (DEST-001). */
+export async function destinationChildren(
+  client: ApiClient,
+  id: string,
+): Promise<DestinationSummary[]> {
+  return (
+    await client.get<{ data: DestinationSummary[] }>(`/v1/destinations/${id}/children`, {
+      query: { limit: 30 },
+    })
+  ).data;
+}
+
 export function getDestination(client: ApiClient, id: string): Promise<DestinationDetail> {
   return client.get<DestinationDetail>(`/v1/destinations/${id}`);
 }

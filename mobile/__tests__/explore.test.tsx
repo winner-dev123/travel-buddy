@@ -277,6 +277,29 @@ describe('explore', () => {
     expect(mockRouter.push).toHaveBeenCalledWith('/trips/plan');
   });
 
+  it('starts from featured destinations and narrows to a neighbourhood', async () => {
+    const alfama = {
+      ...lisbon,
+      id: 'd-alfama',
+      kind: 'neighborhood',
+      slug: 'alfama-lisbon-pt',
+      name: 'Alfama',
+    };
+    mockApi.get.mockImplementation(async (path: string) => {
+      if (path === '/v1/destinations/featured') return page([lisbon]);
+      if (path === '/v1/destinations/d-lisbon/children') return page([alfama]);
+      if (path === '/v1/destinations/d-lisbon' || path === '/v1/destinations/d-alfama')
+        return { ...lisbon, centroid: { lat: 38.7223, lng: -9.1393 }, time_zone: 'Europe/Lisbon' };
+      return page([]);
+    });
+    await renderUi(<Explore />);
+    await fireEvent.press(await screen.findByTestId('explore-featured-lisbon-pt'));
+    expect(await screen.findByText('Neighbourhoods in Lisbon')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('explore-child-alfama-lisbon-pt'));
+    await waitFor(() => expect(mockApi.get).toHaveBeenCalledWith('/v1/destinations/d-alfama'));
+    expect(screen.queryByTestId('explore-featured')).toBeNull(); // a destination is chosen
+  });
+
   it('shows places near the device position', async () => {
     mockApi.get.mockResolvedValue(page([tower]));
     await renderUi(<Explore />);
