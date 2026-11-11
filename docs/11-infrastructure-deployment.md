@@ -263,7 +263,7 @@ Staging runs Stripe in **test mode**. Production gets its own Railway environmen
 
 | Variable | Value |
 |---|---|
-| `STRIPE_SECRET_KEY` | A **restricted key** (`rk_test_…` on staging, `rk_live_…` in production) with write access to Customers, Checkout Sessions, Customer portal, Subscriptions and Refunds, and read access to Products, Prices, Invoices, Charges and Disputes |
+| `STRIPE_SECRET_KEY` | A **restricted key** (`rk_test_…` on staging, `rk_live_…` in production). The API needs write access to Customers, Checkout Sessions, Customer portal, Subscriptions and Refunds, and read access to Prices, Invoices, Charges and Disputes. The setup command below also writes Products, Prices, Webhook Endpoints and the portal configuration, so give the key those too (or remove them after the setup run) |
 | `STRIPE_WEBHOOK_SECRET` | The endpoint's signing secret (`whsec_…`) |
 | `STRIPE_API_VERSION` | Leave the default (`2025-02-24.acacia`): every request and every object read uses it |
 | `STRIPE_PARTIAL_REFUND_REVOKES` | `false` (default): a partial refund keeps the purchase |
@@ -298,7 +298,7 @@ railway run --service api -- python -m app.modules.billing.stripe_setup --apply 
 
 **Dashboard settings** (recommended values in docs/07 §2.1):
 
-* payment methods: cards, plus Pix for one-time payments; no boleto at launch;
+* payment methods: cards, plus Pix for one-time payments; no boleto at launch. A Brazilian Stripe account gets one-time Pix only (Pix Automático isn't offered to businesses in Brazil), so subscriptions are paid by card. Pix needs a BRL charge: the Prices carry BRL currency options, so Checkout shows BRL and Pix to customers in Brazil. Turn Pix on separately in test and live mode;
 * Smart Retries for up to two weeks, then cancel the subscription;
 * receipt emails, the statement descriptor and Checkout branding;
 * Stripe Tax. Stripe doesn't issue Brazilian fiscal invoices (NF-e or NFS-e).
