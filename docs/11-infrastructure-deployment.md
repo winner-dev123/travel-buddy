@@ -73,7 +73,9 @@ The worker makes the cron tick and after-response ticks unnecessary (§1.1): lea
 
 **Live state (2026-11-10):** the Railway staging API is at https://api-production-9dfc555a.up.railway.app, and the worker is running jobs.
 * **Database:** until Cloud SQL billing is enabled, it uses Railway's **PostGIS** template service as a temporary database (`DATABASE_URL` references `${{PostGIS.*}}` over the private network). The launch catalog, guides and editorial posts are loaded.
-* **Sign-in:** it trusts Supabase Auth (`OIDC_ISSUERS`) until Firebase is added to `travel-buddy-tb`.
+* **Sign-in:** it trusts Firebase Auth of `travel-buddy-tb` (`FIREBASE_PROJECT_ID`, `FIREBASE_WEB_API_KEY`), and still Supabase (`OIDC_ISSUERS`) during the switch.
+* **Account deletion:** `GOOGLE_SERVICE_ACCOUNT_JSON` holds the key of service account `travelbuddy-api`, which has only the *Firebase Authentication Admin* role.
+* **Firebase:** email/password, an 8-character password policy and enumeration protection are on, and the Android and web apps are registered. Billing (Blaze) is still pending, so Cloud SQL and Cloud Storage are not created yet.
 * **Feature flags:** they are enforced by the API (BL-6.10). Staging turns on every feature the apps use; video posts, public groups and join requests stay off. Production's set is decided at launch.
 * **Deploys:** `railway up --service api|worker` from `backend/` (`.railwayignore` keeps tests and local files out).
 * **Loaders:** they run from a workstation through the PostGIS TCP proxy, because `railway ssh` needs a registered SSH key.
