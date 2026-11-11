@@ -14,7 +14,7 @@ import { UpdateGate } from '@/features/update/UpdateGate';
 import { i18n, SUPPORTED_LOCALES, type SupportedLocale } from '@/i18n';
 import { resolveSupportedLocale } from '@/i18n/resolveLocale';
 import { bindQueryOnlineManager } from '@/offline/connectivity';
-import { createQueryClient } from '@/query/queryClient';
+import { createQueryClient, refetchWhenForegrounded } from '@/query/queryClient';
 import { useSettingsStore } from '@/state/settingsStore';
 import { useAppTheme } from '@/theme/useAppTheme';
 
@@ -32,6 +32,7 @@ export default function RootLayout() {
   const deviceLocale = resolveSupportedLocale(deviceLocales.map((locale) => locale.languageTag));
 
   useEffect(() => bindQueryOnlineManager(), []);
+  useEffect(() => refetchWhenForegrounded(), []);
   usePush();
 
   // Resume the platform session from the refresh token in secure storage (ADR-0003).

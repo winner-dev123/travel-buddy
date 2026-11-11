@@ -7,11 +7,26 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getApiClient } from '@/api';
 import { Button, Notice } from '@/components/Form';
 import { exploreKeys, listTrips } from '@/features/explore/api';
+import {
+  FeatureUnavailable,
+  isFeatureDisabled,
+  ServerFeature,
+  useServerFlags,
+} from '@/features/flags/serverFlags';
 import { useAppTheme } from '@/theme/useAppTheme';
 
 /** SCR-103 Trips: the trips I own or collaborate on. */
 export default function TripsScreen() {
+  return (
+    <ServerFeature anyOf={['trips']}>
+      <Trips />
+    </ServerFeature>
+  );
+}
+
+function Trips() {
   const { t } = useTranslation();
+  const isOn = useServerFlags();
   const theme = useAppTheme();
   const router = useRouter();
   const trips = useQuery({ queryKey: exploreKeys.trips, queryFn: () => listTrips(getApiClient()) });
@@ -23,14 +38,20 @@ export default function TripsScreen() {
     >
       <Stack.Screen options={{ headerShown: true, title: t('trips.title') }} />
       <ScrollView contentContainerStyle={{ padding: theme.spacing[4], gap: theme.spacing[3] }}>
-        <Button label={t('explore.plan')} onPress={() => router.push('/trips/plan')} />
+        {isOn('ai_itineraries') ? (
+          <Button label={t('explore.plan')} onPress={() => router.push('/trips/plan')} />
+        ) : null}
         <Button
           label={t('trips.new')}
           variant="secondary"
           onPress={() => router.push('/trips/new')}
           testID="trips-new"
         />
-        {trips.isError ? <Notice tone="error">{t('trips.loadFailed')}</Notice> : null}
+        {isFeatureDisabled(trips.error) ? (
+          <FeatureUnavailable />
+        ) : trips.isError ? (
+          <Notice tone="error">{t('trips.loadFailed')}</Notice>
+        ) : null}
         {trips.data && trips.data.length === 0 ? (
           <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>
             {t('trips.empty')}

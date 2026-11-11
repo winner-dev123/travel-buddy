@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getApiClient } from '@/api';
 import { useSessionStore } from '@/auth/sessionStore';
 import { FeatureGate } from '@/components/FeatureGate';
+import { ServerFeature } from '@/features/flags/serverFlags';
 import { Notice } from '@/components/Form';
 import { Avatar } from '@/features/feed/PostCard';
 import {
@@ -29,7 +30,9 @@ import { useAppTheme } from '@/theme/useAppTheme';
 export default function MessagesScreen() {
   return (
     <FeatureGate feature="messaging">
-      <Inbox />
+      <ServerFeature anyOf={['direct_messages', 'travel_groups']}>
+        <Inbox />
+      </ServerFeature>
     </FeatureGate>
   );
 }

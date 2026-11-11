@@ -204,6 +204,8 @@ export interface AppInfo {
   auth_providers?: string[];
   /** Web page running the IdP password reset (AUTH-005). */
   password_reset_url?: string | null;
+  /** Server feature flags; the API refuses features whose flag is off (BL-6.10). */
+  feature_flags?: Record<string, boolean>;
 }
 
 export const APP_INFO_KEY = ['client-config', 'app-info'] as const;

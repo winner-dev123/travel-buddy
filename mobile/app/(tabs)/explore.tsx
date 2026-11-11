@@ -22,6 +22,7 @@ import {
 import { DestinationPicker } from '@/features/explore/DestinationPicker';
 import { PlaceRow } from '@/features/explore/PlaceRow';
 import { freshFix, getCoarsePosition, type DeviceFix } from '@/features/feed/location';
+import { useServerFlags } from '@/features/flags/serverFlags';
 import { OfflinePackages } from '@/features/offline/OfflinePackages';
 import type { DestinationSummary } from '@/features/feed/types';
 import { useAppTheme } from '@/theme/useAppTheme';
@@ -70,10 +71,11 @@ function Explore() {
     setQ('');
   };
   const chip = [styles.chip, { borderColor: theme.colors.divider }];
+  const isOn = useServerFlags();
   const guides = useQuery({
     queryKey: ['guides', 'destination', destination?.id ?? ''],
     queryFn: () => listGuides(getApiClient(), destination!.id),
-    enabled: destination !== null,
+    enabled: destination !== null && isOn('guides'),
   });
   const point =
     near ??
@@ -135,23 +137,29 @@ function Explore() {
         </Text>
         {signedIn ? (
           <View style={{ gap: theme.spacing[2] }}>
-            <Button
-              label={t('explore.plan')}
-              onPress={() => router.push('/trips/plan')}
-              testID="explore-plan"
-            />
-            <Button
-              label={t('explore.myTrips')}
-              variant="secondary"
-              onPress={() => router.push('/trips')}
-              testID="explore-trips"
-            />
-            <Button
-              label={t('offline.downloads')}
-              variant="secondary"
-              onPress={() => router.push('/downloads')}
-              testID="explore-downloads"
-            />
+            {isOn('ai_itineraries') && isOn('trips') ? (
+              <Button
+                label={t('explore.plan')}
+                onPress={() => router.push('/trips/plan')}
+                testID="explore-plan"
+              />
+            ) : null}
+            {isOn('trips') ? (
+              <Button
+                label={t('explore.myTrips')}
+                variant="secondary"
+                onPress={() => router.push('/trips')}
+                testID="explore-trips"
+              />
+            ) : null}
+            {isOn('offline_packages') ? (
+              <Button
+                label={t('offline.downloads')}
+                variant="secondary"
+                onPress={() => router.push('/downloads')}
+                testID="explore-downloads"
+              />
+            ) : null}
           </View>
         ) : (
           <Notice tone="info">{t('explore.signInToPlan')}</Notice>
@@ -216,7 +224,9 @@ function Explore() {
             </Text>
           </Pressable>
         ))}
-        {destination && signedIn ? <OfflinePackages destination={destination} /> : null}
+        {destination && signedIn && isOn('offline_packages') ? (
+          <OfflinePackages destination={destination} />
+        ) : null}
         {destination ? (
           <TextField
             label={t('explore.searchPlaces', { place: destination.name })}

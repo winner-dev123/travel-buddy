@@ -2,7 +2,8 @@
   "common": {
     "appName": "Travel Buddy",
     "retry": "Tentar novamente",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "featureUnavailable": "Este recurso não está disponível no momento."
   },
   "tabs": {
     "home": "Início",

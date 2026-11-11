@@ -2,7 +2,8 @@
   "common": {
     "appName": "Travel Buddy",
     "retry": "Try again",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "featureUnavailable": "This feature isn't available right now."
   },
   "tabs": {
     "home": "Home",

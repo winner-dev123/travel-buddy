@@ -9,6 +9,7 @@ import { useSessionStore } from '@/auth/sessionStore';
 import { DiscoverySafetyNotice } from '@/components/DiscoverySafetyNotice';
 import { DiscoverSection } from '@/features/discovery/DiscoverSection';
 import { FeatureGate } from '@/components/FeatureGate';
+import { ServerFeature } from '@/features/flags/serverFlags';
 import { Button, Notice } from '@/components/Form';
 import {
   accountKeys,
@@ -28,7 +29,9 @@ import { useAppTheme } from '@/theme/useAppTheme';
 export default function CompanionsScreen() {
   return (
     <FeatureGate feature="companions" placeholderExtra={<DiscoverySafetyNotice />}>
-      <Companions />
+      <ServerFeature anyOf={['traveler_discovery', 'connections']}>
+        <Companions />
+      </ServerFeature>
     </FeatureGate>
   );
 }

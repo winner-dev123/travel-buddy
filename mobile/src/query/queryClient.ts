@@ -1,4 +1,5 @@
-import { QueryClient } from '@tanstack/react-query';
+import { focusManager, QueryClient } from '@tanstack/react-query';
+import { AppState, type AppStateStatus, Platform } from 'react-native';
 
 import { ApiNetworkError, ApiProblem } from '@/api/errors';
 
@@ -34,4 +35,22 @@ export function createQueryClient(): QueryClient {
       },
     },
   });
+}
+
+/**
+ * React Native has no window focus: report the app coming to the foreground instead, so stale
+ * queries (the feed, messages, server feature flags) refresh when the traveller returns.
+ * Returns the unsubscribe function.
+ */
+export function refetchWhenForegrounded(): () => void {
+  if (Platform.OS === 'web') {
+    return () => undefined;
+  }
+  focusManager.setEventListener((setFocused) => {
+    const subscription = AppState.addEventListener('change', (status: AppStateStatus) =>
+      setFocused(status === 'active'),
+    );
+    return () => subscription.remove();
+  });
+  return () => focusManager.setEventListener(() => () => undefined);
 }
