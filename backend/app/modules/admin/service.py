@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -21,8 +21,10 @@ from app.core.time import Clock
 from app.modules.admin.deps import Staff
 from app.modules.admin.schemas import (
     AdminDestinationUpdate,
+    AdminOverview,
     AdminReport,
     AdminUser,
+    AdminUserSummary,
     AuditLogEntry,
     ModerationActionOut,
     ModerationActionRequest,
@@ -34,6 +36,7 @@ from app.modules.billing import service as billing
 from app.modules.billing.schemas import (
     AdminProductList,
     AdminProductOut,
+    AdminTransactionPage,
     BillingPolicyOut,
     CreateProductRequest,
     EntitlementGrantList,
@@ -366,6 +369,181 @@ class AdminService:
         return out
 
     # ─────────────────────────────── accounts ───────────────────────────────
+
+    async def search_users(
+        self,
+        staff: Staff,
+        *,
+        query: str | None,
+        status: str | None,
+        staff_only: bool,
+        cursor: str | None,
+        limit: int,
+    ) -> Page[AdminUserSummary]:
+        """Find accounts for the staff console (ADM-003). ``query`` is an exact email address, an
+        account id, or the start of a handle / part of a display name; without it, accounts are
+        listed newest first. Every search is audited with its filters."""
+        text = (query or "").strip() or None
+        filters = {"q": text, "status": status, "staff": staff_only}
+        position = self._cursors.decode(cursor, scope="admin.users") if cursor is not None else None
+        if position is not None and position.get("f") != filters:
+            raise AppError(ErrorCode.INVALID_CURSOR, "The cursor belongs to another query.")
+        next_position: dict[str, Any] | None = None
+        async with self._sessionmaker() as session, session.begin():
+            if text is None:
+                after = (
+                    (datetime.fromisoformat(str(position["c"])), uuid.UUID(str(position["i"])))
+                    if position is not None
+                    else None
+                )
+                rows = await identity.list_account_ids(
+                    session, status=status, staff_only=staff_only, after=after, limit=limit + 1
+                )
+                if len(rows) > limit:
+                    last_id, last_created = rows[limit - 1]
+                    next_position = {"c": last_created.isoformat(), "i": str(last_id)}
+                ids = [user_id for user_id, _ in rows[:limit]]
+            elif "@" in text and " " not in text:
+                found = await identity.user_id_by_email(session, text)
+                ids = [found] if found is not None else []
+            elif (as_id := _uuid_or_none(text)) is not None:
+                ids = [as_id]
+            else:
+                people = await profiles.search_authors(
+                    session,
+                    text,
+                    exclude=frozenset(),
+                    after_handle=str(position["h"]) if position is not None else None,
+                    limit=limit + 1,
+                )
+                if len(people) > limit:
+                    next_position = {"h": people[limit - 1].handle}
+                ids = [person.id for person in people[:limit]]
+            summaries = await self._summaries(session, ids)
+            _audit(session, staff, "users.searched", "user", "search", filters=filters)
+        data = [
+            s
+            for s in summaries
+            if (status is None or s.status == status) and (not staff_only or s.roles)
+        ]
+        next_cursor = (
+            self._cursors.encode({"f": filters, **next_position}, scope="admin.users")
+            if next_position is not None
+            else None
+        )
+        return Page[AdminUserSummary](
+            data=data, page=PageInfo(next_cursor=next_cursor, has_more=next_cursor is not None)
+        )
+
+    async def overview(self, staff: Staff) -> AdminOverview:
+        """Console home page: real aggregates only (ADM-006). Billing totals and the privacy
+        queue are left out for staff who may not open them."""
+        now = self._clock.now()
+        principal = staff.principal
+        async with self._sessionmaker() as session:
+            users = await identity.account_stats(session, now)
+            premium = await billing.premium_member_count(session, now)
+            posts = await social.posts_created_since(session, now - timedelta(days=7))
+            queue = await trust_safety.report_queue_stats(session, now)
+            data_requests = (
+                await identity.open_data_request_count(session)
+                if principal.has_permission(Permission.PRIVACY_REQUESTS_MANAGE)
+                else None
+            )
+            revenue = (
+                await billing.revenue_since(session, now - timedelta(days=30))
+                if principal.has_permission(Permission.ENTITLEMENTS_GRANT)
+                else None
+            )
+        return AdminOverview.model_validate(
+            {
+                "generated_at": now,
+                "users": users,
+                "premium_members": premium,
+                "posts_7d": posts,
+                "moderation": {
+                    "open_reports": queue["open_reports"],
+                    "unassigned_reports": queue["unassigned_reports"],
+                    "oldest_open_age_seconds": queue["oldest_open_age_seconds"],
+                    "by_priority": queue["open_by_priority"],
+                },
+                "open_data_requests": data_requests,
+                "revenue_30d": [r.model_dump() for r in revenue] if revenue is not None else None,
+            }
+        )
+
+    async def transactions(
+        self,
+        staff: Staff,
+        *,
+        user_id: uuid.UUID | None,
+        status: str | None,
+        cursor: str | None,
+        limit: int,
+    ) -> AdminTransactionPage:
+        """The billing ledger for staff (ADM-005); audited, like every look at a user's money."""
+        filters = {"user_id": str(user_id) if user_id else None, "status": status}
+        after = None
+        if cursor:
+            position = self._cursors.decode(cursor, scope="admin.transactions")
+            if position.get("f") != filters:
+                raise AppError(ErrorCode.INVALID_CURSOR, "The cursor belongs to another query.")
+            after = (datetime.fromisoformat(str(position["c"])), uuid.UUID(str(position["i"])))
+        async with self._sessionmaker() as session, session.begin():
+            rows = await billing.staff_transactions(
+                session, user_id=user_id, status=status, after=after, limit=limit + 1
+            )
+            _audit(
+                session,
+                staff,
+                "billing_transactions.viewed",
+                "user" if user_id else "billing_transaction",
+                user_id or "query",
+                filters=filters,
+            )
+        has_more = len(rows) > limit
+        rows = rows[:limit]
+        next_cursor = (
+            self._cursors.encode(
+                {"f": filters, "c": rows[-1].occurred_at.isoformat(), "i": str(rows[-1].id)},
+                scope="admin.transactions",
+            )
+            if has_more and rows
+            else None
+        )
+        return AdminTransactionPage(
+            data=rows, page=PageInfo(next_cursor=next_cursor, has_more=has_more)
+        )
+
+    async def assign_role(self, staff: Staff, user_id: uuid.UUID, role: str) -> AdminUser:
+        """ADM-007: superadmins give platform roles; the account signs in again with a second
+        factor before the role works."""
+        async with self._sessionmaker() as session, session.begin():
+            changed = await identity.assign_role(
+                session, user_id, role, granted_by=staff.principal.user_id, now=self._clock.now()
+            )
+            if changed:
+                _audit(session, staff, "staff_role.granted", "user", user_id, role=role)
+            return await self._user(session, user_id)
+
+    async def remove_role(self, staff: Staff, user_id: uuid.UUID, role: str) -> AdminUser:
+        """Take a platform role away (sessions end at once). The last active superadmin keeps
+        theirs, so the console can never lock everyone out."""
+        async with self._sessionmaker() as session, session.begin():
+            view = await identity.account_admin_view(session, user_id)
+            if view is None:
+                raise AppError(ErrorCode.NOT_FOUND, "User not found.")
+            if (
+                role == PlatformRole.SUPERADMIN
+                and role in view.roles
+                and await identity.active_role_holders(session, role) <= 1
+            ):
+                raise AppError(
+                    ErrorCode.CONFLICT, "This is the last superadmin. Make someone else one first."
+                )
+            if await identity.remove_role(session, user_id, role, now=self._clock.now()):
+                _audit(session, staff, "staff_role.revoked", "user", user_id, role=role)
+            return await self._user(session, user_id)
 
     async def get_user(self, staff: Staff, user_id: uuid.UUID) -> AdminUser:
         async with self._sessionmaker() as session, session.begin():
@@ -754,6 +932,29 @@ class AdminService:
 
     # ─────────────────────────────── assembly ───────────────────────────────
 
+    async def _summaries(
+        self, session: AsyncSession, ids: Sequence[uuid.UUID]
+    ) -> list[AdminUserSummary]:
+        views = await identity.account_admin_views(session, ids)
+        people = await profiles.authors(session, ids)
+        return [
+            AdminUserSummary.model_validate(
+                {
+                    "id": user_id,
+                    "handle": people[user_id].handle,
+                    "display_name": people[user_id].display_name,
+                    "status": views[user_id].status,
+                    "roles": [
+                        r for r in views[user_id].roles if r in PlatformRole._value2member_map_
+                    ],
+                    "created_at": views[user_id].created_at,
+                    "last_active_on": views[user_id].last_active_on,
+                }
+            )
+            for user_id in ids
+            if user_id in views and user_id in people and views[user_id].status != "deleted"
+        ]
+
     async def _user(self, session: AsyncSession, user_id: uuid.UUID) -> AdminUser:
         view = await identity.account_admin_view(session, user_id)
         author = (await profiles.authors(session, [user_id])).get(user_id)
@@ -778,7 +979,13 @@ class AdminService:
 
     async def _reports(self, session: AsyncSession, rows: Sequence[Any]) -> list[AdminReport]:
         people = await profiles.authors(
-            session, [u for r in rows for u in (r.reporter_id, r.assigned_to) if u is not None]
+            session,
+            [
+                u
+                for r in rows
+                for u in (r.reporter_id, r.assigned_to, r.target_author_id)
+                if u is not None
+            ],
         )
         related = await trust_safety.related_report_counts(session, rows)
 
@@ -792,6 +999,7 @@ class AdminService:
                     "reporter": summary(r.reporter_id),
                     "target_type": r.target_type,
                     "target_id": r.target_id,
+                    "target_author": summary(r.target_author_id),
                     "reason": r.reason,
                     "details": r.details,
                     "priority": r.priority,

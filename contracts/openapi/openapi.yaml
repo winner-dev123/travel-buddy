@@ -5821,6 +5821,153 @@ paths:
         '409': { $ref: '#/components/responses/IdempotencyConflict' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/admin/metrics/overview:
+    get:
+      tags: [admin]
+      operationId: adminOverview
+      summary: Staff console home page numbers (real aggregates only)
+      description: |
+        Accounts, Premium members, recent posts, the moderation queue, open privacy requests and
+        the last 30 days of revenue. `open_data_requests` is null without
+        `privacy.requests.manage` and `revenue_30d` is null without `entitlements.grant`.
+      x-phase: 6
+      x-requirements: [ADM-006, ADM-007, ADM-008]
+      x-rate-limit-class: admin
+      x-platform-permission: users.read
+      responses:
+        '200':
+          description: Overview.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminOverview' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/admin/users:
+    get:
+      tags: [admin]
+      operationId: adminSearchUsers
+      summary: Find accounts (audited)
+      description: |
+        `q` is an exact email address, an account ID, or the start of a handle / part of a display
+        name. Without `q`, accounts are listed newest first. Rows carry no email address: open
+        the account (`GET /v1/admin/users/{userId}`) for it. Every search is audited with its
+        filters.
+      x-phase: 6
+      x-requirements: [ADM-003, ADM-007, ADM-008, ADM-009]
+      x-rate-limit-class: admin
+      x-platform-permission: users.read
+      parameters:
+        - $ref: '#/components/parameters/AuditJustification'
+        - name: q
+          in: query
+          required: false
+          schema: { type: string, maxLength: 320 }
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [active, suspended, deactivated, pending_deletion, deleted] }
+        - name: staff
+          in: query
+          required: false
+          description: Only accounts with a platform role.
+          schema: { type: boolean, default: false }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Matching accounts.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUserSummaryPage' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/admin/users/{userId}/roles/{role}:
+    put:
+      tags: [admin]
+      operationId: adminAssignRole
+      summary: Give an account a platform role (superadmins; audited)
+      description: |
+        Only active accounts. The role reaches the account's tokens at its next sign-in, which
+        must use a second factor. Giving a role the account already has changes nothing.
+      x-phase: 6
+      x-requirements: [ADM-007, ADM-008, ADM-009]
+      x-rate-limit-class: admin
+      x-platform-permission: roles.assign
+      parameters:
+        - $ref: '#/components/parameters/AuditJustification'
+        - $ref: '#/components/parameters/UserId'
+        - name: role
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/PlatformRole' }
+      responses:
+        '200':
+          description: The account with its roles.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUser' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [admin]
+      operationId: adminRemoveRole
+      summary: Take a platform role away (ends the account's sessions; audited)
+      description: The last active superadmin cannot lose that role (`409 conflict`).
+      x-phase: 6
+      x-requirements: [ADM-007, ADM-008, ADM-009]
+      x-rate-limit-class: admin
+      x-platform-permission: roles.assign
+      parameters:
+        - $ref: '#/components/parameters/AuditJustification'
+        - $ref: '#/components/parameters/UserId'
+        - name: role
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/PlatformRole' }
+      responses:
+        '200':
+          description: The account with its remaining roles.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUser' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/admin/billing/transactions:
+    get:
+      tags: [admin]
+      operationId: adminListTransactions
+      summary: The billing ledger, newest first (audited; no card data)
+      x-phase: 6
+      x-requirements: [ADM-005, ADM-007, ADM-008, ADM-009, BILL-011]
+      x-rate-limit-class: admin
+      x-platform-permission: entitlements.grant
+      parameters:
+        - $ref: '#/components/parameters/AuditJustification'
+        - name: user_id
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [pending, succeeded, failed, open, won, lost] }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Ledger rows.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminBillingTransactionPage' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/admin/users/{userId}:
     get:
       tags: [admin]
@@ -9796,7 +9943,7 @@ components:
     # ───────── Admin ─────────
     AdminReport:
       type: object
-      required: [id, reporter, target_type, target_id, reason, details, priority, status, assigned_to, evidence, resolution_note, related_report_count, created_at, resolved_at]
+      required: [id, reporter, target_type, target_id, target_author, reason, details, priority, status, assigned_to, evidence, resolution_note, related_report_count, created_at, resolved_at]
       properties:
         id: { $ref: '#/components/schemas/Uuid' }
         reporter:
@@ -9805,6 +9952,11 @@ components:
             - { type: 'null' }
         target_type: { $ref: '#/components/schemas/ReportTargetType' }
         target_id: { $ref: '#/components/schemas/Uuid' }
+        target_author:
+          description: Who wrote the reported content (the reported account itself for `user` reports), so staff can act on the account.
+          anyOf:
+            - { $ref: '#/components/schemas/UserSummary' }
+            - { type: 'null' }
         reason: { $ref: '#/components/schemas/ReportReason' }
         details: { type: [string, 'null'] }
         priority: { type: integer }
@@ -9899,6 +10051,109 @@ components:
         open_report_count: { type: integer, minimum: 0 }
         moderation_action_count: { type: integer, minimum: 0 }
         suspended_until: { $ref: '#/components/schemas/NullableTimestamp' }
+    AdminUserSummary:
+      type: object
+      description: A search or list row of the staff console. No email address (open the account for it).
+      required: [id, handle, display_name, status, roles, created_at, last_active_on]
+      additionalProperties: false
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        handle: { type: string }
+        display_name: { type: string }
+        status: { type: string, enum: [active, suspended, deactivated, pending_deletion, deleted] }
+        roles: { type: array, items: { $ref: '#/components/schemas/PlatformRole' } }
+        created_at: { $ref: '#/components/schemas/Timestamp' }
+        last_active_on: { $ref: '#/components/schemas/NullableLocalDate' }
+    AdminUserSummaryPage:
+      type: object
+      required: [data, page]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/AdminUserSummary' } }
+        page: { $ref: '#/components/schemas/PageInfo' }
+    AdminOverview:
+      type: object
+      description: Staff console home page. Real aggregates only; never invented series.
+      required: [generated_at, users, premium_members, posts_7d, moderation, open_data_requests, revenue_30d]
+      additionalProperties: false
+      properties:
+        generated_at: { $ref: '#/components/schemas/Timestamp' }
+        users:
+          type: object
+          required: [total, new_7d, new_30d, active_7d, suspended]
+          additionalProperties: false
+          properties:
+            total: { type: integer, minimum: 0 }
+            new_7d: { type: integer, minimum: 0 }
+            new_30d: { type: integer, minimum: 0 }
+            active_7d: { type: integer, minimum: 0 }
+            suspended: { type: integer, minimum: 0 }
+        premium_members: { type: integer, minimum: 0 }
+        posts_7d: { type: integer, minimum: 0 }
+        moderation:
+          type: object
+          required: [open_reports, unassigned_reports, oldest_open_age_seconds, by_priority]
+          additionalProperties: false
+          properties:
+            open_reports: { type: integer, minimum: 0 }
+            unassigned_reports: { type: integer, minimum: 0 }
+            oldest_open_age_seconds: { type: [integer, 'null'], minimum: 0 }
+            by_priority:
+              type: object
+              description: Open reports per priority.
+              additionalProperties: { type: integer, minimum: 0 }
+        open_data_requests:
+          type: [integer, 'null']
+          minimum: 0
+          description: Null without `privacy.requests.manage`.
+        revenue_30d:
+          description: Succeeded payments minus refunds per currency and environment; null without `entitlements.grant`.
+          oneOf:
+            - type: array
+              items:
+                type: object
+                required: [currency, environment, amount_minor]
+                additionalProperties: false
+                properties:
+                  currency: { type: string, pattern: '^[A-Z]{3}$' }
+                  environment: { type: string, enum: [production, sandbox] }
+                  amount_minor: { type: integer }
+            - { type: 'null' }
+    AdminBillingTransaction:
+      type: object
+      description: One ledger row for staff (BILL-011). No card or bank data.
+      required: [id, user_id, provider, environment, kind, status, amount_minor, currency, reason, provider_reference, product, occurred_at]
+      additionalProperties: false
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        user_id: { oneOf: [{ $ref: '#/components/schemas/Uuid' }, { type: 'null' }] }
+        provider: { $ref: '#/components/schemas/BillingProvider' }
+        environment: { type: string, enum: [production, sandbox] }
+        kind: { type: string, enum: [payment, refund, dispute] }
+        status: { type: string, enum: [pending, succeeded, failed, open, won, lost] }
+        amount_minor: { type: [integer, 'null'], minimum: 0 }
+        currency: { type: [string, 'null'], pattern: '^[A-Z]{3}$' }
+        reason: { type: [string, 'null'] }
+        provider_reference:
+          type: string
+          description: 'The provider object: Stripe invoice, payment intent, charge or dispute; store transaction.'
+        product:
+          oneOf:
+            - type: object
+              required: [id, kind, period, title]
+              additionalProperties: false
+              properties:
+                id: { $ref: '#/components/schemas/Uuid' }
+                kind: { type: string, enum: [auto_renewable, non_renewing, non_consumable] }
+                period: { type: [string, 'null'], pattern: '^P[1-9][0-9]{0,2}[DWMY]$' }
+                title: { type: [string, 'null'] }
+            - { type: 'null' }
+        occurred_at: { $ref: '#/components/schemas/Timestamp' }
+    AdminBillingTransactionPage:
+      type: object
+      required: [data, page]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/AdminBillingTransaction' } }
+        page: { $ref: '#/components/schemas/PageInfo' }
     AdminSuspendUserRequest:
       type: object
       additionalProperties: false

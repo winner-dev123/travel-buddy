@@ -45,6 +45,7 @@ from app.modules.identity.domain import (
     is_age_eligible,
 )
 from app.modules.identity.models import (
+    AdminRoleAssignment,
     AuthenticationIdentity,
     ConsentRecord,
     ConsentSource,
@@ -830,6 +831,159 @@ async def account_admin_view(session: AsyncSession, user_id: uuid.UUID) -> Accou
         last_active_on=user.last_active_on,
         suspended_until=user.suspended_until,
     )
+
+
+async def account_admin_views(
+    session: AsyncSession, user_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, AccountAdminView]:
+    """``account_admin_view`` for many accounts in two queries (staff console lists)."""
+    ids = set(user_ids)
+    if not ids:
+        return {}
+    users = list(await session.scalars(select(User).where(User.id.in_(ids))))
+    roles: dict[uuid.UUID, list[str]] = {}
+    for user_id, role in await session.execute(
+        select(AdminRoleAssignment.user_id, AdminRoleAssignment.role).where(
+            AdminRoleAssignment.user_id.in_(ids), AdminRoleAssignment.revoked_at.is_(None)
+        )
+    ):
+        roles.setdefault(user_id, []).append(role)
+    return {
+        user.id: AccountAdminView(
+            user_id=user.id,
+            status=user.status,
+            email=user.email,
+            roles=sorted(roles.get(user.id, [])),
+            created_at=user.created_at,
+            last_active_on=user.last_active_on,
+            suspended_until=user.suspended_until,
+        )
+        for user in users
+    }
+
+
+async def user_id_by_email(session: AsyncSession, email: str) -> uuid.UUID | None:
+    """The account behind an email address (case-insensitive), deleted accounts excluded."""
+    found: uuid.UUID | None = await session.scalar(
+        select(User.id).where(User.email == email.strip(), User.status != UserStatus.DELETED)
+    )
+    return found
+
+
+async def list_account_ids(
+    session: AsyncSession,
+    *,
+    status: str | None,
+    staff_only: bool,
+    after: tuple[datetime, uuid.UUID] | None,
+    limit: int,
+) -> list[tuple[uuid.UUID, datetime]]:
+    """Accounts newest first for the staff console, optionally by status or staff only."""
+    query = select(User.id, User.created_at).where(User.status != UserStatus.DELETED)
+    if status is not None:
+        query = query.where(User.status == status)
+    if staff_only:
+        query = query.where(
+            select(AdminRoleAssignment.user_id)
+            .where(AdminRoleAssignment.user_id == User.id, AdminRoleAssignment.revoked_at.is_(None))
+            .exists()
+        )
+    if after is not None:
+        query = query.where(
+            or_(User.created_at < after[0], (User.created_at == after[0]) & (User.id < after[1]))
+        )
+    rows = await session.execute(
+        query.order_by(User.created_at.desc(), User.id.desc()).limit(limit)
+    )
+    return [(row.id, row.created_at) for row in rows]
+
+
+async def account_stats(session: AsyncSession, now: datetime) -> dict[str, int]:
+    """Account counts for the staff overview (deleted accounts excluded)."""
+    week, month = now - timedelta(days=7), now - timedelta(days=30)
+    total, new_7d, new_30d, active_7d, suspended = (
+        await session.execute(
+            select(
+                func.count(),
+                func.count().filter(User.created_at >= week),
+                func.count().filter(User.created_at >= month),
+                func.count().filter(User.last_active_on >= week.date()),
+                func.count().filter(User.status == UserStatus.SUSPENDED),
+            ).where(User.status != UserStatus.DELETED)
+        )
+    ).one()
+    return {
+        "total": int(total),
+        "new_7d": int(new_7d),
+        "new_30d": int(new_30d),
+        "active_7d": int(active_7d),
+        "suspended": int(suspended),
+    }
+
+
+async def open_data_request_count(session: AsyncSession) -> int:
+    from app.modules.identity.exports import ACTIVE
+
+    count = await session.scalar(
+        select(func.count())
+        .select_from(DataSubjectRequest)
+        .where(DataSubjectRequest.status.in_(ACTIVE))
+    )
+    return int(count or 0)
+
+
+async def active_role_holders(session: AsyncSession, role: str) -> int:
+    count = await session.scalar(
+        select(func.count())
+        .select_from(AdminRoleAssignment)
+        .join(User, User.id == AdminRoleAssignment.user_id)
+        .where(
+            AdminRoleAssignment.role == role,
+            AdminRoleAssignment.revoked_at.is_(None),
+            User.status == UserStatus.ACTIVE,
+        )
+    )
+    return int(count or 0)
+
+
+async def assign_role(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    role: str,
+    *,
+    granted_by: uuid.UUID | None,
+    now: datetime,
+) -> bool:
+    """Give an active account a platform role (ADM-007). False when it already has it. The role
+    reaches the account's tokens at its next sign-in, which must use a second factor."""
+    user = await repo.get_user(session, user_id)
+    if user is None or user.status == UserStatus.DELETED:
+        raise AppError(ErrorCode.NOT_FOUND, "User not found.")
+    if user.status != UserStatus.ACTIVE:
+        raise AppError(ErrorCode.CONFLICT, "Only active accounts can be given a staff role.")
+    row = await session.get(AdminRoleAssignment, (user_id, role), with_for_update=True)
+    if row is not None and row.revoked_at is None:
+        return False
+    if row is None:
+        session.add(AdminRoleAssignment(user_id=user_id, role=role, granted_by=granted_by))
+    else:
+        row.revoked_at = None
+        row.granted_by = granted_by
+        row.granted_at = now
+    return True
+
+
+async def remove_role(
+    session: AsyncSession, user_id: uuid.UUID, role: str, *, now: datetime
+) -> bool:
+    """Take a platform role away and end the account's sessions, so tokens carrying the role stop
+    working at once. False when the account didn't have it."""
+    row = await session.get(AdminRoleAssignment, (user_id, role), with_for_update=True)
+    if row is None or row.revoked_at is not None:
+        return False
+    row.revoked_at = now
+    await repo.revoke_sessions(session, user_id=user_id, reason=RevokedReason.ADMIN, now=now)
+    return True
 
 
 async def set_account_status(

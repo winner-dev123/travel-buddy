@@ -400,6 +400,18 @@ Legend. **Auth:** `bearer` = platform access token. `optional` = anonymous allow
 | `POST /v1/admin/media/{mediaId}/rights` | 1 | bearer + `content.destinations.write` | — | admin |  | DEST-007, ADM-007, ADM-008, ADM-009 |
 | `POST /v1/admin/challenge-rewards/{rewardId}/review` | 5 | bearer + `content.rewards.review` | — | admin |  | CHAL-014, ADM-007, ADM-008, ADM-009 |
 | `GET /v1/admin/audit-logs` | 6 | bearer + `audit.read` | — | admin |  | ADM-002, SAFE-007, ADM-007, ADM-008 |
+| `GET /v1/admin/metrics/overview` | 6 | bearer + `users.read` | — | admin |  | ADM-006, ADM-007, ADM-008 |
+| `GET /v1/admin/users` | 6 | bearer + `users.read` | — | admin |  | ADM-003, ADM-007, ADM-008, ADM-009 |
+| `PUT /v1/admin/users/{userId}/roles/{role}` | 6 | bearer + `roles.assign` | — | admin |  | ADM-007, ADM-008, ADM-009 |
+| `DELETE /v1/admin/users/{userId}/roles/{role}` | 6 | bearer + `roles.assign` | — | admin |  | ADM-007, ADM-008, ADM-009 |
+| `GET /v1/admin/billing/transactions` | 6 | bearer + `entitlements.grant` | — | admin |  | ADM-005, BILL-011, ADM-007, ADM-008, ADM-009 |
+
+The staff console (ADR-0032) uses these routes as follows:
+
+- **`GET /v1/admin/users` (find accounts):** `q` is an exact email address, an account ID, or the start of a handle / part of a display name; without it, accounts are listed newest first, filtered by `status` or `staff=true`. Rows have no email address, and every search is audited with its filters.
+- **`GET /v1/admin/metrics/overview` (overview):** real aggregates only. `revenue_30d` (payments minus refunds, per currency and environment) is null without `entitlements.grant`, and `open_data_requests` is null without `privacy.requests.manage`.
+- **`PUT` / `DELETE /v1/admin/users/{userId}/roles/{role}` (staff roles):** a new role works from the account's next sign-in, which needs a second factor. Removing a role ends the account's sessions at once, and the last active superadmin keeps theirs (`409 conflict`).
+- **`AdminReport.target_author`:** names who wrote the reported content, so staff can act on the account.
 
 ## 3. Authorization rules by resource family
 

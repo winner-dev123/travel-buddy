@@ -854,3 +854,11 @@ async def export_user_data(
             session, Follow, either(Follow.follower_id == user_id, Follow.followee_id == user_id)
         ),
     }
+
+
+async def posts_created_since(session: AsyncSession, since: datetime) -> int:
+    """Posts written since ``since``, deleted ones included (staff overview activity)."""
+    count = await session.scalar(
+        select(func.count()).select_from(PostRow).where(PostRow.created_at >= since)
+    )
+    return int(count or 0)

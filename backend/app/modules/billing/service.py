@@ -20,7 +20,7 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, case, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -86,6 +86,7 @@ from app.modules.billing.providers import BillingProvider, PurchaseClaim, StoreT
 from app.modules.billing.schemas import (
     ActiveSubscription,
     AdminProductOut,
+    AdminTransactionOut,
     BillingPolicyOut,
     CreateProductRequest,
     EntitlementFeatures,
@@ -97,6 +98,7 @@ from app.modules.billing.schemas import (
     ProductPrice,
     PurchaseOut,
     QuotaStatusOut,
+    RevenueTotal,
     TransactionOut,
     TransactionPage,
     TransactionProduct,
@@ -2038,6 +2040,109 @@ async def grant_entitlement(
     session.add(row)
     await session.flush()
     return _grant_out(row)
+
+
+async def premium_member_count(session: AsyncSession, now: datetime) -> int:
+    """Accounts with Premium right now from any source (staff overview)."""
+    count = await session.scalar(
+        select(func.count(func.distinct(SubscriptionEntitlement.user_id))).where(
+            SubscriptionEntitlement.entitlement_key == "premium",
+            SubscriptionEntitlement.user_id.is_not(None),
+            SubscriptionEntitlement.revoked_at.is_(None),
+            SubscriptionEntitlement.starts_at <= now,
+            or_(SubscriptionEntitlement.ends_at.is_(None), SubscriptionEntitlement.ends_at > now),
+        )
+    )
+    return int(count or 0)
+
+
+async def revenue_since(session: AsyncSession, since: datetime) -> list[RevenueTotal]:
+    """Succeeded payments minus succeeded refunds per currency and environment (staff overview).
+    Rows without an amount (some store events) are left out."""
+    amount = func.sum(
+        case(
+            (BillingTransaction.kind == "payment", BillingTransaction.amount_minor),
+            else_=-BillingTransaction.amount_minor,
+        )
+    )
+    rows = await session.execute(
+        select(BillingTransaction.currency, BillingTransaction.environment, amount)
+        .where(
+            BillingTransaction.occurred_at >= since,
+            BillingTransaction.status == "succeeded",
+            BillingTransaction.kind.in_(("payment", "refund")),
+            BillingTransaction.amount_minor.is_not(None),
+            BillingTransaction.currency.is_not(None),
+        )
+        .group_by(BillingTransaction.currency, BillingTransaction.environment)
+        .order_by(BillingTransaction.environment, BillingTransaction.currency)
+    )
+    return [
+        RevenueTotal(currency=currency, environment=environment, amount_minor=int(total or 0))
+        for currency, environment, total in rows
+    ]
+
+
+async def staff_transactions(
+    session: AsyncSession,
+    *,
+    user_id: uuid.UUID | None,
+    status: str | None,
+    after: tuple[datetime, uuid.UUID] | None,
+    limit: int,
+) -> list[AdminTransactionOut]:
+    """The ledger newest first for staff (ADM-005), optionally one account's or one status."""
+    conditions: list[Any] = []
+    if user_id is not None:
+        conditions.append(BillingTransaction.user_id == user_id)
+    if status is not None:
+        conditions.append(BillingTransaction.status == status)
+    if after is not None:
+        conditions.append(
+            or_(
+                BillingTransaction.occurred_at < after[0],
+                and_(BillingTransaction.occurred_at == after[0], BillingTransaction.id < after[1]),
+            )
+        )
+    rows = list(
+        await session.scalars(
+            select(BillingTransaction)
+            .where(*conditions)
+            .order_by(BillingTransaction.occurred_at.desc(), BillingTransaction.id.desc())
+            .limit(limit)
+        )
+    )
+    product_ids = {r.product_id for r in rows if r.product_id is not None}
+    products = {
+        p.id: p for p in await session.scalars(select(Product).where(Product.id.in_(product_ids)))
+    }
+    out = []
+    for row in rows:
+        product = products.get(row.product_id) if row.product_id else None
+        out.append(
+            AdminTransactionOut(
+                id=row.id,
+                user_id=row.user_id,
+                provider=row.provider,  # type: ignore[arg-type]
+                environment=row.environment,  # type: ignore[arg-type]
+                kind=row.kind,  # type: ignore[arg-type]
+                status=row.status,  # type: ignore[arg-type]
+                amount_minor=row.amount_minor,
+                currency=row.currency,
+                reason=row.reason,
+                provider_reference=row.provider_reference,
+                product=TransactionProduct(
+                    id=product.id,
+                    kind=product.kind,  # type: ignore[arg-type]
+                    period=product.period,
+                    title=_localized(product.title, ("en",)),
+                )
+                if product is not None
+                else None,
+                occurred_at=row.occurred_at,
+            )
+        )
+    return out
 
 
 async def staff_grants(session: AsyncSession, user_id: uuid.UUID) -> list[EntitlementGrantOut]:

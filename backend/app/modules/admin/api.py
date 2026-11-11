@@ -13,9 +13,12 @@ from app.core.pagination import Page
 from app.core.security.principal import Permission
 from app.modules.admin.deps import Staff, staff
 from app.modules.admin.schemas import (
+    AccountStatus,
     AdminDestinationUpdate,
+    AdminOverview,
     AdminReport,
     AdminUser,
+    AdminUserSummary,
     AssignReportRequest,
     AuditLogEntry,
     ModerationActionOut,
@@ -23,6 +26,7 @@ from app.modules.admin.schemas import (
     OpsSummary,
     ReinstateUserRequest,
     ResolveReportRequest,
+    StaffRole,
     SuspendUserRequest,
     TargetType,
 )
@@ -30,6 +34,7 @@ from app.modules.admin.service import AdminService
 from app.modules.billing.schemas import (
     AdminProductList,
     AdminProductOut,
+    AdminTransactionPage,
     BillingPolicyOut,
     CreateProductRequest,
     EntitlementGrantList,
@@ -157,6 +162,67 @@ async def admin_create_moderation_action(
         status_code=status.HTTP_201_CREATED,
         headers={"Idempotent-Replayed": "true"} if replayed else {},
     )
+
+
+@router.get("/metrics/overview", response_model=AdminOverview)
+async def admin_overview(
+    request: Request,
+    who: Annotated[Staff, Depends(staff(Permission.USERS_READ))],
+) -> AdminOverview:
+    return await _service(request).overview(who)
+
+
+@router.get("/users", response_model=Page[AdminUserSummary])
+async def admin_search_users(
+    request: Request,
+    who: Annotated[Staff, Depends(staff(Permission.USERS_READ, justified=True))],
+    q: Annotated[str | None, Query(max_length=320)] = None,
+    status_filter: Annotated[AccountStatus | None, Query(alias="status")] = None,
+    staff_only: Annotated[bool, Query(alias="staff")] = False,
+    cursor: Cursor = None,
+    limit: Limit = 20,
+) -> JSONResponse:
+    page = await _service(request).search_users(
+        who, query=q, status=status_filter, staff_only=staff_only, cursor=cursor, limit=limit
+    )
+    return _page(page)
+
+
+@router.get("/billing/transactions", response_model=AdminTransactionPage)
+async def admin_list_transactions(
+    request: Request,
+    who: Annotated[Staff, Depends(staff(Permission.ENTITLEMENTS_GRANT, justified=True))],
+    user_id: uuid.UUID | None = None,
+    status_filter: Annotated[
+        Literal["pending", "succeeded", "failed", "open", "won", "lost"] | None,
+        Query(alias="status"),
+    ] = None,
+    cursor: Cursor = None,
+    limit: Limit = 20,
+) -> AdminTransactionPage:
+    return await _service(request).transactions(
+        who, user_id=user_id, status=status_filter, cursor=cursor, limit=limit
+    )
+
+
+@router.put("/users/{user_id}/roles/{role}", response_model=AdminUser)
+async def admin_assign_role(
+    user_id: uuid.UUID,
+    role: StaffRole,
+    request: Request,
+    who: Annotated[Staff, Depends(staff(Permission.ROLES_ASSIGN, justified=True))],
+) -> AdminUser:
+    return await _service(request).assign_role(who, user_id, role)
+
+
+@router.delete("/users/{user_id}/roles/{role}", response_model=AdminUser)
+async def admin_remove_role(
+    user_id: uuid.UUID,
+    role: StaffRole,
+    request: Request,
+    who: Annotated[Staff, Depends(staff(Permission.ROLES_ASSIGN, justified=True))],
+) -> AdminUser:
+    return await _service(request).remove_role(who, user_id, role)
 
 
 @router.get("/users/{user_id}", response_model=AdminUser)

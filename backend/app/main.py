@@ -454,6 +454,8 @@ def create_app(
                 "Idempotency-Key",
                 "If-Match",
                 "X-Request-ID",
+                # The staff console (admin/) sends the audit justification (ADM-009).
+                "X-Audit-Justification",
             ],
             expose_headers=[
                 "X-Request-ID",

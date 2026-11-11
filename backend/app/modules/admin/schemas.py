@@ -45,6 +45,7 @@ class AdminReport(_Response):
     reporter: UserSummary | None
     target_type: TargetType
     target_id: uuid.UUID
+    target_author: UserSummary | None
     reason: str
     details: str | None
     priority: int
@@ -94,13 +95,29 @@ class ModerationActionOut(_Response):
     created_at: datetime
 
 
+AccountStatus = Literal["active", "suspended", "deactivated", "pending_deletion", "deleted"]
+StaffRole = Literal["support", "moderator", "admin", "superadmin"]
+
+
+class AdminUserSummary(_Response):
+    """Contract ``AdminUserSummary``: a search or list row. No email: open the user for it."""
+
+    id: uuid.UUID
+    handle: str
+    display_name: str
+    status: AccountStatus
+    roles: list[StaffRole]
+    created_at: datetime
+    last_active_on: date | None
+
+
 class AdminUser(_Response):
     id: uuid.UUID
     handle: str
     display_name: str
-    status: Literal["active", "suspended", "deactivated", "pending_deletion", "deleted"]
+    status: AccountStatus
     email: str | None
-    roles: list[Literal["support", "moderator", "admin", "superadmin"]]
+    roles: list[StaffRole]
     created_at: datetime
     last_active_on: date | None
     open_report_count: int
@@ -160,3 +177,37 @@ class OpsSummary(_Response):
     moderation: dict[str, Any]
     outbox: dict[str, Any]
     jobs: dict[str, Any]
+
+
+class OverviewUsers(_Response):
+    total: int
+    new_7d: int
+    new_30d: int
+    active_7d: int
+    suspended: int
+
+
+class OverviewModeration(_Response):
+    open_reports: int
+    unassigned_reports: int
+    oldest_open_age_seconds: int | None
+    by_priority: dict[str, int]
+
+
+class OverviewRevenue(_Response):
+    currency: str
+    environment: Literal["production", "sandbox"]
+    amount_minor: int
+
+
+class AdminOverview(_Response):
+    """Contract ``AdminOverview``: real aggregates for the console home page. ``revenue_30d`` is
+    null unless the caller may see billing (``entitlements.grant``)."""
+
+    generated_at: datetime
+    users: OverviewUsers
+    premium_members: int
+    posts_7d: int
+    moderation: OverviewModeration
+    open_data_requests: int | None
+    revenue_30d: list[OverviewRevenue] | None

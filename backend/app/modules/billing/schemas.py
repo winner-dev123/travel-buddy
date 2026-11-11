@@ -307,6 +307,36 @@ class TransactionPage(_Model):
     page: PageInfo
 
 
+class AdminTransactionOut(_Model):
+    """Contract ``AdminBillingTransaction``: one ledger row for staff (no card data)."""
+
+    id: uuid.UUID
+    user_id: uuid.UUID | None
+    provider: Literal["apple", "google", "stripe", "dev"]
+    environment: Literal["production", "sandbox"]
+    kind: Literal["payment", "refund", "dispute"]
+    status: Literal["pending", "succeeded", "failed", "open", "won", "lost"]
+    amount_minor: int | None
+    currency: str | None
+    reason: str | None
+    provider_reference: str
+    product: TransactionProduct | None
+    occurred_at: datetime
+
+
+class AdminTransactionPage(_Model):
+    data: list[AdminTransactionOut]
+    page: PageInfo
+
+
+class RevenueTotal(_Model):
+    """Payments minus refunds in one currency and environment (staff overview)."""
+
+    currency: str
+    environment: Literal["production", "sandbox"]
+    amount_minor: int
+
+
 QuotaKey = Literal[
     "ai.itinerary_generations", "ai.trip_replans", "offline.packages", "groups.owned"
 ]

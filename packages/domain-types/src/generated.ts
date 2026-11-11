@@ -3393,6 +3393,93 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/metrics/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Staff console home page numbers (real aggregates only)
+         * @description Accounts, Premium members, recent posts, the moderation queue, open privacy requests and
+         *     the last 30 days of revenue. `open_data_requests` is null without
+         *     `privacy.requests.manage` and `revenue_30d` is null without `entitlements.grant`.
+         */
+        get: operations["adminOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find accounts (audited)
+         * @description `q` is an exact email address, an account ID, or the start of a handle / part of a display
+         *     name. Without `q`, accounts are listed newest first. Rows carry no email address: open
+         *     the account (`GET /v1/admin/users/{userId}`) for it. Every search is audited with its
+         *     filters.
+         */
+        get: operations["adminSearchUsers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/users/{userId}/roles/{role}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Give an account a platform role (superadmins; audited)
+         * @description Only active accounts. The role reaches the account's tokens at its next sign-in, which
+         *     must use a second factor. Giving a role the account already has changes nothing.
+         */
+        put: operations["adminAssignRole"];
+        post?: never;
+        /**
+         * Take a platform role away (ends the account's sessions; audited)
+         * @description The last active superadmin cannot lose that role (`409 conflict`).
+         */
+        delete: operations["adminRemoveRole"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/billing/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The billing ledger, newest first (audited; no card data) */
+        get: operations["adminListTransactions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/users/{userId}": {
         parameters: {
             query?: never;
@@ -6232,6 +6319,8 @@ export interface components {
             reporter: components["schemas"]["UserSummary"] | null;
             target_type: components["schemas"]["ReportTargetType"];
             target_id: components["schemas"]["Uuid"];
+            /** @description Who wrote the reported content (the reported account itself for `user` reports), so staff can act on the account. */
+            target_author: components["schemas"]["UserSummary"] | null;
             reason: components["schemas"]["ReportReason"];
             details: string | null;
             priority: number;
@@ -6304,6 +6393,81 @@ export interface components {
             open_report_count: number;
             moderation_action_count: number;
             suspended_until: components["schemas"]["NullableTimestamp"];
+        };
+        /** @description A search or list row of the staff console. No email address (open the account for it). */
+        AdminUserSummary: {
+            id: components["schemas"]["Uuid"];
+            handle: string;
+            display_name: string;
+            /** @enum {string} */
+            status: "active" | "suspended" | "deactivated" | "pending_deletion" | "deleted";
+            roles: components["schemas"]["PlatformRole"][];
+            created_at: components["schemas"]["Timestamp"];
+            last_active_on: components["schemas"]["NullableLocalDate"];
+        };
+        AdminUserSummaryPage: {
+            data: components["schemas"]["AdminUserSummary"][];
+            page: components["schemas"]["PageInfo"];
+        };
+        /** @description Staff console home page. Real aggregates only; never invented series. */
+        AdminOverview: {
+            generated_at: components["schemas"]["Timestamp"];
+            users: {
+                total: number;
+                new_7d: number;
+                new_30d: number;
+                active_7d: number;
+                suspended: number;
+            };
+            premium_members: number;
+            posts_7d: number;
+            moderation: {
+                open_reports: number;
+                unassigned_reports: number;
+                oldest_open_age_seconds: number | null;
+                /** @description Open reports per priority. */
+                by_priority: {
+                    [key: string]: number;
+                };
+            };
+            /** @description Null without `privacy.requests.manage`. */
+            open_data_requests: number | null;
+            /** @description Succeeded payments minus refunds per currency and environment; null without `entitlements.grant`. */
+            revenue_30d: {
+                currency: string;
+                /** @enum {string} */
+                environment: "production" | "sandbox";
+                amount_minor: number;
+            }[] | null;
+        };
+        /** @description One ledger row for staff (BILL-011). No card or bank data. */
+        AdminBillingTransaction: {
+            id: components["schemas"]["Uuid"];
+            user_id: components["schemas"]["Uuid"] | null;
+            provider: components["schemas"]["BillingProvider"];
+            /** @enum {string} */
+            environment: "production" | "sandbox";
+            /** @enum {string} */
+            kind: "payment" | "refund" | "dispute";
+            /** @enum {string} */
+            status: "pending" | "succeeded" | "failed" | "open" | "won" | "lost";
+            amount_minor: number | null;
+            currency: string | null;
+            reason: string | null;
+            /** @description The provider object: Stripe invoice, payment intent, charge or dispute; store transaction. */
+            provider_reference: string;
+            product: {
+                id: components["schemas"]["Uuid"];
+                /** @enum {string} */
+                kind: "auto_renewable" | "non_renewing" | "non_consumable";
+                period: string | null;
+                title: string | null;
+            } | null;
+            occurred_at: components["schemas"]["Timestamp"];
+        };
+        AdminBillingTransactionPage: {
+            data: components["schemas"]["AdminBillingTransaction"][];
+            page: components["schemas"]["PageInfo"];
         };
         AdminSuspendUserRequest: {
             reason_code: string;
@@ -13578,6 +13742,167 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["IdempotencyConflict"];
             422: components["responses"]["ValidationFailed"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Overview. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminOverview"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminSearchUsers: {
+        parameters: {
+            query?: {
+                q?: string;
+                status?: "active" | "suspended" | "deactivated" | "pending_deletion" | "deleted";
+                /** @description Only accounts with a platform role. */
+                staff?: boolean;
+                /** @description Opaque, HMAC-signed, expiring cursor from `page.next_cursor`. Never construct or modify it. */
+                cursor?: components["parameters"]["Cursor"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header: {
+                /**
+                 * @description Why the staff member is performing this action or viewing sensitive data (ADM-009). Stored verbatim
+                 *     in `audit_logs.metadata.justification`. Missing or blank → `400 justification_required`.
+                 */
+                "X-Audit-Justification": components["parameters"]["AuditJustification"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Matching accounts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserSummaryPage"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminAssignRole: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Why the staff member is performing this action or viewing sensitive data (ADM-009). Stored verbatim
+                 *     in `audit_logs.metadata.justification`. Missing or blank → `400 justification_required`.
+                 */
+                "X-Audit-Justification": components["parameters"]["AuditJustification"];
+            };
+            path: {
+                userId: components["parameters"]["UserId"];
+                role: components["schemas"]["PlatformRole"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The account with its roles. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUser"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminRemoveRole: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Why the staff member is performing this action or viewing sensitive data (ADM-009). Stored verbatim
+                 *     in `audit_logs.metadata.justification`. Missing or blank → `400 justification_required`.
+                 */
+                "X-Audit-Justification": components["parameters"]["AuditJustification"];
+            };
+            path: {
+                userId: components["parameters"]["UserId"];
+                role: components["schemas"]["PlatformRole"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The account with its remaining roles. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUser"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminListTransactions: {
+        parameters: {
+            query?: {
+                user_id?: components["schemas"]["Uuid"];
+                status?: "pending" | "succeeded" | "failed" | "open" | "won" | "lost";
+                /** @description Opaque, HMAC-signed, expiring cursor from `page.next_cursor`. Never construct or modify it. */
+                cursor?: components["parameters"]["Cursor"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header: {
+                /**
+                 * @description Why the staff member is performing this action or viewing sensitive data (ADM-009). Stored verbatim
+                 *     in `audit_logs.metadata.justification`. Missing or blank → `400 justification_required`.
+                 */
+                "X-Audit-Justification": components["parameters"]["AuditJustification"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ledger rows. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBillingTransactionPage"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
             default: components["responses"]["Problem"];
         };
     };
