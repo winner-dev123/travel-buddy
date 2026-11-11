@@ -76,7 +76,8 @@
           "resizeMode": "contain",
           "backgroundColor": "#0B0B0D"
         }
-      ]
+      ],
+      "expo-status-bar"
     ],
     "locales": {
       "en": "./native-locales/en.json",
