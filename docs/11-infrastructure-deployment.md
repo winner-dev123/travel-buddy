@@ -224,6 +224,33 @@ build and device support it, so Expo Go never shows them. Setup:
    uses a password then answers "This email already signs in another way".
 5. Set `AUTH_SOCIAL_PROVIDERS=["apple", "google"]` on the API.
 
+### 1.13 Demo content on staging
+
+Staging carries **demo content** so the feed is not empty during reviews: six demo travellers and twelve photo
+posts, created on 2026-11-11 through the public API (Firebase sign-in, registration, media upload, post), not by
+writing to the database. **Remove it before launch**: delete the six accounts (their posts and photos go with them).
+
+* **Travellers:** Mika Tanaka (`@mika.wanders`), Lucas Ferreira (`@lucas.onfoot`), Amélie Laurent (`@amelie.voyage`), Thabo Nkosi (`@thabo.trails`), Sofía Ramírez (`@sofia.rumbo`), Priya Nair (`@priya.packs`). Their sign-in emails are
+  `demo.<first name>@travelbuddy.test` in Firebase Auth; the passwords are not stored in the repository.
+* **Avatars:** illustrated, from DiceBear's *Lorelei* style by Lisa Wischofsky (CC0 1.0). No real person's photo is used.
+* **Photos:** Wikimedia Commons files released under **CC0 1.0** (no attribution required; sources kept here for the record).
+  They were resized to at most 1920 px, and the media pipeline stripped their metadata.
+
+| Destination | Author | Commons file | Photographer | Licence |
+| --- | --- | --- | --- | --- |
+| `japan/tokyo` | @mika.wanders | [Shibuya scramble av night from Stream.jpg](https://commons.wikimedia.org/wiki/File:Shibuya_scramble_av_night_from_Stream.jpg) | Syced | CC0 1.0 |
+| `japan/kyoto` | @mika.wanders | [20181110 Fushimi Inari Torii 12.jpg](https://commons.wikimedia.org/wiki/File:20181110_Fushimi_Inari_Torii_12.jpg) | Balon Greyjoy | CC0 1.0 |
+| `brazil/rio-de-janeiro` | @lucas.onfoot | [Sugarloaf Cable Car viewed from Rio de Janeiro, Brazil.jpg](https://commons.wikimedia.org/wiki/File:Sugarloaf_Cable_Car_viewed_from_Rio_de_Janeiro,_Brazil.jpg) | Wilfredor | CC0 1.0 |
+| `portugal/lisbon` | @lucas.onfoot | [The historical tram line in Lisbon. (52329191119).jpg](https://commons.wikimedia.org/wiki/File:The_historical_tram_line_in_Lisbon._(52329191119).jpg) | Ted Moravec | CC0 1.0 |
+| `france/paris` | @amelie.voyage | [Overview Seine River to Eiffel Tower (37578867564).jpg](https://commons.wikimedia.org/wiki/File:Overview_Seine_River_to_Eiffel_Tower_(37578867564).jpg) | Alex Liivet from Chester, United Kingdom | CC0 1.0 |
+| `italy/rome` | @amelie.voyage | [Colosseum of Rome, Italy.jpg](https://commons.wikimedia.org/wiki/File:Colosseum_of_Rome,_Italy.jpg) | Wilfredor | CC0 1.0 |
+| `south-africa/cape-town` | @thabo.trails | [Table Mountain (Unsplash).jpg](https://commons.wikimedia.org/wiki/File:Table_Mountain_(Unsplash).jpg) | Bruno Wolff d0cz | CC0 1.0 |
+| `morocco/marrakesh` | @thabo.trails | [Marrakech skyline view.jpg](https://commons.wikimedia.org/wiki/File:Marrakech_skyline_view.jpg) | hichamaarkoubi | CC0 1.0 |
+| `mexico/mexico-city` | @sofia.rumbo | [Palacio de Bellas Artes - CDMX.jpg](https://commons.wikimedia.org/wiki/File:Palacio_de_Bellas_Artes_-_CDMX.jpg) | JUAN CARLOS GONZALEZ | CC0 1.0 |
+| `spain/barcelona` | @sofia.rumbo | [Town-city-cityscape-vacation-amusement-park-tower-1103525.jpg](https://commons.wikimedia.org/wiki/File:Town-city-cityscape-vacation-amusement-park-tower-1103525.jpg) | Unknown author | CC0 1.0 |
+| `thailand/bangkok` | @priya.packs | [Temple Wat Arun 1.jpg](https://commons.wikimedia.org/wiki/File:Temple_Wat_Arun_1.jpg) | Welcome to Thailand | CC0 1.0 |
+| `australia/sydney` | @priya.packs | [Sydney Opera House. (19667312379).jpg](https://commons.wikimedia.org/wiki/File:Sydney_Opera_House._(19667312379).jpg) | Bernard Spragg. NZ from Christchurch, New Zealand | CC0 1.0 |
+
 ## 2. Runtime topology (production reference)
 
 ```mermaid
