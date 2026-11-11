@@ -50,6 +50,10 @@ cd ../mobile && npm install && npm start   # Expo dev server
 | Secrets | gitleaks | `.github/workflows/ci-security.yml` |
 | Traceability | `python scripts/trace_requirements.py --enforce-phases 0` | ci-backend |
 
+## License
+
+Proprietary: the repository is publicly visible, but all rights are reserved and no license is granted (see [LICENSE](LICENSE)). Third-party fonts, libraries and data keep their own licenses.
+
 ## Principles
 
 Privacy by construction: traveler discovery stores no coordinates. The backend is the only authority for permissions and entitlements. Safety tools are never paywalled. Contracts come before code. Every requirement traces to tests.
