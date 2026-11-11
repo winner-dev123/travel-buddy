@@ -1,6 +1,6 @@
 # ADR-0028: Firebase platform (Auth, Cloud SQL for PostgreSQL, Cloud Storage, FCM) and Railway hosting
 
-- **Status:** Accepted (cutover pending: the code supports both platforms until the Firebase project is configured)
+- **Status:** Accepted. Amended by [ADR-0029](0029-supabase-free-tier-for-data-and-media.md): the database and media stay on Supabase's free plan; Firebase Auth, FCM and Railway apply
 - **Date:** 2026-11-10
 - **Deciders:** Product owner ("Everything on Firebase", database "Firebase PostgreSQL"; backend on Railway), backend
 - **Requirements:** AUTH-001..007, AUTH-010, ADM-007, NFR-003, NFR-004, NFR-006, SAFE-010

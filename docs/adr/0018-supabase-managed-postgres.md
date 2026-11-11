@@ -1,6 +1,6 @@
 # ADR-0018: Supabase as the managed PostgreSQL provider
 
-- **Status:** Superseded by [ADR-0028](0028-firebase-platform-and-railway-hosting.md) (cutover pending; in force until then)
+- **Status:** Accepted. Superseded by [ADR-0028](0028-firebase-platform-and-railway-hosting.md), then reinstated by [ADR-0029](0029-supabase-free-tier-for-data-and-media.md) (cost)
 - **Date:** 2026-11-09
 - **Deciders:** Product owner (instruction: "use Supabase as the database"), backend
 - **Requirements:** NFR-003, NFR-004, NFR-006, SAFE-010
