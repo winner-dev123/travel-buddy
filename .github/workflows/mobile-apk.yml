@@ -16,12 +16,14 @@ on:
       identity_provider:
         description: Sign-in provider
         required: true
-        default: supabase
+        default: firebase
         type: choice
         options: [firebase, supabase]
       firebase_api_key:
         description: Firebase Web API key (AIza...), for identity_provider=firebase. Never a service-account key.
         required: false
+        # travel-buddy-tb's public Web API key (it only identifies the project; ADR-0028)
+        default: AIzaSyCZvEdF4YFoKIWs2QPz1P7RI6kINcQ7G2s
       supabase_url:
         description: Supabase project URL, for identity_provider=supabase
         required: false

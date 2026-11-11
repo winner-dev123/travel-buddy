@@ -21,4 +21,7 @@ regexes = [
   # Exact example values flagged by generic-api-key (not credentials):
   '''^5b8c7d0e-2f1a-4c39-9a51-0d6c2e7f8a90$''',  # Idempotency-Key example, docs/05
   '''^lisbon-walk-28$''',                         # web mock post key, social.ts fixture
+  # Firebase Web API key of travel-buddy-tb: public by design (it only identifies the project and
+  # ships in every app; ADR-0028). Service-account keys are never committed.
+  '''^AIzaSyCZvEdF4YFoKIWs2QPz1P7RI6kINcQ7G2s$''',
 ]
