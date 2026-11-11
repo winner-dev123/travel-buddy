@@ -71,8 +71,12 @@ def test_staff_find_accounts_by_email_id_and_name(app: LiveApp) -> None:  # noqa
         400,
         "justification_required",
     )
-    for query in (email.upper(), target_id, handle[:6]):
-        found = app.client.get("/v1/admin/users", params={"q": query}, headers=_admin(support))
+    # The full handle: the shared CI database holds many "ana.souza…" accounts, and a handle
+    # prefix search lists matches in handle order, the exact handle first.
+    for query in (email.upper(), target_id, f"@{handle}"):
+        found = app.client.get(
+            "/v1/admin/users", params={"q": query, "limit": 5}, headers=_admin(support)
+        )
         assert found.status_code == 200, found.text
         assert_matches_contract(found.json(), "AdminUserSummaryPage")
         assert target_id in [row["id"] for row in found.json()["data"]], query

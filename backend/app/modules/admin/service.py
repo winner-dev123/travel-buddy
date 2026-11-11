@@ -7,6 +7,7 @@ admin module sits at the top layer so it may orchestrate them.
 
 from __future__ import annotations
 
+import re
 import uuid
 from collections.abc import Sequence
 from datetime import datetime, timedelta
@@ -67,6 +68,8 @@ from app.modules.trust_safety import service as trust_safety
 from app.modules.trust_safety.schemas import MessageFilterPolicyOut, UpdateMessageFilterRequest
 
 CREATE_ACTION_ROUTE = "POST /v1/admin/moderation-actions"
+# An email address (text on both sides of one @); "@handle" is a handle search.
+_EMAIL = re.compile(r"[^@\s]+@[^@\s]+")
 _CONTENT_STATES = {
     "remove_content": "removed",
     "restore_content": "approved",
@@ -403,7 +406,7 @@ class AdminService:
                     last_id, last_created = rows[limit - 1]
                     next_position = {"c": last_created.isoformat(), "i": str(last_id)}
                 ids = [user_id for user_id, _ in rows[:limit]]
-            elif "@" in text and " " not in text:
+            elif _EMAIL.fullmatch(text):
                 found = await identity.user_id_by_email(session, text)
                 ids = [found] if found is not None else []
             elif (as_id := _uuid_or_none(text)) is not None:
