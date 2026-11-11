@@ -1,9 +1,11 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getApiClient } from '@/api';
@@ -239,9 +241,27 @@ export default function SignInScreen() {
           keyboardShouldPersistTaps="handled"
           testID="sign-in-screen"
         >
+          <View style={[styles.brand, { gap: theme.spacing[3], paddingTop: theme.spacing[6] }]}>
+            <LinearGradient
+              colors={theme.accentGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.emblem}
+            >
+              <Ionicons
+                name="compass"
+                size={34}
+                color={theme.colors.onPrimary}
+                accessible={false}
+              />
+            </LinearGradient>
+            <Text style={[theme.typography.display, { color: theme.colors.textPrimary }]}>
+              {t('common.appName')}
+            </Text>
+          </View>
           <Text
             accessibilityRole="header"
-            style={[theme.typography.title1, { color: theme.colors.textPrimary }]}
+            style={[theme.typography.title2, styles.center, { color: theme.colors.textSecondary }]}
           >
             {title}
           </Text>
@@ -307,7 +327,7 @@ export default function SignInScreen() {
           />
           {usesPassword && mode === 'signIn' && (resetUrl || auth?.supportsInAppReset) ? (
             <Button
-              variant="secondary"
+              variant="ghost"
               label={t('auth.forgotPassword')}
               onPress={() => void (resetUrl ? WebBrowser.openBrowserAsync(resetUrl) : sendReset())}
               disabled={busy}
@@ -325,19 +345,18 @@ export default function SignInScreen() {
           ) : null}
           {socialProviders.length > 0 ? (
             <>
-              <Text
-                style={[
-                  theme.typography.caption,
-                  styles.center,
-                  { color: theme.colors.textSecondary },
-                ]}
-              >
-                {t('auth.or')}
-              </Text>
+              <View style={[styles.divider, { gap: theme.spacing[3] }]}>
+                <View style={[styles.line, { backgroundColor: theme.colors.divider }]} />
+                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+                  {t('auth.or')}
+                </Text>
+                <View style={[styles.line, { backgroundColor: theme.colors.divider }]} />
+              </View>
               {socialProviders.map((social) => (
                 <Button
                   key={social}
                   variant="secondary"
+                  icon={social === 'apple' ? 'logo-apple' : 'logo-google'}
                   label={social === 'apple' ? t('auth.continueApple') : t('auth.continueGoogle')}
                   onPress={() => void continueWith(social)}
                   disabled={busy}
@@ -348,7 +367,7 @@ export default function SignInScreen() {
           ) : null}
           {usesPassword ? (
             <Button
-              variant="secondary"
+              variant="ghost"
               label={mode === 'signIn' ? t('auth.switchToSignUp') : t('auth.switchToSignIn')}
               onPress={() => {
                 setMode(mode === 'signIn' ? 'signUp' : 'signIn');
@@ -364,4 +383,17 @@ export default function SignInScreen() {
   );
 }
 
-const styles = StyleSheet.create({ fill: { flex: 1 }, center: { textAlign: 'center' } });
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  center: { textAlign: 'center' },
+  brand: { alignItems: 'center' },
+  emblem: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  divider: { flexDirection: 'row', alignItems: 'center' },
+  line: { flex: 1, height: StyleSheet.hairlineWidth },
+});

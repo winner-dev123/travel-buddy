@@ -64,7 +64,7 @@ src/
   offline/connectivity.ts    NetInfo-based online state + TanStack Query online manager
   query/queryClient.ts       TanStack Query defaults (retry policy for transient errors only)
   state/settingsStore.ts     Zustand: locale override, theme preference
-  theme/                     Design tokens (light/dark), WCAG contrast utilities
+  theme/                     Design tokens ("Noir": dark by default, light), fonts, WCAG contrast utilities
 __tests__/                   Navigation tests (real route files via expo-router/testing-library)
 types/                       Ambient declarations for untyped third-party files
 ```

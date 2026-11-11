@@ -424,6 +424,7 @@
     "title": "Benachrichtigungen",
     "empty": "Noch nichts Neues.",
     "error": "Benachrichtigungen konnten nicht geladen werden.",
+    "unread": "Ungelesen",
     "unreadA11y_one": "{{count}} ungelesene Benachrichtigung",
     "unreadA11y_other": "{{count}} ungelesene Benachrichtigungen",
     "push": {
@@ -436,7 +437,7 @@
   },
   "user": {
     "notFound": "Dieses Profil ist nicht verfügbar.",
-    "counts": "{{posts}} Geschichten · {{followers}} Follower · {{following}} folgt",
+    "stories": "Geschichten",
     "private": "Dieses Konto ist privat. Folge ihm, um die Geschichten zu sehen.",
     "follow": "Folgen",
     "unfollow": "Nicht mehr folgen",
@@ -1182,5 +1183,25 @@
     "save": "Reise hinzufügen",
     "remove": "Entfernen",
     "error": "Deine anstehenden Reisen konnten nicht geladen werden. Prüfe deine Verbindung und versuch es noch einmal."
+  },
+  "profileMenu": {
+    "account": "Konto",
+    "travel": "Deine Reisen",
+    "preferences": "Einstellungen",
+    "support": "Sicherheit und Hilfe"
+  },
+  "appearance": {
+    "title": "Darstellung",
+    "options": {
+      "dark": "Dunkel",
+      "light": "Hell",
+      "system": "Wie dieses Telefon"
+    },
+    "descriptions": {
+      "dark": "Tiefes Schwarz mit goldenen Akzenten. Der Look, für den Travel Buddy gestaltet ist.",
+      "light": "Warmes Elfenbein für helles Tageslicht.",
+      "system": "Folgt dem hellen oder dunklen Modus deines Telefons."
+    },
+    "hint": "Deine Auswahl wird auf diesem Telefon gespeichert."
   }
 }

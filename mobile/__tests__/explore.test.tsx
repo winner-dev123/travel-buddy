@@ -278,6 +278,16 @@ describe('explore', () => {
     expect(mockRouter.push).toHaveBeenCalledWith('/trips/plan');
   });
 
+  it('offers trips and downloads as shortcuts beside each other', async () => {
+    mockApi.get.mockResolvedValue(page([]));
+    await renderUi(<Explore />);
+    expect(screen.getByLabelText('My trips')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('explore-trips'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/trips');
+    await fireEvent.press(screen.getByTestId('explore-downloads'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/downloads');
+  });
+
   it('starts from featured destinations and narrows to a neighbourhood', async () => {
     const alfama = {
       ...lisbon,

@@ -16,7 +16,7 @@ const photo = (id: string, status: MediaRef['status'] = 'ready'): MediaRef => ({
   alt_text: null,
 });
 
-async function renderGallery(media: MediaRef[], compact: boolean) {
+async function renderGallery(media: MediaRef[], compact: boolean, place?: string) {
   return await render(
     <SafeAreaProvider
       initialMetrics={{
@@ -24,7 +24,7 @@ async function renderGallery(media: MediaRef[], compact: boolean) {
         insets: { top: 0, left: 0, right: 0, bottom: 0 },
       }}
     >
-      <PhotoGallery media={media} compact={compact} />
+      <PhotoGallery media={media} compact={compact} place={place} />
     </SafeAreaProvider>,
   );
 }
@@ -40,6 +40,24 @@ it('shows the first photo and how many more in lists', async () => {
   expect(screen.getByTestId('post-more-photos')).toHaveTextContent('+2');
   await fireEvent.press(screen.getByTestId('post-photo-0'));
   expect(screen.queryByTestId('photo-viewer')).toBeNull(); // the card opens the story instead
+});
+
+it('names the place on the cover photo of a card', async () => {
+  await renderGallery([photo('a'), photo('b')], true, 'Lisbon');
+  expect(screen.getByTestId('post-photo-place')).toHaveTextContent('Lisbon');
+  // The caption sits on a scrim so it stays readable on a bright photo.
+  expect(screen.getByTestId('post-photo-scrim')).toBeTruthy();
+});
+
+it('keeps the place readable while the cover is still processing', async () => {
+  await renderGallery([photo('a', 'processing')], true, 'Lisbon');
+  expect(screen.getByTestId('post-photo-place')).toHaveTextContent('Lisbon');
+  expect(screen.queryByTestId('post-photo-scrim')).toBeNull();
+});
+
+it('shows no place caption on the story itself', async () => {
+  await renderGallery([photo('a')], false, 'Lisbon');
+  expect(screen.queryByTestId('post-photo-place')).toBeNull();
 });
 
 it('shows every photo on the story and opens one full screen', async () => {

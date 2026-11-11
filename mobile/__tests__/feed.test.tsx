@@ -140,7 +140,9 @@ describe('home feed (signed in)', () => {
     expect(await screen.findByText('Story p1')).toBeTruthy();
     expect(screen.getByText('Story p2')).toBeTruthy();
     expect(screen.getByTestId('feed-context')).toHaveTextContent('Stories from Lisbon');
-    expect(screen.getAllByText('@ana · Lisbon · Tip')).toHaveLength(2);
+    expect(screen.getAllByText('@ana · Lisbon')).toHaveLength(2);
+    // The kind of story is its own line above the text (the third "Tip" is the filter chip).
+    expect(screen.getAllByText('Tip')).toHaveLength(3);
 
     await fireEvent.press(screen.getByTestId('feed-tab-following'));
     expect(await screen.findByText('From someone I follow')).toBeTruthy();
@@ -333,7 +335,7 @@ describe('tagged places', () => {
       throw new Error(`unexpected GET ${path}`);
     });
     await renderScreen(<PostDetail />);
-    expect(await screen.findByText(/Pastéis de Belém ·/)).toBeTruthy();
+    expect(await screen.findByText(/· Pastéis de Belém/)).toBeTruthy();
     await fireEvent.press(screen.getByTestId('post-place'));
     expect(mockRouter.push).toHaveBeenCalledWith({
       pathname: '/places/[id]',

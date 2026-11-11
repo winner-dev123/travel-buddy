@@ -133,6 +133,20 @@ describe('profile tab', () => {
     await fireEvent.press(screen.getByTestId('profile-menu-privacy'));
     expect(mockRouter.push).toHaveBeenCalledWith('/settings/privacy');
   });
+
+  it('groups the menu and opens the appearance setting', async () => {
+    useSessionStore.getState().setSignedIn(makeMe({ profile: { bio: 'Slow travel' } }));
+    mockApi.get.mockResolvedValue({ count: 0 });
+    await renderScreen(<Profile />);
+    expect(screen.getByTestId('profile-display-name')).toHaveTextContent('Me');
+    expect(screen.getByTestId('profile-handle')).toHaveTextContent('@me');
+    expect(screen.getByText('Slow travel')).toBeTruthy();
+    for (const title of ['Account', 'Your travels', 'Preferences', 'Safety and support']) {
+      expect(screen.getByText(title)).toBeTruthy();
+    }
+    await fireEvent.press(screen.getByTestId('profile-menu-appearance'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/settings/appearance');
+  });
 });
 
 describe('settings', () => {
@@ -326,6 +340,9 @@ describe('notifications', () => {
     mockApi.post.mockResolvedValue(undefined);
     await renderScreen(<Notifications />);
     expect(await screen.findByText('Bo reacted to your post.')).toBeTruthy();
+    // Unread shows as a dot and is said aloud, not left to colour alone.
+    expect(screen.getByTestId('notification-unread-n1')).toBeTruthy();
+    expect(screen.getByLabelText('Unread. New reaction. Bo reacted to your post.')).toBeTruthy();
     await waitFor(() =>
       expect(mockApi.post).toHaveBeenCalledWith('/v1/notifications/read', { body: { all: true } }),
     );
@@ -461,6 +478,9 @@ it('opens follower lists from a profile and lists people', async () => {
       : { data: [], page: { next_cursor: null, has_more: false } },
   );
   await renderScreen(<UserProfile />);
+  expect(await screen.findByLabelText('1 Stories')).toBeTruthy();
+  expect(screen.getByLabelText('2 Followers')).toBeTruthy();
+  expect(screen.getByLabelText('0 Following')).toBeTruthy();
   await fireEvent.press(await screen.findByTestId('user-followers'));
   expect(mockRouter.push).toHaveBeenCalledWith({
     pathname: '/user/follows',

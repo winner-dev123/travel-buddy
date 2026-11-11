@@ -17,6 +17,7 @@ import { useSessionStore } from '@/auth/sessionStore';
 import { FeatureGate } from '@/components/FeatureGate';
 import { ServerFeature } from '@/features/flags/serverFlags';
 import { Notice } from '@/components/Form';
+import { ScreenTitle } from '@/components/ScreenTitle';
 import { Avatar } from '@/features/feed/PostCard';
 import {
   listConversations,
@@ -84,15 +85,18 @@ function Inbox() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: theme.spacing[4], gap: theme.spacing[2] }}
         refreshControl={
-          <RefreshControl refreshing={inbox.isRefetching} onRefresh={() => void inbox.refetch()} />
+          <RefreshControl
+            refreshing={inbox.isRefetching}
+            onRefresh={() => void inbox.refetch()}
+            tintColor={theme.colors.primary}
+            colors={[theme.colors.primary]}
+            progressBackgroundColor={theme.colors.surfaceRaised}
+          />
         }
         ListHeaderComponent={
-          <Text
-            accessibilityRole="header"
-            style={[theme.typography.title2, { color: theme.colors.textPrimary }]}
-          >
-            {t('messages.title')}
-          </Text>
+          <View style={{ paddingBottom: theme.spacing[3] }}>
+            <ScreenTitle title={t('messages.title')} />
+          </View>
         }
         ListEmptyComponent={
           inbox.isPending ? (

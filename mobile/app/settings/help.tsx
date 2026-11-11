@@ -2,21 +2,13 @@ import { useQuery } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  ActivityIndicator,
-  Linking,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Linking, Platform, ScrollView, StyleSheet, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getApiClient } from '@/api';
 import { APP_INFO_KEY, APP_VERSION, fetchAppInfo } from '@/auth/session';
 import { Notice } from '@/components/Form';
-import { MenuRow } from '@/components/MenuRow';
+import { MenuGroup, MenuRow } from '@/components/MenuRow';
 import { useAppTheme } from '@/theme/useAppTheme';
 
 /** Help & legal (store readiness: a support contact inside the app, App Store 1.5). The mail
@@ -37,7 +29,6 @@ export default function HelpScreen() {
     Linking.openURL(url).catch(() => setMailFailed(true)); // no mail app: show the address
   };
 
-  const heading = [theme.typography.label, { color: theme.colors.textSecondary }];
   const data = info.data;
   return (
     <SafeAreaView
@@ -54,8 +45,7 @@ export default function HelpScreen() {
         ) : null}
         {data ? (
           <>
-            <Text style={heading}>{t('help.getHelp')}</Text>
-            <View>
+            <MenuGroup title={t('help.getHelp')}>
               <MenuRow
                 icon="mail-outline"
                 label={t('help.contact')}
@@ -70,7 +60,7 @@ export default function HelpScreen() {
                   testID="help-center"
                 />
               ) : null}
-            </View>
+            </MenuGroup>
             <Text
               selectable
               style={[theme.typography.body, { color: theme.colors.textPrimary }]}
@@ -83,8 +73,7 @@ export default function HelpScreen() {
                 {t('help.noMailApp', { email: data.support.email })}
               </Notice>
             ) : null}
-            <Text style={heading}>{t('help.legal')}</Text>
-            <View>
+            <MenuGroup title={t('help.legal')}>
               <MenuRow
                 icon="document-text-outline"
                 label={t('help.terms')}
@@ -105,7 +94,7 @@ export default function HelpScreen() {
                   testID="help-guidelines"
                 />
               ) : null}
-            </View>
+            </MenuGroup>
           </>
         ) : null}
         <Text

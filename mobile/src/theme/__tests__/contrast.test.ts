@@ -1,6 +1,6 @@
 // req: NFR-008
 import { contrastRatio, relativeLuminance } from '../contrast';
-import { colors, contrastPairs, type ColorSchemeName } from '../tokens';
+import { accentGradient, colors, contrastPairs, scrims, type ColorSchemeName } from '../tokens';
 import { resolveColorScheme } from '../useAppTheme';
 
 describe('contrastRatio', () => {
@@ -28,8 +28,41 @@ describe.each<ColorSchemeName>(['light', 'dark'])('%s theme', (scheme) => {
     },
   );
 
+  it.each([0, 1] as const)('button text meets 4.5:1 on accent gradient stop %d', (stop) => {
+    const ratio = contrastRatio(colors[scheme].onPrimary, accentGradient[scheme][stop]);
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+  });
+
   it('defines the same token set as the light theme', () => {
     expect(Object.keys(colors[scheme]).sort()).toEqual(Object.keys(colors.light).sort());
+  });
+});
+
+describe('text on photos', () => {
+  /** `rgba(r,g,b,a)` painted over an opaque hex colour, as a hex colour. */
+  function over(rgba: string, backdrop: string): string {
+    const [r, g, b, a] = (rgba.match(/[\d.]+/g) ?? []).map(Number) as [
+      number,
+      number,
+      number,
+      number,
+    ];
+    const under = [1, 3, 5].map((at) => parseInt(backdrop.slice(at, at + 2), 16));
+    return `#${[r, g, b]
+      .map((channel, index) => Math.round(channel * a + (under[index] ?? 0) * (1 - a)))
+      .map((channel) => channel.toString(16).padStart(2, '0'))
+      .join('')}`;
+  }
+
+  // A pure white photo is the worst case for white text.
+  it('stays readable on a chip over the brightest photo', () => {
+    const chip = over(scrims.photoChip, '#FFFFFF');
+    expect(contrastRatio(scrims.onPhoto, chip)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('stays readable at the foot of the caption scrim over the brightest photo', () => {
+    const foot = over(scrims.photo[1], '#FFFFFF');
+    expect(contrastRatio(scrims.onPhoto, foot)).toBeGreaterThanOrEqual(4.5);
   });
 });
 

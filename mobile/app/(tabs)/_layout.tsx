@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import type { ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ColorValue } from 'react-native';
+import { StyleSheet, type ColorValue } from 'react-native';
 
 import { useAppTheme } from '@/theme/useAppTheme';
 
@@ -14,9 +14,17 @@ function toIconColor(color: ColorValue): IconColor {
   return typeof color === 'number' ? undefined : (color ?? undefined);
 }
 
-function tabIcon(name: IoniconName) {
-  function TabIcon({ color, size }: { color: ColorValue; size: number }) {
-    return <Ionicons name={name} color={toIconColor(color)} size={size} accessible={false} />;
+/** The current tab shows the filled glyph, the others the outline: shape as well as colour. */
+function tabIcon(active: IoniconName, idle: IoniconName) {
+  function TabIcon({ color, focused }: { color: ColorValue; focused: boolean }) {
+    return (
+      <Ionicons
+        name={focused ? active : idle}
+        color={toIconColor(color)}
+        size={23}
+        accessible={false}
+      />
+    );
   }
   return TabIcon;
 }
@@ -35,30 +43,44 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: theme.colors.tabBarBackground,
           borderTopColor: theme.colors.divider,
-          minHeight: theme.minTouchTarget + theme.spacing[4],
+          borderTopWidth: StyleSheet.hairlineWidth,
+          minHeight: theme.minTouchTarget + theme.spacing[5],
+          paddingTop: theme.spacing[1],
         },
-        tabBarLabelStyle: { fontSize: theme.typography.caption.fontSize },
+        // Five labels share a 360dp bar: no side padding, so "Companions" is not cut short.
+        tabBarItemStyle: { paddingHorizontal: 0 },
+        tabBarLabelStyle: {
+          fontFamily: theme.fonts.semibold,
+          fontSize: 10,
+          letterSpacing: 0,
+        },
       }}
     >
       <Tabs.Screen
         name="index"
-        options={{ title: t('tabs.home'), tabBarIcon: tabIcon('home-outline') }}
+        options={{ title: t('tabs.home'), tabBarIcon: tabIcon('home', 'home-outline') }}
       />
       <Tabs.Screen
         name="explore"
-        options={{ title: t('tabs.explore'), tabBarIcon: tabIcon('compass-outline') }}
+        options={{ title: t('tabs.explore'), tabBarIcon: tabIcon('compass', 'compass-outline') }}
       />
       <Tabs.Screen
         name="companions"
-        options={{ title: t('tabs.companions'), tabBarIcon: tabIcon('people-outline') }}
+        options={{ title: t('tabs.companions'), tabBarIcon: tabIcon('people', 'people-outline') }}
       />
       <Tabs.Screen
         name="messages"
-        options={{ title: t('tabs.messages'), tabBarIcon: tabIcon('chatbubbles-outline') }}
+        options={{
+          title: t('tabs.messages'),
+          tabBarIcon: tabIcon('chatbubbles', 'chatbubbles-outline'),
+        }}
       />
       <Tabs.Screen
         name="profile"
-        options={{ title: t('tabs.profile'), tabBarIcon: tabIcon('person-circle-outline') }}
+        options={{
+          title: t('tabs.profile'),
+          tabBarIcon: tabIcon('person-circle', 'person-circle-outline'),
+        }}
       />
     </Tabs>
   );

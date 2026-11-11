@@ -62,33 +62,57 @@ export default function NotificationsScreen() {
         ListHeaderComponent={<PushBanner />}
         contentContainerStyle={{ padding: theme.spacing[4], gap: theme.spacing[2] }}
         refreshControl={
-          <RefreshControl refreshing={list.isRefetching} onRefresh={() => void list.refetch()} />
+          <RefreshControl
+            refreshing={list.isRefetching}
+            onRefresh={() => void list.refetch()}
+            tintColor={theme.colors.primary}
+            colors={[theme.colors.primary]}
+            progressBackgroundColor={theme.colors.surfaceRaised}
+          />
         }
-        renderItem={({ item }) => (
-          <Pressable
-            onPress={() => open(item)}
-            accessibilityRole="button"
-            accessibilityLabel={`${item.title}. ${item.body}`}
-            style={[
-              styles.item,
-              {
-                backgroundColor: item.read_at ? theme.colors.background : theme.colors.infoSurface,
-                borderColor: theme.colors.divider,
-              },
-            ]}
-            testID={`notification-${item.id}`}
-          >
-            <Avatar user={item.actor} size={36} />
-            <View style={styles.fill}>
-              <Text style={[theme.typography.label, { color: theme.colors.textPrimary }]}>
-                {item.title}
-              </Text>
-              <Text style={[theme.typography.body, { color: theme.colors.textPrimary }]}>
-                {item.body}
-              </Text>
-            </View>
-          </Pressable>
-        )}
+        renderItem={({ item }) => {
+          const unread = item.read_at === null;
+          return (
+            <Pressable
+              onPress={() => open(item)}
+              accessibilityRole="button"
+              accessibilityLabel={`${unread ? `${t('notifications.unread')}. ` : ''}${item.title}. ${item.body}`}
+              style={({ pressed }) => [
+                styles.item,
+                {
+                  padding: theme.spacing[3],
+                  gap: theme.spacing[3],
+                  borderRadius: theme.radii.lg,
+                  backgroundColor:
+                    unread || pressed ? theme.colors.surfaceRaised : theme.colors.surface,
+                  borderColor: theme.colors.divider,
+                },
+              ]}
+              testID={`notification-${item.id}`}
+            >
+              <Avatar user={item.actor} size={40} />
+              <View style={styles.text}>
+                <Text style={[theme.typography.label, { color: theme.colors.textPrimary }]}>
+                  {item.title}
+                </Text>
+                <Text
+                  style={[
+                    theme.typography.body,
+                    { color: unread ? theme.colors.textPrimary : theme.colors.textSecondary },
+                  ]}
+                >
+                  {item.body}
+                </Text>
+              </View>
+              {unread ? (
+                <View
+                  style={[styles.dot, { backgroundColor: theme.colors.primary }]}
+                  testID={`notification-unread-${item.id}`}
+                />
+              ) : null}
+            </Pressable>
+          );
+        }}
         ListEmptyComponent={
           list.isPending ? (
             <ActivityIndicator color={theme.colors.primary} />
@@ -110,12 +134,7 @@ export default function NotificationsScreen() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  item: {
-    flexDirection: 'row',
-    gap: 12,
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'flex-start',
-  },
+  item: { flexDirection: 'row', borderWidth: StyleSheet.hairlineWidth, alignItems: 'flex-start' },
+  text: { flex: 1, gap: 2 },
+  dot: { width: 8, height: 8, borderRadius: 4, marginTop: 6 },
 });

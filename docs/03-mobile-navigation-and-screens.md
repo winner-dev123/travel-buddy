@@ -287,6 +287,7 @@ Offline: **Works offline** (fully functional from local data) · **Cached read-o
 | SCR-113 | Account deletion and data export | `/settings/delete-account`, `/settings/data` | 1 / 6 | User | Online only | deletion and export endpoints | AUTH |
 | SCR-114 | Safety center (guidance, how reporting works) | `/settings/safety` | 1 | Guest / User | Works offline (bundled copy) | — | SAFE |
 | SCR-116 | Help and legal (support contact, help centre, terms, privacy, guidelines, version) | `/settings/help` | 6 | User | Online only | `GET /v1/client-config` (`support`, `legal`) | AUTH |
+| SCR-117 | Appearance (dark, light or match the phone) | `/settings/appearance` | 6 | User | Works offline (kept on the device) | — | NFR-008 |
 | SCR-115 | Badges and achievements | `/profile/badges` | 5 | User | Cached read-only | badges endpoint | CHAL |
 
 ### Modals and system
@@ -306,7 +307,7 @@ Offline: **Works offline** (fully functional from local data) · **Cached read-o
 
 **Phase 0 implementation:** the five tabs, SCR-001 and SCR-010 exist as placeholder routes that render "Coming in Phase N" from `mobile/src/config/featureFlags.ts`. SCR-150 is implemented.
 
-### 8.1 Implementation status (mobile app, 2026-11-10)
+### 8.1 Implementation status (mobile app, 2026-11-11)
 
 Where each screen lives in `mobile/app/` today. Routes differ from the target tree where a
 screen was folded into another one; ✅ built, ⚠️ partly, ⬜ not yet (reason given).
@@ -322,8 +323,8 @@ screen was folded into another one; ✅ built, ⚠️ partly, ⬜ not yet (reaso
 | SCR-022 destination picker | ✅ | Picker component in Explore, compose and upcoming trips |
 | SCR-023 post detail | ✅ | `/post/[id]` (photo gallery, comments with replies, author edit and delete, save, share) |
 | SCR-024 destination page | ⚠️ | Destination content shows in Explore once chosen (guides, places, offline packages, neighbourhoods); no standalone page |
-| SCR-025, SCR-063 traveller profile | ✅ | `/user/[id]` (badges, followers and following at `/user/follows`) |
-| SCR-026 notifications | ✅ | `/notifications` (push opt-in banner) |
+| SCR-025, SCR-063 traveller profile | ✅ | `/user/[id]` (summary of stories, followers and following; badges; the lists open at `/user/follows`) |
+| SCR-026 notifications | ✅ | `/notifications` (push opt-in banner; unread items are marked with a dot) |
 | SCR-040 Explore | ⚠️ | `/(tabs)/explore` lists places, featured destinations and neighbourhoods; no map yet (BL-4.06, provider decision) |
 | SCR-041 place, SCR-042 planner, SCR-043 review | ✅ | `/places/[id]`, `/trips/plan`, `/trips/review` |
 | SCR-044 guides list, SCR-045 guide reader | ✅ | Guides listed in Explore; `/guides/[id]` |
@@ -337,12 +338,12 @@ screen was folded into another one; ✅ built, ⚠️ partly, ⬜ not yet (reaso
 | SCR-083 reply thread | ✅ | `/chat/thread` in group chats, opened from a message's reply count or "Reply in thread"; replies also stay quoted in the chat |
 | SCR-084 pinned messages | ✅ | Pinned bar in `/chat/[id]` |
 | SCR-085..090 challenges | ✅ | `/challenges`, `/challenges/[id]`, `/challenges/new`, `/challenges/review`, `/challenges/fulfillments`, `/rewards`; team threads in `/chat/[id]` |
-| SCR-100 my profile, SCR-106 settings home | ✅ | `/(tabs)/profile` (settings rows) |
+| SCR-100 my profile, SCR-106 settings home | ✅ | `/(tabs)/profile` (profile summary, then settings grouped as Account, Your travels, Preferences, Safety and support) |
 | SCR-101 edit profile, SCR-107 privacy | ✅ | `/settings/profile`, `/settings/privacy`; follow requests at `/settings/follow-requests` |
 | SCR-102 saved | ✅ | `/saved` (places), `/bookmarks` (stories) |
 | SCR-103 trips, SCR-104 trip and itinerary editor | ✅ | `/trips` (plan with AI or `/trips/new` by hand), `/trips/[id]` (offline-first editor, sharing, replanning); upcoming trips at `/settings/upcoming` |
 | SCR-105 downloads | ✅ | `/downloads` |
-| SCR-108..114, SCR-116 settings | ✅ | `/settings/language`, `/settings/notifications`, `/settings/sessions`, `/settings/subscription` (read-only until the purchase SDK), `/settings/blocked`, `/settings/delete-account`, `/settings/data`, `/settings/safety`, `/settings/help` |
+| SCR-108..114, SCR-116, SCR-117 settings | ✅ | `/settings/language`, `/settings/notifications`, `/settings/sessions`, `/settings/subscription` (read-only until the purchase SDK), `/settings/blocked`, `/settings/delete-account`, `/settings/data`, `/settings/safety`, `/settings/help`, `/settings/appearance` |
 | SCR-115 badges | ✅ | On profiles; rewards at `/rewards` |
 | SCR-130 compose, SCR-131 report | ✅ | `/compose` (up to ten photos; a destination and optionally a public spot in it), `/report` |
 | SCR-132 block, SCR-135 connection request | ✅ | From the profile (blocking asks for confirmation first) |
@@ -362,47 +363,74 @@ Rules: queued chat messages show a "pending" clock and are sent in order with th
 
 Tokens live in [`mobile/src/theme/tokens.ts`](../mobile/src/theme/tokens.ts). The contrast of every text pair and essential UI boundary is verified by a unit test (`theme/__tests__/contrast.test.ts`), so a token change that breaks WCAG AA fails CI.
 
+The look is called **Noir** (2026-11-11): near-black surfaces, ivory text and a single champagne-gold accent, with serif titles over a geometric sans. Dark is the default theme. Light is the same system on warm ivory with a bronze accent. The aim is a calm, editorial feel in which photos carry the colour.
+
 ### 10.1 Colour (light / dark) — WCAG 2.2 AA
 
 | Token pair | Light | Ratio | Dark | Ratio | Minimum |
 |---|---|---|---|---|---|
-| textPrimary / background | `#0F172A` / `#FFFFFF` | 17.85 | `#F1F5F9` / `#0B1220` | 17.09 | 4.5 |
-| textSecondary / surface | `#475569` / `#F4F6F8` | 6.99 | `#A8B3C4` / `#131C2E` | 8.04 | 4.5 |
-| onPrimary / primary | `#FFFFFF` / `#0A6C74` | 6.16 | `#04262A` / `#5CC8D1` | 8.08 | 4.5 |
-| primary (links) / background | `#0A6C74` / `#FFFFFF` | 6.16 | `#5CC8D1` / `#0B1220` | 9.48 | 4.5 |
-| onDanger / danger | `#FFFFFF` / `#B42318` | 6.57 | `#2B0A07` / `#F97066` | 6.56 | 4.5 |
-| onWarningSurface / warningSurface | `#7A4A00` / `#FFF4E5` | 6.88 | `#FFD48A` / `#3A2A0A` | 9.92 | 4.5 |
-| onSuccessSurface / successSurface | `#1E6B3A` / `#E8F5EE` | 5.82 | `#8FE0AE` / `#0F2E1D` | 9.41 | 4.5 |
-| onInfoSurface / infoSurface | `#0B4F8A` / `#E6F1FB` | 7.34 | `#9CCBF5` / `#0D2440` | 9.14 | 4.5 |
-| tabBarInactive / tabBarBackground | `#5B6577` / `#FFFFFF` | 5.88 | `#9AA6B8` / `#0F1726` | 7.28 | 4.5 |
-| borderStrong (inputs) / surface | `#7C8799` / `#F4F6F8` | 3.35 | `#6B7A93` / `#131C2E` | 3.92 | 3.0 |
-| focusRing / background | `#1D4ED8` / `#FFFFFF` | 6.70 | `#93B4FF` / `#0B1220` | 9.11 | 3.0 |
+| textPrimary / background | `#17140E` / `#FAF8F4` | 17.32 | `#F4F1EA` / `#0B0B0D` | 17.43 | 4.5 |
+| textSecondary / surface | `#5F5A4F` / `#F2EEE6` | 5.93 | `#A9A59C` / `#131316` | 7.55 | 4.5 |
+| onPrimary / primary | `#FFFFFF` / `#7A5910` | 6.43 | `#1B1404` / `#D9B56C` | 9.38 | 4.5 |
+| primary (links) / background | `#7A5910` / `#FAF8F4` | 6.07 | `#D9B56C` / `#0B0B0D` | 10.09 | 4.5 |
+| onPrimaryMuted / primaryMuted | `#5A4108` / `#F3E8CC` | 7.85 | `#EBD197` / `#2B2413` | 10.33 | 4.5 |
+| onDanger / danger | `#FFFFFF` / `#B42318` | 6.57 | `#2B0A07` / `#F2857B` | 7.32 | 4.5 |
+| onWarningSurface / warningSurface | `#734700` / `#FBEFD9` | 7.01 | `#F5CE85` / `#33260B` | 9.87 | 4.5 |
+| onSuccessSurface / successSurface | `#1D6537` / `#E4F2E9` | 6.12 | `#8FDDB0` / `#10291C` | 9.69 | 4.5 |
+| onInfoSurface / infoSurface | `#2B4375` / `#E8ECF6` | 8.21 | `#B8C8EE` / `#1A2030` | 9.69 | 4.5 |
+| tabBarInactive / tabBarBackground | `#6A6558` / `#FFFFFF` | 5.81 | `#96928A` / `#0E0E11` | 6.22 | 4.5 |
+| borderStrong (inputs) / surface | `#857E70` / `#F2EEE6` | 3.48 | `#77757D` / `#131316` | 4.08 | 3.0 |
+| focusRing / background | `#1D4ED8` / `#FAF8F4` | 6.32 | `#F1DCA8` / `#0B0B0D` | 14.55 | 3.0 |
 
-Colour is never the only carrier of meaning: status chips pair colour with text or icon, and errors include a message.
+Surfaces step up in tone instead of casting shadows: `background` (the screen) → `surface` (cards, grouped rows) → `surfaceRaised` (pressed rows, secondary buttons, unread items). `primaryMuted` is a quiet tint of the accent for selected chips and the wells behind icons.
+
+Two further token groups are tested in the same file:
+
+* **`accentGradient`** (dark `#E8CB8A → #C9A255`, light `#8A6614 → #6B4D0C`) fills the main call to action, the compose button and the rule under a screen title. `onPrimary` text meets 4.5:1 on both ends.
+* **`scrims`** are for text on photos, which ignore the theme: white text on a `rgba(11,11,13,0.72)` chip or on the lower gradient of a cover photo meets 4.5:1 even over a white photo.
+
+Colour is never the only carrier of meaning: status chips pair colour with text or icon, errors include a message, the current tab changes glyph as well as colour, and an unread notification has a dot and is announced as unread.
 
 ### 10.2 Typography
 
-System fonts (SF Pro / Roboto) for performance and native dynamic-type behaviour.
+Two typefaces, both under the SIL Open Font License and bundled with the app (`theme/fonts.ts`): **Playfair Display** for titles and **Manrope** for everything else. Each weight is its own font file, so styles choose a family from `theme.fonts` or `theme.typography` and never set `fontWeight` (Android would draw a fake bold). If the fonts fail to load the app opens with the system font. Text still follows the OS text-size setting.
 
-| Style | Size / line height | Weight | Use |
+| Style | Size / line height | Face | Use |
 |---|---|---|---|
-| display | 34 / 40 | 700 | Onboarding hero |
-| title1 | 28 / 34 | 700 | Screen titles |
-| title2 | 22 / 28 | 700 | Section titles |
-| title3 | 18 / 26 | 600 | Card titles, banners |
-| body / bodyStrong | 16 / 24 | 400 / 600 | Default text |
-| label | 14 / 20 | 600 | Buttons, chips, badges |
-| caption | 12 / 16 | 400 | Metadata, timestamps (never for essential information) |
+| display | 38 / 46 | Playfair Display Bold | Wordmark on sign-in |
+| title1 | 30 / 38 | Playfair Display Bold | Screen titles, the name on a profile |
+| title2 | 22 / 30 | Playfair Display SemiBold | Section titles, figures in a profile summary |
+| title3 | 18 / 26 | Manrope Bold | Card titles, banners |
+| body / bodyStrong | 16 / 24 | Manrope Regular / SemiBold | Default text |
+| label | 14 / 20 | Manrope SemiBold | Buttons, chips, badges |
+| caption | 12 / 16 | Manrope Medium | Metadata, timestamps (never for essential information) |
+| overline | 11 / 16, wide tracking, capitals | Manrope Bold | The line above a title, the kind of a story, group titles |
 
 ### 10.3 Spacing, radii, elevation
 
 * **Spacing:** 4-pt grid (`spacing[n] = 4n`: 0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64). Screen gutters are 16 (phones) and 24 (tablets).
-* **Radii:** sm 4 · md 8 · lg 12 (cards, banners) · xl 16 (sheets) · pill 999 (chips, badges).
-* **Elevation:** levels 0–3, mapping Android `elevation` to iOS shadow. Dark mode relies on surface tone (`surface` → `surfaceRaised`) more than shadow.
+* **Radii:** sm 6 · md 12 (inputs, notices) · lg 16 (cards, grouped rows, tiles) · xl 24 (sheets, story cards) · pill 999 (buttons, chips, badges).
+* **Elevation:** levels 0–3, mapping Android `elevation` to iOS shadow. Both themes rely on surface tone and hairline dividers more than shadow; only the compose button floats.
 
 ### 10.4 Themes
 
-Light and dark follow the OS (`userInterfaceStyle: automatic`) unless the user overrides it in settings (`settingsStore.themePreference`). Both themes define the same token set (enforced by test). Map styles get matching light and dark variants in Phase 4.
+Dark is the default. The traveller chooses Dark, Light or "Match this phone" on SCR-117 (`/settings/appearance`); the choice applies at once and is kept on the device in `ui-preferences.json` (`state/uiPreferences.ts`), so it survives a restart and is not tied to an account. A missing or damaged file means the default. Both themes define the same token set (enforced by test). The window background, the launcher icon and its adaptive background are obsidian too (`app.json`), so the app opens dark instead of flashing white. Map styles get matching light and dark variants in Phase 4.
+
+### 10.4.1 Shared components
+
+Screens are built from a small set in `mobile/src/components/` so the look stays consistent:
+
+| Component | Use |
+|---|---|
+| `ScreenTitle` | Heading of a tab: optional overline, serif title, short gold rule, optional trailing action |
+| `Button` | `primary` (gold gradient pill), `secondary` (raised surface), `ghost` (gold text); optional icon; busy state |
+| `Chip` | Filters and single choices (`radio` role when exclusive); the selected chip is filled |
+| `MenuGroup` / `MenuRow` | Settings lists: a titled card of rows with an icon well, optional count and chevron |
+| `ActionTile` | Secondary shortcuts side by side (My trips, Downloads): icon well over a label |
+| `TextField`, `Notice`, `ActionSheet` | Inputs with a gold focus border, inline status messages, bottom sheets |
+| `PostCard`, `PhotoGallery`, `Avatar` | Story cards with a cover photo, place chip and the kind as an overline; avatars with an optional gold ring |
+
+The web app can adopt the same token values later; nothing in `packages/` changed.
 
 ### 10.5 Accessibility
 

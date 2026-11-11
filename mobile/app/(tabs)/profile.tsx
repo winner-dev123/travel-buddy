@@ -11,7 +11,8 @@ import { signOut } from '@/auth/session';
 import { useSessionStore } from '@/auth/sessionStore';
 import type { Me } from '@/auth/types';
 import { Button, Notice } from '@/components/Form';
-import { MenuRow } from '@/components/MenuRow';
+import { MenuGroup, MenuRow } from '@/components/MenuRow';
+import { ScreenTitle } from '@/components/ScreenTitle';
 import { accountKeys, cancelDeletion, unreadCount } from '@/features/account/api';
 import { Avatar } from '@/features/feed/PostCard';
 import type { UserSummary } from '@/features/feed/types';
@@ -40,12 +41,7 @@ export default function ProfileScreen() {
           style={{ padding: theme.spacing[6], gap: theme.spacing[4] }}
           testID="profile-signed-out"
         >
-          <Text
-            accessibilityRole="header"
-            style={[theme.typography.title1, { color: theme.colors.textPrimary }]}
-          >
-            {t('account.signedOutTitle')}
-          </Text>
+          <ScreenTitle eyebrow={t('common.appName')} title={t('account.signedOutTitle')} />
           <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>
             {t('account.signedOutBody')}
           </Text>
@@ -92,10 +88,14 @@ function SignedInProfile({ me }: { me: Me }) {
   return (
     <SafeAreaView style={[styles.fill, { backgroundColor: theme.colors.background }]}>
       <ScrollView
-        contentContainerStyle={{ padding: theme.spacing[6], gap: theme.spacing[4] }}
+        contentContainerStyle={{
+          padding: theme.spacing[4],
+          paddingBottom: theme.spacing[10],
+          gap: theme.spacing[5],
+        }}
         testID="profile-signed-in"
       >
-        <View style={styles.header}>
+        <View style={[styles.hero, { gap: theme.spacing[2] }]}>
           <Avatar
             user={{
               id: me.profile.id,
@@ -103,38 +103,47 @@ function SignedInProfile({ me }: { me: Me }) {
               display_name: me.profile.display_name,
               avatar: (me.profile.avatar as UserSummary['avatar']) ?? null,
             }}
-            size={64}
+            size={88}
+            ring
           />
-          <View style={styles.fill}>
-            <Text
-              accessibilityRole="header"
-              style={[theme.typography.title2, { color: theme.colors.textPrimary }]}
-              testID="profile-display-name"
-            >
-              {me.profile.display_name}
-            </Text>
-            <Text
-              style={[theme.typography.body, { color: theme.colors.textSecondary }]}
-              testID="profile-handle"
-            >
-              @{me.profile.handle}
-              {me.profile.account_visibility === 'private' ? ` · ${t('account.private')}` : ''}
-            </Text>
-          </View>
-        </View>
-        {me.profile.bio ? (
-          <Text style={[theme.typography.body, { color: theme.colors.textPrimary }]}>
-            {me.profile.bio}
+          <Text
+            accessibilityRole="header"
+            style={[
+              theme.typography.title1,
+              styles.centered,
+              { color: theme.colors.textPrimary, marginTop: theme.spacing[2] },
+            ]}
+            testID="profile-display-name"
+          >
+            {me.profile.display_name}
           </Text>
-        ) : null}
-        <Text
-          style={[theme.typography.caption, { color: theme.colors.textSecondary }]}
-          testID="profile-email"
-        >
-          {`${me.account.email ?? '—'} · ${
-            me.account.email_verified ? t('account.verified') : t('account.notVerified')
-          }`}
-        </Text>
+          <Text
+            style={[theme.typography.label, styles.centered, { color: theme.colors.primary }]}
+            testID="profile-handle"
+          >
+            @{me.profile.handle}
+            {me.profile.account_visibility === 'private' ? ` · ${t('account.private')}` : ''}
+          </Text>
+          {me.profile.bio ? (
+            <Text
+              style={[theme.typography.body, styles.centered, { color: theme.colors.textPrimary }]}
+            >
+              {me.profile.bio}
+            </Text>
+          ) : null}
+          <Text
+            style={[
+              theme.typography.caption,
+              styles.centered,
+              { color: theme.colors.textSecondary },
+            ]}
+            testID="profile-email"
+          >
+            {`${me.account.email ?? '—'} · ${
+              me.account.email_verified ? t('account.verified') : t('account.notVerified')
+            }`}
+          </Text>
+        </View>
         {pending ? (
           <View style={{ gap: theme.spacing[2] }} testID="profile-deletion-pending">
             <Notice tone="error">
@@ -167,7 +176,7 @@ function SignedInProfile({ me }: { me: Me }) {
           </Notice>
         ))}
         {error ? <Notice tone="error">{error}</Notice> : null}
-        <View>
+        <MenuGroup title={t('profileMenu.account')}>
           <MenuRow
             icon="notifications-outline"
             label={t('notifications.title')}
@@ -196,6 +205,20 @@ function SignedInProfile({ me }: { me: Me }) {
             testID="profile-menu-privacy"
           />
           <MenuRow
+            icon="phone-portrait-outline"
+            label={t('sessions.title')}
+            onPress={() => router.push('/settings/sessions')}
+            testID="profile-menu-sessions"
+          />
+          <MenuRow
+            icon="star-outline"
+            label={t('subscription.title')}
+            onPress={() => router.push('/settings/subscription')}
+            testID="profile-menu-subscription"
+          />
+        </MenuGroup>
+        <MenuGroup title={t('profileMenu.travel')}>
+          <MenuRow
             icon="airplane-outline"
             label={t('upcoming.title')}
             onPress={() => router.push('/settings/upcoming')}
@@ -214,10 +237,18 @@ function SignedInProfile({ me }: { me: Me }) {
             testID="profile-menu-bookmarks"
           />
           <MenuRow
-            icon="shield-outline"
-            label={t('safetyCenter.title')}
-            onPress={() => router.push('/settings/safety')}
-            testID="profile-menu-safety"
+            icon="gift-outline"
+            label={t('challenges.myRewards')}
+            onPress={() => router.push('/rewards')}
+            testID="profile-menu-rewards"
+          />
+        </MenuGroup>
+        <MenuGroup title={t('profileMenu.preferences')}>
+          <MenuRow
+            icon="moon-outline"
+            label={t('appearance.title')}
+            onPress={() => router.push('/settings/appearance')}
+            testID="profile-menu-appearance"
           />
           <MenuRow
             icon="options-outline"
@@ -231,29 +262,19 @@ function SignedInProfile({ me }: { me: Me }) {
             onPress={() => router.push('/settings/language')}
             testID="profile-menu-language"
           />
+        </MenuGroup>
+        <MenuGroup title={t('profileMenu.support')}>
           <MenuRow
-            icon="phone-portrait-outline"
-            label={t('sessions.title')}
-            onPress={() => router.push('/settings/sessions')}
-            testID="profile-menu-sessions"
-          />
-          <MenuRow
-            icon="star-outline"
-            label={t('subscription.title')}
-            onPress={() => router.push('/settings/subscription')}
-            testID="profile-menu-subscription"
+            icon="shield-outline"
+            label={t('safetyCenter.title')}
+            onPress={() => router.push('/settings/safety')}
+            testID="profile-menu-safety"
           />
           <MenuRow
             icon="ban-outline"
             label={t('account.blocked')}
             onPress={() => router.push('/settings/blocked')}
             testID="profile-menu-blocked"
-          />
-          <MenuRow
-            icon="gift-outline"
-            label={t('challenges.myRewards')}
-            onPress={() => router.push('/rewards')}
-            testID="profile-menu-rewards"
           />
           <MenuRow
             icon="download-outline"
@@ -276,7 +297,7 @@ function SignedInProfile({ me }: { me: Me }) {
               testID="profile-menu-delete"
             />
           ) : null}
-        </View>
+        </MenuGroup>
         <Button
           variant="secondary"
           label={t('account.signOut')}
@@ -291,5 +312,6 @@ function SignedInProfile({ me }: { me: Me }) {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  hero: { alignItems: 'center', paddingTop: 8 },
+  centered: { textAlign: 'center' },
 });

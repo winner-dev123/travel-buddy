@@ -7,8 +7,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getApiClient } from '@/api';
 import { useSessionStore } from '@/auth/sessionStore';
+import { ActionTile } from '@/components/ActionTile';
+import { Chip } from '@/components/Chip';
 import { FeatureGate } from '@/components/FeatureGate';
 import { Button, Notice, TextField } from '@/components/Form';
+import { ScreenTitle } from '@/components/ScreenTitle';
 import {
   exploreKeys,
   destinationChildren,
@@ -70,7 +73,6 @@ function Explore() {
     setNear(null);
     setQ('');
   };
-  const chip = [styles.chip, { borderColor: theme.colors.divider }];
   const isOn = useServerFlags();
   const guides = useQuery({
     queryKey: ['guides', 'destination', destination?.id ?? ''],
@@ -128,37 +130,37 @@ function Explore() {
 
   return (
     <SafeAreaView style={[styles.fill, { backgroundColor: theme.colors.background }]}>
-      <ScrollView contentContainerStyle={{ padding: theme.spacing[4], gap: theme.spacing[3] }}>
-        <Text
-          accessibilityRole="header"
-          style={[theme.typography.title2, { color: theme.colors.textPrimary }]}
-        >
-          {t('tabs.explore')}
-        </Text>
+      <ScrollView contentContainerStyle={{ padding: theme.spacing[4], gap: theme.spacing[4] }}>
+        <ScreenTitle title={t('tabs.explore')} />
         {signedIn ? (
           <View style={{ gap: theme.spacing[2] }}>
             {isOn('ai_itineraries') && isOn('trips') ? (
               <Button
                 label={t('explore.plan')}
+                icon="sparkles"
                 onPress={() => router.push('/trips/plan')}
                 testID="explore-plan"
               />
             ) : null}
-            {isOn('trips') ? (
-              <Button
-                label={t('explore.myTrips')}
-                variant="secondary"
-                onPress={() => router.push('/trips')}
-                testID="explore-trips"
-              />
-            ) : null}
-            {isOn('offline_packages') ? (
-              <Button
-                label={t('offline.downloads')}
-                variant="secondary"
-                onPress={() => router.push('/downloads')}
-                testID="explore-downloads"
-              />
+            {isOn('trips') || isOn('offline_packages') ? (
+              <View style={[styles.tiles, { gap: theme.spacing[2] }]}>
+                {isOn('trips') ? (
+                  <ActionTile
+                    label={t('explore.myTrips')}
+                    icon="map-outline"
+                    onPress={() => router.push('/trips')}
+                    testID="explore-trips"
+                  />
+                ) : null}
+                {isOn('offline_packages') ? (
+                  <ActionTile
+                    label={t('offline.downloads')}
+                    icon="cloud-download-outline"
+                    onPress={() => router.push('/downloads')}
+                    testID="explore-downloads"
+                  />
+                ) : null}
+              </View>
             ) : null}
           </View>
         ) : (
@@ -170,17 +172,12 @@ function Explore() {
         {destination === null && (featured.data ?? []).length > 0 ? (
           <View style={styles.chips} testID="explore-featured">
             {(featured.data ?? []).map((item) => (
-              <Pressable
+              <Chip
                 key={item.id}
+                label={item.name}
                 onPress={() => choose(item)}
-                accessibilityRole="button"
-                style={chip}
                 testID={`explore-featured-${item.slug}`}
-              >
-                <Text style={[theme.typography.label, { color: theme.colors.textPrimary }]}>
-                  {item.name}
-                </Text>
-              </Pressable>
+              />
             ))}
           </View>
         ) : null}
@@ -191,17 +188,12 @@ function Explore() {
             </Text>
             <View style={styles.chips} testID="explore-children">
               {(children.data ?? []).map((item) => (
-                <Pressable
+                <Chip
                   key={item.id}
+                  label={item.name}
                   onPress={() => choose(item)}
-                  accessibilityRole="button"
-                  style={chip}
                   testID={`explore-child-${item.slug}`}
-                >
-                  <Text style={[theme.typography.label, { color: theme.colors.textPrimary }]}>
-                    {item.name}
-                  </Text>
-                </Pressable>
+                />
               ))}
             </View>
           </View>
@@ -239,6 +231,7 @@ function Explore() {
         <Button
           label={t('explore.nearMe')}
           variant="secondary"
+          icon="navigate-outline"
           onPress={() => void locate()}
           busy={locating}
           testID="explore-near-me"
@@ -267,5 +260,5 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   row: { borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: 10, gap: 2 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
+  tiles: { flexDirection: 'row' },
 });

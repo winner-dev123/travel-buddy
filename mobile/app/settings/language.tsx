@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getApiClient } from '@/api';
 import { useSessionStore } from '@/auth/sessionStore';
+import { Chip } from '@/components/Chip';
 import { Button, Notice } from '@/components/Form';
 import { refreshMe } from '@/features/account/api';
 import {
@@ -55,17 +56,6 @@ export default function LanguageScreen() {
   };
   const data = preferences.data;
   const device = deviceTimeZone();
-  const chip = (selected: boolean) => [
-    styles.chip,
-    {
-      borderColor: selected ? theme.colors.primary : theme.colors.divider,
-      backgroundColor: selected ? theme.colors.primary : 'transparent',
-    },
-  ];
-  const chipText = (selected: boolean) => [
-    theme.typography.label,
-    { color: selected ? theme.colors.onPrimary : theme.colors.textPrimary },
-  ];
 
   return (
     <SafeAreaView
@@ -78,21 +68,16 @@ export default function LanguageScreen() {
           {t('languageSettings.language')}
         </Text>
         <View style={styles.chips} accessibilityRole="radiogroup">
-          {SUPPORTED_LOCALES.map((locale) => {
-            const selected = i18n.language === locale;
-            return (
-              <Pressable
-                key={locale}
-                onPress={() => chooseLanguage(locale)}
-                accessibilityRole="radio"
-                accessibilityState={{ selected }}
-                style={chip(selected)}
-                testID={`language-${locale}`}
-              >
-                <Text style={chipText(selected)}>{LANGUAGE_NAMES[locale]}</Text>
-              </Pressable>
-            );
-          })}
+          {SUPPORTED_LOCALES.map((locale) => (
+            <Chip
+              key={locale}
+              label={LANGUAGE_NAMES[locale]}
+              onPress={() => chooseLanguage(locale)}
+              selected={i18n.language === locale}
+              accessibilityRole="radio"
+              testID={`language-${locale}`}
+            />
+          ))}
         </View>
         {signedIn && preferences.isPending ? <ActivityIndicator /> : null}
         {save.isError ? (
@@ -128,18 +113,14 @@ export default function LanguageScreen() {
             </Text>
             <View style={styles.chips} accessibilityRole="radiogroup">
               {(['km', 'mi'] as const).map((unit) => (
-                <Pressable
+                <Chip
                   key={unit}
+                  label={t(`languageSettings.units.${unit}`)}
                   onPress={() => save.mutate({ distance_unit: unit })}
+                  selected={data.distance_unit === unit}
                   accessibilityRole="radio"
-                  accessibilityState={{ selected: data.distance_unit === unit }}
-                  style={chip(data.distance_unit === unit)}
                   testID={`distance-${unit}`}
-                >
-                  <Text style={chipText(data.distance_unit === unit)}>
-                    {t(`languageSettings.units.${unit}`)}
-                  </Text>
-                </Pressable>
+                />
               ))}
             </View>
           </>
@@ -152,5 +133,4 @@ export default function LanguageScreen() {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
 });

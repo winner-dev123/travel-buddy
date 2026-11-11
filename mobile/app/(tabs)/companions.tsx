@@ -11,6 +11,7 @@ import { DiscoverSection } from '@/features/discovery/DiscoverSection';
 import { FeatureGate } from '@/components/FeatureGate';
 import { ServerFeature } from '@/features/flags/serverFlags';
 import { Button, Notice } from '@/components/Form';
+import { ScreenTitle } from '@/components/ScreenTitle';
 import {
   accountKeys,
   listConnectionRequests,
@@ -125,12 +126,7 @@ function Companions() {
       style={[styles.fill, { backgroundColor: theme.colors.background }]}
     >
       <ScrollView contentContainerStyle={{ padding: theme.spacing[4], gap: theme.spacing[4] }}>
-        <Text
-          accessibilityRole="header"
-          style={[theme.typography.title1, { color: theme.colors.textPrimary }]}
-        >
-          {t('companions.title')}
-        </Text>
+        <ScreenTitle title={t('companions.title')} />
         {signedIn ? (
           <DiscoverSection />
         ) : (

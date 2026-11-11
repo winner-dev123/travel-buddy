@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -17,8 +18,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ApiProblem, getApiClient } from '@/api';
 import { useSessionStore } from '@/auth/sessionStore';
+import { Chip } from '@/components/Chip';
 import { FeatureGate } from '@/components/FeatureGate';
 import { Button, Notice } from '@/components/Form';
+import { ScreenTitle } from '@/components/ScreenTitle';
 import { accountKeys, unreadCount } from '@/features/account/api';
 import { feedKeys, fetchFeed, fetchPublicPosts } from '@/features/feed/api';
 import { PostCard } from '@/features/feed/PostCard';
@@ -108,70 +111,54 @@ function HomeFeed() {
   });
 
   const header = (
-    <View style={{ gap: theme.spacing[3], paddingBottom: theme.spacing[3] }}>
-      <View style={styles.titleRow}>
-        <Text
-          style={[theme.typography.title1, styles.flex, { color: theme.colors.textPrimary }]}
-          accessibilityRole="header"
-        >
-          {t('feed.title')}
-        </Text>
-        {signedIn ? (
-          <Pressable
-            onPress={() => router.push('/notifications')}
-            accessibilityRole="button"
-            accessibilityLabel={
-              unread.data
-                ? t('notifications.unreadA11y', { count: unread.data })
-                : t('notifications.title')
-            }
-            hitSlop={8}
-            testID="feed-notifications"
-          >
-            <Ionicons name="notifications-outline" size={26} color={theme.colors.textPrimary} />
-            {unread.data ? (
-              <View style={[styles.badge, { backgroundColor: theme.colors.danger }]}>
-                <Text
-                  style={[theme.typography.caption, { color: theme.colors.onDanger }]}
-                  testID="feed-unread"
-                >
-                  {unread.data > 99 ? '99+' : unread.data}
-                </Text>
-              </View>
-            ) : null}
-          </Pressable>
-        ) : null}
-      </View>
+    <View style={{ gap: theme.spacing[4], paddingBottom: theme.spacing[4] }}>
+      <ScreenTitle
+        eyebrow={t('common.appName')}
+        title={t('feed.title')}
+        trailing={
+          signedIn ? (
+            <Pressable
+              onPress={() => router.push('/notifications')}
+              accessibilityRole="button"
+              accessibilityLabel={
+                unread.data
+                  ? t('notifications.unreadA11y', { count: unread.data })
+                  : t('notifications.title')
+              }
+              hitSlop={8}
+              style={[
+                styles.bell,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.divider },
+              ]}
+              testID="feed-notifications"
+            >
+              <Ionicons name="notifications-outline" size={22} color={theme.colors.textPrimary} />
+              {unread.data ? (
+                <View style={[styles.badge, { backgroundColor: theme.colors.danger }]}>
+                  <Text
+                    style={[theme.typography.caption, { color: theme.colors.onDanger }]}
+                    testID="feed-unread"
+                  >
+                    {unread.data > 99 ? '99+' : unread.data}
+                  </Text>
+                </View>
+              ) : null}
+            </Pressable>
+          ) : undefined
+        }
+      />
       {signedIn ? (
         <View style={styles.chips} accessibilityRole="tablist">
-          {TABS.map((value) => {
-            const selected = value === tab;
-            return (
-              <Pressable
-                key={value}
-                onPress={() => setTab(value)}
-                accessibilityRole="tab"
-                accessibilityState={{ selected }}
-                style={[
-                  styles.chip,
-                  {
-                    backgroundColor: selected ? theme.colors.primary : theme.colors.surface,
-                    borderColor: selected ? theme.colors.primary : theme.colors.borderStrong,
-                  },
-                ]}
-                testID={`feed-tab-${value}`}
-              >
-                <Text
-                  style={[
-                    theme.typography.label,
-                    { color: selected ? theme.colors.onPrimary : theme.colors.textPrimary },
-                  ]}
-                >
-                  {t(`feed.tabs.${value}`)}
-                </Text>
-              </Pressable>
-            );
-          })}
+          {TABS.map((value) => (
+            <Chip
+              key={value}
+              label={t(`feed.tabs.${value}`)}
+              onPress={() => setTab(value)}
+              selected={value === tab}
+              accessibilityRole="tab"
+              testID={`feed-tab-${value}`}
+            />
+          ))}
         </View>
       ) : (
         <Notice tone="info" testID="feed-guest-notice">
@@ -185,29 +172,17 @@ function HomeFeed() {
           contentContainerStyle={styles.chips}
           testID="feed-filters"
         >
-          {FILTERS.map((value) => {
-            const selected = value === category;
-            return (
-              <Pressable
-                key={value ?? 'all'}
-                onPress={() => setCategory(value)}
-                accessibilityRole="radio"
-                accessibilityState={{ selected }}
-                style={[
-                  styles.filter,
-                  {
-                    backgroundColor: selected ? theme.colors.infoSurface : theme.colors.background,
-                    borderColor: selected ? theme.colors.primary : theme.colors.divider,
-                  },
-                ]}
-                testID={`feed-filter-${value ?? 'all'}`}
-              >
-                <Text style={[theme.typography.caption, { color: theme.colors.textPrimary }]}>
-                  {value ? t(`post.kinds.${value}`) : t('feed.filters.all')}
-                </Text>
-              </Pressable>
-            );
-          })}
+          {FILTERS.map((value) => (
+            <Chip
+              key={value ?? 'all'}
+              label={value ? t(`post.kinds.${value}`) : t('feed.filters.all')}
+              onPress={() => setCategory(value)}
+              selected={value === category}
+              tone="quiet"
+              accessibilityRole="radio"
+              testID={`feed-filter-${value ?? 'all'}`}
+            />
+          ))}
         </ScrollView>
       ) : null}
       {nearby ? (
@@ -269,7 +244,7 @@ function HomeFeed() {
             interactive={signedIn}
           />
         )}
-        ItemSeparatorComponent={() => <View style={{ height: theme.spacing[3] }} />}
+        ItemSeparatorComponent={() => <View style={{ height: theme.spacing[5] }} />}
         ListHeaderComponent={header}
         contentContainerStyle={{ padding: theme.spacing[4], paddingBottom: theme.spacing[16] }}
         onEndReached={() => {
@@ -281,6 +256,8 @@ function HomeFeed() {
             refreshing={query.isRefetching && !query.isFetchingNextPage}
             onRefresh={() => void query.refetch()}
             tintColor={theme.colors.primary}
+            colors={[theme.colors.primary]}
+            progressBackgroundColor={theme.colors.surfaceRaised}
           />
         }
         ListEmptyComponent={
@@ -310,9 +287,19 @@ function HomeFeed() {
           onPress={() => router.push('/compose')}
           accessibilityRole="button"
           accessibilityLabel={t('compose.open')}
-          style={[styles.fab, theme.elevation[2], { backgroundColor: theme.colors.primary }]}
+          style={({ pressed }) => [
+            styles.fab,
+            theme.elevation[3],
+            { backgroundColor: theme.colors.primary, opacity: pressed ? 0.85 : 1 },
+          ]}
           testID="feed-compose"
         >
+          <LinearGradient
+            colors={theme.accentGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[StyleSheet.absoluteFill, styles.fabFill]}
+          />
           <Ionicons name="add" size={28} color={theme.colors.onPrimary} />
         </Pressable>
       ) : null}
@@ -323,33 +310,32 @@ function HomeFeed() {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   chips: { flexDirection: 'row', gap: 8 },
-  filter: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  flex: { flex: 1 },
+  bell: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   badge: {
     position: 'absolute',
-    top: -6,
-    right: -8,
+    top: -4,
+    right: -4,
     borderRadius: 999,
     minWidth: 18,
     paddingHorizontal: 4,
     alignItems: 'center',
   },
-  chip: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    minHeight: 36,
-  },
   fab: {
     position: 'absolute',
     right: 20,
     bottom: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  fabFill: { borderRadius: 30 },
 });

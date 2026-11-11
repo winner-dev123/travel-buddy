@@ -12,20 +12,55 @@ import { type FeedFeedback, sendFeedFeedback, setBookmark, setReaction, shareLin
 import { TranslatableBody } from './TranslatableBody';
 import type { Post, UserSummary } from './types';
 
-export function Avatar({ user, size = 40 }: { user: UserSummary | null; size?: number }) {
+const RING_GAP = 2;
+const RING_WIDTH = 1.5;
+
+/** A member's picture, or their initial. `ring` adds the accent halo used on cards and profiles. */
+export function Avatar({
+  user,
+  size = 40,
+  ring = false,
+}: {
+  user: UserSummary | null;
+  size?: number;
+  ring?: boolean;
+}) {
   const theme = useAppTheme();
   const url = user?.avatar?.status === 'ready' ? user.avatar.url : null;
   const initial = (user?.display_name ?? '?').trim().charAt(0).toUpperCase() || '?';
   const shape = { width: size, height: size, borderRadius: size / 2 };
-  return url ? (
-    <Image source={{ uri: url }} style={shape} accessibilityIgnoresInvertColors />
+  const face = url ? (
+    <Image
+      source={{ uri: url }}
+      style={[shape, { backgroundColor: theme.colors.surfaceRaised }]}
+      accessibilityIgnoresInvertColors
+    />
   ) : (
     <View
-      style={[shape, styles.center, { backgroundColor: theme.colors.primary }]}
+      style={[shape, styles.center, { backgroundColor: theme.colors.primaryMuted }]}
       accessibilityElementsHidden
       importantForAccessibility="no"
     >
-      <Text style={[theme.typography.label, { color: theme.colors.onPrimary }]}>{initial}</Text>
+      <Text
+        style={{
+          fontFamily: theme.fonts.serif,
+          fontSize: Math.round(size * 0.42),
+          color: theme.colors.onPrimaryMuted,
+        }}
+      >
+        {initial}
+      </Text>
+    </View>
+  );
+  if (!ring) return face;
+  return (
+    <View
+      style={[
+        styles.ring,
+        { borderColor: theme.colors.primary, borderRadius: size / 2 + RING_GAP + RING_WIDTH },
+      ]}
+    >
+      {face}
     </View>
   );
 }
@@ -107,11 +142,15 @@ export function PostCard({ post, onOpen, onOpenAuthor, interactive = true }: Pos
 
   // A tagged spot reads better than its city: "Belém Tower" rather than "Lisbon" (POST-002).
   const place = post.place?.name ?? post.primary_destination?.name;
+  // In lists the first photo is the card's cover and carries the place; the story shows them all.
+  const inList = onOpen !== undefined;
+  const cover = inList && post.media.some((item) => item.kind === 'image');
   if (dismissed) {
     return (
       <View
         style={[
           styles.card,
+          styles.content,
           { backgroundColor: theme.colors.surface, borderColor: theme.colors.divider },
         ]}
         testID={`post-dismissed-${post.id}`}
@@ -129,124 +168,141 @@ export function PostCard({ post, onOpen, onOpenAuthor, interactive = true }: Pos
       accessibilityLabel={t('post.openA11y', { name: post.author.display_name })}
       style={[
         styles.card,
-        { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.divider },
+        { backgroundColor: theme.colors.surface, borderColor: theme.colors.divider },
       ]}
       testID={`post-card-${post.id}`}
     >
-      <Pressable
-        style={styles.header}
-        onPress={onOpenAuthor ? () => onOpenAuthor(post.author.id) : undefined}
-        disabled={!onOpenAuthor}
-        accessibilityRole={onOpenAuthor ? 'link' : undefined}
-        accessibilityLabel={
-          onOpenAuthor ? t('post.authorA11y', { name: post.author.display_name }) : undefined
-        }
-        testID={`post-author-${post.id}`}
-      >
-        <Avatar user={post.author} />
-        <View style={styles.headerText}>
-          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>
-            {post.author.display_name}
-          </Text>
-          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
-            {[`@${post.author.handle}`, place, t(`post.kinds.${post.kind}`)]
-              .filter(Boolean)
-              .join(' · ')}
-          </Text>
-        </View>
-      </Pressable>
-      {post.body ? <TranslatableBody post={post} enabled={interactive} /> : null}
-      <PhotoGallery media={post.media} compact={onOpen !== undefined} />
-      {post.tags.length > 0 ? (
-        <Text style={[theme.typography.caption, { color: theme.colors.primary }]}>
-          {post.tags.map((tag) => `#${tag}`).join('  ')}
-        </Text>
-      ) : null}
-      <View style={styles.footer}>
+      {cover ? <PhotoGallery media={post.media} compact place={place} /> : null}
+      <View style={styles.content}>
         <Pressable
-          onPress={interactive ? toggle : undefined}
-          disabled={!interactive}
-          accessibilityRole="button"
-          accessibilityState={{ selected: liked, disabled: !interactive }}
-          accessibilityLabel={liked ? t('post.unlike') : t('post.like')}
-          hitSlop={8}
-          style={styles.action}
-          testID={`post-like-${post.id}`}
+          style={styles.header}
+          onPress={onOpenAuthor ? () => onOpenAuthor(post.author.id) : undefined}
+          disabled={!onOpenAuthor}
+          accessibilityRole={onOpenAuthor ? 'link' : undefined}
+          accessibilityLabel={
+            onOpenAuthor ? t('post.authorA11y', { name: post.author.display_name }) : undefined
+          }
+          testID={`post-author-${post.id}`}
         >
-          <Ionicons
-            name={liked ? 'heart' : 'heart-outline'}
-            size={20}
-            color={liked ? theme.colors.danger : theme.colors.textSecondary}
-          />
-          <Text
-            style={[theme.typography.label, { color: theme.colors.textSecondary }]}
-            testID={`post-likes-${post.id}`}
-          >
-            {count}
-          </Text>
+          <Avatar user={post.author} ring />
+          <View style={styles.headerText}>
+            <Text
+              style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}
+              numberOfLines={1}
+            >
+              {post.author.display_name}
+            </Text>
+            <Text
+              style={[theme.typography.caption, { color: theme.colors.textSecondary }]}
+              numberOfLines={1}
+            >
+              {[`@${post.author.handle}`, cover ? undefined : place].filter(Boolean).join(' · ')}
+            </Text>
+          </View>
         </Pressable>
-        <View
-          style={styles.action}
-          accessibilityLabel={t('post.commentsCount', { count: post.counts.comments })}
-        >
-          <Ionicons name="chatbubble-outline" size={18} color={theme.colors.textSecondary} />
-          <Text style={[theme.typography.label, { color: theme.colors.textSecondary }]}>
-            {post.counts.comments}
+        <Text style={[theme.typography.overline, styles.kicker, { color: theme.colors.primary }]}>
+          {t(`post.kinds.${post.kind}`)}
+        </Text>
+        {post.body ? <TranslatableBody post={post} enabled={interactive} /> : null}
+        {cover ? null : <PhotoGallery media={post.media} compact={inList} />}
+        {post.tags.length > 0 ? (
+          <Text style={[theme.typography.caption, { color: theme.colors.primary }]}>
+            {post.tags.map((tag) => `#${tag}`).join('  ')}
           </Text>
-        </View>
-        {interactive && post.visibility === 'public' ? (
+        ) : null}
+        <View style={[styles.footer, { borderTopColor: theme.colors.divider }]}>
           <Pressable
-            onPress={() => void share()}
+            onPress={interactive ? toggle : undefined}
+            disabled={!interactive}
             accessibilityRole="button"
-            accessibilityLabel={t('post.share')}
+            accessibilityState={{ selected: liked, disabled: !interactive }}
+            accessibilityLabel={liked ? t('post.unlike') : t('post.like')}
             hitSlop={8}
             style={styles.action}
-            testID={`post-share-${post.id}`}
-          >
-            <Ionicons name="share-outline" size={19} color={theme.colors.textSecondary} />
-          </Pressable>
-        ) : null}
-        {interactive && onOpen && !isAuthor ? (
-          <Pressable
-            onPress={more}
-            accessibilityRole="button"
-            accessibilityLabel={t('post.moreTitle')}
-            hitSlop={8}
-            style={styles.action}
-            testID={`post-more-${post.id}`}
-          >
-            <Ionicons name="ellipsis-horizontal" size={19} color={theme.colors.textSecondary} />
-          </Pressable>
-        ) : null}
-        {interactive ? (
-          <Pressable
-            onPress={toggleSaved}
-            accessibilityRole="button"
-            accessibilityState={{ selected: saved }}
-            accessibilityLabel={saved ? t('post.unsave') : t('post.save')}
-            hitSlop={8}
-            style={[styles.action, styles.end]}
-            testID={`post-save-${post.id}`}
+            testID={`post-like-${post.id}`}
           >
             <Ionicons
-              name={saved ? 'bookmark' : 'bookmark-outline'}
-              size={19}
-              color={saved ? theme.colors.primary : theme.colors.textSecondary}
+              name={liked ? 'heart' : 'heart-outline'}
+              size={20}
+              color={liked ? theme.colors.danger : theme.colors.textSecondary}
             />
+            <Text
+              style={[theme.typography.label, { color: theme.colors.textSecondary }]}
+              testID={`post-likes-${post.id}`}
+            >
+              {count}
+            </Text>
           </Pressable>
-        ) : null}
+          <View
+            style={styles.action}
+            accessibilityLabel={t('post.commentsCount', { count: post.counts.comments })}
+          >
+            <Ionicons name="chatbubble-outline" size={18} color={theme.colors.textSecondary} />
+            <Text style={[theme.typography.label, { color: theme.colors.textSecondary }]}>
+              {post.counts.comments}
+            </Text>
+          </View>
+          {interactive && post.visibility === 'public' ? (
+            <Pressable
+              onPress={() => void share()}
+              accessibilityRole="button"
+              accessibilityLabel={t('post.share')}
+              hitSlop={8}
+              style={styles.action}
+              testID={`post-share-${post.id}`}
+            >
+              <Ionicons name="share-outline" size={19} color={theme.colors.textSecondary} />
+            </Pressable>
+          ) : null}
+          {interactive && onOpen && !isAuthor ? (
+            <Pressable
+              onPress={more}
+              accessibilityRole="button"
+              accessibilityLabel={t('post.moreTitle')}
+              hitSlop={8}
+              style={styles.action}
+              testID={`post-more-${post.id}`}
+            >
+              <Ionicons name="ellipsis-horizontal" size={19} color={theme.colors.textSecondary} />
+            </Pressable>
+          ) : null}
+          {interactive ? (
+            <Pressable
+              onPress={toggleSaved}
+              accessibilityRole="button"
+              accessibilityState={{ selected: saved }}
+              accessibilityLabel={saved ? t('post.unsave') : t('post.save')}
+              hitSlop={8}
+              style={[styles.action, styles.end]}
+              testID={`post-save-${post.id}`}
+            >
+              <Ionicons
+                name={saved ? 'bookmark' : 'bookmark-outline'}
+                size={19}
+                color={saved ? theme.colors.primary : theme.colors.textSecondary}
+              />
+            </Pressable>
+          ) : null}
+        </View>
       </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { borderWidth: 1, borderRadius: 12, padding: 16, gap: 12 },
+  card: { borderWidth: 1, borderRadius: 20, overflow: 'hidden' },
+  content: { padding: 16, gap: 12 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   headerText: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
-  media: { width: '100%', borderRadius: 8 },
-  footer: { flexDirection: 'row', gap: 24 },
+  ring: { borderWidth: RING_WIDTH, padding: RING_GAP },
+  kicker: { textTransform: 'uppercase', marginBottom: -6 },
+  footer: {
+    flexDirection: 'row',
+    gap: 24,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
   action: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 32 },
   end: { marginLeft: 'auto' },
 });

@@ -424,6 +424,7 @@
     "title": "Notifications",
     "empty": "Nothing new yet.",
     "error": "We couldn't load notifications.",
+    "unread": "Unread",
     "unreadA11y_one": "{{count}} unread notification",
     "unreadA11y_other": "{{count}} unread notifications",
     "push": {
@@ -436,7 +437,7 @@
   },
   "user": {
     "notFound": "This profile isn't available.",
-    "counts": "{{posts}} stories · {{followers}} followers · {{following}} following",
+    "stories": "Stories",
     "private": "This account is private. Follow to see their stories.",
     "follow": "Follow",
     "unfollow": "Unfollow",
@@ -1182,5 +1183,25 @@
     "save": "Add trip",
     "remove": "Remove",
     "error": "We couldn't load your upcoming trips. Check your connection and try again."
+  },
+  "profileMenu": {
+    "account": "Account",
+    "travel": "Your travels",
+    "preferences": "Preferences",
+    "support": "Safety and support"
+  },
+  "appearance": {
+    "title": "Appearance",
+    "options": {
+      "dark": "Dark",
+      "light": "Light",
+      "system": "Match this phone"
+    },
+    "descriptions": {
+      "dark": "Deep black with gold accents. The look Travel Buddy is designed around.",
+      "light": "Warm ivory for bright daylight.",
+      "system": "Follows the light or dark setting of your phone."
+    },
+    "hint": "Your choice is kept on this phone."
   }
 }

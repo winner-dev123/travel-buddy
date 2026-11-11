@@ -430,6 +430,7 @@
     "title": "Notifications",
     "empty": "Rien de nouveau pour l'instant.",
     "error": "Impossible de charger les notifications.",
+    "unread": "Non lue",
     "unreadA11y_one": "{{count}} notification non lue",
     "unreadA11y_many": "{{count}} de notifications non lues",
     "unreadA11y_other": "{{count}} notifications non lues",
@@ -443,7 +444,7 @@
   },
   "user": {
     "notFound": "Ce profil n'est pas disponible.",
-    "counts": "{{posts}} récits · {{followers}} abonnés · {{following}} abonnements",
+    "stories": "Récits",
     "private": "Ce compte est privé. Abonnez-vous pour voir ses récits.",
     "follow": "Suivre",
     "unfollow": "Ne plus suivre",
@@ -1201,5 +1202,25 @@
     "save": "Ajouter le voyage",
     "remove": "Retirer",
     "error": "Impossible de charger vos prochains voyages. Vérifiez votre connexion et réessayez."
+  },
+  "profileMenu": {
+    "account": "Compte",
+    "travel": "Vos voyages",
+    "preferences": "Préférences",
+    "support": "Sécurité et aide"
+  },
+  "appearance": {
+    "title": "Apparence",
+    "options": {
+      "dark": "Sombre",
+      "light": "Clair",
+      "system": "Comme ce téléphone"
+    },
+    "descriptions": {
+      "dark": "Noir profond et touches dorées. L'apparence pour laquelle Travel Buddy est conçu.",
+      "light": "Ivoire chaleureux pour la lumière du jour.",
+      "system": "Suit le mode clair ou sombre de votre téléphone."
+    },
+    "hint": "Votre choix est conservé sur ce téléphone."
   }
 }

@@ -47,6 +47,7 @@ import {
   type Message,
   type MessageList,
 } from '@/features/messages/api';
+import { fontFamilies } from '@/theme/tokens';
 import { useAppTheme } from '@/theme/useAppTheme';
 
 /** SCR-081 Direct message thread (DM-001..013), refreshed by polling (ADR-0023). */
@@ -699,7 +700,7 @@ const styles = StyleSheet.create({
   pinRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   reactions: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 },
   attachments: { gap: 4, width: 220 },
-  threadLink: { fontWeight: '600', marginTop: 4 },
+  threadLink: { fontFamily: fontFamilies.semibold, marginTop: 4 },
   sendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   photoButton: { paddingHorizontal: 4 },
   reaction: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 6, paddingVertical: 1 },

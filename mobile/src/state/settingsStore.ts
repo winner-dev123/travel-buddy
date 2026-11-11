@@ -14,12 +14,13 @@ export interface SettingsState {
 }
 
 /**
- * Client-only UI preferences. Not persisted yet: persistence (expo-sqlite
- * kv-store) and server sync of `user_preferences` arrive with Phase 1 profiles.
+ * Client-only UI preferences. The appearance defaults to dark (the look the app is designed
+ * around) and is remembered on the device by `uiPreferences.ts`; the language is saved to the
+ * account instead (I18N-002).
  */
 export const useSettingsStore = create<SettingsState>()((set) => ({
   localeOverride: null,
-  themePreference: 'system',
+  themePreference: 'dark',
   setLocaleOverride: (localeOverride) => set({ localeOverride }),
   setThemePreference: (themePreference) => set({ themePreference }),
 }));

@@ -2,6 +2,7 @@ import { Alert, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { create } from 'zustand';
 
+import { scrims } from '@/theme/tokens';
 import { useAppTheme } from '@/theme/useAppTheme';
 
 export interface SheetAction {
@@ -70,6 +71,7 @@ export function ActionSheetHost() {
           accessibilityRole="menu"
           testID="action-sheet"
         >
+          <View style={[styles.grabber, { backgroundColor: theme.colors.borderStrong }]} />
           {request ? (
             <View style={styles.header}>
               <Text style={[theme.typography.title3, { color: theme.colors.textPrimary }]}>
@@ -92,7 +94,7 @@ export function ActionSheetHost() {
             >
               <Text
                 style={[
-                  theme.typography.body,
+                  action.style === 'cancel' ? theme.typography.bodyStrong : theme.typography.body,
                   {
                     color:
                       action.style === 'destructive'
@@ -100,7 +102,6 @@ export function ActionSheetHost() {
                         : action.style === 'cancel'
                           ? theme.colors.textSecondary
                           : theme.colors.textPrimary,
-                    fontWeight: action.style === 'cancel' ? '600' : '400',
                   },
                 ]}
               >
@@ -115,8 +116,14 @@ export function ActionSheetHost() {
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  sheet: { borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingTop: 16 },
-  header: { paddingHorizontal: 20, paddingBottom: 12, gap: 4 },
-  action: { paddingVertical: 14, paddingHorizontal: 20, borderTopWidth: StyleSheet.hairlineWidth },
+  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: scrims.backdrop },
+  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 10 },
+  grabber: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, marginBottom: 14 },
+  header: { paddingHorizontal: 24, paddingBottom: 14, gap: 4 },
+  action: {
+    minHeight: 52,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
 });

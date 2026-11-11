@@ -33,7 +33,7 @@ import { useAppTheme } from '@/theme/useAppTheme';
 /** SCR-025 Another traveller's profile: follow, block, report and their stories. */
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const theme = useAppTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -92,7 +92,7 @@ export default function UserProfileScreen() {
   ) : (
     <View style={{ gap: theme.spacing[3], paddingBottom: theme.spacing[3] }}>
       <View style={styles.header}>
-        <Avatar user={data} size={64} />
+        <Avatar user={data} size={72} ring />
         <View style={styles.fill}>
           <Text
             accessibilityRole="header"
@@ -100,7 +100,7 @@ export default function UserProfileScreen() {
           >
             {data.display_name}
           </Text>
-          <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>
+          <Text style={[theme.typography.label, { color: theme.colors.primary }]}>
             @{data.handle}
           </Text>
         </View>
@@ -109,37 +109,51 @@ export default function UserProfileScreen() {
         <Text style={[theme.typography.body, { color: theme.colors.textPrimary }]}>{data.bio}</Text>
       ) : null}
       {data.counts ? (
-        <Text
-          style={[theme.typography.label, { color: theme.colors.textSecondary }]}
+        <View
+          style={[
+            styles.stats,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.divider,
+              borderRadius: theme.radii.lg,
+            },
+          ]}
           testID="user-counts"
         >
-          {t('user.counts', data.counts)}
-        </Text>
-      ) : null}
-      {data.counts && !restricted ? (
-        <View style={styles.links}>
-          <Pressable
-            onPress={() =>
-              router.push({ pathname: '/user/follows', params: { id: data.id, kind: 'followers' } })
+          <Stat
+            value={data.counts.posts.toLocaleString(i18n.language)}
+            label={t('user.stories')}
+            first
+            testID="user-stories"
+          />
+          <Stat
+            value={data.counts.followers.toLocaleString(i18n.language)}
+            label={t('follows.followers')}
+            onPress={
+              restricted
+                ? undefined
+                : () =>
+                    router.push({
+                      pathname: '/user/follows',
+                      params: { id: data.id, kind: 'followers' },
+                    })
             }
-            accessibilityRole="link"
             testID="user-followers"
-          >
-            <Text style={[theme.typography.label, { color: theme.colors.primary }]}>
-              {t('follows.followers')}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() =>
-              router.push({ pathname: '/user/follows', params: { id: data.id, kind: 'following' } })
+          />
+          <Stat
+            value={data.counts.following.toLocaleString(i18n.language)}
+            label={t('follows.following')}
+            onPress={
+              restricted
+                ? undefined
+                : () =>
+                    router.push({
+                      pathname: '/user/follows',
+                      params: { id: data.id, kind: 'following' },
+                    })
             }
-            accessibilityRole="link"
             testID="user-following"
-          >
-            <Text style={[theme.typography.label, { color: theme.colors.primary }]}>
-              {t('follows.following')}
-            </Text>
-          </Pressable>
+          />
         </View>
       ) : null}
       {data.badges?.length ? (
@@ -286,8 +300,56 @@ export default function UserProfileScreen() {
   );
 }
 
+/** One figure of the profile summary. With `onPress` it opens the list behind the number. */
+function Stat({
+  value,
+  label,
+  onPress,
+  first = false,
+  testID,
+}: {
+  value: string;
+  label: string;
+  onPress?: () => void;
+  first?: boolean;
+  testID: string;
+}) {
+  const theme = useAppTheme();
+  const cell = [
+    styles.stat,
+    {
+      minHeight: theme.minTouchTarget,
+      paddingVertical: theme.spacing[3],
+      borderLeftColor: theme.colors.divider,
+      borderLeftWidth: first ? 0 : StyleSheet.hairlineWidth,
+    },
+  ];
+  const content = (
+    <>
+      <Text style={[theme.typography.title2, { color: theme.colors.textPrimary }]}>{value}</Text>
+      <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{label}</Text>
+    </>
+  );
+  return onPress ? (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="link"
+      accessibilityLabel={`${value} ${label}`}
+      style={cell}
+      testID={testID}
+    >
+      {content}
+    </Pressable>
+  ) : (
+    <View accessible accessibilityLabel={`${value} ${label}`} style={cell} testID={testID}>
+      {content}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  links: { flexDirection: 'row', gap: 16 },
+  stats: { flexDirection: 'row', borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
+  stat: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   badge: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 4 },
   fill: { flex: 1 },

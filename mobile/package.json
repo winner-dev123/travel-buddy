@@ -17,6 +17,8 @@
     "test:ci": "jest --ci --watchAll=false --coverage"
   },
   "dependencies": {
+    "@expo-google-fonts/manrope": "^0.4.3",
+    "@expo-google-fonts/playfair-display": "^0.4.2",
     "@expo/vector-icons": "^15.0.2",
     "@noble/curves": "1.9.7",
     "@react-native-community/netinfo": "12.0.1",
@@ -30,6 +32,7 @@
     "expo-file-system": "~58.0.13",
     "expo-font": "~58.0.11",
     "expo-image-picker": "~58.0.10",
+    "expo-linear-gradient": "~58.0.3",
     "expo-linking": "~58.0.16",
     "expo-localization": "~58.0.5",
     "expo-location": "~58.0.20",

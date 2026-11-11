@@ -34,3 +34,7 @@ jest.mock('expo-notifications', () => ({
   setNotificationChannelAsync: jest.fn(async () => null),
   addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
 }));
+
+// Icons are glyphs from an icon font: rendered for real they add private-use characters to an
+// element's text content. Every icon in the app is decorative (labels carry the meaning).
+jest.mock('@expo/vector-icons/Ionicons', () => ({ __esModule: true, default: () => null }));
