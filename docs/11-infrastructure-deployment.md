@@ -268,6 +268,7 @@ Staging runs Stripe in **test mode**. Production gets its own Railway environmen
 | `STRIPE_API_VERSION` | Leave the default (`2025-02-24.acacia`): every request and every object read uses it |
 | `STRIPE_PARTIAL_REFUND_REVOKES` | `false` (default): a partial refund keeps the purchase |
 | `STRIPE_REFUND_DUPLICATES` | `true` (default): a duplicate web subscription is cancelled and refunded |
+| `STRIPE_PORTAL_CONFIGURATION` | Only if the setup reports one (`bpc_…`); otherwise the account's default portal is used |
 
 **Webhook endpoint:** `https://<api>/v1/billing/webhooks/stripe`, subscribed to these events:
 
@@ -278,13 +279,27 @@ Staging runs Stripe in **test mode**. Production gets its own Railway environmen
 
 The endpoint's own API version doesn't matter, because objects are re-read from the API.
 
-**Offers:** create a Product and a Price in Stripe for each web offer. Then register each Price ID as the SKU of a `web` product through `POST /v1/admin/products` (kind, period, titles, order). Test and live Prices have different IDs, so each environment has its own rows.
+**Offers:** one command creates the Stripe side from `backend/app/modules/billing/seed/offers.json` and registers the offers with us. It is idempotent and does a dry run by default:
 
-**Dashboard settings to decide:**
+```
+railway run --service api -- python -m app.modules.billing.stripe_setup \
+  --webhook-url https://<api>/v1/billing/webhooks/stripe --secret-out <private path>
+railway run --service api -- python -m app.modules.billing.stripe_setup --apply \
+  --webhook-url https://<api>/v1/billing/webhooks/stripe --secret-out <private path>
+```
 
-* payment methods (cards, Pix, boleto);
-* Smart Retries, and what happens after the last failed retry;
-* Customer Portal (cancel at period end, plan switching);
+* It creates a Price per offer, with a lookup key, the other currencies and the interval.
+* It creates the webhook endpoint with exactly the events above. Its signing secret goes only to `--secret-out`; put that into `STRIPE_WEBHOOK_SECRET`.
+* It sets up the Customer Portal and upserts the `web`, `ios` and `android` product rows (titles, order).
+* A changed price creates a new Price and retires the old row.
+* `--stores-only --apply` registers just the App Store and Google Play rows and needs no Stripe key. Staging got them this way on 2026-11-11, so the app's paywall lists all four offers.
+* If the account had no default portal configuration, the reported `bpc_…` id goes into `STRIPE_PORTAL_CONFIGURATION`.
+* Test and live Prices differ, so each environment runs it once.
+
+**Dashboard settings** (recommended values in docs/07 §2.1):
+
+* payment methods: cards, plus Pix for one-time payments; no boleto at launch;
+* Smart Retries for up to two weeks, then cancel the subscription;
 * receipt emails, the statement descriptor and Checkout branding;
 * Stripe Tax. Stripe doesn't issue Brazilian fiscal invoices (NF-e or NFS-e).
 

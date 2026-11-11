@@ -603,5 +603,10 @@ describe('guide reader', () => {
     );
     await renderUi(<GuideScreen />);
     expect(await screen.findByText('This guide is part of Premium.')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('guide-see-premium'));
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/paywall',
+      params: { reason: 'guides.premium' },
+    });
   });
 });

@@ -43,14 +43,15 @@ export default function NewGroupScreen() {
       router.replace({ pathname: '/groups/[id]', params: { id: group.id } });
     },
   });
-  const error =
-    create.error instanceof ApiProblem && create.error.code === 'entitlement_required'
-      ? t('groups.premiumNote')
-      : create.error instanceof ApiProblem && create.error.code === 'quota_exceeded'
-        ? t('groups.quota')
-        : create.isError
-          ? t('user.actionFailed')
-          : null;
+  const needsPremium =
+    create.error instanceof ApiProblem && create.error.code === 'entitlement_required';
+  const error = needsPremium
+    ? t('groups.premiumNote')
+    : create.error instanceof ApiProblem && create.error.code === 'quota_exceeded'
+      ? t('groups.quota')
+      : create.isError
+        ? t('user.actionFailed')
+        : null;
   const valid = name.trim().length >= 3 && place !== null;
 
   return (
@@ -113,6 +114,17 @@ export default function NewGroupScreen() {
           testID="group-capacity"
         />
         {error ? <Notice tone="error">{error}</Notice> : null}
+        {needsPremium ? (
+          <Button
+            label={t('paywall.seePremium')}
+            variant="secondary"
+            icon="diamond-outline"
+            onPress={() =>
+              router.push({ pathname: '/paywall', params: { reason: 'groups.create' } })
+            }
+            testID="group-see-premium"
+          />
+        ) : null}
         <Button
           label={t('groups.create')}
           onPress={() => create.mutate()}

@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ApiNetworkError, ApiProblem, getApiClient } from '@/api';
-import { Notice } from '@/components/Form';
+import { Button, Notice } from '@/components/Form';
 import { getGuide, type Guide, type GuideSection } from '@/features/explore/api';
 import { offlineGuide } from '@/features/offline/store';
 import { useAppTheme } from '@/theme/useAppTheme';
@@ -19,6 +19,7 @@ function plain(markdown: string): string {
 export default function GuideScreen() {
   const { t } = useTranslation();
   const theme = useAppTheme();
+  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   // Online first; without a connection, the downloaded copy (OFF-002).
   const guide = useQuery({
@@ -48,6 +49,18 @@ export default function GuideScreen() {
       <Stack.Screen options={{ headerShown: true, title: data?.title ?? t('guides.title') }} />
       <ScrollView contentContainerStyle={{ padding: theme.spacing[4], gap: theme.spacing[3] }}>
         {locked ? <Notice tone="info">{t('guides.locked')}</Notice> : null}
+        {locked &&
+        guide.error instanceof ApiProblem &&
+        guide.error.code === 'entitlement_required' ? (
+          <Button
+            label={t('paywall.seePremium')}
+            icon="diamond-outline"
+            onPress={() =>
+              router.push({ pathname: '/paywall', params: { reason: 'guides.premium' } })
+            }
+            testID="guide-see-premium"
+          />
+        ) : null}
         {guide.isError && !locked ? <Notice tone="error">{t('guides.missing')}</Notice> : null}
         {guide.data?.offline ? <Notice tone="info">{t('offline.offlineCopy')}</Notice> : null}
         {data ? (

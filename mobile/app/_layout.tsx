@@ -116,6 +116,7 @@ export default function RootLayout() {
               <Stack.Screen name="(onboarding)" />
               <Stack.Screen name="post/[id]" />
               <Stack.Screen name="compose" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
               <Stack.Screen name="report" options={{ presentation: 'modal' }} />
               <Stack.Screen name="notifications" />
               <Stack.Screen name="user/[id]" />

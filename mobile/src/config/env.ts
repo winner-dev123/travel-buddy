@@ -159,3 +159,16 @@ function jwtRole(token: string): string | undefined {
   }
   return undefined;
 }
+
+/**
+ * How the paywall buys (BL-3.11, ADR-0031). Release builds sell through the App Store and Google
+ * Play once the store adapter ships; until then they show the offers without a buy button.
+ * `test` (development builds only, `EXPO_PUBLIC_PURCHASES=test`) buys through the backend's
+ * development store, which only a development backend accepts.
+ */
+export type PurchaseMode = 'test' | 'off';
+
+export function getPurchaseMode(): PurchaseMode {
+  if (!__DEV__) return 'off';
+  return process.env.EXPO_PUBLIC_PURCHASES === 'test' ? 'test' : 'off';
+}

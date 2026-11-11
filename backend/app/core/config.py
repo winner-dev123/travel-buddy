@@ -156,6 +156,9 @@ class Settings(BaseSettings):
     stripe_api_version: str = Field(
         default="2025-02-24.acacia", pattern=r"^\d{4}-\d{2}-\d{2}(\.[a-z]+)?$"
     )
+    # Customer Portal configuration for portal sessions; unset uses the account's default
+    # (stripe_setup reports an id to put here when the account has no default yet).
+    stripe_portal_configuration: str | None = Field(default=None, pattern=r"^bpc_[A-Za-z0-9]+$")
     # A partial refund keeps what was bought unless this is on; a full one always revokes it.
     stripe_partial_refund_revokes: bool = False
     # A second web subscription to the same plan is cancelled; refund its first payment too.

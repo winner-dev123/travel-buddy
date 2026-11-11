@@ -1246,5 +1246,51 @@
       "stripe": "Website",
       "dev": "Test-Store"
     }
+  },
+  "paywall": {
+    "overline": "Travel Buddy",
+    "title": "Premium",
+    "close": "Schließen",
+    "reason": {
+      "default": "Hol mehr aus jeder Reise heraus.",
+      "groups_create": "Reisegruppen zu erstellen ist Teil von Premium. Beitreten ist immer kostenlos.",
+      "challenges_create": "Gruppen-Challenges zu veranstalten ist Teil von Premium.",
+      "guides_premium": "Dieser Reiseführer ist Teil von Premium.",
+      "offline_packages": "Du hast deinen kostenlosen Offline-Download schon genutzt.",
+      "ai_trip_replan": "Eine Reise mit KI neu zu planen ist Teil von Premium.",
+      "ai_itinerary_generations": "Du hast die kostenlosen KI-Reisepläne dieses Monats schon genutzt."
+    },
+    "benefit": {
+      "groups": "Reisegruppen und Gruppen-Challenges erstellen",
+      "guides": "Alle Premium-Reiseführer und Audiotouren",
+      "offline": "Bis zu 15 Offline-Downloads",
+      "ai": "60 KI-Reisepläne im Monat und KI-Neuplanung"
+    },
+    "choose": "Wähle deinen Plan",
+    "period": {
+      "renews": "Verlängert sich automatisch",
+      "once": "Einmalige Zahlung, keine Verlängerung"
+    },
+    "buy": "Weiter",
+    "buyTest": "Kaufen (Test)",
+    "testNote": "Testkauf: Es wird nichts berechnet.",
+    "soon": "Premium in der App zu kaufen ist bald möglich.",
+    "restore": "Käufe wiederherstellen",
+    "restored": "Deine Käufe sind auf dem neuesten Stand.",
+    "failed": "Der Kauf ist nicht durchgegangen. Dir wurde nichts berechnet.",
+    "offersError": "Die Pläne können gerade nicht geladen werden.",
+    "success": "Premium ist aktiv. Gute Reise!",
+    "done": "Fertig",
+    "already": "Du hast bereits Premium.",
+    "manage": "Abo ansehen",
+    "disclosure": "Abos verlängern sich automatisch, wenn sie nicht mindestens 24 Stunden vor Ende des Zeitraums gekündigt werden. Verwalte oder kündige sie in den Einstellungen deines {{store}}-Kontos. Pässe werden einmal bezahlt und verlängern sich nicht.",
+    "store": {
+      "ios": "App Store",
+      "android": "Google Play"
+    },
+    "terms": "Bedingungen",
+    "privacy": "Datenschutz",
+    "getPremium": "Premium holen",
+    "seePremium": "Premium ansehen"
   }
 }

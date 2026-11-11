@@ -1246,5 +1246,51 @@
       "stripe": "Website",
       "dev": "Test store"
     }
+  },
+  "paywall": {
+    "overline": "Travel Buddy",
+    "title": "Premium",
+    "close": "Close",
+    "reason": {
+      "default": "Do more with every trip.",
+      "groups_create": "Creating travel groups is part of Premium. Joining is always free.",
+      "challenges_create": "Running group challenges is part of Premium.",
+      "guides_premium": "This guide is part of Premium.",
+      "offline_packages": "You've used your free offline download.",
+      "ai_trip_replan": "Replanning a trip with AI is part of Premium.",
+      "ai_itinerary_generations": "You've used this month's free AI trip plans."
+    },
+    "benefit": {
+      "groups": "Create travel groups and group challenges",
+      "guides": "Every premium guide and audio tour",
+      "offline": "Up to 15 offline downloads",
+      "ai": "60 AI trip plans a month, and AI replanning"
+    },
+    "choose": "Choose your plan",
+    "period": {
+      "renews": "Renews automatically",
+      "once": "Paid once, no renewal"
+    },
+    "buy": "Continue",
+    "buyTest": "Buy (test)",
+    "testNote": "Test purchase: nothing is charged.",
+    "soon": "Buying Premium in the app opens soon.",
+    "restore": "Restore purchases",
+    "restored": "Your purchases are up to date.",
+    "failed": "The purchase didn't go through. You haven't been charged.",
+    "offersError": "The plans can't load right now.",
+    "success": "Premium is active. Enjoy your travels!",
+    "done": "Done",
+    "already": "You already have Premium.",
+    "manage": "See your subscription",
+    "disclosure": "Subscriptions renew automatically unless cancelled at least 24 hours before the period ends. Manage or cancel them in your {{store}} account settings. Passes are paid once and don't renew.",
+    "store": {
+      "ios": "App Store",
+      "android": "Google Play"
+    },
+    "terms": "Terms",
+    "privacy": "Privacy",
+    "getPremium": "Get Premium",
+    "seePremium": "See Premium"
   }
 }

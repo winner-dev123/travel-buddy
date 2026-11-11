@@ -1266,5 +1266,51 @@
       "stripe": "Sitio web",
       "dev": "Tienda de prueba"
     }
+  },
+  "paywall": {
+    "overline": "Travel Buddy",
+    "title": "Premium",
+    "close": "Cerrar",
+    "reason": {
+      "default": "Saca más partido a cada viaje.",
+      "groups_create": "Crear grupos de viaje es parte de Premium. Unirse siempre es gratis.",
+      "challenges_create": "Organizar retos de grupo es parte de Premium.",
+      "guides_premium": "Esta guía es parte de Premium.",
+      "offline_packages": "Ya usaste tu descarga sin conexión gratuita.",
+      "ai_trip_replan": "Replanificar un viaje con IA es parte de Premium.",
+      "ai_itinerary_generations": "Ya usaste los planes de viaje con IA gratuitos de este mes."
+    },
+    "benefit": {
+      "groups": "Crea grupos de viaje y retos de grupo",
+      "guides": "Todas las guías y audioguías premium",
+      "offline": "Hasta 15 descargas sin conexión",
+      "ai": "60 planes de viaje con IA al mes y replanificación con IA"
+    },
+    "choose": "Elige tu plan",
+    "period": {
+      "renews": "Se renueva automáticamente",
+      "once": "Un solo pago, sin renovación"
+    },
+    "buy": "Continuar",
+    "buyTest": "Comprar (prueba)",
+    "testNote": "Compra de prueba: no se cobra nada.",
+    "soon": "Pronto podrás comprar Premium en la app.",
+    "restore": "Restaurar compras",
+    "restored": "Tus compras están al día.",
+    "failed": "La compra no se completó. No se te ha cobrado.",
+    "offersError": "Los planes no se pueden cargar ahora.",
+    "success": "Premium está activo. ¡Disfruta tus viajes!",
+    "done": "Listo",
+    "already": "Ya tienes Premium.",
+    "manage": "Ver tu suscripción",
+    "disclosure": "Las suscripciones se renuevan automáticamente salvo que se cancelen al menos 24 horas antes de que termine el periodo. Gestiónalas o cancélalas en los ajustes de tu cuenta de {{store}}. Los pases se pagan una vez y no se renuevan.",
+    "store": {
+      "ios": "App Store",
+      "android": "Google Play"
+    },
+    "terms": "Términos",
+    "privacy": "Privacidad",
+    "getPremium": "Obtener Premium",
+    "seePremium": "Ver Premium"
   }
 }

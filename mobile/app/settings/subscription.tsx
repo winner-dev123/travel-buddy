@@ -118,6 +118,14 @@ export default function SubscriptionScreen() {
                 {t('subscription.manageOnWeb')}
               </Text>
             ) : null}
+            {data.plan === 'free' ? (
+              <Button
+                label={t('paywall.getPremium')}
+                icon="diamond-outline"
+                onPress={() => router.push('/paywall')}
+                testID="subscription-get-premium"
+              />
+            ) : null}
             <Button
               label={t('purchases.title')}
               variant="secondary"

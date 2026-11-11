@@ -1,0 +1,98 @@
+{
+ "version": 1,
+ "notes": "Launch offers (ADR-0031, docs/07 section 2.1). Prices are minor units per currency: the first currency is the Stripe Price's own, the others are its currency_options. App Store and Google Play prices are set in their consoles from the same table. Load with python -m app.modules.billing.stripe_setup.",
+ "offers": [
+  {
+   "key": "premium_monthly",
+   "kind": "auto_renewable",
+   "period": "P1M",
+   "entitlement_keys": ["premium"],
+   "sort_order": 10,
+   "prices": {"USD": 499, "BRL": 1990, "EUR": 499},
+   "store_skus": {"ios": "com.travelbuddy.premium.monthly", "android": "premium_monthly"},
+   "title": {
+    "en": "Premium monthly",
+    "es": "Premium mensual",
+    "pt-BR": "Premium mensal",
+    "fr": "Premium mensuel",
+    "de": "Premium monatlich"
+   },
+   "description": {
+    "en": "Every Premium feature. Renews monthly; cancel anytime.",
+    "es": "Todas las funciones Premium. Se renueva cada mes; cancela cuando quieras.",
+    "pt-BR": "Todos os recursos Premium. Renova todo mês; cancele quando quiser.",
+    "fr": "Toutes les fonctions Premium. Renouvelé chaque mois, résiliable à tout moment.",
+    "de": "Alle Premium-Funktionen. Verlängert sich monatlich, jederzeit kündbar."
+   }
+  },
+  {
+   "key": "premium_annual",
+   "kind": "auto_renewable",
+   "period": "P1Y",
+   "entitlement_keys": ["premium"],
+   "sort_order": 20,
+   "prices": {"USD": 3999, "BRL": 14990, "EUR": 3999},
+   "store_skus": {"ios": "com.travelbuddy.premium.annual", "android": "premium_annual"},
+   "title": {
+    "en": "Premium annual",
+    "es": "Premium anual",
+    "pt-BR": "Premium anual",
+    "fr": "Premium annuel",
+    "de": "Premium jährlich"
+   },
+   "description": {
+    "en": "Every Premium feature for a year. Renews yearly; cancel anytime.",
+    "es": "Todas las funciones Premium durante un año. Se renueva cada año; cancela cuando quieras.",
+    "pt-BR": "Todos os recursos Premium por um ano. Renova todo ano; cancele quando quiser.",
+    "fr": "Toutes les fonctions Premium pendant un an. Renouvelé chaque année, résiliable à tout moment.",
+    "de": "Alle Premium-Funktionen für ein Jahr. Verlängert sich jährlich, jederzeit kündbar."
+   }
+  },
+  {
+   "key": "pass_week",
+   "kind": "non_renewing",
+   "period": "P7D",
+   "entitlement_keys": ["premium"],
+   "sort_order": 30,
+   "prices": {"USD": 299, "BRL": 1190, "EUR": 299},
+   "store_skus": {"ios": "com.travelbuddy.pass.week", "android": "pass_week"},
+   "title": {
+    "en": "7-day pass",
+    "es": "Pase de 7 días",
+    "pt-BR": "Passe de 7 dias",
+    "fr": "Pass 7 jours",
+    "de": "7-Tage-Pass"
+   },
+   "description": {
+    "en": "Premium for one week. Paid once, no renewal.",
+    "es": "Premium durante una semana. Un solo pago, sin renovación.",
+    "pt-BR": "Premium por uma semana. Pagamento único, sem renovação.",
+    "fr": "Premium pendant une semaine. Paiement unique, sans renouvellement.",
+    "de": "Premium für eine Woche. Einmalige Zahlung, keine Verlängerung."
+   }
+  },
+  {
+   "key": "pass_month",
+   "kind": "non_renewing",
+   "period": "P30D",
+   "entitlement_keys": ["premium"],
+   "sort_order": 40,
+   "prices": {"USD": 699, "BRL": 2490, "EUR": 699},
+   "store_skus": {"ios": "com.travelbuddy.pass.month", "android": "pass_month"},
+   "title": {
+    "en": "30-day pass",
+    "es": "Pase de 30 días",
+    "pt-BR": "Passe de 30 dias",
+    "fr": "Pass 30 jours",
+    "de": "30-Tage-Pass"
+   },
+   "description": {
+    "en": "Premium for 30 days. Paid once, no renewal.",
+    "es": "Premium durante 30 días. Un solo pago, sin renovación.",
+    "pt-BR": "Premium por 30 dias. Pagamento único, sem renovação.",
+    "fr": "Premium pendant 30 jours. Paiement unique, sans renouvellement.",
+    "de": "Premium für 30 Tage. Einmalige Zahlung, keine Verlängerung."
+   }
+  }
+ ]
+}

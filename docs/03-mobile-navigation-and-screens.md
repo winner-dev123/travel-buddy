@@ -349,7 +349,7 @@ screen was folded into another one; ✅ built, ⚠️ partly, ⬜ not yet (reaso
 | SCR-115 badges | ✅ | On profiles; rewards at `/rewards` |
 | SCR-130 compose, SCR-131 report | ✅ | `/compose` (up to ten photos; a destination and optionally a public spot in it), `/report` |
 | SCR-132 block, SCR-135 connection request | ✅ | From the profile (blocking asks for confirmation first) |
-| SCR-133 paywall, SCR-134 purchase result | ⬜ | Need a StoreKit / Play Billing SDK in a development build and the store products (backend verification is ready) |
+| SCR-133 paywall, SCR-134 purchase result | 🟡 | `/paywall` (modal): what the traveller tried to do, the Premium benefits, the store's Premium offers (subscriptions and passes) with titles, the auto-renewal disclosure, terms and privacy; opened from Subscription, group creation, premium guides and offline downloads. No web price or link (ADR-0031). Buying waits for the StoreKit / Play Billing adapter in a development build; development builds can buy through the backend's test store (`EXPO_PUBLIC_PURCHASES=test`), with restore and a result state |
 | SCR-136 share sheet, SCR-137 media viewer | ✅ | System share sheet (stories, invitations); full-screen photo viewer from a story |
 | SCR-150 not found, SCR-151 forced update | ✅ | `+not-found`; update gate in the root layout (from `/v1/client-config`) |
 

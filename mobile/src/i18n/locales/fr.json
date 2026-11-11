@@ -1266,5 +1266,51 @@
       "stripe": "Site web",
       "dev": "Boutique de test"
     }
+  },
+  "paywall": {
+    "overline": "Travel Buddy",
+    "title": "Premium",
+    "close": "Fermer",
+    "reason": {
+      "default": "Profitez davantage de chaque voyage.",
+      "groups_create": "Créer des groupes de voyage fait partie de Premium. Les rejoindre est toujours gratuit.",
+      "challenges_create": "Organiser des défis de groupe fait partie de Premium.",
+      "guides_premium": "Ce guide fait partie de Premium.",
+      "offline_packages": "Vous avez utilisé votre téléchargement hors ligne gratuit.",
+      "ai_trip_replan": "Replanifier un voyage avec l'IA fait partie de Premium.",
+      "ai_itinerary_generations": "Vous avez utilisé les itinéraires IA gratuits de ce mois-ci."
+    },
+    "benefit": {
+      "groups": "Créez des groupes de voyage et des défis de groupe",
+      "guides": "Tous les guides et audioguides premium",
+      "offline": "Jusqu'à 15 téléchargements hors ligne",
+      "ai": "60 itinéraires IA par mois et la replanification par IA"
+    },
+    "choose": "Choisissez votre formule",
+    "period": {
+      "renews": "Renouvellement automatique",
+      "once": "Paiement unique, sans renouvellement"
+    },
+    "buy": "Continuer",
+    "buyTest": "Acheter (test)",
+    "testNote": "Achat de test : rien n'est facturé.",
+    "soon": "L'achat de Premium dans l'app ouvre bientôt.",
+    "restore": "Restaurer les achats",
+    "restored": "Vos achats sont à jour.",
+    "failed": "L'achat n'a pas abouti. Vous n'avez pas été débité.",
+    "offersError": "Les formules ne peuvent pas se charger pour le moment.",
+    "success": "Premium est actif. Bons voyages !",
+    "done": "Terminé",
+    "already": "Vous avez déjà Premium.",
+    "manage": "Voir votre abonnement",
+    "disclosure": "Les abonnements se renouvellent automatiquement, sauf résiliation au moins 24 heures avant la fin de la période. Gérez-les ou résiliez-les dans les réglages de votre compte {{store}}. Les pass sont payés une fois et ne se renouvellent pas.",
+    "store": {
+      "ios": "App Store",
+      "android": "Google Play"
+    },
+    "terms": "Conditions",
+    "privacy": "Confidentialité",
+    "getPremium": "Passer à Premium",
+    "seePremium": "Voir Premium"
   }
 }

@@ -37,6 +37,7 @@ the first submission, close the gaps listed in [§6](#6-gaps-before-the-first-su
 | Plans bought on the website work in the app (App Store 3.1.3(b)) | Allowed only while the same plans are also sold as in-app purchases | ✅ entitlements are provider-neutral (ADR-0006) |
 | External payment links (US App Store, EU DMA, Japan; Google alternative billing) | Not built: regional rules changed in 2025–2026 and need legal confirmation per launch country (ADR-0031) | ⏸ decision pending |
 | Passes (Premium for a fixed period) | App Store: non-renewing subscription; Google Play: one-time product; Stripe: one-time payment. The backend grants the period (BILL-010) | ✅ backend · ⚠️ products to create in both consoles |
+| Subscription disclosure on the paywall (App Store 3.1.2) | SCR-133 states auto-renewal, cancellation 24 hours before the period ends, where to manage it, and links the terms and privacy policy; restore is on the paywall and in Subscription | ✅ text · ⚠️ prices come from StoreKit / Play Billing once the adapter ships |
 | Purchase history in the app | Settings → Subscription → Purchase history (SCR-118): information only, receipts open the store's or Stripe's page | ✅ |
 | Restore purchases | `POST /v1/billing/purchases/restore`; paywall has a restore action | ✅ |
 | Challenge prizes | No cash, cash equivalents, raffles, wagers or paid entry (CHAL-013); sponsored rewards reviewed by staff (CHAL-014) | ✅ |

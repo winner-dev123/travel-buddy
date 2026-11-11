@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -30,6 +31,7 @@ export function formatBytes(bytes: number): string {
 /** Download a destination's packs for offline use, or remove them (OFF-001, OFF-004). */
 export function OfflinePackages({ destination }: { destination: DestinationSummary }) {
   const { t } = useTranslation();
+  const router = useRouter();
   const theme = useAppTheme();
   const queryClient = useQueryClient();
   const packages = useQuery({
@@ -95,6 +97,19 @@ export function OfflinePackages({ destination }: { destination: DestinationSumma
         );
       })}
       {error ? <Notice tone="error">{error}</Notice> : null}
+      {download.error instanceof ApiProblem &&
+      (download.error.code === 'entitlement_required' ||
+        download.error.code === 'quota_exceeded') ? (
+        <Button
+          label={t('paywall.seePremium')}
+          variant="secondary"
+          icon="diamond-outline"
+          onPress={() =>
+            router.push({ pathname: '/paywall', params: { reason: 'offline.packages' } })
+          }
+          testID="offline-see-premium"
+        />
+      ) : null}
     </View>
   );
 }

@@ -324,8 +324,10 @@ class StripeClient:
         webhook_secret: str | None,
         api_base: str = "https://api.stripe.com",
         api_version: str = DEFAULT_API_VERSION,
+        portal_configuration: str | None = None,
     ) -> None:
         self._http = http
+        self._portal_configuration = portal_configuration
         self._key = secret_key
         self.webhook_secret = webhook_secret
         self._base = api_base.rstrip("/")
@@ -340,6 +342,18 @@ class StripeClient:
     def expected_livemode(self) -> bool | None:
         """Events from the other mode are refused (a test event never grants in production)."""
         return key_livemode(self._key)
+
+    async def call(
+        self,
+        method: str,
+        path: str,
+        form: dict[str, str] | None = None,
+        *,
+        params: list[tuple[str, str | int | float | bool | None]] | None = None,
+        idempotency_key: str | None = None,
+    ) -> dict[str, Any]:
+        """Any Stripe API call with the pinned version (operator tooling, e.g. stripe_setup)."""
+        return await self._call(method, path, form, params=params, idempotency_key=idempotency_key)
 
     async def _call(
         self,
@@ -424,9 +438,10 @@ class StripeClient:
         )
 
     async def create_portal_session(self, *, customer: str, return_url: str) -> str:
-        session = await self._call(
-            "POST", "/v1/billing_portal/sessions", {"customer": customer, "return_url": return_url}
-        )
+        form = {"customer": customer, "return_url": return_url}
+        if self._portal_configuration:
+            form["configuration"] = self._portal_configuration
+        session = await self._call("POST", "/v1/billing_portal/sessions", form)
         return str(session["url"])
 
     async def get_subscription(self, subscription_id: str) -> StripeSubscription:

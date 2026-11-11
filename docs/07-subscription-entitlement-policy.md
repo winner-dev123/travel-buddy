@@ -34,6 +34,24 @@ Store product IDs live in the `products` table, per platform (`ios`, `android`, 
 
 **Providers.** `apple` and `google` for in-app purchases on mobile ([ADR-0017](adr/0017-billing-direct-store-integration.md)), `stripe` for web purchases through hosted Checkout ([ADR-0012](adr/0012-web-billing-provider.md)), and `dev` for development and tests only. A user may hold grants from several providers, and the evaluator uses their **union**. The web pricing page hides purchase when a store subscription already grants `premium`. The mobile apps link to web checkout only where store rules for that region allow it.
 
+### 2.1 Launch offers and settings (recommended, 2026-11-11)
+
+The owner asked for recommendations. These are the defaults in `backend/app/modules/billing/seed/offers.json`; editing that file and running the setup (docs/11 §1.14) changes them.
+
+| Offer | Kind | Period | USD | BRL | EUR | App Store / Google Play SKU |
+|---|---|---|---|---|---|---|
+| Premium monthly | Subscription | P1M | 4.99 | 19.90 | 4.99 | `com.travelbuddy.premium.monthly` / `premium_monthly` |
+| Premium annual | Subscription | P1Y | 39.99 | 149.90 | 39.99 | `com.travelbuddy.premium.annual` / `premium_annual` |
+| 7-day pass | Pass | P7D | 2.99 | 11.90 | 2.99 | `com.travelbuddy.pass.week` / `pass_week` |
+| 30-day pass | Pass | P30D | 6.99 | 24.90 | 6.99 | `com.travelbuddy.pass.month` / `pass_month` |
+
+* **Why these:** annual saves about a third against monthly. Passes cover a single trip without a subscription, and a 30-day pass costs a little more than a month of the subscription, so committing pays. Store prices follow the same table with the stores' own price tiers.
+* **Payment methods on the web:** cards for subscriptions; cards and Pix for passes. No boleto at launch: it takes days to settle, and many are never paid.
+* **Failed renewals:** Stripe Smart Retries for up to two weeks, then the subscription is cancelled. Premium stays during the retries (`past_due` maps to the grace state).
+* **Customer Portal:** cancel at the end of the period, update the payment method, see invoices, switch between monthly and annual (prorated). The setup configures this.
+* **Refunds:** a partial refund keeps the purchase (`STRIPE_PARTIAL_REFUND_REVOKES=false`). A full refund or a lost chargeback ends it.
+* **Links to external payment inside the apps:** not offered (ADR-0031).
+
 ## 3. Features and quotas
 
 ### 3.1 Boolean features (`Feature`)

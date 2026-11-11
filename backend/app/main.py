@@ -850,6 +850,7 @@ def build_stripe_client(settings: Settings, http_client: httpx.AsyncClient) -> S
         ),
         api_base=settings.stripe_api_base,
         api_version=settings.stripe_api_version,
+        portal_configuration=settings.stripe_portal_configuration,
     )
 
 
