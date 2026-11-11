@@ -13,6 +13,7 @@ import { usePush } from '@/features/push/usePush';
 import { ActionSheetHost } from '@/components/ActionSheet';
 import { UpdateGate } from '@/features/update/UpdateGate';
 import { i18n, SUPPORTED_LOCALES, type SupportedLocale } from '@/i18n';
+import { useLaunchScreen } from '@/launch/launchScreen';
 import { resolveSupportedLocale } from '@/i18n/resolveLocale';
 import { bindQueryOnlineManager } from '@/offline/connectivity';
 import { createQueryClient, refetchWhenForegrounded } from '@/query/queryClient';
@@ -28,6 +29,7 @@ export default function RootLayout() {
   useState(hydrateUiPreferences);
   const theme = useAppTheme();
   const fontsReady = useAppFonts();
+  useLaunchScreen(fontsReady);
   const themePreference = useSettingsStore((state) => state.themePreference);
   const localeOverride = useSettingsStore((state) => state.localeOverride);
   // The language saved to the account (I18N-002) wins over the device's after a restart.

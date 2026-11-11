@@ -67,7 +67,16 @@
       ],
       "expo-web-browser",
       "@react-native-google-signin/google-signin",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#0B0B0D"
+        }
+      ]
     ],
     "locales": {
       "en": "./native-locales/en.json",

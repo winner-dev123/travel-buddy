@@ -414,7 +414,7 @@ Two typefaces, both under the SIL Open Font License and bundled with the app (`t
 
 ### 10.4 Themes
 
-Dark is the default. The traveller chooses Dark, Light or "Match this phone" on SCR-117 (`/settings/appearance`); the choice applies at once and is kept on the device in `ui-preferences.json` (`state/uiPreferences.ts`), so it survives a restart and is not tied to an account. A missing or damaged file means the default. Both themes define the same token set (enforced by test). The window background, the launcher icon and its adaptive background are obsidian too (`app.json`), so the app opens dark instead of flashing white. Map styles get matching light and dark variants in Phase 4.
+Dark is the default. The traveller chooses Dark, Light or "Match this phone" on SCR-117 (`/settings/appearance`); the choice applies at once and is kept on the device in `ui-preferences.json` (`state/uiPreferences.ts`), so it survives a restart and is not tied to an account. A missing or damaged file means the default. Both themes define the same token set (enforced by test). The window background, the launcher icon and its adaptive background are obsidian too (`app.json`), and the launch screen shows the gold compass on obsidian (`expo-splash-screen`). It stays up until the typefaces are registered (`launch/launchScreen.ts`), so the app opens dark and the first frame is the finished one. The launch screen is the same in both themes, because it is drawn before the saved choice can be read. Map styles get matching light and dark variants in Phase 4.
 
 ### 10.4.1 Shared components
 

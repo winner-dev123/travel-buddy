@@ -61,6 +61,7 @@ src/
   config/                    Build-time env, feature flags (phase per feature)
   features/onboarding/       Onboarding step definitions
   i18n/                      i18next setup, locale resolution, en / es / pt-BR / fr / de
+  launch/launchScreen.ts     Holds the native launch screen until the app is ready
   offline/connectivity.ts    NetInfo-based online state + TanStack Query online manager
   query/queryClient.ts       TanStack Query defaults (retry policy for transient errors only)
   state/settingsStore.ts     Zustand: locale override, theme preference
