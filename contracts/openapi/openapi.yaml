@@ -996,6 +996,41 @@ paths:
         '204': { description: Session ended (idempotent). }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/users/me/approximate-location:
+    get:
+      tags: [location]
+      operationId: getApproximateLocation
+      summary: Where I seem to be, from my IP address (starting point of the Companions map)
+      description: |
+        Looks the caller's IP address up in a local IP-to-city database (no third party sees it), rounds the
+        point to about a kilometre, resolves it to a covered city the same way as a device fix, and then
+        discards both. The answer only says "around this city" and only ever describes the caller. It
+        changes nothing by itself: the app shows it as approximate, and the traveller still chooses to share
+        a city for discovery (LOC-004, LOC-010, ADR-0030). Answers `403 feature_disabled` while
+        `traveler_discovery` is off.
+      x-phase: 2
+      x-requirements: [LOC-004, LOC-010]
+      x-rate-limit-class: read
+      parameters:
+        - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: Approximate area of the caller.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApproximateLocation' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403':
+          description: '`feature_disabled`.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422':
+          description: '`location_unresolvable`: the address is private or unknown, or no database is configured. The app asks for a city instead.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
 
   # ───────────────────────────── Profiles ─────────────────────────────
   /v1/users/{userId}:
@@ -7581,6 +7616,35 @@ components:
         start_date: { $ref: '#/components/schemas/LocalDate' }
         end_date: { $ref: '#/components/schemas/LocalDate' }
         share_for_discovery: { type: boolean, default: false }
+    ApproximateLocation:
+      type: object
+      description: |
+        Where the caller seems to be, from their IP address (LOC-010, ADR-0030). About a city, never finer, and
+        only ever about the caller. `destination` is the covered city to share for discovery, or null when
+        the area is not covered yet. `center` is that city's public centroid, or else the database's city
+        point rounded to 0.01°.
+      required: [source, precision, label, center, destination]
+      additionalProperties: false
+      properties:
+        source: { type: string, enum: [ip] }
+        precision:
+          type: string
+          enum: [city, country]
+          description: '`country` when the database knows only the country.'
+        label: { type: string, description: 'For example "Helsinki, Finland", localised where the data allows.' }
+        center: { $ref: '#/components/schemas/ApproximatePoint' }
+        destination:
+          anyOf:
+            - { $ref: '#/components/schemas/Destination' }
+            - { type: 'null' }
+    ApproximatePoint:
+      type: object
+      description: The centre of a city (a public point), rounded to 0.01°. Returned to the caller only; never stored or logged.
+      required: [lat, lng]
+      additionalProperties: false
+      properties:
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lng: { type: number, minimum: -180, maximum: 180 }
     DiscoverySession:
       type: object
       description: Contains resolved destinations only — never coordinates.

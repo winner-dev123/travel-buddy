@@ -583,6 +583,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/users/me/approximate-location": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Where I seem to be, from my IP address (starting point of the Companions map)
+         * @description Looks the caller's IP address up in a local IP-to-city database (no third party sees it), rounds the
+         *     point to about a kilometre, resolves it to a covered city the same way as a device fix, and then
+         *     discards both. The answer only says "around this city" and only ever describes the caller. It
+         *     changes nothing by itself: the app shows it as approximate, and the traveller still chooses to share
+         *     a city for discovery (LOC-004, LOC-010, ADR-0030). Answers `403 feature_disabled` while
+         *     `traveler_discovery` is off.
+         */
+        get: operations["getApproximateLocation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/users/{userId}": {
         parameters: {
             query?: never;
@@ -4440,6 +4465,30 @@ export interface components {
             /** @default false */
             share_for_discovery?: boolean;
         };
+        /**
+         * @description Where the caller seems to be, from their IP address (LOC-010, ADR-0030). About a city, never finer, and
+         *     only ever about the caller. `destination` is the covered city to share for discovery, or null when
+         *     the area is not covered yet. `center` is that city's public centroid, or else the database's city
+         *     point rounded to 0.01°.
+         */
+        ApproximateLocation: {
+            /** @enum {string} */
+            source: "ip";
+            /**
+             * @description `country` when the database knows only the country.
+             * @enum {string}
+             */
+            precision: "city" | "country";
+            /** @description For example "Helsinki, Finland", localised where the data allows. */
+            label: string;
+            center: components["schemas"]["ApproximatePoint"];
+            destination: components["schemas"]["Destination"] | null;
+        };
+        /** @description The centre of a city (a public point), rounded to 0.01°. Returned to the caller only; never stored or logged. */
+        ApproximatePoint: {
+            lat: number;
+            lng: number;
+        };
         /** @description Contains resolved destinations only — never coordinates. */
         DiscoverySession: {
             id: components["schemas"]["Uuid"];
@@ -7761,6 +7810,49 @@ export interface operations {
                 content?: never;
             };
             401: components["responses"]["Unauthenticated"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getApproximateLocation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Approximate area of the caller. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApproximateLocation"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            /** @description `feature_disabled`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description `location_unresolvable`: the address is private or unknown, or no database is configured. The app asks for a city instead. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             default: components["responses"]["Problem"];
         };
     };

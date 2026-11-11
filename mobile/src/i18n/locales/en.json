@@ -535,7 +535,23 @@
       "medium": "Some things in common",
       "low": "Different interests"
     },
-    "shared": "In common: {{items}}"
+    "shared": "In common: {{items}}",
+    "search": "Search for companions",
+    "scanning": "Scanning…",
+    "found_one": "{{count}} traveller in {{place}}",
+    "found_other": "{{count}} travellers in {{place}}",
+    "mapAround": "Around {{place}}",
+    "mapVisible": "Visible in {{place}}",
+    "mapInvisible": "Invisible in {{place}}",
+    "mapApproximate": "Approximate, from your internet connection",
+    "mapNoLocation": "Choose a city to start",
+    "mapLegend": "Pins show the area people share, never where they are.",
+    "mapUnavailable": "The map can't load right now. You can still search.",
+    "mapA11y": "Map around {{place}}. Travellers found are listed below it.",
+    "notCovered": "Discovery isn't available in {{place}} yet. Choose a city that has it.",
+    "changeCity": "Not here? Choose a city",
+    "ipCredit": "IP location by DB-IP",
+    "openProfile": "Open profile: {{name}}"
   },
   "messages": {
     "title": "Messages",

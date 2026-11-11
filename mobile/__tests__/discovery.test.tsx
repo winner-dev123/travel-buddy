@@ -1,7 +1,8 @@
-// req: DISC-001, DISC-002, DISC-006, DISC-010
+// req: DISC-001, DISC-002, DISC-004, DISC-006, DISC-010, DISC-012, LOC-004, LOC-010
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
+import { AccessibilityInfo } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ApiProblem } from '@/api';
@@ -107,9 +108,17 @@ const card = {
   can_request_connection: true,
 };
 
+const mockWebView = jest.requireMock<{ mockInjected: string[] }>('react-native-webview');
+
 beforeEach(async () => {
   jest.clearAllMocks();
+  mockApi.get.mockReset();
+  mockApi.put.mockReset();
+  mockApi.post.mockReset();
+  mockWebView.mockInjected.length = 0;
   mockPermission = 'granted';
+  // Searches then skip the radar's minimum turn.
+  jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
   await i18n.changeLanguage('en');
 });
 
@@ -141,48 +150,177 @@ describe('discovery consent', () => {
   });
 });
 
-describe('discover section', () => {
-  it('invites people who are not opted in to the consent screen', async () => {
+describe('companions map', () => {
+  type Pin = { id: string; name: string; lat: number; lng: number; avatarUrl: string | null };
+  type Command = { type: string; center?: { lat: number; lng: number }; pins?: Pin[] };
+  const commands = (): Command[] =>
+    mockWebView.mockInjected.map((code) =>
+      JSON.parse(code.slice(code.indexOf('apply(') + 'apply('.length, code.lastIndexOf(');'))),
+    );
+  const lastPins = (): Pin[] =>
+    commands()
+      .filter((command) => command.type === 'pins')
+      .at(-1)?.pins ?? [];
+  const pageSays = async (message: object) =>
+    fireEvent(screen.getByTestId('companion-map'), 'message', {
+      nativeEvent: { data: JSON.stringify(message) },
+    });
+  /** Metres between two points (equirectangular: fine at city scale). */
+  const metres = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+    const y = (a.lat - b.lat) * 111_320;
+    const x = (a.lng - b.lng) * 111_320 * Math.cos((b.lat * Math.PI) / 180);
+    return Math.hypot(x, y);
+  };
+  const notFound = new ApiProblem(
+    { type: 'x', title: 'None', status: 404, code: 'not_found' },
+    'r',
+  );
+  const unresolvable = new ApiProblem(
+    { type: 'x', title: 'Unknown', status: 422, code: 'location_unresolvable' },
+    'r',
+  );
+  const page = (data: unknown[]) => ({ data, page: { next_cursor: null, has_more: false } });
+  const helsinkiSummary = {
+    id: 'd-helsinki',
+    kind: 'city',
+    slug: 'helsinki-fi',
+    path: 'finland/helsinki',
+    name: 'Helsinki',
+    country_code: 'FI',
+    country_name: 'Finland',
+  };
+  const helsinki = {
+    ...helsinkiSummary,
+    centroid: { lat: 60.1699, lng: 24.9384 },
+    time_zone: 'Europe/Helsinki',
+  };
+  const kallioSummary = {
+    id: 'd-kallio',
+    kind: 'neighborhood',
+    slug: 'kallio-helsinki-fi',
+    path: 'finland/helsinki/kallio',
+    name: 'Kallio',
+    country_code: 'FI',
+    country_name: 'Finland',
+  };
+  const kallio = {
+    ...kallioSummary,
+    centroid: { lat: 60.1841, lng: 24.9497 },
+    time_zone: 'Europe/Helsinki',
+  };
+  const aroundHelsinki = {
+    source: 'ip',
+    precision: 'city',
+    label: 'Helsinki, Finland',
+    center: helsinki.centroid,
+    destination: helsinki,
+  };
+  const bo = { ...card, presence: { destination: helsinkiSummary, area: null } };
+  const cy = {
+    ...card,
+    user: {
+      id: 'u3',
+      handle: 'cy',
+      display_name: 'Cy',
+      avatar: { id: 'm1', kind: 'image', status: 'ready', url: 'https://media.example/cy.webp' },
+    },
+    bio_snippet: null,
+    presence: { destination: helsinkiSummary, area: kallioSummary },
+    relationship: 'connected',
+    can_request_connection: false,
+  };
+
+  it('shows the area from the connection and invites people who are not opted in', async () => {
     useSessionStore.getState().setSignedIn(me(false));
+    mockApi.get.mockImplementation(async (path: string) => {
+      if (path === '/v1/users/me/approximate-location') return aroundHelsinki;
+      throw new Error(path);
+    });
     await renderUi(<DiscoverSection />);
     expect(screen.getByTestId('discovery-off')).toBeTruthy();
+    expect(await screen.findByText('Around Helsinki, Finland')).toBeTruthy();
+    expect(screen.getByText('Approximate, from your internet connection')).toBeTruthy();
+    expect(screen.getByTestId('discovery-ip-credit')).toBeTruthy();
     await fireEvent.press(screen.getByTestId('discovery-open-consent'));
     expect(mockRouter.push).toHaveBeenCalledWith('/discovery/consent');
-    expect(mockApi.get).not.toHaveBeenCalled();
+    // Only the lookup: no discovery session is read or started before opting in.
+    expect(mockApi.get.mock.calls.map(([path]) => path)).toEqual([
+      '/v1/users/me/approximate-location',
+    ]);
+    expect(mockApi.put).not.toHaveBeenCalled();
   });
 
-  it('shares a chosen city, lists travellers and sends a discovery connection request', async () => {
+  it('searches the area and shows each traveller around the place they share', async () => {
     useSessionStore.getState().setSignedIn(me(true));
     let current: unknown = null;
     mockApi.get.mockImplementation(async (path: string) => {
+      if (path === '/v1/users/me/approximate-location') return aroundHelsinki;
       if (path === '/v1/users/me/discovery-location') {
-        if (!current)
-          throw new ApiProblem({ type: 'x', title: 'None', status: 404, code: 'not_found' }, 'r');
+        if (!current) throw notFound;
         return current;
       }
-      if (path === '/v1/destinations/search')
-        return { data: [lisbon], page: { next_cursor: null, has_more: false } };
-      if (path === '/v1/travelers/discover')
-        return { data: [card], page: { next_cursor: null, has_more: false } };
+      if (path === '/v1/travelers/discover') return page([bo, cy]);
+      if (path === '/v1/destinations/d-helsinki') return helsinki;
+      if (path === '/v1/destinations/d-kallio') return kallio;
       throw new Error(path);
     });
     mockApi.put.mockImplementation(
       async (_path: string, options: { body: { visibility: string } }) => {
-        current = session(options.body.visibility as 'visible');
+        current = {
+          id: 's-hel',
+          destination: helsinkiSummary,
+          area: null,
+          visibility: options.body.visibility,
+          expires_at: '2026-11-12T12:00:00Z',
+        };
         return current;
       },
     );
     mockApi.post.mockResolvedValue({ id: 'r1' });
     await renderUi(<DiscoverSection />);
-    await fireEvent.changeText(await screen.findByTestId('discovery-search'), 'lis');
-    await fireEvent.press(await screen.findByTestId('discovery-match-lisbon-pt'));
+    await pageSays({ type: 'ready' });
+    expect(await screen.findByText('Around Helsinki, Finland')).toBeTruthy();
+    await waitFor(() =>
+      expect(commands()).toContainEqual(
+        expect.objectContaining({ type: 'view', center: helsinki.centroid }),
+      ),
+    );
+    // The lookup alone makes nobody discoverable (LOC-004).
+    expect(mockApi.put).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByTestId('discovery-search-companions'));
     await waitFor(() =>
       expect(mockApi.put).toHaveBeenCalledWith('/v1/users/me/discovery-location', {
-        body: { mode: 'destination', destination_id: 'd-lisbon', visibility: 'visible' },
+        body: { mode: 'destination', destination_id: 'd-helsinki', visibility: 'visible' },
       }),
     );
-    expect(await screen.findByTestId('traveler-u2')).toBeTruthy();
-    expect(screen.getByText('In common: food, backpacking')).toBeTruthy();
+    expect(await screen.findByText('2 travellers in Helsinki')).toBeTruthy();
+    const types = commands().map((command) => command.type);
+    expect(types.lastIndexOf('scan')).toBeGreaterThan(-1);
+    expect(types.lastIndexOf('pins')).toBeGreaterThan(types.lastIndexOf('scan'));
+    const pins = lastPins();
+    expect(pins.map((pin) => pin.id).sort()).toEqual(['u2', 'u3']);
+    // Pins sit around the public centre of the area each traveller shares (DISC-004, DISC-012).
+    const boPin = pins.find((pin) => pin.id === 'u2')!;
+    const cyPin = pins.find((pin) => pin.id === 'u3')!;
+    expect(metres(boPin, helsinki.centroid)).toBeGreaterThanOrEqual(799);
+    expect(metres(boPin, helsinki.centroid)).toBeLessThanOrEqual(2201);
+    expect(metres(cyPin, kallio.centroid)).toBeGreaterThanOrEqual(119);
+    expect(metres(cyPin, kallio.centroid)).toBeLessThanOrEqual(421);
+    expect(cyPin.avatarUrl).toBe('https://media.example/cy.webp');
+    expect(screen.getByTestId('discovery-map-legend')).toBeTruthy();
+    expect(screen.getByText('Visible in Helsinki')).toBeTruthy();
+
+    // A pin opens the profile; ids the map wasn't given are ignored.
+    await pageSays({ type: 'open', id: 'u3' });
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/user/[id]', params: { id: 'u3' } });
+    mockRouter.push.mockClear();
+    await pageSays({ type: 'open', id: 'someone-else' });
+    expect(mockRouter.push).not.toHaveBeenCalled();
+
+    // The same travellers are listed below the map.
+    expect(screen.getAllByText('In common: food, backpacking')).toHaveLength(2);
+    expect(screen.getByTestId('traveler-u3')).toBeTruthy();
     await fireEvent.press(screen.getByTestId('traveler-connect-u2'));
     await waitFor(() =>
       expect(mockApi.post).toHaveBeenCalledWith('/v1/connections/requests', {
@@ -192,22 +330,95 @@ describe('discover section', () => {
     );
     expect(await screen.findByTestId('traveler-sent-u2')).toBeTruthy();
 
+    // Invisible: no results, no searching.
     await fireEvent.press(screen.getByTestId('discovery-toggle-visibility'));
     await waitFor(() =>
       expect(mockApi.put).toHaveBeenLastCalledWith('/v1/users/me/discovery-location', {
-        body: { mode: 'destination', destination_id: 'd-lisbon', visibility: 'invisible' },
+        body: { mode: 'destination', destination_id: 'd-helsinki', visibility: 'invisible' },
       }),
     );
     expect(
       await screen.findByText("While you're invisible, you can't see other travellers either."),
     ).toBeTruthy();
+    expect(screen.queryByTestId('traveler-u2')).toBeNull();
+    expect(screen.getByTestId('discovery-search-companions')).toBeDisabled();
+  });
+
+  it('asks for a city when the connection says nothing, then centres on it', async () => {
+    useSessionStore.getState().setSignedIn(me(true));
+    let current: unknown = null;
+    mockApi.get.mockImplementation(async (path: string) => {
+      if (path === '/v1/users/me/approximate-location') throw unresolvable;
+      if (path === '/v1/users/me/discovery-location') {
+        if (!current) throw notFound;
+        return current;
+      }
+      if (path === '/v1/destinations/search') return page([lisbon]);
+      if (path === '/v1/destinations/d-lisbon') {
+        return { ...lisbon, centroid: { lat: 38.7223, lng: -9.1393 }, time_zone: 'Europe/Lisbon' };
+      }
+      throw new Error(path);
+    });
+    mockApi.put.mockImplementation(async () => {
+      current = session('visible');
+      return current;
+    });
+    await renderUi(<DiscoverSection />);
+    await pageSays({ type: 'ready' });
+    expect(await screen.findByText('Choose a city to start')).toBeTruthy();
+    expect(screen.getByTestId('discovery-search-companions')).toBeDisabled();
+    await fireEvent.changeText(await screen.findByTestId('discovery-search'), 'lis');
+    await fireEvent.press(await screen.findByTestId('discovery-match-lisbon-pt'));
+    await waitFor(() =>
+      expect(mockApi.put).toHaveBeenCalledWith('/v1/users/me/discovery-location', {
+        body: { mode: 'destination', destination_id: 'd-lisbon', visibility: 'visible' },
+      }),
+    );
+    expect(await screen.findByText('Visible in Lisbon')).toBeTruthy();
+    await waitFor(() =>
+      expect(commands()).toContainEqual(
+        expect.objectContaining({ type: 'view', center: { lat: 38.7223, lng: -9.1393 } }),
+      ),
+    );
+    expect(screen.getByTestId('discovery-search-companions')).toBeEnabled();
+  });
+
+  it('says when discovery does not cover the area yet', async () => {
+    useSessionStore.getState().setSignedIn(me(true));
+    mockApi.get.mockImplementation(async (path: string) => {
+      if (path === '/v1/users/me/approximate-location') {
+        return { ...aroundHelsinki, label: 'Porto, Portugal', destination: null };
+      }
+      throw notFound;
+    });
+    await renderUi(<DiscoverSection />);
+    expect(
+      await screen.findByText(
+        "Discovery isn't available in Porto, Portugal yet. Choose a city that has it.",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText('Around Porto, Portugal')).toBeTruthy();
+    expect(screen.getByTestId('discovery-search-companions')).toBeDisabled();
+    expect(screen.getByTestId('discovery-search')).toBeTruthy();
+  });
+
+  it('says when the map cannot load', async () => {
+    useSessionStore.getState().setSignedIn(me(true));
+    mockApi.get.mockImplementation(async (path: string) => {
+      if (path === '/v1/users/me/approximate-location') return aroundHelsinki;
+      throw notFound;
+    });
+    await renderUi(<DiscoverSection />);
+    await pageSays({ type: 'ready' });
+    await pageSays({ type: 'error', reason: 'timeout' });
+    expect(await screen.findByTestId('discovery-map-unavailable')).toBeTruthy();
+    await pageSays({ type: 'loaded' });
+    await waitFor(() => expect(screen.queryByTestId('discovery-map-unavailable')).toBeNull());
   });
 
   it('shares only a coarse position and explains a denied permission', async () => {
     useSessionStore.getState().setSignedIn(me(true));
-    mockApi.get.mockRejectedValue(
-      new ApiProblem({ type: 'x', title: 'None', status: 404, code: 'not_found' }, 'r'),
-    );
+    mockApi.get.mockRejectedValue(notFound);
     mockApi.put.mockResolvedValue(session('visible'));
     await renderUi(<DiscoverSection />);
     await fireEvent.press(await screen.findByTestId('discovery-share-gps'));

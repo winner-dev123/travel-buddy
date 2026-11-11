@@ -20,6 +20,7 @@ ID = str(uuid.uuid4())
 CASES: list[tuple[Flag, str, str, dict[str, Any] | None]] = [
     (Flag.CONNECTIONS, "GET", "/v1/connections", None),
     (Flag.TRAVELER_DISCOVERY, "GET", "/v1/travelers/discover", None),
+    (Flag.TRAVELER_DISCOVERY, "GET", "/v1/users/me/approximate-location", None),
     (Flag.TRAVEL_GROUPS, "GET", f"/v1/groups/{ID}", None),
     (Flag.TRAVEL_GROUPS, "GET", "/v1/users/me/group-invitations", None),
     (Flag.DIRECT_MESSAGES, "POST", "/v1/conversations", {"kind": "direct", "user_id": ID}),

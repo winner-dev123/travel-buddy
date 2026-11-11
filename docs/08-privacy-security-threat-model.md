@@ -90,6 +90,8 @@ Verification column: **U** = unit test, **I** = integration test, **S** = securi
 | T-LOC-08 | Disclosure via trip sharing | Public trip dates reveal when someone's home is empty | Trips private by default. `show_trips_on_profile=false` default. Home location is country/region only. "Travelers going to X" matching needs a separate per-trip opt-in (`share_for_discovery`), shows destination and date overlap only, and excludes blocked users | R |
 | T-LOC-09 | Non-repudiation / unawareness | User forgets discovery is on | Persistent in-app indicator while visible, TTL expiry, reminder notification at re-enable | R |
 | T-LOC-10 | Policy non-compliance | Discovery launched without DPIA in EU | DPIA gate in the launch checklist (SAFE-010) | O |
+| T-LOC-11 | Disclosure via the map | Someone reads a map pin as the place a traveller is and goes looking | Pins are drawn around the public centre of the shared area on a spiral ordered by an id hash, so they carry nothing beyond the area label; the map says "Pins show the area people share, never where they are"; no API returns coordinates (DISC-012, ADR-0030) | R |
+| T-LOC-12 | Identifiability / unawareness | The IP address places a traveller somewhere they didn't choose, or the lookup leaks the address | Local database (no third party); point rounded to about 1 km and discarded, never logged; the result describes only the caller; nobody becomes discoverable without pressing Search; the place is labelled approximate and can be changed (LOC-004, LOC-010) | S, R |
 
 ### 4.2 Identity and sessions (A3, A4)
 

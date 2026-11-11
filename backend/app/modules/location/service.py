@@ -318,8 +318,11 @@ async def shared_upcoming_in(
     return (await session.scalars(query)).all()
 
 
-# Discovery sessions live in discovery.py; re-exported because other modules may import only
-# ``location.service``.
+# Discovery sessions live in discovery.py and the IP-based starting point of the Companions map in
+# approximate.py; re-exported because other modules may import only ``location.service``.
+from app.modules.location.approximate import (  # noqa: E402
+    ApproximateLocationService as ApproximateLocationService,
+)
 from app.modules.location.discovery import (  # noqa: E402
     DiscoverySessionService as DiscoverySessionService,
 )
@@ -334,6 +337,7 @@ from app.modules.location.discovery import (  # noqa: E402
     visible_discovery_destination as visible_discovery_destination,
 )
 from app.modules.location.discovery import visible_sessions_in as visible_sessions_in  # noqa: E402
+from app.modules.location.ip_geolocation import open_geolocator as open_geolocator  # noqa: E402
 
 
 async def export_user_data(

@@ -52,7 +52,7 @@ def _truncate(url: str) -> None:
 def catalog(schema_db_url: str) -> str:
     _truncate(schema_db_url)
     result = _seed(schema_db_url)
-    assert result.created == 41
+    assert result.created == 44
     return schema_db_url
 
 
@@ -86,7 +86,7 @@ def test_slug_sort_enumerates_every_destination_exactly_once(
         cursor = body["page"]["next_cursor"]
         if not body["page"]["has_more"]:
             break
-    assert len(seen) == len(set(seen)) == 41
+    assert len(seen) == len(set(seen)) == 44
     assert seen == sorted(seen)
 
 
@@ -104,6 +104,7 @@ def test_directory_filters(catalog: str, live_app: LiveApp) -> None:
         "iceland/reykjavik",
         "germany/berlin",
         "united-kingdom/london",
+        "finland/helsinki",
     }
     brazil = _ok(
         _get(live_app, "/v1/destinations", country="BR", limit=50), "DestinationSummaryPage"
@@ -278,8 +279,8 @@ def test_hidden_destinations_are_invisible(catalog: str, live_app: LiveApp) -> N
 
 def test_seeding_is_idempotent(catalog: str) -> None:
     again = _seed(catalog)
-    assert (again.created, again.updated) == (0, 41)
-    assert db_scalar(catalog, "SELECT count(*) FROM destinations") == 41
+    assert (again.created, again.updated) == (0, 44)
+    assert db_scalar(catalog, "SELECT count(*) FROM destinations") == 44
 
 
 # ─────────────────────────────── point resolution (PostGIS) ───────────────────────────────
@@ -471,4 +472,4 @@ def test_seeded_boundaries_match_postgis_availability(catalog: str) -> None:
         finally:
             await engine.dispose()
 
-    assert asyncio.run(run()) == 41
+    assert asyncio.run(run()) == 44

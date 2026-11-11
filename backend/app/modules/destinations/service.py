@@ -587,6 +587,16 @@ async def set_has_guides(session: AsyncSession, destination_id: uuid.UUID, value
     )
 
 
+async def detail_by_id(
+    session: AsyncSession, destination_id: uuid.UUID, preferences: Sequence[str]
+) -> Destination | None:
+    """An active destination with its ancestors and public centroid, or ``None``."""
+    row = await session.scalar(
+        select(DestinationRow).where(DestinationRow.id == destination_id, _ACTIVE)
+    )
+    return None if row is None else await _detail(session, row, preferences)
+
+
 async def kind_of(session: AsyncSession, destination_id: uuid.UUID) -> str | None:
     """The kind (``city``, ``neighborhood``, …) of an active destination, or ``None``."""
     kind: str | None = await session.scalar(

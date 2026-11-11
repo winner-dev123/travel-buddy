@@ -236,7 +236,7 @@ Offline: **Works offline** (fully functional from local data) · **Cached read-o
 
 | ID | Screen | Route | Phase | Auth | Offline | Key endpoints | Req |
 |---|---|---|---|---|---|---|---|
-| SCR-060 | Companions hub (Discover, Requests, Groups) | `/companions` | 2 | User | Cached read-only (requests, groups) | — | DISC, CONN, GRP |
+| SCR-060 | Companions hub: a map around the traveller's approximate city, *Search for companions* with a radar sweep, travellers on the map and listed below (Discover), Requests, Groups | `/companions` | 2 | User | Cached read-only (requests, groups); the map and search need a connection | `GET /v1/users/me/approximate-location`, `GET /v1/travelers/discover` | DISC, CONN, GRP, LOC-010 |
 | SCR-061 | Discovery results | `/companions/discover` | 2 | Verified | Online only | `GET /v1/travelers/discover` | DISC |
 | SCR-062 | Discovery session settings (enable, granularity, duration, invisible) | `/companions/discover/settings` | 2 | Verified | Online only | `PUT /v1/users/me/discovery-location`, `PATCH /v1/users/me/privacy` | DISC, LOC, SAFE |
 | SCR-063 | Traveler profile preview | `/users/[userId]?context=discovery` | 2 | Verified | Online only | `GET /v1/users/{id}` | DISC, PROF |
@@ -329,7 +329,7 @@ screen was folded into another one; ✅ built, ⚠️ partly, ⬜ not yet (reaso
 | SCR-041 place, SCR-042 planner, SCR-043 review | ✅ | `/places/[id]`, `/trips/plan`, `/trips/review` |
 | SCR-044 guides list, SCR-045 guide reader | ✅ | Guides listed in Explore; `/guides/[id]` |
 | SCR-046 audio tour player, SCR-047 walking route | ⬜ | Need editorial audio (BL-4.07) and maps (BL-4.06) |
-| SCR-060..062, SCR-064, SCR-065 companions | ✅ | `/(tabs)/companions` (discovery, requests, connections); find people at `/people` |
+| SCR-060..062, SCR-064, SCR-065 companions | ✅ | `/(tabs)/companions`: the map starts around the city the connection points to (approximate, LOC-010); *Search for companions* shares that city, sweeps a radar and shows travellers around the area they share (DISC-012), and a tap opens the profile; requests and connections below. Find people at `/people` |
 | SCR-066..068 groups | ✅ | `/groups`, `/groups/[id]`, `/groups/new` |
 | SCR-069 invite, SCR-070 members and roles, SCR-072 settings and transfer | ✅ | Share an invitation link from the group page; `/groups/manage` (settings, roles, restrict, remove, invitations with revoke, ownership offer, archive); the offer is answered on the group page |
 | SCR-071 join requests | ⬜ | Behind the `group_join_requests` flag (off) |
@@ -427,6 +427,7 @@ Screens are built from a small set in `mobile/src/components/` so the look stays
 | `Chip` | Filters and single choices (`radio` role when exclusive); the selected chip is filled |
 | `MenuGroup` / `MenuRow` | Settings lists: a titled card of rows with an icon well, optional count and chevron |
 | `ActionTile` | Secondary shortcuts side by side (My trips, Downloads): icon well over a label |
+| `CompanionMap` | The Companions map (ADR-0030): MapLibre GL JS in a WebView with OpenFreeMap's dark (or Positron) style, a gold radar sweep, avatar pins; driven by props, locked down by CSP and Subresource Integrity |
 | `TextField`, `Notice`, `ActionSheet` | Inputs with a gold focus border, inline status messages, bottom sheets |
 | `PostCard`, `PhotoGallery`, `Avatar` | Story cards with a cover photo, place chip and the kind as an overline; avatars with an optional gold ring |
 

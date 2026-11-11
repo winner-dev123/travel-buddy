@@ -535,7 +535,23 @@
       "medium": "Einige Gemeinsamkeiten",
       "low": "Andere Interessen"
     },
-    "shared": "Gemeinsam: {{items}}"
+    "shared": "Gemeinsam: {{items}}",
+    "search": "Reisebegleitung suchen",
+    "scanning": "Suche läuft…",
+    "found_one": "{{count}} Person in {{place}}",
+    "found_other": "{{count}} Personen in {{place}}",
+    "mapAround": "In der Nähe von {{place}}",
+    "mapVisible": "Sichtbar in {{place}}",
+    "mapInvisible": "Unsichtbar in {{place}}",
+    "mapApproximate": "Ungefähr, anhand deiner Internetverbindung",
+    "mapNoLocation": "Wähle eine Stadt, um zu beginnen",
+    "mapLegend": "Die Markierungen zeigen das Gebiet, das jemand teilt – nie, wo die Person ist.",
+    "mapUnavailable": "Die Karte lädt gerade nicht. Du kannst trotzdem suchen.",
+    "mapA11y": "Karte um {{place}}. Gefundene Reisende stehen darunter.",
+    "notCovered": "„Entdecken“ gibt es in {{place}} noch nicht. Wähle eine Stadt, in der es verfügbar ist.",
+    "changeCity": "Nicht hier? Wähle eine Stadt",
+    "ipCredit": "IP-Standort von DB-IP",
+    "openProfile": "Profil öffnen: {{name}}"
   },
   "messages": {
     "title": "Nachrichten",

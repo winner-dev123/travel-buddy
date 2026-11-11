@@ -463,6 +463,33 @@
    "alt_names": {}
   },
   {
+   "path": "finland",
+   "kind": "country",
+   "country_code": "FI",
+   "continent": "europe",
+   "time_zone": "Europe/Helsinki",
+   "centroid": {
+    "lat": 64.5,
+    "lng": 26.0
+   },
+   "bbox": {
+    "south": 59.7,
+    "west": 19.0,
+    "north": 70.1,
+    "east": 31.6
+   },
+   "featured": false,
+   "names": {
+    "en": "Finland",
+    "es": "Finlandia",
+    "pt-BR": "Finlândia",
+    "fr": "Finlande",
+    "de": "Finnland"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
    "path": "brazil/rio-de-janeiro",
    "kind": "city",
    "country_code": "BR",
@@ -1101,6 +1128,43 @@
    }
   },
   {
+   "path": "finland/helsinki",
+   "kind": "city",
+   "country_code": "FI",
+   "continent": "europe",
+   "time_zone": "Europe/Helsinki",
+   "centroid": {
+    "lat": 60.1699,
+    "lng": 24.9384
+   },
+   "bbox": {
+    "south": 60.12,
+    "west": 24.78,
+    "north": 60.3,
+    "east": 25.26
+   },
+   "featured": false,
+   "names": {
+    "en": "Helsinki",
+    "es": "Helsinki",
+    "pt-BR": "Helsinque",
+    "fr": "Helsinki",
+    "de": "Helsinki"
+   },
+   "taglines": {
+    "en": "Design, saunas and the Baltic on every side.",
+    "es": "Diseño, saunas y el Báltico por todas partes.",
+    "pt-BR": "Design, saunas e o Báltico por todos os lados.",
+    "fr": "Du design, des saunas et la Baltique de tous côtés.",
+    "de": "Design, Saunen und überall die Ostsee."
+   },
+   "alt_names": {
+    "en": [
+     "Helsingfors"
+    ]
+   }
+  },
+  {
    "path": "brazil/rio-de-janeiro/copacabana",
    "kind": "neighborhood",
    "country_code": "BR",
@@ -1258,6 +1322,33 @@
     "pt-BR": "Alfama",
     "fr": "Alfama",
     "de": "Alfama"
+   },
+   "taglines": {},
+   "alt_names": {}
+  },
+  {
+   "path": "finland/helsinki/kallio",
+   "kind": "neighborhood",
+   "country_code": "FI",
+   "continent": "europe",
+   "time_zone": "Europe/Helsinki",
+   "centroid": {
+    "lat": 60.1841,
+    "lng": 24.9497
+   },
+   "bbox": {
+    "south": 60.178,
+    "west": 24.938,
+    "north": 60.192,
+    "east": 24.962
+   },
+   "featured": false,
+   "names": {
+    "en": "Kallio",
+    "es": "Kallio",
+    "pt-BR": "Kallio",
+    "fr": "Kallio",
+    "de": "Kallio"
    },
    "taglines": {},
    "alt_names": {}

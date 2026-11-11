@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, SecretStr, model_validator
@@ -89,6 +90,11 @@ class Settings(BaseSettings):
     # JSON object in env, e.g. FEATURE_FLAGS='{"traveler_discovery": true}'.
     # Unknown flag names are rejected at boot by FeatureFlags.
     feature_flags: dict[str, bool] = Field(default_factory=dict)
+
+    # DB-IP "IP to City Lite" database (MMDB) behind the Companions map's approximate starting
+    # point (LOC-010, ADR-0030). The container image sets it; unset, the endpoint answers
+    # location_unresolvable and the app asks the traveller to choose a city.
+    ip_geolocation_db: Path | None = None
 
     # Durable jobs and the outbox relay (BL-1.09, ADR-0004).
     # Shared secret for /internal/jobs/tick; Vercel Cron sends "Authorization: Bearer

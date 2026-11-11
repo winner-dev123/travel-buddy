@@ -121,12 +121,13 @@
 | LOC-001 | Six location concepts are modeled separately: home, current device, selected browse destination, post destination, trip destination, traveler discovery location | M | 1 | Each concept has its own storage and lifecycle (ERD §4). No shared "user location" column |
 | LOC-002 | Browse any destination regardless of physical location (London user browsing Rio) | M | 1 | `PUT /v1/users/me/browse-destination` + feed by `destination_id`, with no GPS needed |
 | LOC-003 | Device GPS is used only with OS permission and is never persisted. It is rounded to ~110 m before server use and redacted from logs | M | 1 | Grep and log tests confirm no coordinate persistence. Log redaction test |
-| LOC-004 | IP address is **never** used to infer physical location for feed or discovery | M | 1 | No GeoIP dependency in feed or discovery modules |
+| LOC-004 | IP address is **never** used to place anyone silently. It may only suggest a starting point on the Companions map, shown as approximate, looked up locally and never stored; becoming discoverable still takes the traveller's own action (amended 2026-11-11, ADR-0030) | M | 1 | No GeoIP dependency in feed or discovery modules (the lookup lives in the location module). Test: the lookup alone starts no discovery session |
 | LOC-005 | Point → destination resolution (neighborhood, city, country) with PostGIS | M | 1 | Copacabana point resolves to Copacabana → Rio de Janeiro → RJ → Brazil |
 | LOC-006 | Destination hierarchy with country, region, city and neighborhood filters | M | 1 | Feed filters at each level return content from descendants |
 | LOC-007 | Location freshness: a device location older than 15 min is not used for "Nearby". The client must re-acquire | S | 1 | Server rejects `near` with `near_ts` older than 15 min (`stale_location`) |
 | LOC-008 | Coordinate accuracy metadata accepted (`near_accuracy_m`). Readings with accuracy > 5 km are treated as city-level only | S | 1 | Unit test of resolution precision downgrade |
 | LOC-009 | **No discovery API ever returns another user's coordinates or distance** | M | 2 | Contract test plus security test T-LOC-01 |
+| LOC-010 | The Companions map starts around the city the IP address points to: a local DB-IP Lite lookup, rounded to about 1 km, city level only, never stored or logged, labelled approximate and credited. The traveller can choose another city | S | 2 | `GET /v1/users/me/approximate-location`; unit and integration tests; unknown addresses get `422 location_unresolvable` and the app asks for a city |
 
 ### 4.4 Destination catalog: DEST
 
@@ -197,6 +198,7 @@ destination_match = 1.0 exact, 0.8 child (neighborhood within city), 0.5 parent,
 | DISC-009 | Anti-enumeration: rate limits on discovery queries (60/h) and destination switches (10/day) | M | 2 | Security test T-LOC-03 |
 | DISC-010 | Safety guidance shown before first enablement and in profile previews ("meet in public places …"). Discovery is never described as safe | M | 2 | Copy reviewed by trust and safety. Shown on first enable |
 | DISC-011 | The full travel guide works without ever enabling discovery | M | 2 | E2E: complete trip planning and guide download with discovery off |
+| DISC-012 | Discovery results can be shown on a map. Each traveller is drawn around the public centre of the area they share (city or neighbourhood), never at a position of their own, and the map says so. Tapping a traveller opens their profile, and the results are also listed for screen readers | S | 2 | Pin layout tests; discover contract unchanged (no coordinates); app test that only travellers on the map can be opened |
 
 ### 4.8 Connections: CONN
 

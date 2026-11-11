@@ -7,10 +7,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, Request, Response, status
 
+from app.core.feature_flags import Flag, gate
 from app.core.i18n import parse_accept_language
+from app.core.ratelimit import client_ip
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
+from app.modules.location.approximate import ApproximateLocationService
 from app.modules.location.schemas import (
+    ApproximateLocation,
     BrowseDestination,
     CreateUpcomingDestinationRequest,
     DiscoverySessionOut,
@@ -122,3 +126,18 @@ async def set_discovery_location(
 async def end_discovery_location(request: Request, principal: CurrentPrincipal) -> Response:
     await _discovery(request).end(principal.user_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/approximate-location",
+    response_model=ApproximateLocation,
+    dependencies=gate(Flag.TRAVELER_DISCOVERY),
+)
+async def get_approximate_location(
+    request: Request, principal: CurrentPrincipal, accept_language: AcceptLanguage = None
+) -> ApproximateLocation:
+    """The Companions map's starting point, from the caller's IP address (LOC-010, ADR-0030)."""
+    service: ApproximateLocationService = request.app.state.approximate_location_service
+    return await service.locate(
+        client_ip(request), preferences=parse_accept_language(accept_language)
+    )

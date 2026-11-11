@@ -24,6 +24,7 @@ dependencies = [
   "anthropic>=2.7,<3",  # Claude adapter of the AI provider port (BL-4.02, ADR-0024)
   "pillow>=13.0,<14",  # media re-encoding: EXIF/GPS stripping and WebP variants (POST-004)
   "tzdata>=2024.1",  # IANA zones for time_zone validation where the OS has none (Windows, slim images)
+  "maxminddb>=2.6,<3",  # local IP-to-city lookups for the Companions map (LOC-010, ADR-0030)
 ]
 
 [project.optional-dependencies]

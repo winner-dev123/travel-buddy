@@ -16,7 +16,7 @@ Legal review must confirm the bases, retention periods and transfer mechanisms b
 | 1 | Accounts and sign-in | Run the account, secure sessions | Email, birth date (age gate), IdP subject, sessions (device, platform, last IP), consents | Contract; legitimate interest (security) | Account life; deleted 30 days after a deletion request | Supabase (auth, database), Vercel (hosting) |
 | 2 | Profiles and social features | Profiles, posts, comments, reactions, follows, bookmarks | Profile fields, user content, photos and videos | Contract | Until deleted by the user (+30-day undo) | Supabase, object storage |
 | 3 | Destination feed and "nearby" | Show content for a chosen or the current city | Selected destinations; approximate device location used transiently, never stored | Contract; consent (OS permission) for device location | Selections: account life; location: not stored | – |
-| 4 | Traveler discovery | Let opted-in travellers find each other at a destination | Discovery session (destination, dates, visibility) | **Consent** (separate, withdrawable, instant effect) | Session expiry; see DPIA | – |
+| 4 | Traveler discovery | Let opted-in travellers find each other at a destination | Discovery session (destination, dates, visibility); IP address looked up in a local database to centre the Companions map, used once and never stored (LOC-010) | **Consent** (separate, withdrawable, instant effect); legitimate interest for the map's starting point | Session expiry; see DPIA. IP lookup: not stored | OpenFreeMap (map tiles requested by the device: its IP address and the area viewed) |
 | 5 | Connections and messaging | Direct, group, team chats | Messages, attachments, receipts, reactions | Contract | Life of the conversation; erased on account deletion | Supabase, object storage, push providers (Apple, Google, Expo) for notifications |
 | 6 | Travel groups | Organise group trips | Memberships, roles, invitations | Contract | Account or group life | – |
 | 7 | Trips and saved places | Plan trips, share with collaborators | Trips, itinerary items, saved places, collaborators | Contract | Until deleted | – |
@@ -43,6 +43,8 @@ Legal review must confirm the bases, retention periods and transfer mechanisms b
 | Apple, Google | Store billing, push notifications | US / global | Their platform terms |
 | Stripe | Web payments | US / EU | DPA, SCCs |
 | Expo | Push relay for the mobile app | US | DPA, SCCs |
+| OpenFreeMap | Map tiles for the Companions map, fetched by the device (ADR-0030). A recipient, not a processor: it receives tile requests, no account data | EU | Its public terms; review before launch |
+| DB-IP | Not a recipient: its IP-to-city data (CC BY 4.0) is downloaded into the API image and looked up locally | – | – |
 
 ## 3. Security measures (Art. 32 summary)
 

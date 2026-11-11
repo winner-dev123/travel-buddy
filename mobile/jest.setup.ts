@@ -38,3 +38,22 @@ jest.mock('expo-notifications', () => ({
 // Icons are glyphs from an icon font: rendered for real they add private-use characters to an
 // element's text content. Every icon in the app is decorative (labels carry the meaning).
 jest.mock('@expo/vector-icons/Ionicons', () => ({ __esModule: true, default: () => null }));
+
+// The Companions map runs in a WebView (ADR-0030). The mock keeps the props on a View, so tests
+// can fire page messages with `fireEvent(map, 'message', …)` and read what the app injected.
+jest.mock('react-native-webview', () => {
+  const React = jest.requireActual<typeof import('react')>('react');
+  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
+  const injected: string[] = [];
+  const WebView = React.forwardRef(function MockWebView(
+    props: Record<string, unknown>,
+    ref: React.Ref<unknown>,
+  ) {
+    React.useImperativeHandle(ref, () => ({
+      injectJavaScript: (code: string) => injected.push(code),
+      reload: () => undefined,
+    }));
+    return React.createElement(View, props);
+  });
+  return { __esModule: true, default: WebView, WebView, mockInjected: injected };
+});

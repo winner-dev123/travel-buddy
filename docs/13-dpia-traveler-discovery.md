@@ -10,6 +10,7 @@
 | Data subjects | Registered users aged 18+ (age gate at registration) who turned discovery on. |
 | Data | Display name, handle, avatar, bio, travel styles, interests, languages (profile data they entered). A **discovery session**: city, optional neighbourhood (only if the user chose that granularity), optional travel dates, visibility, start and expiry. Upcoming trips the user explicitly marked "share for discovery". Connection requests and connections. |
 | Not processed | No coordinates are stored: a GPS point sent to start a session is resolved to a destination and discarded in the same request, and the table has no coordinate column. No distances, no "last seen", no activity timestamps are exposed. |
+| Map (ADR-0030) | The Companions map starts around the city the caller's IP address points to. The address is looked up in a local database (no third party), the point is rounded to about 1 km and discarded, and only the caller sees the result. The lookup makes nobody discoverable: the traveller presses *Search for companions* to share that city. Other travellers are drawn around the public centre of the area they share, never at a position of their own. Map tiles come from OpenFreeMap, which therefore sees the device's IP address and the area viewed. |
 | Recipients | Other participating users in the same city (traveller cards), staff moderators for reports. Processors: hosting (Vercel) and database (Supabase), under DPAs. |
 | Retention | Sessions last at most 72 h and are purged 30 days after they end or expire. Answered connection requests are purged after a year. Account deletion erases everything after the 30-day grace period. |
 | Lawful basis | **Consent** (Art. 6(1)(a)): a separate `traveler_discovery` consent, recorded with version and time, withdrawable at any time with immediate effect. |
@@ -40,7 +41,7 @@
 
 | Risk | Measures (implemented unless marked) | Residual |
 |---|---|---|
-| R1 | No coordinate storage; GPS resolved with PostGIS and discarded (`GeoPointInput` is redacted from logs); responses contain destinations only; integration tests assert no coordinate columns or keys and that submitted values are never echoed (ADR-0005). | Low |
+| R1 | No coordinate storage; GPS resolved with PostGIS and discarded (`GeoPointInput` is redacted from logs); responses contain destinations only; integration tests assert no coordinate columns or keys and that submitted values are never echoed (ADR-0005). The map draws travellers only around their area's public centre and says so; the IP lookup is local, rounded, discarded and starts nothing by itself (ADR-0030, T-LOC-11, T-LOC-12). | Low |
 | R2 | Queries take a destination, never a point and radius; no distances anywhere; city is the minimum precision unless the user chose neighbourhood (T-LOC-02). | Low |
 | R3 | Sessions ≤ 72 h, purged 30 days after ending; no "last seen"; result order is shuffled within compatibility bands per request so position reveals nothing (T-LOC-04). | Low |
 | R4 | Connection requests never connect anyone without an explicit accept; recipient policy (everyone / shared context / nobody); 30-day cooldown after a decline; declined requesters deprioritised in discovery; generic refusal that reveals no reason; reporting with an optional block in the same step; moderation queue with priorities. | Medium |

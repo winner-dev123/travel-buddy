@@ -542,7 +542,24 @@
       "medium": "Quelques points communs",
       "low": "Centres d'intérêt différents"
     },
-    "shared": "En commun : {{items}}"
+    "shared": "En commun : {{items}}",
+    "search": "Chercher des compagnons de voyage",
+    "scanning": "Recherche…",
+    "found_one": "{{count}} voyageur à {{place}}",
+    "found_many": "{{count}} voyageurs à {{place}}",
+    "found_other": "{{count}} voyageurs à {{place}}",
+    "mapAround": "Autour de {{place}}",
+    "mapVisible": "Visible à {{place}}",
+    "mapInvisible": "Invisible à {{place}}",
+    "mapApproximate": "Approximatif, d'après votre connexion internet",
+    "mapNoLocation": "Choisissez une ville pour commencer",
+    "mapLegend": "Les repères montrent la zone que chacun partage, jamais où il se trouve.",
+    "mapUnavailable": "La carte ne peut pas se charger pour le moment. Vous pouvez quand même chercher.",
+    "mapA11y": "Carte autour de {{place}}. Les voyageurs trouvés sont listés en dessous.",
+    "notCovered": "La découverte n'est pas encore disponible à {{place}}. Choisissez une ville où elle l'est.",
+    "changeCity": "Pas ici ? Choisissez une ville",
+    "ipCredit": "Localisation IP par DB-IP",
+    "openProfile": "Ouvrir le profil : {{name}}"
   },
   "messages": {
     "title": "Messages",

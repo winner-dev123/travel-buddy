@@ -141,6 +141,7 @@ Legend. **Auth:** `bearer` = platform access token. `optional` = anonymous allow
 | `GET /v1/users/me/discovery-location` | 2 | bearer | — | read |  | DISC-003, LOC-006 |
 | `PUT /v1/users/me/discovery-location` | 2 | bearer | natural | write |  | DISC-001, DISC-003, DISC-004, LOC-006, LOC-007, SAFE-011 |
 | `DELETE /v1/users/me/discovery-location` | 2 | bearer | natural | write |  | DISC-005 |
+| `GET /v1/users/me/approximate-location` | 2 | bearer | — | read |  | LOC-004, LOC-010 |
 
 #### feed
 

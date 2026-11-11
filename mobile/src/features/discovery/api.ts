@@ -1,4 +1,5 @@
 import { ApiProblem, type ApiClient } from '@/api';
+import type { DestinationDetail } from '@/features/explore/api';
 import type { DeviceFix } from '@/features/feed/location';
 import type { DestinationSummary, UserSummary } from '@/features/feed/types';
 
@@ -7,6 +8,8 @@ export const DISCOVERY_CONSENT_VERSION = '2026-11-01';
 
 export const discoveryKeys = {
   session: ['discovery', 'session'] as const,
+  /** Not under 'discovery': refreshing the session doesn't need a new IP lookup. */
+  approximate: ['approximate-location'] as const,
   travelers: (destinationId: string | undefined) =>
     ['discovery', 'travelers', destinationId] as const,
 };
@@ -96,4 +99,27 @@ export function stopSharing(client: ApiClient): Promise<void> {
 export async function discoverTravelers(client: ApiClient): Promise<TravelerCard[]> {
   const page = await client.get<{ data: TravelerCard[] }>('/v1/travelers/discover');
   return page.data;
+}
+
+/** Where the traveller seems to be, from their connection (LOC-010, ADR-0030). About a city. */
+export interface ApproximateLocation {
+  source: 'ip';
+  precision: 'city' | 'country';
+  /** For example "Helsinki, Finland". */
+  label: string;
+  center: { lat: number; lng: number };
+  /** The covered city to search in, or null when discovery doesn't cover the area yet. */
+  destination: DestinationDetail | null;
+}
+
+/** The approximate area, or null when the connection doesn't tell (422 `location_unresolvable`). */
+export async function fetchApproximateLocation(
+  client: ApiClient,
+): Promise<ApproximateLocation | null> {
+  try {
+    return await client.get<ApproximateLocation>('/v1/users/me/approximate-location');
+  } catch (error) {
+    if (error instanceof ApiProblem && error.status === 422) return null;
+    throw error;
+  }
 }

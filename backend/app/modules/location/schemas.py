@@ -8,7 +8,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator
 
-from app.modules.destinations.schemas import DestinationSummary
+from app.modules.destinations.schemas import Destination, DestinationSummary, GeoPoint
 
 
 class _Request(BaseModel):
@@ -105,3 +105,15 @@ class DiscoverySessionOut(_Response):
     travel_end_date: date | None
     started_at: datetime
     expires_at: datetime
+
+
+class ApproximateLocation(_Response):
+    """Where the caller seems to be, from their IP address (LOC-010). About a city, never finer:
+    ``center`` is the covered city's public centroid, or the database's city point rounded to
+    0.01 degrees. Only ever describes the caller."""
+
+    source: Literal["ip"]
+    precision: Literal["city", "country"]
+    label: str
+    center: GeoPoint
+    destination: Destination | None

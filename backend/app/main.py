@@ -309,6 +309,10 @@ def create_app(
     app.state.discovery_session_service = location_service.DiscoverySessionService(
         sessionmaker=database.sessionmaker
     )
+    app.state.approximate_location_service = location_service.ApproximateLocationService(
+        sessionmaker=database.sessionmaker,
+        geolocator=location_service.open_geolocator(settings.ip_geolocation_db),
+    )
     app.state.discovery_service = DiscoveryService(sessionmaker=database.sessionmaker, clock=clock)
     # Group co-members share a context for connection requests (groups sit above connections).
     connections_service.add_shared_context(groups_service.share_active_group)

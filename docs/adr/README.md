@@ -35,5 +35,6 @@ ADRs use the format **Context → Decision → Consequences → Alternatives**. 
 | [0027](0027-destination-boundaries-from-openstreetmap.md) | Destination boundaries from OSM administrative relations (ODbL), assembled and repaired in PostGIS, loaded by an operator command; source recorded per polygon | Destinations | Accepted |
 | [0028](0028-firebase-platform-and-railway-hosting.md) | Firebase platform: Firebase Auth (account check at sign-in, Admin API deletion), Cloud SQL for PostgreSQL through the Cloud SQL Python Connector, Cloud Storage via the S3 port, FCM; API and worker on Railway | Identity / Data / Infra | Accepted. Amended by 0029 (database and media stay on Supabase) |
 | [0029](0029-supabase-free-tier-for-data-and-media.md) | Supabase free tier for the database (session pooler) and media (S3 buckets); Firebase for identity and push; Google Drive rejected as a media store | Data / Infra | Accepted |
+| [0030](0030-companions-map-ip-start-and-area-pins.md) | Companions map: approximate start from the IP address (local DB-IP Lite lookup, nothing stored, nobody placed without Search), travellers drawn around the area they share, MapLibre GL JS + OpenFreeMap in a locked-down WebView | Location / Mobile | Accepted. Amends PRD LOC-004 |
 
 Template: [`template.md`](template.md).

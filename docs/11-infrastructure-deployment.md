@@ -83,6 +83,9 @@ The worker makes the cron tick and after-response ticks unnecessary (§1.1): lea
 * **Feature flags:** they are enforced by the API (BL-6.10). Staging turns on every feature the apps use; video posts, public groups and join requests stay off. Production's set is decided at launch.
 * **Deploys:** `railway up --service api|worker` from `backend/` (`.railwayignore` keeps tests and local files out).
 * **Loaders:** they run from a workstation through the PostGIS TCP proxy, because `railway ssh` needs a registered SSH key.
+* **IP-to-city data (ADR-0030):** the image downloads DB-IP "IP to City Lite" (CC BY 4.0, about 130 MB) at build time and sets `IP_GEOLOCATION_DB`. It refreshes with every rebuilt image. If the download fails the build goes on without it, and `GET /v1/users/me/approximate-location` answers 422 until the next build.
+* **Maps:** the Companions map loads MapLibre GL JS from jsDelivr (pinned, with Subresource Integrity) and tiles from OpenFreeMap. Neither needs a key or a variable.
+* **Catalog:** Finland, Helsinki and Kallio were added to the launch catalog on 2026-11-11 (44 destinations).
 
 **Cutover:**
 

@@ -5,6 +5,7 @@ import { Alert } from 'react-native';
 import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { ApiProblem } from '@/api';
 import { useSessionStore } from '@/auth/sessionStore';
 import type { Me } from '@/auth/types';
 import { i18n } from '@/i18n';
@@ -370,6 +371,12 @@ describe('connections', () => {
     const cy = { id: 'u3', handle: 'cy', display_name: 'Cy', avatar: null };
     mockApi.get.mockImplementation(
       async (path: string, options?: { query?: { direction?: string } }) => {
+        if (path === '/v1/users/me/approximate-location') {
+          throw new ApiProblem(
+            { type: 'x', title: 'Unknown', status: 422, code: 'location_unresolvable' },
+            'r',
+          );
+        }
         if (path === '/v1/connections/requests') {
           return {
             data:

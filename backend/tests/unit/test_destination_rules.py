@@ -88,7 +88,7 @@ def test_slugs_are_globally_unique_and_readable() -> None:
 def test_launch_catalog_is_consistent() -> None:
     entries = read_document()["destinations"]
     by_path = {e["path"]: e for e in entries}
-    assert len(by_path) == len(entries) == 41
+    assert len(by_path) == len(entries) == 44
     slugs = {slug_for(e["path"], e["country_code"], e["kind"]) for e in entries}
     assert len(slugs) == len(entries)
     for entry in entries:

@@ -18,6 +18,12 @@ ENV PYTHONUNBUFFERED=1 \
 RUN groupadd --system --gid 10001 app && useradd --system --uid 10001 --gid app --no-create-home app
 COPY --from=build /wheels /wheels
 RUN pip install /wheels/*.whl && rm -rf /wheels
+# DB-IP "IP to City Lite" (CC BY 4.0) behind the Companions map's approximate starting point
+# (LOC-010, ADR-0030). It is fetched again whenever this layer rebuilds, which is every code
+# change. If the download fails the image is built without it, and the API asks travellers to
+# choose a city instead.
+RUN python -m app.modules.location.fetch_ip_database /srv/geo/dbip-city-lite.mmdb     || echo "warning: built without the IP geolocation database"
+ENV IP_GEOLOCATION_DB=/srv/geo/dbip-city-lite.mmdb
 WORKDIR /srv
 COPY alembic.ini ./
 COPY migrations ./migrations
