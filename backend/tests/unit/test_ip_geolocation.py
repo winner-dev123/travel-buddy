@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -108,17 +107,23 @@ def test_the_database_is_asked_only_about_public_addresses(
 
 
 def test_a_missing_database_means_unknown_locations(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # The app's logging setup may stop propagation to the root logger, so watch the module's own.
+    warnings: list[str] = []
+    monkeypatch.setattr(
+        ip_geolocation.logger, "warning", lambda message, *args, **kwargs: warnings.append(message)
+    )
     assert isinstance(open_geolocator(None), NoIpGeolocation)
-    with caplog.at_level(logging.WARNING):
-        geolocator = open_geolocator(tmp_path / "missing.mmdb")
+    assert warnings == []  # not configured is a choice, not a problem
+    geolocator = open_geolocator(tmp_path / "missing.mmdb")
     assert isinstance(geolocator, NoIpGeolocation)
     assert geolocator.locate("81.2.69.142") is None
-    assert "ip geolocation database unavailable" in caplog.text
+    assert warnings == ["ip geolocation database unavailable"]
     broken = tmp_path / "broken.mmdb"
     broken.write_bytes(b"not a database")
     assert isinstance(open_geolocator(broken), NoIpGeolocation)
+    assert len(warnings) == 2
 
 
 def test_the_image_build_takes_this_month_or_last_months_file() -> None:
