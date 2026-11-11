@@ -360,7 +360,8 @@ Legend. **Auth:** `bearer` = platform access token. `optional` = anonymous allow
 
 | Endpoint | Phase | Auth | Idempotency | Rate class | Entitlement | Requirements |
 |---|---|---|---|---|---|---|
-| `GET /v1/billing/products` | 3 | optional | — | read |  | BILL-001 |
+| `GET /v1/billing/products` | 3 | optional | — | read |  | BILL-001, BILL-010 |
+| `GET /v1/billing/transactions` | 3 | bearer | — | read |  | BILL-004, BILL-011 |
 | `GET /v1/billing/entitlements` | 3 | bearer | — | read |  | BILL-002, BILL-003, BILL-007 |
 | `POST /v1/billing/purchases/verify` | 3 | bearer | required | billing |  | BILL-004, BILL-005, BILL-003, BILL-007 |
 | `POST /v1/billing/purchases/restore` | 3 | bearer | required | billing |  | BILL-006 |
@@ -368,7 +369,7 @@ Legend. **Auth:** `bearer` = platform access token. `optional` = anonymous allow
 | `POST /v1/billing/portal-sessions` | 3 | bearer | — | billing |  | BILL-005 |
 | `POST /v1/billing/webhooks/apple` | 3 | signature | — | webhook |  | BILL-007, BILL-008 |
 | `POST /v1/billing/webhooks/google` | 3 | Pub/Sub OIDC | — | webhook |  | BILL-007, BILL-008 |
-| `POST /v1/billing/webhooks/stripe` | 3 | signature | — | webhook |  | BILL-007, BILL-008, BILL-006 |
+| `POST /v1/billing/webhooks/stripe` | 3 | signature | — | webhook |  | BILL-007, BILL-008, BILL-006, BILL-011, BILL-012 |
 
 #### notifications
 

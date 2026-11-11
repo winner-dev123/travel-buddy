@@ -3102,8 +3102,34 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Purchasable products for a platform (prices come from the store or provider SDK) */
+        /**
+         * Purchasable offers for a platform, in display order
+         * @description Subscriptions, passes (Premium for a fixed period, never renewing) and content purchases, with titles
+         *     in the caller's language (BILL-010). Web offers carry Stripe's price (cached for a few minutes; null
+         *     when Stripe can't say). Store apps must show the store's own localized price from the store SDK.
+         */
         get: operations["listBillingProducts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My payments, refunds and disputes, newest first
+         * @description The ledger across the App Store, Google Play and Stripe (BILL-011). Amounts are in minor units and
+         *     null when a store doesn't report them. Information only: the apps never link to a web purchase from here.
+         */
+        get: operations["listBillingTransactions"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6043,19 +6069,36 @@ export interface components {
             granted_at: components["schemas"]["Timestamp"];
             expires_at: components["schemas"]["NullableTimestamp"];
         };
+        ProductList: {
+            data: components["schemas"]["Product"][];
+        };
+        /** @description What Stripe charges for a web offer. Store apps show the store's price instead. */
+        ProductPrice: {
+            /** @description Minor units (cents). */
+            amount_minor: number;
+            currency: string;
+            recurring: boolean;
+        };
         Product: {
             id: components["schemas"]["Uuid"];
             /** @description Store product ID or Stripe price ID. */
             sku: string;
             platform: components["schemas"]["ProductPlatform"];
             provider: components["schemas"]["BillingProvider"];
-            /** @enum {string} */
-            kind: "auto_renewable" | "non_consumable";
+            /**
+             * @description `non_renewing` is a pass: paid once, Premium for `period`, then it ends.
+             * @enum {string}
+             */
+            kind: "auto_renewable" | "non_renewing" | "non_consumable";
             /** @enum {string|null} */
             plan_key: "premium" | null;
-            /** @enum {string|null} */
-            period: "P1M" | "P1Y" | null;
+            /** @description ISO 8601. The renewal period of a subscription or the validity of a pass. */
+            period: string | null;
             entitlement_keys: string[];
+            /** @description In the caller's language when available. */
+            title?: string | null;
+            description?: string | null;
+            price?: components["schemas"]["ProductPrice"] | null;
             grants_content?: {
                 /** @enum {string} */
                 type: "guide" | "audio_tour" | "offline_package";
@@ -6122,7 +6165,7 @@ export interface components {
                 provider: components["schemas"]["BillingProvider"];
                 product_sku: string;
                 /** @enum {string} */
-                kind: "non_consumable" | "subscription_purchase" | "renewal";
+                kind: "non_consumable" | "non_renewing" | "subscription_purchase" | "renewal";
                 /** @enum {string} */
                 status: "verified" | "refunded" | "revoked";
                 purchased_at: components["schemas"]["Timestamp"];
@@ -6380,25 +6423,67 @@ export interface components {
             sku: string;
             platform: components["schemas"]["ProductPlatform"];
             /** @enum {string} */
-            kind: "auto_renewable" | "non_consumable";
+            kind: "auto_renewable" | "non_renewing" | "non_consumable";
             /** @enum {string|null} */
             plan_key?: "premium" | null;
-            /** @enum {string|null} */
-            period?: "P1M" | "P1Y" | null;
+            period?: string | null;
             entitlement_keys: string[];
+            title?: components["schemas"]["ProductTitles"];
+            description?: components["schemas"]["ProductDescriptions"];
+            sort_order?: number;
+        };
+        /** @description Per supported locale, 1 to 80 characters. */
+        ProductTitles: {
+            [key: string]: string;
+        };
+        /** @description Per supported locale, 1 to 300 characters. */
+        ProductDescriptions: {
+            [key: string]: string;
         };
         AdminProduct: {
             id: components["schemas"]["Uuid"];
             sku: string;
             platform: components["schemas"]["ProductPlatform"];
             /** @enum {string} */
-            kind: "auto_renewable" | "non_consumable";
+            kind: "auto_renewable" | "non_renewing" | "non_consumable";
             /** @enum {string|null} */
             plan_key: "premium" | null;
-            /** @enum {string|null} */
-            period: "P1M" | "P1Y" | null;
+            period: string | null;
             entitlement_keys: string[];
             active: boolean;
+            title?: components["schemas"]["ProductTitles"];
+            description?: components["schemas"]["ProductDescriptions"];
+            sort_order?: number;
+        };
+        /** @description One payment, refund or dispute of the caller (BILL-011). */
+        BillingTransaction: {
+            id: components["schemas"]["Uuid"];
+            provider: components["schemas"]["BillingProvider"];
+            /** @enum {string} */
+            kind: "payment" | "refund" | "dispute";
+            /**
+             * @description Payments are pending, succeeded or failed; disputes open, won or lost.
+             * @enum {string}
+             */
+            status: "pending" | "succeeded" | "failed" | "open" | "won" | "lost";
+            amount_minor: number | null;
+            currency: string | null;
+            /** @description `purchase`, `renewal`, `change`, `refund`, `partial_refund`, or a dispute reason. */
+            reason: string | null;
+            /** Format: uri */
+            receipt_url: string | null;
+            product: {
+                id: components["schemas"]["Uuid"];
+                /** @enum {string} */
+                kind: "auto_renewable" | "non_renewing" | "non_consumable";
+                period: string | null;
+                title: string | null;
+            } | null;
+            occurred_at: components["schemas"]["Timestamp"];
+        };
+        BillingTransactionPage: {
+            data: components["schemas"]["BillingTransaction"][];
+            page: components["schemas"]["PageInfo"];
         };
         OpsSummary: {
             generated_at: components["schemas"]["Timestamp"];
@@ -12970,7 +13055,10 @@ export interface operations {
             query: {
                 platform: components["schemas"]["ProductPlatform"];
             };
-            header?: never;
+            header?: {
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -12982,11 +13070,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        data: components["schemas"]["Product"][];
-                    };
+                    "application/json": components["schemas"]["ProductList"];
                 };
             };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listBillingTransactions: {
+        parameters: {
+            query?: {
+                /** @description Opaque, HMAC-signed, expiring cursor from `page.next_cursor`. Never construct or modify it. */
+                cursor?: components["parameters"]["Cursor"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: {
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of transactions. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["CacheControlNoStore"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingTransactionPage"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
             default: components["responses"]["Problem"];
         };
     };
@@ -14125,6 +14241,9 @@ export interface operations {
                 "application/json": {
                     active?: boolean;
                     entitlement_keys?: string[];
+                    title?: components["schemas"]["ProductTitles"];
+                    description?: components["schemas"]["ProductDescriptions"];
+                    sort_order?: number;
                 };
             };
         };

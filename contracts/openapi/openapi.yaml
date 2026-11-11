@@ -5355,28 +5355,52 @@ paths:
     get:
       tags: [billing]
       operationId: listBillingProducts
-      summary: Purchasable products for a platform (prices come from the store or provider SDK)
+      summary: Purchasable offers for a platform, in display order
+      description: |
+        Subscriptions, passes (Premium for a fixed period, never renewing) and content purchases, with titles
+        in the caller's language (BILL-010). Web offers carry Stripe's price (cached for a few minutes; null
+        when Stripe can't say). Store apps must show the store's own localized price from the store SDK.
       security: [{}, { bearerAuth: [] }]
       x-phase: 3
-      x-requirements: [BILL-001]
+      x-requirements: [BILL-001, BILL-010]
       x-rate-limit-class: read
       parameters:
         - name: platform
           in: query
           required: true
           schema: { $ref: '#/components/schemas/ProductPlatform' }
+        - $ref: '#/components/parameters/AcceptLanguage'
       responses:
         '200':
           description: Products.
           content:
             application/json:
-              schema:
-                type: object
-                required: [data]
-                properties:
-                  data:
-                    type: array
-                    items: { $ref: '#/components/schemas/Product' }
+              schema: { $ref: '#/components/schemas/ProductList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/billing/transactions:
+    get:
+      tags: [billing]
+      operationId: listBillingTransactions
+      summary: My payments, refunds and disputes, newest first
+      description: |
+        The ledger across the App Store, Google Play and Stripe (BILL-011). Amounts are in minor units and
+        null when a store doesn't report them. Information only: the apps never link to a web purchase from here.
+      x-phase: 3
+      x-requirements: [BILL-004, BILL-011]
+      x-rate-limit-class: read
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: A page of transactions.
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CacheControlNoStore' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BillingTransactionPage' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/billing/entitlements:
     get:
@@ -6344,6 +6368,7 @@ paths:
               type: object
               additionalProperties: false
               minProperties: 1
+              description: Prices and periods live with the store or Stripe; changing them means a new product.
               properties:
                 active: { type: boolean }
                 entitlement_keys:
@@ -6351,6 +6376,9 @@ paths:
                   minItems: 1
                   maxItems: 10
                   items: { type: string, pattern: '^(premium|content:[a-z_]+:[a-z0-9_-]{1,60})$' }
+                title: { $ref: '#/components/schemas/ProductTitles' }
+                description: { $ref: '#/components/schemas/ProductDescriptions' }
+                sort_order: { type: integer, minimum: 0, maximum: 1000 }
       responses:
         '200':
           description: Updated.
@@ -9559,6 +9587,20 @@ components:
         expires_at: { $ref: '#/components/schemas/NullableTimestamp' }
 
     # ───────── Billing ─────────
+    ProductList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Product' } }
+    ProductPrice:
+      type: object
+      description: What Stripe charges for a web offer. Store apps show the store's price instead.
+      required: [amount_minor, currency, recurring]
+      additionalProperties: false
+      properties:
+        amount_minor: { type: integer, minimum: 0, description: 'Minor units (cents).' }
+        currency: { type: string, pattern: '^[A-Z]{3}$' }
+        recurring: { type: boolean }
     Product:
       type: object
       required: [id, sku, platform, provider, kind, plan_key, period, entitlement_keys]
@@ -9567,10 +9609,22 @@ components:
         sku: { type: string, description: Store product ID or Stripe price ID. }
         platform: { $ref: '#/components/schemas/ProductPlatform' }
         provider: { $ref: '#/components/schemas/BillingProvider' }
-        kind: { type: string, enum: [auto_renewable, non_consumable] }
+        kind:
+          type: string
+          enum: [auto_renewable, non_renewing, non_consumable]
+          description: '`non_renewing` is a pass: paid once, Premium for `period`, then it ends.'
         plan_key: { type: [string, 'null'], enum: [premium, null] }
-        period: { type: [string, 'null'], enum: [P1M, P1Y, null] }
+        period:
+          type: [string, 'null']
+          pattern: '^P[1-9][0-9]{0,2}[DWMY]$'
+          description: ISO 8601. The renewal period of a subscription or the validity of a pass.
         entitlement_keys: { type: array, items: { type: string } }
+        title: { type: [string, 'null'], description: In the caller's language when available. }
+        description: { type: [string, 'null'] }
+        price:
+          oneOf:
+            - { $ref: '#/components/schemas/ProductPrice' }
+            - { type: 'null' }
         grants_content:
           type: array
           items:
@@ -9659,7 +9713,7 @@ components:
             id: { $ref: '#/components/schemas/Uuid' }
             provider: { $ref: '#/components/schemas/BillingProvider' }
             product_sku: { type: string }
-            kind: { type: string, enum: [non_consumable, subscription_purchase, renewal] }
+            kind: { type: string, enum: [non_consumable, non_renewing, subscription_purchase, renewal] }
             status: { type: string, enum: [verified, refunded, revoked] }
             purchased_at: { $ref: '#/components/schemas/Timestamp' }
         entitlements: { $ref: '#/components/schemas/Entitlements' }
@@ -9989,14 +10043,27 @@ components:
       properties:
         sku: { type: string, minLength: 3, maxLength: 200 }
         platform: { $ref: '#/components/schemas/ProductPlatform' }
-        kind: { type: string, enum: [auto_renewable, non_consumable] }
+        kind: { type: string, enum: [auto_renewable, non_renewing, non_consumable] }
         plan_key: { type: [string, 'null'], enum: [premium, null] }
-        period: { type: [string, 'null'], enum: [P1M, P1Y, null] }
+        period: { type: [string, 'null'], pattern: '^P[1-9][0-9]{0,2}[DWMY]$' }
         entitlement_keys:
           type: array
           minItems: 1
           maxItems: 10
           items: { type: string, pattern: '^(premium|content:[a-z_]+:[a-z0-9_-]{1,60})$' }
+        title: { $ref: '#/components/schemas/ProductTitles' }
+        description: { $ref: '#/components/schemas/ProductDescriptions' }
+        sort_order: { type: integer, minimum: 0, maximum: 1000 }
+    ProductTitles:
+      type: object
+      description: Per supported locale, 1 to 80 characters.
+      propertyNames: { enum: [en, es, pt-BR, fr, de] }
+      additionalProperties: { type: string, minLength: 1, maxLength: 80 }
+    ProductDescriptions:
+      type: object
+      description: Per supported locale, 1 to 300 characters.
+      propertyNames: { enum: [en, es, pt-BR, fr, de] }
+      additionalProperties: { type: string, minLength: 1, maxLength: 300 }
     AdminProduct:
       type: object
       required: [id, sku, platform, kind, plan_key, period, entitlement_keys, active]
@@ -10004,11 +10071,51 @@ components:
         id: { $ref: '#/components/schemas/Uuid' }
         sku: { type: string }
         platform: { $ref: '#/components/schemas/ProductPlatform' }
-        kind: { type: string, enum: [auto_renewable, non_consumable] }
+        kind: { type: string, enum: [auto_renewable, non_renewing, non_consumable] }
         plan_key: { type: [string, 'null'], enum: [premium, null] }
-        period: { type: [string, 'null'], enum: [P1M, P1Y, null] }
+        period: { type: [string, 'null'], pattern: '^P[1-9][0-9]{0,2}[DWMY]$' }
         entitlement_keys: { type: array, items: { type: string } }
         active: { type: boolean }
+        title: { $ref: '#/components/schemas/ProductTitles' }
+        description: { $ref: '#/components/schemas/ProductDescriptions' }
+        sort_order: { type: integer }
+    BillingTransaction:
+      type: object
+      description: One payment, refund or dispute of the caller (BILL-011).
+      required: [id, provider, kind, status, amount_minor, currency, reason, receipt_url, product, occurred_at]
+      additionalProperties: false
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        provider: { $ref: '#/components/schemas/BillingProvider' }
+        kind: { type: string, enum: [payment, refund, dispute] }
+        status:
+          type: string
+          enum: [pending, succeeded, failed, open, won, lost]
+          description: Payments are pending, succeeded or failed; disputes open, won or lost.
+        amount_minor: { type: [integer, 'null'], minimum: 0 }
+        currency: { type: [string, 'null'], pattern: '^[A-Z]{3}$' }
+        reason:
+          type: [string, 'null']
+          description: '`purchase`, `renewal`, `change`, `refund`, `partial_refund`, or a dispute reason.'
+        receipt_url: { type: [string, 'null'], format: uri }
+        product:
+          oneOf:
+            - type: object
+              required: [id, kind, period, title]
+              additionalProperties: false
+              properties:
+                id: { $ref: '#/components/schemas/Uuid' }
+                kind: { type: string, enum: [auto_renewable, non_renewing, non_consumable] }
+                period: { type: [string, 'null'], pattern: '^P[1-9][0-9]{0,2}[DWMY]$' }
+                title: { type: [string, 'null'] }
+            - { type: 'null' }
+        occurred_at: { $ref: '#/components/schemas/Timestamp' }
+    BillingTransactionPage:
+      type: object
+      required: [data, page]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/BillingTransaction' } }
+        page: { $ref: '#/components/schemas/PageInfo' }
     OpsSummary:
       type: object
       required: [generated_at, moderation, outbox, jobs]

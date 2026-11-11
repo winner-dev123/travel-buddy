@@ -1219,5 +1219,32 @@
       "system": "Follows the light or dark setting of your phone."
     },
     "hint": "Your choice is kept on this phone."
+  },
+  "purchases": {
+    "title": "Purchase history",
+    "empty": "No purchases yet.",
+    "error": "Your purchase history can't load right now.",
+    "receipt": "View receipt",
+    "amountInStore": "Amount on your store receipt",
+    "kind": {
+      "payment": "Payment",
+      "refund": "Refund",
+      "dispute": "Chargeback"
+    },
+    "status": {
+      "pending": "Pending",
+      "succeeded": "Paid",
+      "failed": "Failed",
+      "refunded": "Refunded",
+      "dispute_open": "Chargeback under review",
+      "dispute_won": "Chargeback closed",
+      "dispute_lost": "Chargeback refunded"
+    },
+    "provider": {
+      "apple": "App Store",
+      "google": "Google Play",
+      "stripe": "Website",
+      "dev": "Test store"
+    }
   }
 }

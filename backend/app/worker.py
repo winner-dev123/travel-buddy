@@ -21,6 +21,7 @@ from app.core.time import SystemClock
 from app.main import (
     build_ai_provider,
     build_ai_service,
+    build_billing_jobs,
     build_job_runner,
     build_media_storage,
     build_vapid,
@@ -71,6 +72,7 @@ async def run(*, once: bool, idle_sleep_seconds: float) -> None:
                 vapid=build_vapid(settings),
             ),
             ai=build_ai_service(settings, database, SystemClock(), build_ai_provider(settings)),
+            billing=build_billing_jobs(settings, database, SystemClock(), http_client),
         )
         try:
             while not stop.is_set():

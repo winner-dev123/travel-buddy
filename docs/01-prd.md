@@ -356,6 +356,9 @@ destination_match = 1.0 exact, 0.8 child (neighborhood within city), 0.5 parent,
 | BILL-007 | All feature gating centralized in the backend entitlement evaluator | M | 0 | Single `has(user, feature)` function. No other module reads subscription tables |
 | BILL-008 | Group admin grace period after lapse (configurable, default 14 days) | M | 3 | — |
 | BILL-009 | Admin can grant promotional entitlements (audited) | S | 6 | — |
+| BILL-010 | Offers are configurable without a release: subscriptions with any renewal period, passes (Premium for a fixed period, paid once, never renewing, stacking after the current Premium) and content purchases, with localized titles and an order. Prices live with the store or Stripe | M | 3 | Admin API; passes end on the calendar date; "Premium until" spans stacked passes |
+| BILL-011 | Every payment, refund and dispute is recorded per user, and travellers can see their purchase history and status. They are told when a payment fails, an asynchronous payment is confirmed, a refund ends a purchase, or Premium that won't renew is about to end | M | 3 | `billing_transactions` ledger never moves backwards; `GET /v1/billing/transactions` shows only the caller's rows |
+| BILL-012 | Test and production payments are kept apart: a test key only outside production and a live key only in production, and the webhook ignores events of the other mode | M | 3 | Boot refuses mismatched keys; a live-mode event changes nothing on a test deployment |
 
 ### 4.19 Notifications: NOTIF
 

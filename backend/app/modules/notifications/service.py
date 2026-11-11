@@ -23,7 +23,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from app.core.pagination import CursorCodec, PageInfo
 from app.modules.identity import service as identity
 from app.modules.notifications import push
-from app.modules.notifications.domain import moderation_variant, render
+from app.modules.notifications.domain import BILLING_VARIANTS, moderation_variant, render
 from app.modules.notifications.models import Notification
 from app.modules.notifications.push import PushSender
 from app.modules.notifications.schemas import NotificationOut, NotificationPage
@@ -187,6 +187,20 @@ async def notify_from_event(
                 dedupe_key=f"{data.get('variant')}:{group}:{event_id}",
             )
         return created
+    if event_type == "billing.notice":
+        recipient = _uuid(data.get("user_id"))
+        billing_variant = str(data.get("variant") or "")
+        if recipient is None or billing_variant not in BILLING_VARIANTS:
+            return False
+        # Opens the traveller's subscription screen (no entity id needed).
+        return await notify(
+            session,
+            user_id=recipient,
+            kind="subscription_notice",
+            entity_type="subscription",
+            payload={"variant": billing_variant},
+            dedupe_key=f"billing:{billing_variant}:{data.get('reference') or event_id}",
+        )
     if event_type in CHALLENGE_VARIANTS:
         challenge = _uuid(data.get("challenge_id"))
         kind = "challenge_started" if event_type == "challenge.started" else "challenge_result"
@@ -319,6 +333,7 @@ EVENTS = (
     "identity.data_export_ready",
     *CHALLENGE_VARIANTS,
     "group.premium_notice",
+    "billing.notice",
     "message.sent",
     "conversation.read",
     "follow.requested",

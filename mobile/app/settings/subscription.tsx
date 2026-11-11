@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import Constants from 'expo-constants';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -40,6 +40,7 @@ function managementUrl(
 export default function SubscriptionScreen() {
   const { t, i18n } = useTranslation();
   const theme = useAppTheme();
+  const router = useRouter();
   const entitlements = useQuery({
     queryKey: accountKeys.entitlements,
     queryFn: () => fetchEntitlements(getApiClient()),
@@ -117,6 +118,13 @@ export default function SubscriptionScreen() {
                 {t('subscription.manageOnWeb')}
               </Text>
             ) : null}
+            <Button
+              label={t('purchases.title')}
+              variant="secondary"
+              icon="receipt-outline"
+              onPress={() => router.push('/settings/purchases')}
+              testID="subscription-history"
+            />
             <Text style={[theme.typography.label, { color: theme.colors.textSecondary }]}>
               {t('subscription.usage')}
             </Text>

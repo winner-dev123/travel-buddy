@@ -21,11 +21,16 @@
 | Free | — | Baseline | Everyone with an account |
 | Premium Monthly | Auto-renewable (P1M) | `premium` entitlement | One subscription group across both periods, so upgrades and downgrades are handled by the store |
 | Premium Annual | Auto-renewable (P1Y) | `premium` entitlement | |
+| Premium pass | Non-renewing (any period, e.g. P7D, P1M) | `premium` for the period | Paid once. Starts when the current finite Premium ends, so passes stack (BILL-010) |
 | Premium destination guide | Non-consumable | `content:guide:<id>` | Permanent for the purchaser |
 | Audio tour package | Non-consumable | `content:audio_tour:<id>` (one or many) | Permanent for the purchaser |
 | Partner offerings | — | — | Future. Not modeled in v1 |
 
 Store product IDs live in the `products` table, per platform (`ios`, `android`, `web`). Mobile prices are store-managed and shown from the store SDK. Web prices come from Stripe Prices ([ADR-0012](adr/0012-web-billing-provider.md)). The backend never hard-codes prices.
+
+**Offers are configuration (BILL-010).** Each product has a kind (`auto_renewable`, `non_renewing`, `non_consumable`), an ISO 8601 period for subscriptions and passes (`P{n}D`, `P{n}W`, `P{n}M`, `P{n}Y`), titles and descriptions per locale, and a display order. Superadmins add and edit them through `/v1/admin/products` (justified, audited); a different price or period is a new product. `GET /v1/billing/products` lists them in order, with the title in the caller's language and, for the web, Stripe's price (cached for 10 minutes). Pass ends follow the calendar: one month from 31 January is the end of February.
+
+**Where people pay ([ADR-0031](adr/0031-payments-store-first-stripe-web-ledger.md)).** Every plan unlocks digital features used inside the app, so the apps sell through the App Store and Google Play only (App Store 3.1.1, Play Payments policy) and never show a web price or a link to buy on the web. The website sells through Stripe, and the apps honour what was bought there (App Store 3.1.3(b)). In-app links to external payment are not built until legal confirms a region's current rules.
 
 **Providers.** `apple` and `google` for in-app purchases on mobile ([ADR-0017](adr/0017-billing-direct-store-integration.md)), `stripe` for web purchases through hosted Checkout ([ADR-0012](adr/0012-web-billing-provider.md)), and `dev` for development and tests only. A user may hold grants from several providers, and the evaluator uses their **union**. The web pricing page hides purchase when a store subscription already grants `premium`. The mobile apps link to web checkout only where store rules for that region allow it.
 
@@ -149,6 +154,16 @@ group_premium_active(t) =
 
 **Web (Stripe).** `POST /v1/billing/checkout-sessions {product_id, success_path, cancel_path}` creates a hosted Checkout Session bound to the user's `billing_customers` row and returns its URL. **Only** the signature-verified webhook `POST /v1/billing/webhooks/stripe` grants entitlements, and the success page grants nothing: it polls `GET /v1/billing/entitlements`. `POST /v1/billing/portal-sessions` returns a Customer Portal URL for web-purchased subscriptions. Stripe states map onto §4: `active`/`trialing` → `active`, `past_due` → `in_grace_period` (until Stripe's retry schedule ends), `unpaid`/`incomplete_expired`/`canceled` at period end → `expired`, `paused` → `paused`, charge refunded or disputed and lost → `revoked`.
 
+**Stripe in detail (BL-3.15).**
+
+* Webhooks read only the event's id, type, mode and object id; the object is fetched from the API with the pinned `STRIPE_API_VERSION` before the database transaction. If Stripe is unreachable the answer is 503 and nothing is stored, so Stripe retries.
+* Events: `checkout.session.completed`, `.async_payment_succeeded`, `.async_payment_failed`, `.expired`; `customer.subscription.created`, `.updated`, `.deleted`, `.paused`, `.resumed`; `invoice.paid`, `invoice.payment_failed`; `charge.refunded`, `charge.dispute.created`, `charge.dispute.closed`.
+* One-time purchases and passes (`mode=payment`) are granted when the session is paid. Pix and boleto stay `pending` until `async_payment_succeeded` or `_failed`.
+* Each payment, refund and dispute goes into `billing_transactions` (§8, BILL-011); a row never moves backwards. `GET /v1/billing/transactions` lists the caller's own.
+* No double charge (BILL-006): `409` when the content is owned or a subscription is still renewing; an open Checkout session for the same offer is handed out again; checkouts of one user are serialised; a second live web subscription to the same plan is cancelled and its first payment refunded; a daily job re-reads web subscriptions and cancels what slipped through.
+* Events of the other mode (live on a test key, test on a live key) are stored as ignored (`wrong_mode`), and the API refuses to start with a live key outside production or a test key in production (BILL-012).
+* Travellers get a notice when a payment fails, an asynchronous payment is confirmed, a refund ends a purchase, or Premium that won't renew ends in 2–3 days.
+
 Development adapter: `DevBillingProvider` (provider `dev`) lets tests and local builds simulate store events. It is enabled only when `APP_ENV ∈ {development, test}`, and production boot fails if it is configured. As built (BL-3.01): with `DEV_BILLING_ENABLED=true`, Apple and Google verification requests are served by the dev provider, which accepts `dev:<sku>:<original transaction id>[:<status>]` as the signed transaction or purchase token; `POST /v1/dev/billing/events {original_transaction_id, event}` then simulates renewals, grace, billing retry, pause, expiry and refunds through the same state machine. Without store credentials, real Apple and Google verification answers `503 service_unavailable`.
 
 ## 7. Entitlements API shape (contract)
@@ -204,6 +219,7 @@ A quota exhaustion returns `429 quota_exceeded` with `quota`, `limit` and `reset
 ## 8. Refunds and abuse
 
 * A refund or revocation revokes the grant immediately. Group premium for that owner ends **without** admin grace (grace applies to natural expiry only), but safety tools remain.
+* A Stripe refund revokes exactly what its charge paid for (the invoice's subscription, or the one-time purchase). A partial refund keeps it unless `STRIPE_PARTIAL_REFUND_REVOKES` is on. A lost chargeback revokes like a full refund; an open one is only recorded.
 * Repeated purchase–refund cycles (≥ 3 in 90 days) are flagged for review.
 * Family Sharing (Apple) is **disabled** for v1 products, because entitlement attribution to individual social accounts is ambiguous.
 
@@ -220,3 +236,8 @@ A quota exhaustion returns `429 quota_exceeded` with `quota`, `limit` and `reset
 | Duplicate and out-of-order notifications | Integration | BILL-006 |
 | Transaction bound to another account rejected | Security | BILL-003 |
 | Purchase → `groups.create` allowed end-to-end | E2E | GRP-001 |
+| Passes wait for the money, stack, and end on the calendar date | Integration + unit | BILL-010 |
+| Refunds and lost disputes revoke only what they paid for | Integration | BILL-005, BILL-011 |
+| Ledger never moves backwards; history shows only my rows | Integration | BILL-011 |
+| Second checkout reuses the session; duplicate subscription cancelled and refunded | Integration | BILL-006 |
+| Live-mode event ignored on a test deployment; mismatched keys refused at boot | Integration + unit | BILL-012 |

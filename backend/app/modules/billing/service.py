@@ -11,19 +11,23 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 import uuid
 from collections.abc import Awaitable, Callable, Mapping, Sequence
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import func, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.errors import AppError, ErrorCode, FieldError
+from app.core.i18n import negotiate_ui_locale
+from app.core.pagination import CursorCodec, PageInfo, clamp_limit
 from app.core.security.principal import Principal
 from app.core.time import Clock
 from app.modules.billing.apple import (
@@ -34,13 +38,14 @@ from app.modules.billing.apple import (
 from app.modules.billing.apple import signed_date as apple_signed_date
 from app.modules.billing.domain import (
     GRACE,
-    PERIODS,
     ProductKind,
     StoreEvent,
     SubscriptionStatus,
+    add_period,
     grant_window,
     management,
     next_status,
+    period_length,
 )
 from app.modules.billing.entitlements import (
     DEFAULT_POLICY,
@@ -69,6 +74,8 @@ from app.modules.billing.google import (
 from app.modules.billing.models import (
     BillingCustomer,
     BillingEvent,
+    BillingTransaction,
+    CheckoutSession,
     EntitlementPolicyOverride,
     Product,
     Purchase,
@@ -87,15 +94,23 @@ from app.modules.billing.schemas import (
     Entitlements,
     PolicyQuotaOut,
     ProductOut,
+    ProductPrice,
     PurchaseOut,
     QuotaStatusOut,
+    TransactionOut,
+    TransactionPage,
+    TransactionProduct,
     UpdateBillingPolicyRequest,
     UpdateProductRequest,
     VerifyPurchaseResult,
 )
 from app.modules.billing.stripe import (
     HANDLED_EVENTS,
+    StripeCharge,
+    StripeCheckout,
     StripeClient,
+    StripeDispute,
+    StripeInvoice,
     StripeSubscription,
     verify_signature,
 )
@@ -105,6 +120,25 @@ from app.modules.platform import service as platform
 QuotaUsage = Callable[[AsyncSession, uuid.UUID, datetime], Awaitable[Mapping[Quota, int]]]
 
 VERIFY_ROUTE = "POST /v1/billing/purchases/verify"
+
+logger = logging.getLogger(__name__)
+
+# Hosted Checkout sessions live an hour; an open one is handed out again until 5 minutes before
+# it expires (BILL-006).
+CHECKOUT_LIFETIME = timedelta(hours=1)
+CHECKOUT_REUSE_MARGIN = timedelta(minutes=5)
+RECONCILE_JOB = "billing.stripe_reconcile"
+REMINDERS_JOB = "billing.expiry_reminders"
+NOTICE_EVENT = "billing.notice"
+# Premium ending in this window gets one reminder from the daily job.
+REMINDER_WINDOW = (timedelta(hours=48), timedelta(hours=72))
+# The ledger never moves backwards: a late "failed" can't undo a "succeeded" (BILL-011).
+_STATUS_RANK = {"pending": 0, "open": 0, "failed": 1, "succeeded": 2, "won": 2, "lost": 2}
+_INVOICE_REASONS = {
+    "subscription_create": "purchase",
+    "subscription_cycle": "renewal",
+    "subscription_update": "change",
+}
 RESTORE_ROUTE = "POST /v1/billing/purchases/restore"
 _PREMIUM_STATES = (SubscriptionStatus.ACTIVE, SubscriptionStatus.IN_GRACE_PERIOD)
 _PROVIDER_FOR_PLATFORM = {"ios": "apple", "android": "google", "web": "stripe"}
@@ -255,7 +289,20 @@ async def get_entitlements(
     )
 
 
-def _product_out(row: Product) -> ProductOut:
+def _localized(text: Mapping[str, str] | None, preferences: Sequence[str]) -> str | None:
+    """The first preferred locale the text has, then English, then anything."""
+    if not text:
+        return None
+    for tag in (*preferences, "en"):
+        found = text.get(negotiate_ui_locale(tag))
+        if found:
+            return found
+    return next(iter(text.values()), None)
+
+
+def _product_out(
+    row: Product, preferences: Sequence[str] = (), price: ProductPrice | None = None
+) -> ProductOut:
     return ProductOut.model_validate(
         {
             "id": row.id,
@@ -267,6 +314,9 @@ def _product_out(row: Product) -> ProductOut:
             "period": row.period,
             "entitlement_keys": list(row.entitlement_keys),
             "grants_content": row.grants_content or [],
+            "title": _localized(row.title, preferences),
+            "description": _localized(row.description, preferences),
+            "price": price,
         }
     )
 
@@ -319,8 +369,14 @@ class BillingService:
         apple: AppleJWSVerifier | None = None,
         google: GooglePlayProvider | None = None,
         google_push: PushVerifier | None = None,
+        cursors: CursorCodec | None = None,
+        partial_refund_revokes: bool = False,
+        refund_duplicates: bool = True,
     ) -> None:
         self._sessionmaker = sessionmaker
+        self._cursors = cursors
+        self._partial_refund_revokes = partial_refund_revokes
+        self._refund_duplicates = refund_duplicates
         self._clock = clock
         self._providers = dict(providers)
         self._stripe = stripe
@@ -336,14 +392,32 @@ class BillingService:
         usage = await self._usage(session, user_id, at) if self._usage is not None else None
         return await get_entitlements(session, user_id, at=at, usage=usage)
 
-    async def products(self, platform_name: str) -> list[ProductOut]:
+    async def products(
+        self, platform_name: str, preferences: Sequence[str] = ()
+    ) -> list[ProductOut]:
+        """Offers in display order (BILL-010). Web offers carry Stripe's price; store apps show
+        the store's own localized price."""
         async with self._sessionmaker() as session:
-            rows = await session.scalars(
-                select(Product)
-                .where(Product.platform == platform_name, Product.active.is_(True))
-                .order_by(Product.period.nulls_last(), Product.sku)
+            rows = list(
+                await session.scalars(
+                    select(Product)
+                    .where(Product.platform == platform_name, Product.active.is_(True))
+                    .order_by(Product.sort_order, Product.period.nulls_last(), Product.sku)
+                )
             )
-            return [_product_out(row) for row in rows]
+        prices: list[ProductPrice | None] = [None] * len(rows)
+        stripe = self._stripe
+        if platform_name == "web" and stripe is not None and stripe.configured:
+            found = await asyncio.gather(*(stripe.price(row.sku) for row in rows))
+            prices = [
+                ProductPrice(amount_minor=p.unit_amount, currency=p.currency, recurring=p.recurring)
+                if p is not None and p.unit_amount is not None and p.currency
+                else None
+                for p in found
+            ]
+        return [
+            _product_out(row, preferences, price) for row, price in zip(rows, prices, strict=True)
+        ]
 
     async def entitlements(self, user_id: uuid.UUID) -> Entitlements:
         async with self._sessionmaker() as session:
@@ -451,11 +525,10 @@ class BillingService:
         )
         if product is None or not product.active:
             raise AppError(ErrorCode.PURCHASE_INVALID, "This product isn't sold here.")
-        kind = (
-            "subscription_purchase"
-            if product.kind == ProductKind.AUTO_RENEWABLE
-            else "non_consumable"
-        )
+        kind = {
+            ProductKind.AUTO_RENEWABLE: "subscription_purchase",
+            ProductKind.NON_RENEWING: "non_renewing",
+        }.get(ProductKind(product.kind), "non_consumable")
         if product.kind == ProductKind.AUTO_RENEWABLE:
             await self._upsert_subscription(session, user_id, product, transaction, now)
         inserted = await session.execute(
@@ -486,8 +559,24 @@ class BillingService:
                     ErrorCode.PURCHASE_ALREADY_LINKED, "This purchase belongs to another account."
                 )
             purchase_id = row.id
+        else:
+            await _record_transaction(
+                session,
+                user_id=user_id,
+                provider=transaction.provider,
+                environment=transaction.environment,
+                kind="payment",
+                status="succeeded",
+                reference=transaction.transaction_id,
+                product_id=product.id,
+                purchase_id=purchase_id,
+                reason="purchase",
+                occurred_at=transaction.purchased_at,
+            )
         if product.kind == ProductKind.NON_CONSUMABLE:
             await self._grant_content(session, user_id, product, purchase_id, transaction)
+        elif product.kind == ProductKind.NON_RENEWING:
+            await _grant_pass(session, user_id, product, purchase_id, transaction.purchased_at)
         return PurchaseOut(
             id=purchase_id,
             provider=transaction.provider,  # type: ignore[arg-type]
@@ -513,7 +602,7 @@ class BillingService:
             )
             .with_for_update()
         )
-        period = PERIODS.get(product.period or "P1M", PERIODS["P1M"])
+        period = period_length(product.period)
         if subscription is not None and subscription.user_id != user_id:
             # Receipt sharing: one store transaction, one account (docs/07 §6.3).
             raise AppError(
@@ -560,18 +649,7 @@ class BillingService:
         transaction: StoreTransaction,
     ) -> None:
         """Permanent grants for a non-consumable purchase (docs/07 §2)."""
-        for key in product.entitlement_keys:
-            await session.execute(
-                insert(SubscriptionEntitlement)
-                .values(
-                    user_id=user_id,
-                    entitlement_key=key,
-                    source_type=GrantSource.PURCHASE,
-                    source_id=purchase_id,
-                    starts_at=transaction.purchased_at,
-                )
-                .on_conflict_do_nothing()
-            )
+        await _grant_permanent(session, user_id, product, purchase_id, transaction.purchased_at)
 
     async def apply_event(
         self,
@@ -861,19 +939,32 @@ class BillingService:
         cancel_path: str,
         idempotency_key: uuid.UUID,
     ) -> tuple[str, datetime | None]:
-        """A hosted Checkout URL. Completing it grants nothing: only the webhook does."""
+        """A hosted Checkout URL. Completing it grants nothing: only the webhook does. An open
+        session for the same offer is handed out again, so a second tab or a retry never starts a
+        second payment; checkouts of one user are serialized for that (BILL-006)."""
         stripe = self._require_stripe()
         me, now = principal.user_id, self._clock.now()
         async with self._sessionmaker() as session, session.begin():
+            await session.execute(
+                select(func.pg_advisory_xact_lock(func.hashtext(f"billing.checkout:{me}")))
+            )
             product = await session.get(Product, product_id)
             if product is None or product.platform != "web" or not product.active:
                 raise AppError(ErrorCode.NOT_FOUND, "Product not found.")
-            snap = await snapshot(session, me, at=now)
-            if (product.plan_key == "premium" and snap.plan is Plan.PREMIUM) or (
-                product.kind == ProductKind.NON_CONSUMABLE
-                and all(snap.has_content(k) for k in product.entitlement_keys)
-            ):
-                raise AppError(ErrorCode.CONFLICT, "You already have this.")  # no double charge
+            await _refuse_double_purchase(session, me, product, now)
+            reusable = await session.scalar(
+                select(CheckoutSession)
+                .where(
+                    CheckoutSession.user_id == me,
+                    CheckoutSession.product_id == product.id,
+                    CheckoutSession.status == "open",
+                    CheckoutSession.expires_at > now + CHECKOUT_REUSE_MARGIN,
+                )
+                .order_by(CheckoutSession.created_at.desc())
+                .limit(1)
+            )
+            if reusable is not None:
+                return reusable.url, reusable.expires_at
             customer = await _stripe_customer(session, me)
             if customer is None:
                 customer = await stripe.create_customer(
@@ -884,16 +975,32 @@ class BillingService:
                     .values(user_id=me, provider="stripe", provider_customer_id=customer)
                     .on_conflict_do_nothing()
                 )
-            price, kind = product.sku, product.kind
-        return await stripe.create_checkout_session(
-            customer=customer,
-            price_id=price,
-            mode="subscription" if kind == ProductKind.AUTO_RENEWABLE else "payment",
-            user_id=str(me),
-            success_url=f"{self._web_origin}{success_path}",
-            cancel_url=f"{self._web_origin}{cancel_path}",
-            idempotency_key=str(idempotency_key),
-        )
+            started = await stripe.create_checkout_session(
+                customer=customer,
+                price_id=product.sku,
+                mode="subscription" if product.kind == ProductKind.AUTO_RENEWABLE else "payment",
+                user_id=str(me),
+                product_id=str(product.id),
+                success_url=f"{self._web_origin}{success_path}",
+                cancel_url=f"{self._web_origin}{cancel_path}",
+                expires_at=now + CHECKOUT_LIFETIME,
+                idempotency_key=str(idempotency_key),
+            )
+            expires_at = started.expires_at or now + CHECKOUT_LIFETIME
+            await session.execute(
+                insert(CheckoutSession)
+                .values(
+                    user_id=me,
+                    product_id=product.id,
+                    provider_session_id=started.id,
+                    url=started.url,
+                    expires_at=expires_at,
+                )
+                .on_conflict_do_nothing(
+                    index_elements=[CheckoutSession.provider, CheckoutSession.provider_session_id]
+                )
+            )
+        return started.url, expires_at
 
     async def portal(self, principal: Principal, *, return_path: str | None) -> str:
         stripe = self._require_stripe()
@@ -906,7 +1013,11 @@ class BillingService:
         )
 
     async def stripe_webhook(self, payload: bytes, signature: str | None) -> str:
-        """Verify, store once by event ID, and apply. Returns the processing outcome."""
+        """Verify, fetch the object from Stripe, then store once by event ID and apply.
+
+        Only the event's id, type, mode and object id come from the payload. A failure talking to
+        Stripe answers 503 before anything is stored, so Stripe delivers the event again.
+        """
         stripe = self._stripe
         if stripe is None or not stripe.webhook_secret:
             raise AppError(ErrorCode.SERVICE_UNAVAILABLE, "Web payments aren't available yet.")
@@ -916,57 +1027,90 @@ class BillingService:
             event = json.loads(payload)
         except ValueError:
             raise AppError(ErrorCode.BAD_REQUEST, "The event isn't JSON.") from None
-        event_type = str(event.get("type"))
+        if not isinstance(event, dict) or not event.get("id"):
+            raise AppError(ErrorCode.BAD_REQUEST, "The event has no id.")
+        event_id, event_type = str(event["id"]), str(event.get("type"))
         obj = (event.get("data") or {}).get("object") or {}
+        object_id = str(obj.get("id") or "") if isinstance(obj, dict) else ""
         created = event.get("created")
         signed = datetime.fromtimestamp(int(created), tz=UTC) if created else now
+        expected = stripe.expected_livemode
+        wrong_mode = expected is not None and bool(event.get("livemode")) != expected
+        async with self._sessionmaker() as session:
+            seen = await session.scalar(
+                select(BillingEvent.id).where(
+                    BillingEvent.provider == "stripe", BillingEvent.provider_event_id == event_id
+                )
+            )
+        if seen is not None:
+            return "duplicate"
+        facts = None
+        if event_type in HANDLED_EVENTS and object_id and not wrong_mode:
+            facts = await _fetch_stripe_facts(stripe, event_type, object_id)
+        duplicates: list[str] = []
         async with self._sessionmaker() as session, session.begin():
             stored = await session.execute(
                 insert(BillingEvent)
                 .values(
                     provider="stripe",
-                    provider_event_id=str(event.get("id")),
+                    provider_event_id=event_id,
                     event_type=event_type,
                     signed_date=signed,
-                    payload={"type": event_type, "object_id": obj.get("id")},
+                    payload={"type": event_type, "object_id": object_id},
                 )
                 .on_conflict_do_nothing(
                     index_elements=[BillingEvent.provider, BillingEvent.provider_event_id]
                 )
                 .returning(BillingEvent.id)
             )
-            event_id = stored.scalar_one_or_none()
-            if event_id is None:
+            stored_id = stored.scalar_one_or_none()
+            if stored_id is None:
                 return "duplicate"
-            outcome = "ignored"
-            subscription_ref: str | None = None
-            if event_type in HANDLED_EVENTS:
-                if event_type == "checkout.session.completed":
-                    subscription_ref = obj.get("subscription")
-                elif event_type.startswith("customer.subscription."):
-                    subscription_ref = obj.get("id")
-                elif obj.get("customer") and (
-                    event_type == "charge.refunded" or obj.get("status") == "lost"
-                ):
-                    outcome = await self._revoke_stripe(session, str(obj["customer"]), now)
-            row_id: uuid.UUID | None = None
-            if subscription_ref:
-                fresh = await stripe.get_subscription(
-                    str(subscription_ref)
-                )  # order isn't guaranteed
-                row_id = await self._apply_stripe(session, fresh, now)
-                outcome = "processed" if row_id else "ignored"
+            outcome, row_id = "ignored", None
+            if facts is not None:
+                outcome, row_id, duplicates = await self._apply_stripe_facts(session, facts, now)
             await session.execute(
                 update(BillingEvent)
-                .where(BillingEvent.id == event_id)
+                .where(BillingEvent.id == stored_id)
                 .values(
                     subscription_id=row_id,
                     processing_status=outcome,
                     processed_at=func.now(),
                     attempts=1,
+                    error="wrong_mode" if wrong_mode else None,
                 )
             )
+        await self._cancel_duplicates(duplicates)
         return outcome
+
+    async def _apply_stripe_facts(
+        self, session: AsyncSession, facts: _StripeFacts, now: datetime
+    ) -> tuple[str, uuid.UUID | None, list[str]]:
+        """Apply one fetched event; returns (outcome, subscription row, duplicates to cancel)."""
+        kind = facts.event_type
+        outcomes: list[bool] = []
+        row_id: uuid.UUID | None = None
+        duplicates: list[str] = []
+        if facts.subscription is not None and not kind.startswith("charge."):
+            row_id = await self._apply_stripe(session, facts.subscription, now)
+            outcomes.append(row_id is not None)
+            if row_id is not None:
+                duplicates = await _duplicate_web_subscriptions(session, row_id)
+        if facts.checkout is not None:
+            outcomes.append(await self._apply_checkout(session, facts.checkout, kind, now))
+        if facts.invoice is not None and kind.startswith("invoice."):
+            outcomes.append(
+                await self._apply_invoice(
+                    session, facts.invoice, row_id, paid=kind == "invoice.paid", now=now
+                )
+            )
+        if facts.charge is not None and kind == "charge.refunded":
+            outcomes.append(await self._apply_refund(session, facts.charge, facts.invoice, now))
+        if facts.dispute is not None:
+            outcomes.append(
+                await self._apply_dispute(session, facts.dispute, facts.charge, facts.invoice, now)
+            )
+        return ("processed" if any(outcomes) else "ignored"), row_id, duplicates
 
     async def _apply_stripe(
         self, session: AsyncSession, fresh: StripeSubscription, now: datetime
@@ -974,15 +1118,7 @@ class BillingService:
         product = await session.scalar(
             select(Product).where(Product.platform == "web", Product.sku == fresh.price_id)
         )
-        mapped = await session.scalar(
-            select(BillingCustomer.user_id).where(
-                BillingCustomer.provider == "stripe",
-                BillingCustomer.provider_customer_id == fresh.customer,
-            )
-        )
-        user_id = (
-            mapped if mapped is not None else (uuid.UUID(fresh.user_id) if fresh.user_id else None)
-        )
+        user_id = await _stripe_user(session, fresh.customer, fresh.user_id)
         if product is None or user_id is None:
             return None
         subscription = await session.scalar(
@@ -1020,34 +1156,374 @@ class BillingService:
         await _materialize(session, subscription, product, now=now)
         return subscription.id
 
-    async def _revoke_stripe(self, session: AsyncSession, customer: str, now: datetime) -> str:
-        """A refund or a lost dispute revokes the customer's web subscriptions at once."""
-        user_id = await session.scalar(
-            select(BillingCustomer.user_id).where(
-                BillingCustomer.provider == "stripe",
-                BillingCustomer.provider_customer_id == customer,
+    async def _apply_checkout(
+        self, session: AsyncSession, checkout: StripeCheckout, kind: str, now: datetime
+    ) -> bool:
+        """One-time web purchases and passes (``mode=payment``) are granted here; subscriptions
+        through the subscription itself. Asynchronous methods (Pix, boleto) stay pending until
+        Stripe confirms or fails them."""
+        status = {"complete": "complete", "expired": "expired"}.get(checkout.status)
+        changed = False
+        if status is not None:
+            marked = await session.execute(
+                update(CheckoutSession)
+                .where(
+                    CheckoutSession.provider == "stripe",
+                    CheckoutSession.provider_session_id == checkout.id,
+                    CheckoutSession.status == "open",
+                )
+                .values(status=status, completed_at=now if status == "complete" else None)
             )
+            changed = bool(marked.rowcount)  # type: ignore[attr-defined]
+        if checkout.mode != "payment" or kind == "checkout.session.expired":
+            return changed
+        user_id = await _stripe_user(session, checkout.customer, checkout.user_id)
+        product = await session.scalar(
+            select(Product).where(Product.platform == "web", Product.sku == checkout.price_id)
         )
+        if user_id is None or product is None:
+            return changed
+        environment = "production" if checkout.livemode else "sandbox"
+        reference = checkout.payment_intent or checkout.id
+        common: dict[str, Any] = {
+            "user_id": user_id,
+            "provider": "stripe",
+            "environment": environment,
+            "kind": "payment",
+            "reference": reference,
+            "product_id": product.id,
+            "amount_minor": checkout.amount_total,
+            "currency": checkout.currency,
+            "reason": "purchase",
+        }
+        if checkout.payment_status in ("paid", "no_payment_required"):
+            purchase_id = await _grant_web_purchase(
+                session, user_id, product, reference, environment, now
+            )
+            await _record_transaction(
+                session, **common, status="succeeded", purchase_id=purchase_id, occurred_at=now
+            )
+            if kind == "checkout.session.async_payment_succeeded":
+                _notice(session, user_id, "payment_confirmed", reference)
+            return True
+        if kind == "checkout.session.async_payment_failed":
+            await _record_transaction(session, **common, status="failed", occurred_at=now)
+            _notice(session, user_id, "payment_failed", reference)
+            return True
+        await _record_transaction(session, **common, status="pending", occurred_at=now)
+        return True
+
+    async def _apply_invoice(
+        self,
+        session: AsyncSession,
+        invoice: StripeInvoice,
+        row_id: uuid.UUID | None,
+        *,
+        paid: bool,
+        now: datetime,
+    ) -> bool:
+        """A subscription payment (first one or a renewal) in the ledger; a declined one also
+        tells the traveller (BILL-011)."""
+        user_id = await _stripe_user(session, invoice.customer, None)
+        amount = invoice.amount_paid if paid else invoice.amount_due
+        if user_id is None or not amount:
+            return False  # $0 invoices (trials, prorations to nothing) aren't payments
+        product_id = None
+        if row_id is not None:
+            product_id = await session.scalar(
+                select(Subscription.product_id).where(Subscription.id == row_id)
+            )
+        await _record_transaction(
+            session,
+            user_id=user_id,
+            provider="stripe",
+            environment="production" if invoice.livemode else "sandbox",
+            kind="payment",
+            status="succeeded" if paid else "failed",
+            reference=invoice.id,
+            product_id=product_id,
+            subscription_id=row_id,
+            amount_minor=amount,
+            currency=invoice.currency,
+            reason=_INVOICE_REASONS.get(invoice.billing_reason or "", invoice.billing_reason),
+            receipt_url=invoice.hosted_invoice_url,
+            occurred_at=(invoice.paid_at or now) if paid else now,
+        )
+        if not paid:
+            _notice(session, user_id, "payment_failed", invoice.id)
+        return True
+
+    async def _apply_refund(
+        self,
+        session: AsyncSession,
+        charge: StripeCharge,
+        invoice: StripeInvoice | None,
+        now: datetime,
+    ) -> bool:
+        """Record the refund; a full one (or a partial one, when configured) revokes exactly what
+        it paid for: the invoice's subscription or the one-time purchase (docs/07 §8)."""
+        user_id = await _stripe_user(session, charge.customer, None)
         if user_id is None:
-            return "ignored"
-        rows = (
-            await session.scalars(
-                select(Subscription).where(
-                    Subscription.user_id == user_id,
-                    Subscription.provider == "stripe",
-                    Subscription.status != SubscriptionStatus.REVOKED,
+            return False
+        environment = "production" if charge.livemode else "sandbox"
+        await _record_transaction(
+            session,
+            user_id=user_id,
+            provider="stripe",
+            environment=environment,
+            kind="refund",
+            status="succeeded",
+            reference=charge.id,
+            amount_minor=charge.amount_refunded,
+            currency=charge.currency,
+            reason="refund" if charge.fully_refunded else "partial_refund",
+            receipt_url=charge.receipt_url,
+            occurred_at=now,
+        )
+        revokes = charge.fully_refunded or self._partial_refund_revokes
+        if revokes and await _revoke_paid_by(session, charge, invoice, now):
+            _notice(session, user_id, "refunded", charge.id)
+        return True
+
+    async def _apply_dispute(
+        self,
+        session: AsyncSession,
+        dispute: StripeDispute,
+        charge: StripeCharge | None,
+        invoice: StripeInvoice | None,
+        now: datetime,
+    ) -> bool:
+        """Chargebacks: recorded while open; a lost one revokes like a full refund."""
+        user_id = await _stripe_user(session, charge.customer if charge else None, None)
+        if user_id is None:
+            return False
+        await _record_transaction(
+            session,
+            user_id=user_id,
+            provider="stripe",
+            environment="production" if dispute.livemode else "sandbox",
+            kind="dispute",
+            status=dispute.outcome,
+            reference=dispute.id,
+            amount_minor=dispute.amount,
+            currency=dispute.currency,
+            reason=dispute.reason,
+            occurred_at=now,
+        )
+        if dispute.outcome == "lost" and charge is not None:
+            await _revoke_paid_by(session, charge, invoice, now)
+        return True
+
+    async def _cancel_duplicates(self, subscription_ids: Sequence[str]) -> None:
+        """A second web subscription to the same plan (two tabs paid at once): cancel it now and
+        refund its first payment. Stripe then sends the cancellation and the refund back to us.
+        Failures are left for the daily reconciliation."""
+        stripe = self._stripe
+        if stripe is None or not stripe.configured:
+            return
+        for subscription_id in subscription_ids:
+            try:
+                fresh = await stripe.get_subscription(subscription_id)
+                await stripe.cancel_subscription(
+                    subscription_id, idempotency_key=f"duplicate-cancel-{subscription_id}"
+                )
+                if self._refund_duplicates and fresh.latest_invoice:
+                    invoice = await stripe.get_invoice(fresh.latest_invoice)
+                    if invoice.payment_intent and invoice.amount_paid:
+                        await stripe.refund(
+                            invoice.payment_intent,
+                            reason="duplicate",
+                            idempotency_key=f"duplicate-refund-{subscription_id}",
+                        )
+            except AppError as exc:
+                logger.warning(
+                    "duplicate web subscription not cancelled", extra={"error": exc.code}
+                )
+
+    async def reconcile_stripe(self, *, limit: int = 200) -> int:
+        """Daily safety net: re-read the web subscriptions that still grant something, cancel
+        duplicates that slipped through and close Checkout sessions that ran out (BILL-006)."""
+        stripe = self._stripe
+        now = self._clock.now()
+        async with self._sessionmaker() as session, session.begin():
+            await session.execute(
+                update(CheckoutSession)
+                .where(CheckoutSession.status == "open", CheckoutSession.expires_at <= now)
+                .values(status="expired")
+            )
+        if stripe is None or not stripe.configured:
+            return 0
+        async with self._sessionmaker() as session:
+            references = list(
+                await session.scalars(
+                    select(Subscription.original_transaction_id)
+                    .where(
+                        Subscription.provider == "stripe",
+                        Subscription.status.in_(
+                            [
+                                SubscriptionStatus.ACTIVE,
+                                SubscriptionStatus.IN_GRACE_PERIOD,
+                                SubscriptionStatus.IN_BILLING_RETRY,
+                                SubscriptionStatus.PAUSED,
+                            ]
+                        ),
+                    )
+                    .order_by(Subscription.last_event_at.nulls_first())
+                    .limit(limit)
                 )
             )
-        ).all()
-        for subscription in rows:
-            subscription.status = SubscriptionStatus.REVOKED
-            subscription.revoked_at = now
-            subscription.last_event_at = now
-            product = await session.get(Product, subscription.product_id)
-            assert product is not None
-            await session.flush()
-            await _materialize(session, subscription, product, now=now)
-        return "processed" if rows else "ignored"
+        updated = 0
+        duplicates: list[str] = []
+        for reference in references:
+            try:
+                fresh = await stripe.get_subscription(reference)
+            except AppError:
+                continue
+            async with self._sessionmaker() as session, session.begin():
+                row_id = await self._apply_stripe(session, fresh, now)
+                if row_id is not None:
+                    updated += 1
+                    duplicates += await _duplicate_web_subscriptions(session, row_id)
+        await self._cancel_duplicates(list(dict.fromkeys(duplicates)))
+        return updated
+
+    async def remind_expiring(self) -> int:
+        """One reminder when Premium that won't renew ends in two to three days: passes, and
+        subscriptions with auto-renew off. Runs daily, so each ending is seen once."""
+        now = self._clock.now()
+        low, high = now + REMINDER_WINDOW[0], now + REMINDER_WINDOW[1]
+        reminded = 0
+        async with self._sessionmaker() as session, session.begin():
+            ending = (
+                await session.execute(
+                    select(
+                        SubscriptionEntitlement.user_id,
+                        SubscriptionEntitlement.source_type,
+                        SubscriptionEntitlement.source_id,
+                        SubscriptionEntitlement.ends_at,
+                    ).where(
+                        SubscriptionEntitlement.entitlement_key == "premium",
+                        SubscriptionEntitlement.revoked_at.is_(None),
+                        SubscriptionEntitlement.user_id.is_not(None),
+                        SubscriptionEntitlement.ends_at > low,
+                        SubscriptionEntitlement.ends_at <= high,
+                        SubscriptionEntitlement.source_type.in_(
+                            [GrantSource.SUBSCRIPTION, GrantSource.PURCHASE]
+                        ),
+                    )
+                )
+            ).all()
+            for user_id, source_type, source_id, ends_at in ending:
+                if source_type == GrantSource.SUBSCRIPTION:
+                    renews = await session.scalar(
+                        select(Subscription.auto_renew_enabled).where(Subscription.id == source_id)
+                    )
+                    if renews:
+                        continue
+                later = await session.scalar(
+                    select(SubscriptionEntitlement.id)
+                    .where(
+                        SubscriptionEntitlement.user_id == user_id,
+                        SubscriptionEntitlement.entitlement_key == "premium",
+                        SubscriptionEntitlement.revoked_at.is_(None),
+                        SubscriptionEntitlement.source_id != source_id,
+                        SubscriptionEntitlement.starts_at <= ends_at,
+                        or_(
+                            SubscriptionEntitlement.ends_at.is_(None),
+                            SubscriptionEntitlement.ends_at > ends_at,
+                        ),
+                    )
+                    .limit(1)
+                )
+                if later is not None:
+                    continue  # Premium carries on (a stacked pass, another subscription)
+                _notice(session, user_id, "expiring", f"{source_id}:{ends_at.date().isoformat()}")
+                reminded += 1
+        return reminded
+
+    def make_handlers(self) -> dict[str, platform.JobHandler]:
+        async def reconcile(job: platform.Job) -> None:
+            del job
+            await self.reconcile_stripe()
+
+        async def remind(job: platform.Job) -> None:
+            del job
+            await self.remind_expiring()
+
+        return {RECONCILE_JOB: reconcile, REMINDERS_JOB: remind}
+
+    async def transactions(
+        self,
+        user_id: uuid.UUID,
+        *,
+        cursor: str | None,
+        limit: int | None,
+        preferences: Sequence[str] = (),
+    ) -> TransactionPage:
+        """My payments, refunds and disputes, newest first (BILL-011)."""
+        if self._cursors is None:
+            raise AppError(ErrorCode.SERVICE_UNAVAILABLE, "Purchase history isn't available.")
+        size = clamp_limit(limit)
+        scope = f"billing.transactions:{user_id}"
+        conditions: list[Any] = [BillingTransaction.user_id == user_id]
+        if cursor:
+            position = self._cursors.decode(cursor, scope=scope)
+            at = datetime.fromisoformat(str(position["at"]))
+            last = uuid.UUID(str(position["id"]))
+            conditions.append(
+                or_(
+                    BillingTransaction.occurred_at < at,
+                    and_(BillingTransaction.occurred_at == at, BillingTransaction.id < last),
+                )
+            )
+        async with self._sessionmaker() as session:
+            rows = list(
+                await session.scalars(
+                    select(BillingTransaction)
+                    .where(*conditions)
+                    .order_by(BillingTransaction.occurred_at.desc(), BillingTransaction.id.desc())
+                    .limit(size + 1)
+                )
+            )
+            has_more = len(rows) > size
+            rows = rows[:size]
+            product_ids = {r.product_id for r in rows if r.product_id is not None}
+            products = {
+                p.id: p
+                for p in await session.scalars(select(Product).where(Product.id.in_(product_ids)))
+            }
+        data = []
+        for row in rows:
+            product = products.get(row.product_id) if row.product_id else None
+            data.append(
+                TransactionOut(
+                    id=row.id,
+                    provider=row.provider,  # type: ignore[arg-type]
+                    kind=row.kind,  # type: ignore[arg-type]
+                    status=row.status,  # type: ignore[arg-type]
+                    amount_minor=row.amount_minor,
+                    currency=row.currency,
+                    reason=row.reason,
+                    receipt_url=row.receipt_url,
+                    product=TransactionProduct(
+                        id=product.id,
+                        kind=product.kind,  # type: ignore[arg-type]
+                        period=product.period,
+                        title=_localized(product.title, preferences),
+                    )
+                    if product is not None
+                    else None,
+                    occurred_at=row.occurred_at,
+                )
+            )
+        next_cursor = (
+            self._cursors.encode(
+                {"at": rows[-1].occurred_at.isoformat(), "id": str(rows[-1].id)}, scope=scope
+            )
+            if has_more and rows
+            else None
+        )
+        return TransactionPage(data=data, page=PageInfo(next_cursor=next_cursor, has_more=has_more))
 
     @staticmethod
     def _transition(
@@ -1058,7 +1534,7 @@ class BillingService:
         at: datetime,
         now: datetime,
     ) -> None:
-        period = PERIODS.get(product.period or "P1M", PERIODS["P1M"])
+        period = period_length(product.period)
         if event is StoreEvent.RENEWED:
             start = max(subscription.current_period_end or at, at)
             subscription.current_period_start = start
@@ -1083,6 +1559,366 @@ class BillingService:
         del now
 
 
+@dataclass(frozen=True, slots=True)
+class _StripeFacts:
+    """What one webhook event is about, fetched from the API (never from the payload)."""
+
+    event_type: str
+    checkout: StripeCheckout | None = None
+    subscription: StripeSubscription | None = None
+    invoice: StripeInvoice | None = None
+    charge: StripeCharge | None = None
+    dispute: StripeDispute | None = None
+
+
+async def _fetch_stripe_facts(
+    stripe: StripeClient, event_type: str, object_id: str
+) -> _StripeFacts:
+    """Everything an event needs, read before the database transaction opens."""
+    if event_type.startswith("checkout.session."):
+        checkout = await stripe.get_checkout_session(object_id)
+        subscription = (
+            await stripe.get_subscription(checkout.subscription) if checkout.subscription else None
+        )
+        return _StripeFacts(event_type, checkout=checkout, subscription=subscription)
+    if event_type.startswith("customer.subscription."):
+        return _StripeFacts(event_type, subscription=await stripe.get_subscription(object_id))
+    if event_type.startswith("invoice."):
+        paid_invoice = await stripe.get_invoice(object_id)
+        subscription = (
+            await stripe.get_subscription(paid_invoice.subscription)
+            if paid_invoice.subscription
+            else None
+        )
+        return _StripeFacts(event_type, invoice=paid_invoice, subscription=subscription)
+    if event_type == "charge.refunded":
+        refunded = await stripe.get_charge(object_id)
+        invoice = await stripe.get_invoice(refunded.invoice) if refunded.invoice else None
+        return _StripeFacts(event_type, charge=refunded, invoice=invoice)
+    if event_type.startswith("charge.dispute."):
+        dispute = await stripe.get_dispute(object_id)
+        charge = await stripe.get_charge(dispute.charge) if dispute.charge else None
+        invoice = await stripe.get_invoice(charge.invoice) if charge and charge.invoice else None
+        return _StripeFacts(event_type, dispute=dispute, charge=charge, invoice=invoice)
+    return _StripeFacts(event_type)
+
+
+async def _stripe_user(
+    session: AsyncSession, customer: str | None, claimed: str | None
+) -> uuid.UUID | None:
+    """The user behind a Stripe customer; the metadata only counts for a customer we don't map
+    yet (we created every customer with the user's id)."""
+    if customer:
+        mapped: uuid.UUID | None = await session.scalar(
+            select(BillingCustomer.user_id).where(
+                BillingCustomer.provider == "stripe",
+                BillingCustomer.provider_customer_id == customer,
+            )
+        )
+        if mapped is not None:
+            return mapped
+    try:
+        return uuid.UUID(claimed) if claimed else None
+    except ValueError:
+        return None
+
+
+async def _refuse_double_purchase(
+    session: AsyncSession, user_id: uuid.UUID, product: Product, now: datetime
+) -> None:
+    """``409`` instead of a second charge (BILL-006): owned content, or a subscription or pass on
+    top of a subscription that is still renewing. A pass may follow a pass: it starts when the
+    current Premium ends."""
+    if product.kind == ProductKind.NON_CONSUMABLE:
+        snap = await snapshot(session, user_id, at=now)
+        owned = all(snap.has_content(key) for key in product.entitlement_keys)
+    else:
+        owned = (
+            await session.scalar(
+                select(Subscription.id)
+                .where(
+                    Subscription.user_id == user_id,
+                    Subscription.status.in_(
+                        [SubscriptionStatus.ACTIVE, SubscriptionStatus.IN_GRACE_PERIOD]
+                    ),
+                    Subscription.auto_renew_enabled.is_(True),
+                    or_(
+                        Subscription.current_period_end.is_(None),
+                        Subscription.current_period_end > now,
+                    ),
+                )
+                .limit(1)
+            )
+            is not None
+        )
+    if owned:
+        raise AppError(ErrorCode.CONFLICT, "You already have this.")
+
+
+async def _grant_permanent(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    product: Product,
+    purchase_id: uuid.UUID,
+    starts_at: datetime,
+) -> None:
+    for key in product.entitlement_keys:
+        await session.execute(
+            insert(SubscriptionEntitlement)
+            .values(
+                user_id=user_id,
+                entitlement_key=key,
+                source_type=GrantSource.PURCHASE,
+                source_id=purchase_id,
+                starts_at=starts_at,
+            )
+            .on_conflict_do_nothing()
+        )
+
+
+async def _grant_pass(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    product: Product,
+    purchase_id: uuid.UUID,
+    paid_at: datetime,
+) -> datetime:
+    """Premium for the pass's period, starting when the traveller's current finite Premium ends
+    (so passes stack instead of overlapping). Idempotent per purchase."""
+    existing = await session.scalar(
+        select(SubscriptionEntitlement.ends_at).where(
+            SubscriptionEntitlement.source_type == GrantSource.PURCHASE,
+            SubscriptionEntitlement.source_id == purchase_id,
+        )
+    )
+    if existing is not None:
+        return existing
+    keys = list(product.entitlement_keys)
+    latest = await session.scalar(
+        select(func.max(SubscriptionEntitlement.ends_at)).where(
+            SubscriptionEntitlement.user_id == user_id,
+            SubscriptionEntitlement.entitlement_key.in_(keys),
+            SubscriptionEntitlement.revoked_at.is_(None),
+            SubscriptionEntitlement.ends_at > paid_at,
+        )
+    )
+    starts = max(paid_at, latest) if latest is not None else paid_at
+    ends = add_period(starts, product.period or "P1M")
+    for key in keys:
+        await session.execute(
+            insert(SubscriptionEntitlement)
+            .values(
+                user_id=user_id,
+                entitlement_key=key,
+                source_type=GrantSource.PURCHASE,
+                source_id=purchase_id,
+                starts_at=starts,
+                ends_at=ends,
+            )
+            .on_conflict_do_nothing()
+        )
+    await session.execute(
+        update(Purchase).where(Purchase.id == purchase_id).values(expires_at=ends)
+    )
+    return ends
+
+
+async def _grant_web_purchase(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    product: Product,
+    reference: str,
+    environment: str,
+    paid_at: datetime,
+) -> uuid.UUID:
+    """A paid one-time web purchase: the content for good, or a pass. Once per payment."""
+    kind = "non_renewing" if product.kind == ProductKind.NON_RENEWING else "non_consumable"
+    inserted = await session.execute(
+        insert(Purchase)
+        .values(
+            user_id=user_id,
+            provider="stripe",
+            product_id=product.id,
+            transaction_id=reference,
+            kind=kind,
+            purchased_at=paid_at,
+            environment=environment,
+        )
+        .on_conflict_do_nothing(index_elements=[Purchase.provider, Purchase.transaction_id])
+        .returning(Purchase.id)
+    )
+    purchase_id = inserted.scalar_one_or_none()
+    if purchase_id is None:
+        found = await session.scalar(
+            select(Purchase.id).where(
+                Purchase.provider == "stripe", Purchase.transaction_id == reference
+            )
+        )
+        assert found is not None
+        return found
+    if product.kind == ProductKind.NON_RENEWING:
+        await _grant_pass(session, user_id, product, purchase_id, paid_at)
+    else:
+        await _grant_permanent(session, user_id, product, purchase_id, paid_at)
+    return purchase_id
+
+
+async def _revoke_paid_by(
+    session: AsyncSession,
+    charge: StripeCharge,
+    invoice: StripeInvoice | None,
+    now: datetime,
+) -> bool:
+    """Revoke what a charge paid for: its invoice's subscription, or its one-time purchase."""
+    revoked = False
+    if invoice is not None and invoice.subscription:
+        subscription = await session.scalar(
+            select(Subscription)
+            .where(
+                Subscription.provider == "stripe",
+                Subscription.original_transaction_id == invoice.subscription,
+                Subscription.status != SubscriptionStatus.REVOKED,
+            )
+            .with_for_update()
+        )
+        if subscription is not None:
+            subscription.status = SubscriptionStatus.REVOKED
+            subscription.revoked_at = now
+            subscription.last_event_at = now
+            product = await session.get(Product, subscription.product_id)
+            assert product is not None
+            await session.flush()
+            await _materialize(session, subscription, product, now=now)
+            revoked = True
+    if charge.payment_intent:
+        purchase = await session.scalar(
+            select(Purchase)
+            .where(
+                Purchase.provider == "stripe",
+                Purchase.transaction_id == charge.payment_intent,
+                Purchase.status == "verified",
+            )
+            .with_for_update()
+        )
+        if purchase is not None:
+            purchase.status = "refunded"
+            purchase.refunded_at = now
+            await session.execute(
+                update(SubscriptionEntitlement)
+                .where(
+                    SubscriptionEntitlement.source_type == GrantSource.PURCHASE,
+                    SubscriptionEntitlement.source_id == purchase.id,
+                    SubscriptionEntitlement.revoked_at.is_(None),
+                )
+                .values(revoked_at=now)
+            )
+            revoked = True
+    return revoked
+
+
+async def _duplicate_web_subscriptions(session: AsyncSession, row_id: uuid.UUID) -> list[str]:
+    """Stripe ids of extra live web subscriptions next to this one; the oldest one stays."""
+    row = await session.get(Subscription, row_id)
+    if row is None or row.user_id is None:
+        return []
+    live = [SubscriptionStatus.ACTIVE, SubscriptionStatus.IN_GRACE_PERIOD]
+    rows = list(
+        await session.scalars(
+            select(Subscription)
+            .where(
+                Subscription.user_id == row.user_id,
+                Subscription.provider == "stripe",
+                Subscription.status.in_(live),
+            )
+            .order_by(Subscription.created_at, Subscription.id)
+        )
+    )
+    return [r.original_transaction_id for r in rows[1:]]
+
+
+async def _record_transaction(
+    session: AsyncSession,
+    *,
+    user_id: uuid.UUID | None,
+    provider: str,
+    environment: str,
+    kind: str,
+    status: str,
+    reference: str,
+    occurred_at: datetime,
+    product_id: uuid.UUID | None = None,
+    subscription_id: uuid.UUID | None = None,
+    purchase_id: uuid.UUID | None = None,
+    amount_minor: int | None = None,
+    currency: str | None = None,
+    reason: str | None = None,
+    receipt_url: str | None = None,
+) -> None:
+    """Insert or move a ledger row forward (pending → failed → succeeded; open → won or lost)."""
+    receipt = receipt_url if receipt_url and receipt_url.startswith("https://") else None
+    row = await session.scalar(
+        select(BillingTransaction)
+        .where(
+            BillingTransaction.provider == provider,
+            BillingTransaction.kind == kind,
+            BillingTransaction.provider_reference == reference,
+        )
+        .with_for_update()
+    )
+    if row is None:
+        await session.execute(
+            insert(BillingTransaction)
+            .values(
+                user_id=user_id,
+                provider=provider,
+                environment=environment,
+                kind=kind,
+                status=status,
+                provider_reference=reference,
+                product_id=product_id,
+                subscription_id=subscription_id,
+                purchase_id=purchase_id,
+                amount_minor=amount_minor,
+                currency=currency,
+                reason=reason,
+                receipt_url=receipt,
+                occurred_at=occurred_at,
+            )
+            .on_conflict_do_nothing(
+                index_elements=[
+                    BillingTransaction.provider,
+                    BillingTransaction.kind,
+                    BillingTransaction.provider_reference,
+                ]
+            )
+        )
+        return
+    if _STATUS_RANK[status] < _STATUS_RANK[row.status]:
+        return
+    row.status = status
+    row.product_id = row.product_id or product_id
+    row.subscription_id = row.subscription_id or subscription_id
+    row.purchase_id = row.purchase_id or purchase_id
+    row.amount_minor = amount_minor if amount_minor is not None else row.amount_minor
+    row.currency = currency or row.currency
+    row.reason = reason or row.reason
+    row.receipt_url = receipt or row.receipt_url
+    row.occurred_at = occurred_at if status in ("succeeded", "won", "lost") else row.occurred_at
+    row.updated_at = occurred_at
+
+
+def _notice(session: AsyncSession, user_id: uuid.UUID, variant: str, reference: str) -> None:
+    """Tell the traveller (notifications module, via the outbox): payment_failed,
+    payment_confirmed, refunded or expiring."""
+    platform.record_event(
+        session,
+        aggregate_type="user",
+        aggregate_id=user_id,
+        event_type=NOTICE_EVENT,
+        payload={"user_id": str(user_id), "variant": variant, "reference": reference},
+    )
+
+
 async def _stripe_customer(session: AsyncSession, user_id: uuid.UUID) -> str | None:
     customer: str | None = await session.scalar(
         select(BillingCustomer.provider_customer_id).where(
@@ -1093,13 +1929,20 @@ async def _stripe_customer(session: AsyncSession, user_id: uuid.UUID) -> str | N
 
 
 async def purge_expired(session: AsyncSession) -> int:
-    """Processed store notifications after 90 days (the subscription keeps the state)."""
-    return await platform.delete_batch(
+    """Processed store notifications after 90 days (the subscription keeps the state), and
+    finished Checkout sessions after 30 (the ledger keeps the payments)."""
+    events = await platform.delete_batch(
         session,
         BillingEvent,
         (BillingEvent.processing_status.in_(["processed", "ignored"]))
         & (BillingEvent.received_at < platform.ago(days=90)),
     )
+    checkouts = await platform.delete_batch(
+        session,
+        CheckoutSession,
+        (CheckoutSession.status != "open") & (CheckoutSession.created_at < platform.ago(days=30)),
+    )
+    return events + checkouts
 
 
 __all__ = [
@@ -1122,6 +1965,8 @@ async def export_user_data(
     """Personal-data export (BL-6.03; AUTH-011): what this module holds about the user."""
     from app.modules.billing.models import (
         BillingCustomer,
+        BillingTransaction,
+        CheckoutSession,
         Purchase,
         Subscription,
         SubscriptionEntitlement,
@@ -1137,6 +1982,12 @@ async def export_user_data(
         "purchases": await platform.export_rows(session, Purchase, Purchase.user_id == user_id),
         "entitlements": await platform.export_rows(
             session, SubscriptionEntitlement, SubscriptionEntitlement.user_id == user_id
+        ),
+        "transactions": await platform.export_rows(
+            session, BillingTransaction, BillingTransaction.user_id == user_id
+        ),
+        "checkout_sessions": await platform.export_rows(
+            session, CheckoutSession, CheckoutSession.user_id == user_id
         ),
     }
 
@@ -1223,24 +2074,30 @@ def _admin_product(row: Product) -> AdminProductOut:
         platform=row.platform,  # type: ignore[arg-type]
         kind=row.kind,  # type: ignore[arg-type]
         plan_key=row.plan_key,  # type: ignore[arg-type]
-        period=row.period,  # type: ignore[arg-type]
+        period=row.period,
         entitlement_keys=list(row.entitlement_keys or []),
         active=row.active,
+        title=dict(row.title or {}),
+        description=dict(row.description or {}),
+        sort_order=row.sort_order,
     )
 
 
 async def admin_products(session: AsyncSession) -> list[AdminProductOut]:
-    rows = await session.scalars(select(Product).order_by(Product.platform, Product.sku))
+    rows = await session.scalars(
+        select(Product).order_by(Product.platform, Product.sort_order, Product.sku)
+    )
     return [_admin_product(r) for r in rows]
 
 
 async def create_product(session: AsyncSession, request: CreateProductRequest) -> AdminProductOut:
-    """Auto-renewable products are premium plans with a period; one-off purchases have neither."""
-    renewable = request.kind == "auto_renewable"
-    if renewable != (request.plan_key is not None) or renewable != (request.period is not None):
+    """Subscriptions and passes are Premium for a period (BILL-010); content purchases have
+    neither a plan nor a period. Prices live with the store or Stripe (the SKU)."""
+    timed = request.kind in ("auto_renewable", "non_renewing")
+    if timed != (request.plan_key is not None) or timed != (request.period is not None):
         raise AppError(
             ErrorCode.VALIDATION_FAILED,
-            "Subscriptions need a plan and a period; one-off purchases have neither.",
+            "Subscriptions and passes need a plan and a period; content purchases have neither.",
             errors=[FieldError(field="/period", code="invalid", message="Check plan and period.")],
         )
     exists = await session.scalar(
@@ -1256,6 +2113,9 @@ async def create_product(session: AsyncSession, request: CreateProductRequest) -
         period=request.period,
         entitlement_keys=list(dict.fromkeys(request.entitlement_keys)),
         active=True,
+        title=dict(request.title),
+        description=dict(request.description),
+        sort_order=request.sort_order,
     )
     session.add(row)
     await session.flush()
@@ -1342,5 +2202,11 @@ async def update_product(
         row.active = request.active
     if request.entitlement_keys is not None:
         row.entitlement_keys = list(dict.fromkeys(request.entitlement_keys))
+    if request.title is not None:
+        row.title = dict(request.title)
+    if request.description is not None:
+        row.description = dict(request.description)
+    if request.sort_order is not None:
+        row.sort_order = request.sort_order
     await session.flush()
     return _admin_product(row)

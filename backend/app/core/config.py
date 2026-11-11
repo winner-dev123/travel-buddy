@@ -147,9 +147,19 @@ class Settings(BaseSettings):
     google_play_service_account_json: SecretStr | None = None
     google_pubsub_audience: str | None = None
     google_pubsub_service_account: str | None = None
+    # Stripe (ADR-0012, ADR-0031). Production takes a live key (sk_live_/rk_live_, ideally a
+    # restricted key) and every other environment a test key; the webhook then accepts only
+    # events of the same mode. The API version pins the shape of everything we read.
     stripe_secret_key: SecretStr | None = None
     stripe_webhook_secret: SecretStr | None = None
     stripe_api_base: str = "https://api.stripe.com"
+    stripe_api_version: str = Field(
+        default="2025-02-24.acacia", pattern=r"^\d{4}-\d{2}-\d{2}(\.[a-z]+)?$"
+    )
+    # A partial refund keeps what was bought unless this is on; a full one always revokes it.
+    stripe_partial_refund_revokes: bool = False
+    # A second web subscription to the same plan is cancelled; refund its first payment too.
+    stripe_refund_duplicates: bool = True
 
     # AI orchestration (BL-4.02, ADR-0024). "auto": Claude when ANTHROPIC_API_KEY is set, the
     # deterministic fake in development and test, otherwise disabled (503 ai_unavailable).
@@ -264,6 +274,22 @@ class Settings(BaseSettings):
             )
         if problems:
             raise ValueError("; ".join(problems))
+        return self
+
+    @model_validator(mode="after")
+    def _separate_stripe_modes(self) -> Settings:
+        """Test and live money never mix (BILL-012): a live key only in production."""
+        if self.stripe_secret_key is None:
+            return self
+        key = self.stripe_secret_key.get_secret_value()
+        live = key.startswith(("sk_live_", "rk_live_"))
+        test = key.startswith(("sk_test_", "rk_test_"))
+        if not (live or test):
+            raise ValueError("STRIPE_SECRET_KEY must be a Stripe secret or restricted key")
+        if self.app_env is AppEnv.PRODUCTION and not live:
+            raise ValueError("STRIPE_SECRET_KEY must be a live key in production")
+        if self.app_env is not AppEnv.PRODUCTION and live:
+            raise ValueError("STRIPE_SECRET_KEY must be a test key outside production")
         return self
 
     @model_validator(mode="after")

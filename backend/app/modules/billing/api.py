@@ -1,15 +1,17 @@
-"""``/v1/billing``: products, entitlements, purchase verification and restore (BL-3.01/3.02)."""
+"""``/v1/billing``: products, entitlements, purchases, web checkout, purchase history and store
+webhooks (BL-3.01/3.02/3.14/3.15)."""
 
 from __future__ import annotations
 
 import uuid
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Body, Depends, Header, Request, Response, status
+from fastapi import APIRouter, Body, Depends, Header, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.feature_flags import Flag, gate
+from app.core.i18n import parse_accept_language
 from app.core.ratelimit import rate_limited
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
@@ -23,6 +25,7 @@ from app.modules.billing.schemas import (
     GoogleRestoreRequest,
     GoogleVerifyRequest,
     ProductList,
+    TransactionPage,
     VerifyPurchaseResult,
 )
 from app.modules.billing.service import BillingService
@@ -33,6 +36,7 @@ _BILLING = gate(Flag.BILLING)
 dev_router = APIRouter(prefix="/v1/dev/billing", tags=["dev"])
 
 CurrentPrincipal = Annotated[Principal, Depends(get_principal)]
+AcceptLanguage = Annotated[str | None, Header(alias="Accept-Language", max_length=200)]
 VerifyBody = Annotated[AppleVerifyRequest | GoogleVerifyRequest, Field(discriminator="provider")]
 RestoreBody = Annotated[AppleRestoreRequest | GoogleRestoreRequest, Field(discriminator="provider")]
 NO_STORE = {"Cache-Control": "no-store"}
@@ -47,9 +51,32 @@ def _service(request: Request) -> BillingService:
 
 @router.get("/products", dependencies=_BILLING, response_model=ProductList)
 async def list_products(
-    request: Request, platform: Literal["ios", "android", "web"]
+    request: Request,
+    platform: Literal["ios", "android", "web"],
+    accept_language: AcceptLanguage = None,
 ) -> ProductList:
-    return ProductList(data=await _service(request).products(platform))
+    """Offers in display order with localized titles; web offers carry Stripe's price."""
+    return ProductList(
+        data=await _service(request).products(platform, parse_accept_language(accept_language))
+    )
+
+
+@router.get("/transactions", response_model=TransactionPage)
+async def list_transactions(
+    request: Request,
+    principal: CurrentPrincipal,
+    cursor: Annotated[str | None, Query(max_length=2048)] = None,
+    limit: Annotated[int | None, Query(ge=1, le=100)] = None,
+    accept_language: AcceptLanguage = None,
+) -> JSONResponse:
+    """My payments, refunds and disputes across the stores and the web, newest first."""
+    page = await _service(request).transactions(
+        principal.user_id,
+        cursor=cursor,
+        limit=limit,
+        preferences=parse_accept_language(accept_language),
+    )
+    return JSONResponse(page.model_dump(mode="json"), headers=NO_STORE)
 
 
 @router.get("/entitlements", response_model=Entitlements, response_model_by_alias=True)

@@ -7,6 +7,8 @@ needs no job and past instants stay auditable.
 
 from __future__ import annotations
 
+import calendar
+import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
@@ -30,6 +32,8 @@ class ProviderName(StrEnum):
 
 class ProductKind(StrEnum):
     AUTO_RENEWABLE = "auto_renewable"
+    # A pass: paid once, Premium for a fixed period, never renews (BILL-010).
+    NON_RENEWING = "non_renewing"
     NON_CONSUMABLE = "non_consumable"
 
 
@@ -50,6 +54,40 @@ class StoreEvent(StrEnum):
 
 PERIODS = {"P1M": timedelta(days=30), "P1Y": timedelta(days=365)}
 GRACE = timedelta(days=16)  # the stores' maximum billing grace
+
+# ISO 8601 periods a product may have: a count of days, weeks, months or years (BILL-010).
+PERIOD_PATTERN = r"^P[1-9][0-9]{0,2}[DWMY]$"
+_PERIOD = re.compile(PERIOD_PATTERN)
+_APPROX_DAYS = {"D": 1, "W": 7, "M": 30, "Y": 365}
+
+
+def _split(period: str) -> tuple[int, str]:
+    if not _PERIOD.fullmatch(period):
+        raise ValueError(f"not a supported period: {period!r}")
+    return int(period[1:-1]), period[-1]
+
+
+def period_length(period: str | None) -> timedelta:
+    """A fixed length for a period (a month is 30 days, a year 365). Only a fallback for store
+    subscriptions until the store reports its own period end."""
+    count, unit = _split(period or "P1M")
+    return timedelta(days=count * _APPROX_DAYS[unit])
+
+
+def add_period(start: datetime, period: str) -> datetime:
+    """``start`` plus a period on the calendar: "P1M" from 31 January is 28 or 29 February, and
+    "P1Y" from 29 February is 28 February. Passes end exactly when the traveller expects."""
+    count, unit = _split(period)
+    if unit == "D":
+        return start + timedelta(days=count)
+    if unit == "W":
+        return start + timedelta(weeks=count)
+    months = count if unit == "M" else count * 12
+    index = start.month - 1 + months
+    year, month = start.year + index // 12, index % 12 + 1
+    day = min(start.day, calendar.monthrange(year, month)[1])
+    return start.replace(year=year, month=month, day=day)
+
 
 # Store-side events allowed from each state (anything else is recorded and ignored).
 _TRANSITIONS: dict[StoreEvent, dict[SubscriptionStatus, SubscriptionStatus]] = {

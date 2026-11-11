@@ -254,6 +254,7 @@ def create_app(
         media_storage=media_storage,
         push_sender=push_sender,
         ai=ai,
+        billing=build_billing_jobs(settings, database, clock, http_client),
     )
 
     app = FastAPI(
@@ -386,26 +387,16 @@ def create_app(
     app.state.billing_service = billing_service.BillingService(
         sessionmaker=database.sessionmaker,
         clock=clock,
-        stripe=StripeClient(
-            http_client,
-            secret_key=(
-                settings.stripe_secret_key.get_secret_value()
-                if settings.stripe_secret_key
-                else None
-            ),
-            webhook_secret=(
-                settings.stripe_webhook_secret.get_secret_value()
-                if settings.stripe_webhook_secret
-                else None
-            ),
-            api_base=settings.stripe_api_base,
-        ),
+        stripe=build_stripe_client(settings, http_client),
         web_origin=settings.public_site_url,
         usage=quota_usage,
         providers=billing_providers(settings, apple_verifier, google_play),
         apple=apple_verifier,
         google=google_play,
         google_push=google_push,
+        cursors=cursor_codec,
+        partial_refund_revokes=settings.stripe_partial_refund_revokes,
+        refund_duplicates=settings.stripe_refund_duplicates,
     )
     realtime_bus = build_realtime_bus(settings, redis)
     app.state.realtime_bus = realtime_bus
@@ -846,6 +837,36 @@ def build_realtime_bus(settings: Settings, redis: Redis | None) -> RealtimeBus:
     return MemoryBus()
 
 
+def build_stripe_client(settings: Settings, http_client: httpx.AsyncClient) -> StripeClient:
+    return StripeClient(
+        http_client,
+        secret_key=(
+            settings.stripe_secret_key.get_secret_value() if settings.stripe_secret_key else None
+        ),
+        webhook_secret=(
+            settings.stripe_webhook_secret.get_secret_value()
+            if settings.stripe_webhook_secret
+            else None
+        ),
+        api_base=settings.stripe_api_base,
+        api_version=settings.stripe_api_version,
+    )
+
+
+def build_billing_jobs(
+    settings: Settings, database: Database, clock: Clock, http_client: httpx.AsyncClient
+) -> billing_service.BillingService:
+    """Billing as the background jobs need it: Stripe reconciliation and expiry reminders."""
+    return billing_service.BillingService(
+        sessionmaker=database.sessionmaker,
+        clock=clock,
+        providers={},
+        stripe=build_stripe_client(settings, http_client),
+        partial_refund_revokes=settings.stripe_partial_refund_revokes,
+        refund_duplicates=settings.stripe_refund_duplicates,
+    )
+
+
 def build_job_runner(
     *,
     database: Database,
@@ -856,6 +877,7 @@ def build_job_runner(
     media_storage: ObjectStorage | None = None,
     push_sender: PushSender | None = None,
     ai: ai_service.AIService | None = None,
+    billing: billing_service.BillingService | None = None,
 ) -> JobRunner:
     """Event subscriptions and job handlers for every module (shared by the API and workers)."""
     router = EventRouter()
@@ -886,6 +908,8 @@ def build_job_runner(
     )
     handlers.update(abuse_signals.make_handlers(database.sessionmaker))
     handlers.update(groups_service.make_handlers(database.sessionmaker, clock))
+    if billing is not None:
+        handlers.update(billing.make_handlers())
     challenges_service.subscribe(router)
     handlers.update(
         data_exports.make_export_handlers(
@@ -939,6 +963,14 @@ def build_job_runner(
             timedelta(hours=6),
         )
     )
+    if billing is not None:
+        # Web subscriptions re-read daily and one reminder before Premium ends (BILL-006, 010).
+        periodic.append(
+            Periodic(billing_service.RECONCILE_JOB, billing_service.RECONCILE_JOB, DAILY)
+        )
+        periodic.append(
+            Periodic(billing_service.REMINDERS_JOB, billing_service.REMINDERS_JOB, DAILY)
+        )
     # Accounts whose 30-day grace ended are erased within the hour (AUTH-010: 30 + 7 days).
     periodic.append(
         Periodic(

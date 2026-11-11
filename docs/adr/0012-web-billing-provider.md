@@ -1,6 +1,6 @@
 # ADR-0012 — Web subscriptions through Stripe behind the billing provider port
 
-* **Status:** Proposed. The business must confirm the provider; the architecture holds for any card processor.
+* **Status:** Accepted (the owner chose Stripe; confirmed and extended by [ADR-0031](0031-payments-store-first-stripe-web-ledger.md), 2026-11-11).
 * **Date:** 2026-11-09
 * **Related:** [doc 02 §10](../02-system-architecture.md#10-entitlements), [07 — Subscription and entitlement policy](../07-subscription-entitlement-policy.md), [ADR-0006](0006-central-entitlement-evaluation.md)
 

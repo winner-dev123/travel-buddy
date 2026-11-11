@@ -1219,5 +1219,32 @@
       "system": "Folgt dem hellen oder dunklen Modus deines Telefons."
     },
     "hint": "Deine Auswahl wird auf diesem Telefon gespeichert."
+  },
+  "purchases": {
+    "title": "Kaufverlauf",
+    "empty": "Noch keine Käufe.",
+    "error": "Dein Kaufverlauf kann gerade nicht geladen werden.",
+    "receipt": "Beleg ansehen",
+    "amountInStore": "Betrag im Store-Beleg",
+    "kind": {
+      "payment": "Zahlung",
+      "refund": "Erstattung",
+      "dispute": "Rückbuchung"
+    },
+    "status": {
+      "pending": "Ausstehend",
+      "succeeded": "Bezahlt",
+      "failed": "Fehlgeschlagen",
+      "refunded": "Erstattet",
+      "dispute_open": "Rückbuchung wird geprüft",
+      "dispute_won": "Rückbuchung abgeschlossen",
+      "dispute_lost": "Rückbuchung erstattet"
+    },
+    "provider": {
+      "apple": "App Store",
+      "google": "Google Play",
+      "stripe": "Website",
+      "dev": "Test-Store"
+    }
   }
 }

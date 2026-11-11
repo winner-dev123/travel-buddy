@@ -1239,5 +1239,32 @@
       "system": "Suit le mode clair ou sombre de votre téléphone."
     },
     "hint": "Votre choix est conservé sur ce téléphone."
+  },
+  "purchases": {
+    "title": "Historique des achats",
+    "empty": "Aucun achat pour l'instant.",
+    "error": "Votre historique d'achats ne peut pas se charger pour le moment.",
+    "receipt": "Voir le reçu",
+    "amountInStore": "Montant sur le reçu de la boutique",
+    "kind": {
+      "payment": "Paiement",
+      "refund": "Remboursement",
+      "dispute": "Rétrofacturation"
+    },
+    "status": {
+      "pending": "En attente",
+      "succeeded": "Payé",
+      "failed": "Échec",
+      "refunded": "Remboursé",
+      "dispute_open": "Rétrofacturation en cours d'examen",
+      "dispute_won": "Rétrofacturation clôturée",
+      "dispute_lost": "Rétrofacturation remboursée"
+    },
+    "provider": {
+      "apple": "App Store",
+      "google": "Google Play",
+      "stripe": "Site web",
+      "dev": "Boutique de test"
+    }
   }
 }

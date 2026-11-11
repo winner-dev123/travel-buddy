@@ -39,14 +39,17 @@ def test_migrations_create_every_model_table() -> None:
 @pytest.mark.parametrize(("name", "literals"), _enum_checks(), ids=lambda v: str(v)[:60])
 def test_enum_check_constraints_match_python_enums(name: str, literals: frozenset[str]) -> None:
     text = _migrations()
-    sql_string = re.search(rf'"([^"]+)",\s*name="{name}"', text)  # sa.CheckConstraint("...", name=)
-    helper = re.search(rf'_check\(\s*"{name}",\s*"\w+",\s*\[([^\]]*)\]', text, re.DOTALL)
-    if sql_string:
-        found = frozenset(re.findall(r"'([a-z_]+)'", sql_string.group(1)))
-    elif helper:
-        found = frozenset(re.findall(r'"([a-z_]+)"', helper.group(1)))
-    else:
+    # A later migration may redefine a constraint (0046 added passes): the last definition wins.
+    definitions: list[tuple[int, frozenset[str]]] = [
+        (m.start(), frozenset(re.findall(r"'([a-z_]+)'", m.group(1))))
+        for m in re.finditer(rf'"([^"]+)",\s*name="{name}"', text)  # sa.CheckConstraint
+    ] + [
+        (m.start(), frozenset(re.findall(r'"([a-z_]+)"', m.group(1))))
+        for m in re.finditer(rf'_check\(\s*"{name}",\s*"\w+",\s*\[([^\]]*)\]', text, re.DOTALL)
+    ]
+    if not definitions:
         pytest.fail(f"{name} missing from migrations")
+    found = max(definitions, key=lambda d: d[0])[1]
     assert found == literals
 
 

@@ -744,10 +744,13 @@ erDiagram
   subscriptions ||--o{ subscription_entitlements : "source of"
   purchases ||--o{ subscription_entitlements : "source of"
   subscriptions ||--o{ billing_events : ""
+  users ||--o{ billing_transactions : pays
+  products ||--o{ billing_transactions : "for"
+  users ||--o{ billing_checkout_sessions : opens
 ```
 
 ### products
-`id`, `sku` (store product ID), `platform` (`ios`, `android`, `web`), `kind` (`auto_renewable`, `non_consumable`), `plan_key` (`premium` or NULL), `period` (`P1M`, `P1Y`, NULL), `entitlement_keys text[]`, `grants_content jsonb NULL` (guide/tour IDs for purchasables), `active bool`. `uq (platform, sku)`.
+`id`, `sku` (store product ID or Stripe price ID), `platform` (`ios`, `android`, `web`), `kind` (`auto_renewable`, `non_renewing` (a pass), `non_consumable`), `plan_key` (`premium` or NULL), `period` (ISO 8601 `P{n}D|W|M|Y` or NULL; check `period_format`), `entitlement_keys text[]`, `grants_content jsonb NULL` (guide/tour IDs for purchasables), `active bool`, `title jsonb` and `description jsonb` (per locale), `sort_order smallint`. `uq (platform, sku)`. Migration 0046 added passes, free periods and the display fields.
 
 ### subscriptions
 | Column | Notes |
@@ -770,7 +773,13 @@ erDiagram
 `id`, `user_id`, `entitlement_key` (`premium`, `content:<id>`), `source_type` (`subscription`, `purchase`, `promo`, `admin_grant`), `source_id`, `starts_at`, `ends_at NULL`, `revoked_at NULL`, `created_at`. `ix (user_id, entitlement_key) WHERE revoked_at IS NULL`. `uq (source_type, source_id, entitlement_key)`.
 
 ### purchases
-`id`, `user_id`, `provider`, `product_id`, `transaction_id`, `kind` (`non_consumable`, `subscription_purchase`, `renewal`), `purchased_at`, `refunded_at NULL`, `environment`, `status` (`verified`, `refunded`, `revoked`), `created_at`. `uq (provider, transaction_id)`.
+`id`, `user_id`, `provider`, `product_id`, `transaction_id` (store transaction, or the Stripe payment intent), `kind` (`non_consumable`, `non_renewing`, `subscription_purchase`, `renewal`), `purchased_at`, `expires_at NULL` (when a pass's Premium ends), `refunded_at NULL`, `environment`, `status` (`verified`, `refunded`, `revoked`), `created_at`. `uq (provider, transaction_id)`.
+
+### billing_transactions (the money ledger, BILL-011)
+`id`, `user_id FK SET NULL`, `provider`, `environment`, `kind` (`payment`, `refund`, `dispute`), `status` (`pending`, `succeeded`, `failed`, `open`, `won`, `lost`; only ever moves forward), `provider_reference` (Stripe invoice, payment intent, charge or dispute; store transaction), `product_id FK RESTRICT NULL`, `subscription_id FK SET NULL`, `purchase_id FK SET NULL`, `amount_minor bigint NULL` (null when a store doesn't report it), `currency` (ISO 4217, upper case), `reason` (`purchase`, `renewal`, `change`, `refund`, `partial_refund`, dispute reason), `receipt_url` (https only), `occurred_at`, `created_at`, `updated_at`. `uq (provider, kind, provider_reference)`, `ix (user_id, occurred_at)`.
+
+### billing_checkout_sessions
+`id`, `user_id FK CASCADE`, `product_id FK RESTRICT`, `provider` (`stripe`), `provider_session_id`, `url` (https), `status` (`open`, `complete`, `expired`), `expires_at`, `completed_at NULL`, `created_at`. `uq (provider, provider_session_id)`, `ix (user_id, product_id)`. An open session is handed out again instead of a second payment; finished rows are purged after 30 days.
 
 ### billing_customers
 `user_id FK RESTRICT`, `provider` (`stripe`), `provider_customer_id`, `created_at`. PK `(user_id, provider)`, `uq (provider, provider_customer_id)`. Maps a user to the Stripe Customer used for Checkout and the Customer Portal. Card data is never stored (hosted Checkout, PCI SAQ-A).
@@ -849,7 +858,7 @@ erDiagram
 | audit_logs | 24 months (configurable per jurisdiction) | Partition drop |
 | post_translations | 90 days (recomputed on demand) | Scheduler job |
 | ai_generations (metadata) | 13 months; `result` (validated proposal) 30 days; `params` until the generation finishes; `pending` rows fail after a day. Payload debug capture 30 days | Scheduler job |
-| billing_events, purchases, subscriptions | 7 years (accounting/tax; legal review). Pseudonymized on account deletion | Pseudonymization job |
+| billing_events, purchases, subscriptions, billing_transactions | 7 years (accounting/tax; legal review). Pseudonymized on account deletion | Pseudonymization job |
 | Messages | Life of the conversation. On account deletion: bodies and attachments of the deleted user are erased, and the sender is shown as "Deleted user" | Hidden at read time as soon as the account is gone; the daily `retention.messaging` job turns them into tombstones and drops direct chats with no members left |
 | Posts, comments, media | Until deleted by the user, then hard-deleted after 30 days (undo window and moderation evidence). Removed-by-moderation content is kept as evidence per `content_reports` | Deletion job |
 | Account deletion | 30-day grace (`pending_deletion`, reversible by login), then irreversible deletion or anonymization across all modules through a `UserDeletionRequested` saga | Saga in `identity` + per-module handlers |

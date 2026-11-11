@@ -262,8 +262,52 @@ _PREMIUM_TITLE: Final[Text] = {
     "de": "Gruppen-Premium",
 }
 
+# Notices about the traveller's own plan (billing.notice; BILL-011).
+_PLAN_TITLE: Final[Text] = {
+    "en": "Your Premium",
+    "es": "Tu Premium",
+    "pt-BR": "Seu Premium",
+    "fr": "Votre Premium",
+    "de": "Dein Premium",
+}
+BILLING_VARIANTS: Final[frozenset[str]] = frozenset(
+    {"payment_failed", "payment_confirmed", "refunded", "expiring"}
+)
+
 # subscription_notice variants; bodies may use {group}.
 SUBSCRIPTION_BODIES: Final[dict[str, Text]] = {
+    "payment_failed": {
+        "en": "Your payment didn't go through. Check your payment method so you don't lose access.",
+        "es": "Tu pago no se completó. Revisa tu método de pago para no perder el acceso.",
+        "pt-BR": "Seu pagamento não foi concluído. Verifique sua forma de pagamento para não "
+        "perder o acesso.",
+        "fr": "Votre paiement n'a pas abouti. Vérifiez votre moyen de paiement pour ne pas "
+        "perdre l'accès.",
+        "de": "Deine Zahlung ist nicht durchgegangen. Prüfe deine Zahlungsmethode, damit du "
+        "den Zugang behältst.",
+    },
+    "payment_confirmed": {
+        "en": "Your payment went through. Premium is active.",
+        "es": "Tu pago se confirmó. Premium está activo.",
+        "pt-BR": "Seu pagamento foi confirmado. O Premium está ativo.",
+        "fr": "Votre paiement est confirmé. Premium est actif.",
+        "de": "Deine Zahlung ist eingegangen. Premium ist aktiv.",
+    },
+    "refunded": {
+        "en": "Your payment was refunded, so the purchase it paid for has ended.",
+        "es": "Te reembolsamos el pago, así que la compra que cubría ha terminado.",
+        "pt-BR": "Seu pagamento foi reembolsado, então a compra que ele pagou terminou.",
+        "fr": "Votre paiement a été remboursé : l'achat correspondant a pris fin.",
+        "de": "Deine Zahlung wurde erstattet, daher endet der damit bezahlte Kauf.",
+    },
+    "expiring": {
+        "en": "Your Premium ends in a few days. Renew to keep your benefits.",
+        "es": "Tu Premium termina en unos días. Renuévalo para conservar tus ventajas.",
+        "pt-BR": "Seu Premium termina em poucos dias. Renove para manter seus benefícios.",
+        "fr": "Votre Premium se termine dans quelques jours. Renouvelez-le pour garder vos "
+        "avantages.",
+        "de": "Dein Premium endet in ein paar Tagen. Verlängere es, um deine Vorteile zu behalten.",
+    },
     "group_premium_grace": {
         "en": "The owner's Premium has ended. {group} keeps its admin tools for a grace period.",
         "es": "El Premium del propietario ha terminado. {group} conserva sus herramientas de "
@@ -435,7 +479,8 @@ def render(
             str(payload.get("variant")), SUBSCRIPTION_BODIES["group_premium_lapsed"]
         )
         group = str(payload.get("group_name") or "")
-        return _pick(_PREMIUM_TITLE, locale), _pick(body, locale).format(group=group)
+        title = _PLAN_TITLE if payload.get("variant") in BILLING_VARIANTS else _PREMIUM_TITLE
+        return _pick(title, locale), _pick(body, locale).format(group=group)
     if kind in ("challenge_started", "challenge_result"):
         default = "started" if kind == "challenge_started" else "cancelled"
         title, body = CHALLENGE_TEXTS.get(str(payload.get("variant")), CHALLENGE_TEXTS[default])

@@ -1,6 +1,6 @@
 # ADR-0017: Direct App Store / Play integration behind a billing port
 
-- **Status:** Proposed (PRD Q-2)
+- **Status:** Accepted (built in BL-3.01 and BL-6.01; confirmed by [ADR-0031](0031-payments-store-first-stripe-web-ledger.md), 2026-11-11)
 - **Date:** 2026-11-09
 - **Requirements:** BILL-002..006
 - **Related:** [ADR-0012](0012-web-billing-provider.md) (Stripe for web purchases, behind the same port)

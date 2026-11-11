@@ -8,7 +8,7 @@ data loading and caching, and must never read subscription tables directly.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
@@ -197,6 +197,24 @@ class EntitlementSnapshot:
         return status.used + amount <= status.limit
 
 
+def _chain_end(grants: Sequence[Grant], end: datetime) -> datetime | None:
+    """Follow grants that start by the time the current one ends (a stacked pass, a renewal
+    already paid), so "Premium until" is the end of the unbroken run, not of the first piece."""
+    while True:
+        following = [
+            g
+            for g in grants
+            if g.starts_at <= end
+            and (g.effective_end is None or g.effective_end > end)
+            and g.is_active_at(g.starts_at)
+        ]
+        if not following:
+            return end
+        if any(g.effective_end is None for g in following):
+            return None
+        end = max(g.effective_end for g in following if g.effective_end is not None)
+
+
 def evaluate(
     grants: Iterable[Grant], *, at: datetime, policy: EntitlementPolicy = DEFAULT_POLICY
 ) -> EntitlementSnapshot:
@@ -206,6 +224,7 @@ def evaluate(
     ``premium`` grant yields the premium plan.
     """
     require_aware(at, "at")
+    grants = list(grants)
     active = [g for g in grants if g.is_active_at(at)]
     premium = [g for g in active if g.entitlement_key == PREMIUM_ENTITLEMENT]
     plan = Plan.PREMIUM if premium else Plan.FREE
@@ -215,6 +234,10 @@ def evaluate(
         ends = [g.effective_end for g in premium]
         # An open-ended grant (e.g. lifetime promo) means there is no end date to show.
         premium_until = None if any(e is None for e in ends) else max(e for e in ends if e)
+        if premium_until is not None:
+            premium_until = _chain_end(
+                [g for g in grants if g.entitlement_key == PREMIUM_ENTITLEMENT], premium_until
+            )
 
     return EntitlementSnapshot(
         evaluated_at=at,

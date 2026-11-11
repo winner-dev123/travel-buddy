@@ -154,6 +154,9 @@ Verification column: **U** = unit test, **I** = integration test, **S** = securi
 | T-BILL-04 | Forged webhook | Apple: signed payload verification. Google: Pub/Sub push with OIDC token audience check | U |
 | T-BILL-05 | Replay or out-of-order webhooks | Idempotent inbox. `last_event_at` ordering guard. Re-fetch authoritative status | I |
 | T-BILL-06 | Refund abuse | Immediate revocation. Pattern flagging | I, O |
+| T-BILL-07 | Test payments grant real access (or live payments land in test) | A live key only in production and a test key elsewhere, checked at boot; events of the other mode are stored as ignored (`wrong_mode`) (BILL-012, ADR-0031) | S, E |
+| T-BILL-08 | Double charge (two tabs, retries, races) | `409` when already owned or renewing; open Checkout session reused; per-user advisory lock; duplicate web subscription cancelled and refunded; daily reconciliation (BILL-006) | O |
+| T-BILL-09 | Forged or tampered Stripe event body | HMAC over the raw body before parsing; only id, type, mode and object id are read, and the object is fetched from Stripe's API | S, T |
 
 ### 4.7 Challenges and prizes (A6)
 

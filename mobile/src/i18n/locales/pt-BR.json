@@ -1239,5 +1239,32 @@
       "system": "Segue o modo claro ou escuro do seu telefone."
     },
     "hint": "Sua escolha fica guardada neste telefone."
+  },
+  "purchases": {
+    "title": "Histórico de compras",
+    "empty": "Nenhuma compra ainda.",
+    "error": "Seu histórico de compras não pode ser carregado agora.",
+    "receipt": "Ver recibo",
+    "amountInStore": "Valor no recibo da loja",
+    "kind": {
+      "payment": "Pagamento",
+      "refund": "Reembolso",
+      "dispute": "Contestação"
+    },
+    "status": {
+      "pending": "Pendente",
+      "succeeded": "Pago",
+      "failed": "Falhou",
+      "refunded": "Reembolsado",
+      "dispute_open": "Contestação em análise",
+      "dispute_won": "Contestação encerrada",
+      "dispute_lost": "Contestação reembolsada"
+    },
+    "provider": {
+      "apple": "App Store",
+      "google": "Google Play",
+      "stripe": "Site",
+      "dev": "Loja de teste"
+    }
   }
 }

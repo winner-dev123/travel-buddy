@@ -6,7 +6,14 @@ import uuid
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
+
+from app.core.i18n import SUPPORTED_LOCALES
+from app.core.pagination import PageInfo
+from app.modules.billing.domain import PERIOD_PATTERN
+
+ProductKindName = Literal["auto_renewable", "non_renewing", "non_consumable"]
+Period = Annotated[str, StringConstraints(pattern=PERIOD_PATTERN)]
 
 
 class _Model(BaseModel):
@@ -62,6 +69,15 @@ class GrantedContent(_Model):
     id: uuid.UUID
 
 
+class ProductPrice(_Model):
+    """Contract ``ProductPrice``: what Stripe charges for a web offer. Store apps show the store's
+    own localized price instead (never this one)."""
+
+    amount_minor: int
+    currency: str
+    recurring: bool
+
+
 class ProductOut(_Model):
     """Contract ``Product`` (prices come from the store or Stripe, never from here)."""
 
@@ -69,11 +85,15 @@ class ProductOut(_Model):
     sku: str
     platform: Literal["ios", "android", "web"]
     provider: Literal["apple", "google", "stripe", "dev"]
-    kind: Literal["auto_renewable", "non_consumable"]
+    kind: ProductKindName
     plan_key: Literal["premium"] | None
-    period: Literal["P1M", "P1Y"] | None
+    # ISO 8601: renewal period of a subscription, validity of a pass (BILL-010).
+    period: str | None
     entitlement_keys: list[str]
     grants_content: list[GrantedContent] = Field(default_factory=list)
+    title: str | None = None
+    description: str | None = None
+    price: ProductPrice | None = None
 
 
 class ProductList(_Model):
@@ -84,7 +104,7 @@ class PurchaseOut(_Model):
     id: uuid.UUID
     provider: Literal["apple", "google", "stripe", "dev"]
     product_sku: str
-    kind: Literal["non_consumable", "subscription_purchase", "renewal"]
+    kind: Literal["non_consumable", "non_renewing", "subscription_purchase", "renewal"]
     status: Literal["verified", "refunded", "revoked"]
     purchased_at: datetime
 
@@ -176,19 +196,36 @@ EntitlementKey = Annotated[
 ]
 
 
+LocalizedText = Annotated[dict[str, str], Field(max_length=len(SUPPORTED_LOCALES))]
+
+
+def _check_localized(value: dict[str, str] | None, limit: int) -> dict[str, str] | None:
+    if value is None:
+        return None
+    for locale, text in value.items():
+        if locale not in SUPPORTED_LOCALES:
+            raise ValueError(f"unsupported locale {locale!r}")
+        if not text.strip() or len(text) > limit:
+            raise ValueError(f"{locale}: 1 to {limit} characters")
+    return {locale: text.strip() for locale, text in value.items()}
+
+
 class AdminProductOut(BaseModel):
-    """Contract ``AdminProduct`` (ADM-005)."""
+    """Contract ``AdminProduct`` (ADM-005, BILL-010)."""
 
     model_config = ConfigDict(frozen=True)
 
     id: uuid.UUID
     sku: str
     platform: Literal["ios", "android", "web"]
-    kind: Literal["auto_renewable", "non_consumable"]
+    kind: ProductKindName
     plan_key: Literal["premium"] | None
-    period: Literal["P1M", "P1Y"] | None
+    period: str | None
     entitlement_keys: list[str]
     active: bool
+    title: dict[str, str] = Field(default_factory=dict)
+    description: dict[str, str] = Field(default_factory=dict)
+    sort_order: int = 0
 
 
 class AdminProductList(BaseModel):
@@ -202,17 +239,72 @@ class CreateProductRequest(BaseModel):
 
     sku: str = Field(min_length=3, max_length=200)
     platform: Literal["ios", "android", "web"]
-    kind: Literal["auto_renewable", "non_consumable"]
+    kind: ProductKindName
     plan_key: Literal["premium"] | None = None
-    period: Literal["P1M", "P1Y"] | None = None
+    period: Period | None = None
     entitlement_keys: list[EntitlementKey] = Field(min_length=1, max_length=10)
+    title: LocalizedText = Field(default_factory=dict)
+    description: LocalizedText = Field(default_factory=dict)
+    sort_order: int = Field(default=0, ge=0, le=1000)
+
+    @field_validator("title")
+    @classmethod
+    def _title(cls, value: dict[str, str]) -> dict[str, str]:
+        return _check_localized(value, 80) or {}
+
+    @field_validator("description")
+    @classmethod
+    def _description(cls, value: dict[str, str]) -> dict[str, str]:
+        return _check_localized(value, 300) or {}
 
 
 class UpdateProductRequest(BaseModel):
+    """Prices and periods live with the store or Stripe: changing them means a new product."""
+
     model_config = ConfigDict(extra="forbid")
 
     active: bool | None = None
     entitlement_keys: list[EntitlementKey] | None = Field(default=None, min_length=1, max_length=10)
+    title: LocalizedText | None = None
+    description: LocalizedText | None = None
+    sort_order: int | None = Field(default=None, ge=0, le=1000)
+
+    @field_validator("title")
+    @classmethod
+    def _title(cls, value: dict[str, str] | None) -> dict[str, str] | None:
+        return _check_localized(value, 80)
+
+    @field_validator("description")
+    @classmethod
+    def _description(cls, value: dict[str, str] | None) -> dict[str, str] | None:
+        return _check_localized(value, 300)
+
+
+class TransactionProduct(_Model):
+    id: uuid.UUID
+    kind: ProductKindName
+    period: str | None
+    title: str | None
+
+
+class TransactionOut(_Model):
+    """Contract ``BillingTransaction`` (BILL-011): one payment, refund or dispute of mine."""
+
+    id: uuid.UUID
+    provider: Literal["apple", "google", "stripe", "dev"]
+    kind: Literal["payment", "refund", "dispute"]
+    status: Literal["pending", "succeeded", "failed", "open", "won", "lost"]
+    amount_minor: int | None
+    currency: str | None
+    reason: str | None
+    receipt_url: str | None
+    product: TransactionProduct | None
+    occurred_at: datetime
+
+
+class TransactionPage(_Model):
+    data: list[TransactionOut]
+    page: PageInfo
 
 
 QuotaKey = Literal[

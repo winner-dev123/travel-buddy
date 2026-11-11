@@ -16,6 +16,7 @@ export const accountKeys = {
   sessions: ['me', 'sessions'] as const,
   followRequests: ['me', 'follow-requests'] as const,
   entitlements: ['me', 'entitlements'] as const,
+  transactions: ['me', 'billing-transactions'] as const,
 };
 
 /** Re-read `Me` after a settings change so every screen shows the saved state. */
@@ -298,6 +299,35 @@ export interface Entitlements {
 
 export function fetchEntitlements(client: ApiClient): Promise<Entitlements> {
   return client.get<Entitlements>('/v1/billing/entitlements');
+}
+
+/** One payment, refund or chargeback of mine (BILL-011). Amounts are in minor units. */
+export interface BillingTransaction {
+  id: string;
+  provider: 'apple' | 'google' | 'stripe' | 'dev';
+  kind: 'payment' | 'refund' | 'dispute';
+  status: 'pending' | 'succeeded' | 'failed' | 'open' | 'won' | 'lost';
+  amount_minor: number | null;
+  currency: string | null;
+  reason: string | null;
+  receipt_url: string | null;
+  product: {
+    id: string;
+    kind: 'auto_renewable' | 'non_renewing' | 'non_consumable';
+    period: string | null;
+    title: string | null;
+  } | null;
+  occurred_at: string;
+}
+
+export function fetchTransactions(
+  client: ApiClient,
+  cursor?: string,
+): Promise<{
+  data: BillingTransaction[];
+  page: { next_cursor: string | null; has_more: boolean };
+}> {
+  return client.get('/v1/billing/transactions', { query: cursor ? { cursor } : {} });
 }
 
 /** Pending follow requests to my private account (POST-006). */

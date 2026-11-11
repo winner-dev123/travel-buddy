@@ -86,6 +86,7 @@ The worker makes the cron tick and after-response ticks unnecessary (§1.1): lea
 * **IP-to-city data (ADR-0030):** the image downloads DB-IP "IP to City Lite" (CC BY 4.0, about 130 MB) at build time and sets `IP_GEOLOCATION_DB`. It refreshes with every rebuilt image. If the download fails the build goes on without it, and `GET /v1/users/me/approximate-location` answers 422 until the next build.
 * **Maps:** the Companions map loads MapLibre GL JS from jsDelivr (pinned, with Subresource Integrity) and tiles from OpenFreeMap. Neither needs a key or a variable.
 * **Catalog:** Finland, Helsinki and Kallio were added to the launch catalog on 2026-11-11 (44 destinations).
+* **Payments (ADR-0031):** staging uses Stripe **test mode** only. The checklist is in §1.14.
 
 **Cutover:**
 
@@ -253,6 +254,41 @@ writing to the database. **Remove it before launch**: delete the six accounts (t
 | `spain/barcelona` | @sofia.rumbo | [Town-city-cityscape-vacation-amusement-park-tower-1103525.jpg](https://commons.wikimedia.org/wiki/File:Town-city-cityscape-vacation-amusement-park-tower-1103525.jpg) | Unknown author | CC0 1.0 |
 | `thailand/bangkok` | @priya.packs | [Temple Wat Arun 1.jpg](https://commons.wikimedia.org/wiki/File:Temple_Wat_Arun_1.jpg) | Welcome to Thailand | CC0 1.0 |
 | `australia/sydney` | @priya.packs | [Sydney Opera House. (19667312379).jpg](https://commons.wikimedia.org/wiki/File:Sydney_Opera_House._(19667312379).jpg) | Bernard Spragg. NZ from Christchurch, New Zealand | CC0 1.0 |
+
+### 1.14 Stripe (payments, ADR-0031)
+
+Staging runs Stripe in **test mode**. Production gets its own Railway environment, database, live keys, webhook endpoint and Prices. The API refuses to start with a live key outside production or a test key in production.
+
+**Variables** (Railway, `api` and `worker`; never in the apps or the repository):
+
+| Variable | Value |
+|---|---|
+| `STRIPE_SECRET_KEY` | A **restricted key** (`rk_test_…` on staging, `rk_live_…` in production) with write access to Customers, Checkout Sessions, Customer portal, Subscriptions and Refunds, and read access to Products, Prices, Invoices, Charges and Disputes |
+| `STRIPE_WEBHOOK_SECRET` | The endpoint's signing secret (`whsec_…`) |
+| `STRIPE_API_VERSION` | Leave the default (`2025-02-24.acacia`): every request and every object read uses it |
+| `STRIPE_PARTIAL_REFUND_REVOKES` | `false` (default): a partial refund keeps the purchase |
+| `STRIPE_REFUND_DUPLICATES` | `true` (default): a duplicate web subscription is cancelled and refunded |
+
+**Webhook endpoint:** `https://<api>/v1/billing/webhooks/stripe`, subscribed to these events:
+
+* `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`;
+* `customer.subscription.created`, `.updated`, `.deleted`, `.paused`, `.resumed`;
+* `invoice.paid`, `invoice.payment_failed`;
+* `charge.refunded`, `charge.dispute.created`, `charge.dispute.closed`.
+
+The endpoint's own API version doesn't matter, because objects are re-read from the API.
+
+**Offers:** create a Product and a Price in Stripe for each web offer. Then register each Price ID as the SKU of a `web` product through `POST /v1/admin/products` (kind, period, titles, order). Test and live Prices have different IDs, so each environment has its own rows.
+
+**Dashboard settings to decide:**
+
+* payment methods (cards, Pix, boleto);
+* Smart Retries, and what happens after the last failed retry;
+* Customer Portal (cancel at period end, plan switching);
+* receipt emails, the statement descriptor and Checkout branding;
+* Stripe Tax. Stripe doesn't issue Brazilian fiscal invoices (NF-e or NFS-e).
+
+**Local testing:** `stripe listen --forward-to localhost:8000/v1/billing/webhooks/stripe` prints a test `whsec_` for `.env.local`. `stripe trigger checkout.session.completed` and similar commands exercise the handlers.
 
 ## 2. Runtime topology (production reference)
 

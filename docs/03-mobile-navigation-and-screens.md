@@ -288,6 +288,7 @@ Offline: **Works offline** (fully functional from local data) · **Cached read-o
 | SCR-114 | Safety center (guidance, how reporting works) | `/settings/safety` | 1 | Guest / User | Works offline (bundled copy) | — | SAFE |
 | SCR-116 | Help and legal (support contact, help centre, terms, privacy, guidelines, version) | `/settings/help` | 6 | User | Online only | `GET /v1/client-config` (`support`, `legal`) | AUTH |
 | SCR-117 | Appearance (dark, light or match the phone) | `/settings/appearance` | 6 | User | Works offline (kept on the device) | — | NFR-008 |
+| SCR-118 | Purchase history (payments, refunds, chargebacks; receipts) | `/settings/purchases` | 3 | User | Online only | `GET /v1/billing/transactions` | BILL-004, BILL-011 |
 | SCR-115 | Badges and achievements | `/profile/badges` | 5 | User | Cached read-only | badges endpoint | CHAL |
 
 ### Modals and system
@@ -343,6 +344,7 @@ screen was folded into another one; ✅ built, ⚠️ partly, ⬜ not yet (reaso
 | SCR-102 saved | ✅ | `/saved` (places), `/bookmarks` (stories) |
 | SCR-103 trips, SCR-104 trip and itinerary editor | ✅ | `/trips` (plan with AI or `/trips/new` by hand), `/trips/[id]` (offline-first editor, sharing, replanning); upcoming trips at `/settings/upcoming` |
 | SCR-105 downloads | ✅ | `/downloads` |
+| SCR-118 purchase history | ✅ | `/settings/purchases`, from Subscription: payments, refunds and chargebacks across the stores and the website, newest first, amounts in the payment's currency, receipt links; plan notices open Subscription |
 | SCR-108..114, SCR-116, SCR-117 settings | ✅ | `/settings/language`, `/settings/notifications`, `/settings/sessions`, `/settings/subscription` (read-only until the purchase SDK), `/settings/blocked`, `/settings/delete-account`, `/settings/data`, `/settings/safety`, `/settings/help`, `/settings/appearance` |
 | SCR-115 badges | ✅ | On profiles; rewards at `/rewards` |
 | SCR-130 compose, SCR-131 report | ✅ | `/compose` (up to ten photos; a destination and optionally a public spot in it), `/report` |

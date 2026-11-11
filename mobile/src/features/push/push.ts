@@ -11,7 +11,7 @@ export type NotificationRoute =
       params: { id: string };
     }
   | { pathname: '/trips/review'; params: { generation: string } }
-  | { pathname: '/settings/data' }
+  | { pathname: '/settings/data' | '/settings/subscription' }
   | null;
 
 export function notificationRoute(
@@ -20,6 +20,7 @@ export function notificationRoute(
 ): NotificationRoute {
   if (!entityType) return null;
   if (entityType === 'data_request') return { pathname: '/settings/data' }; // export ready
+  if (entityType === 'subscription') return { pathname: '/settings/subscription' }; // BILL-011
   if (!entityId) return null;
   if (entityType === 'ai_generation') {
     return { pathname: '/trips/review', params: { generation: entityId } };

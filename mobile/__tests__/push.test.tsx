@@ -56,6 +56,8 @@ it('maps notification targets to screens', () => {
     pathname: '/groups/[id]',
     params: { id: 'g1' },
   });
+  // Plan notices (payment failed, expiring, refunded) open the subscription screen (BILL-011).
+  expect(notificationRoute('subscription', null)).toEqual({ pathname: '/settings/subscription' });
   expect(notificationRoute('ai_generation', 'gen1')).toEqual({
     pathname: '/trips/review',
     params: { generation: 'gen1' },
