@@ -1,6 +1,8 @@
 name: mobile
 
 on:
+  # Also runnable by hand (Actions > Run workflow), for example after a CI outage.
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
