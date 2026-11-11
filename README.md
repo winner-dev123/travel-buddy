@@ -10,6 +10,7 @@ AI travel guide and social travel community (working name). It combines destinat
 |---|---|---|
 | [backend/](backend/) | Python 3.12 / FastAPI modular monolith, PostgreSQL + PostGIS, Redis | [backend/README.md](backend/README.md) |
 | [mobile/](mobile/) | React Native (Expo SDK 58, TypeScript strict) | [mobile/README.md](mobile/README.md) |
+| [admin/](admin/) | Staff console: React + Vite static app on its own origin (moderation, accounts, Premium, billing, audit; ADR-0032) | [docs/11 §1.15](docs/11-infrastructure-deployment.md#115-staff-console-adr-0032) |
 | [contracts/](contracts/) | OpenAPI 3.1 REST contract + realtime JSON Schemas (normative) | [contracts/README.md](contracts/README.md) |
 | [docs/](docs/) | PRD, architecture, ERD, API, realtime, entitlements, threat model, backlog, tests, infra, ADRs | [docs/README.md](docs/README.md) |
 | [infra/](infra/) | Local Docker support, Terraform layout | [docs/11](docs/11-infrastructure-deployment.md) |
@@ -46,6 +47,7 @@ cd ../mobile && npm install && npm start   # Expo dev server
 |---|---|---|
 | Backend | `ruff check`, `ruff format --check`, `mypy`, `pytest` | `.github/workflows/ci-backend.yml` |
 | Mobile | `npm run typecheck`, `npm run lint`, `npm run test:ci` | `.github/workflows/ci-mobile.yml` |
+| Staff console | `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` (in `admin/`) | `.github/workflows/ci-admin.yml` |
 | Web | `npm run check`, `npm run gen:types:check`, `npm run build`, Playwright + axe | `.github/workflows/ci-web.yml` |
 | Secrets | gitleaks | `.github/workflows/ci-security.yml` |
 | Traceability | `python scripts/trace_requirements.py --enforce-phases 0` | ci-backend |

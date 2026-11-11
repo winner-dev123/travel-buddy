@@ -1,0 +1,51 @@
+name: admin
+
+# The staff console (admin/, ADR-0032): a standalone npm project, like mobile/.
+
+on:
+  # Also runnable by hand (Actions > Run workflow), for example after a CI outage.
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "admin/**"
+      - ".github/workflows/ci-admin.yml"
+  pull_request:
+    paths:
+      - "admin/**"
+      - ".github/workflows/ci-admin.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: admin-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: admin
+
+jobs:
+  check:
+    name: lint + types + test + build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - name: Build (staging values are public)
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: https://api-production-9dfc555a.up.railway.app
+          VITE_FIREBASE_API_KEY: AIzaSyCZvEdF4YFoKIWs2QPz1P7RI6kINcQ7G2s
+          VITE_ENVIRONMENT_LABEL: staging
+      - name: Dependency audit (runtime packages)
+        run: npm audit --omit=dev --audit-level=high

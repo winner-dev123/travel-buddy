@@ -305,6 +305,62 @@ railway run --service api -- python -m app.modules.billing.stripe_setup --apply 
 
 **Local testing:** `stripe listen --forward-to localhost:8000/v1/billing/webhooks/stripe` prints a test `whsec_` for `.env.local`. `stripe trigger checkout.session.completed` and similar commands exercise the handlers.
 
+### 1.15 Staff console (ADR-0032)
+
+The console (`admin/`) is a static app on Firebase Hosting: **https://travel-buddy-staff.web.app** (staging API). Production gets its own site, built with the production API URL.
+
+**Deploy** (from `admin/`, as a project owner or Firebase Hosting Admin):
+
+```
+VITE_API_BASE_URL=https://<api> VITE_FIREBASE_API_KEY=<public web key> VITE_ENVIRONMENT_LABEL=staging npm run build
+FIREBASE_ACCESS_TOKEN=$(gcloud auth print-access-token) \
+  node scripts/deploy-hosting.mjs --project travel-buddy-tb --site travel-buddy-staff --api https://<api>
+```
+
+The script sets the security headers. The CSP's `connect-src` is the API origin plus Firebase Authentication only, so a new API URL means a new deploy.
+
+**Once per Firebase project (two-step sign-in):**
+
+1. The owner upgrades to **Firebase Authentication with Identity Platform**: Firebase console → Authentication → Settings → Upgrade. It accepts terms, so the owner does it. It stays free for our volume, and TOTP has no per-use charge.
+2. Turn on TOTP (an operator with a gcloud token):
+
+   ```
+   curl -X PATCH -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+     -H "x-goog-user-project: travel-buddy-tb" -H "Content-Type: application/json" \
+     "https://identitytoolkit.googleapis.com/admin/v2/projects/travel-buddy-tb/config?updateMask=mfa" \
+     -d '{"mfa":{"state":"ENABLED","providerConfigs":[{"state":"ENABLED","totpProviderConfig":{"adjacentIntervals":5}}]}}'
+   ```
+
+   This lets accounts enroll; it doesn't force MFA on travellers.
+
+**API:** `CORS_ALLOWED_ORIGINS` (api service) must include the console origin, for example `["https://travel-buddy-staff.web.app"]`. The API already allows the `X-Audit-Justification` header.
+
+**First superadmin:**
+
+1. Register a staff account in the app or on the website and verify its email address. Use a separate staff address: TOTP accounts can't sign in to the mobile app yet.
+2. Run:
+
+   ```
+   railway run --service api -- python -m app.modules.admin.grant_role --email <staff email> --role superadmin
+   railway run --service api -- python -m app.modules.admin.grant_role --email <staff email> --role superadmin --apply
+   ```
+
+   The first command is a dry run. The second gives the role, audited as a `system` action.
+3. Sign in to the console. Without a second factor it shows a QR code for an authenticator app (only for accounts with a platform role). Then sign in with password and code.
+
+Superadmins give later roles on the console's Staff page.
+
+**Roles:**
+
+| Role | Can |
+|---|---|
+| support | Read reports, accounts and moderation history |
+| moderator | Also resolve reports, act on content and authors, suspend and reinstate |
+| admin | Also ban, give Premium, handle privacy requests, see payments, the audit log and the message filter |
+| superadmin | Also manage plans and staff roles |
+
+The API enforces 30 minutes idle and 12 hours in total per staff session (ADM-008).
+
 ## 2. Runtime topology (production reference)
 
 ```mermaid

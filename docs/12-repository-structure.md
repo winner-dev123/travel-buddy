@@ -11,7 +11,8 @@
 .
 ├── backend/                 # Python modular monolith (API, later realtime/worker/scheduler)
 ├── mobile/                  # Expo React Native app (standalone npm project; → apps/mobile in BL-0.20)
-├── apps/web/                # Next.js web app + admin (web workstream; npm workspace)
+├── admin/                   # Staff console: React + Vite static app on its own origin (standalone npm project; ADR-0032)
+├── apps/web/                # Next.js public site and traveller web app (web workstream; npm workspace)
 ├── packages/                # Shared TS packages (web workstream; platform-neutral ones reusable by mobile)
 ├── contracts/
 │   ├── openapi/openapi.yaml # Normative REST contract (ADR-0002)
@@ -23,7 +24,7 @@
 │   ├── docker/              # Local container support (Postgres init scripts)
 │   └── terraform/           # Cloud-neutral module layout (docs/11 §4)
 ├── scripts/                 # Repo tooling (traceability matrix, …)
-├── .github/workflows/       # ci-backend, ci-mobile, ci-security (+ ci-web by web workstream)
+├── .github/workflows/       # ci-backend, ci-mobile, ci-admin, ci-security (+ ci-web by web workstream)
 ├── docker-compose.yml       # Local PostGIS, Redis, MinIO (+ optional API profile)
 ├── package.json             # npm workspaces root: apps/*, packages/* (web workstream)
 └── README.md
@@ -33,7 +34,7 @@
 
 | Path | Owner | Rule |
 |---|---|---|
-| `backend/`, `contracts/`, `infra/`, `mobile/`, `docs/01–12`, `docker-compose.yml`, `ci-backend.yml`, `ci-mobile.yml`, `ci-security.yml`, root `README.md` | Backend/mobile workstream | Others request changes |
+| `backend/`, `contracts/`, `infra/`, `mobile/`, `admin/`, `docs/01–17`, `docker-compose.yml`, `ci-backend.yml`, `ci-mobile.yml`, `ci-admin.yml`, `ci-security.yml`, root `README.md` | Backend/mobile workstream | Others request changes |
 | `apps/web/`, `packages/*`, root `package.json`/lockfile/ESLint/Prettier/tsconfig, `docs/web/*`, `ci-web.yml` | Web workstream | Others request changes |
 | `.gitignore`, `docs/adr/README.md` | Shared | Append only |
 

@@ -3,7 +3,7 @@
 Status of the store requirements for the mobile app (BL-6.06), with the facts the store forms need.
 Update it whenever the app gains a permission, an SDK or a data flow.
 
-**Status (2026-11-10):** the policy features exist in the backend and mostly in the app. Before
+**Status (2026-11-11):** the policy features exist in the backend, the app and the staff console. Before
 the first submission, close the gaps listed in [§6](#6-gaps-before-the-first-submission).
 
 ## 1. User-generated content (App Store Review Guideline 1.2, Google Play UGC policy)
@@ -14,7 +14,7 @@ the first submission, close the gaps listed in [§6](#6-gaps-before-the-first-su
 | Report content and people | `POST /v1/reports` for users, posts, comments, messages, groups and challenges (SAFE-002); the app reports profiles, stories, comments and messages from their menus (SCR-131) | ✅ |
 | Block abusive users | `PUT /v1/users/{id}/block` hides profiles, posts, messages, trips and challenges both ways (SAFE-001); the app blocks from the profile after a confirmation and lists blocked people | ✅ |
 | Users control their own content | Authors edit and delete their stories and comments in the app; story authors can remove comments on their stories; feed "hide / not interested"; group admins remove and restrict members | ✅ |
-| Act on reports within 24 hours | Moderation queue ordered by priority (SAFE-003), staff tools and audit; `GET /v1/admin/ops/summary` shows the oldest open report | ✅ tooling · ⚠️ staffing rota needed |
+| Act on reports within 24 hours | Moderation queue ordered by priority (SAFE-003), audit, and the staff console (ADR-0032, https://travel-buddy-staff.web.app): queue, evidence, actions on content and authors, the oldest waiting report on the overview | ✅ tooling · ⚠️ staffing rota and the first staff accounts needed |
 | Published contact information | Profile → Help & legal (SCR-116): support email (`support` in `/v1/client-config`, `SUPPORT_EMAIL`), help centre link once `SUPPORT_URL` is set, terms, privacy policy and guidelines | ✅ app · ⚠️ store listing and public help page |
 | Terms with zero tolerance for abuse | Community guidelines URL from `/v1/client-config` (`legal.community_guidelines_url`), accepted at sign-up | ✅ (legal copy pending) |
 
@@ -73,6 +73,20 @@ today. If one is added, update this table and the label.
 | Optional collection | Discovery location and post translation are opt-in (consents) |
 
 ## 6. Gaps before the first submission
+
+**Google Play specifics (checked 2026-11-11):**
+
+* **Developer account:** register an **organization** account for the company (needs a D-U-N-S number, which can take up to 30 days). A personal account created after 13 Nov 2023 must first run a closed test with at least 12 opted-in testers for 14 days before production access.
+* **Target API level:** new apps and updates must target Android 16 (API 36) since 31 Aug 2026. The app targets 36 (React Native 0.88 defaults) ✅.
+* **Child Safety Standards policy (social apps):** publish a public web page with standards that explicitly prohibit child sexual abuse and exploitation (CSAE). It must also explain how to report it in the app and how we act, including reporting CSAM to the authorities. Name a child-safety point of contact in Play Console. In-app reporting exists, and the staff console puts `minor_safety` reports first with a warning ✅.
+* **Release build:** an Android App Bundle (AAB) signed with an upload key and Play App Signing. The current APK workflow builds debug-signed test APKs only.
+* **Play Console declarations:**
+  * Data safety (§5);
+  * content rating questionnaire, declaring user-generated content and messaging between users;
+  * target audience 18+;
+  * ads (none);
+  * app access (a reviewer demo account);
+  * the account deletion web link (§2).
 
 1. **Push notifications:** the app is ready (`expo-notifications`: permission asked in context
    on the Notifications screen, never at launch; token registered per session to
