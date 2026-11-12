@@ -37,6 +37,17 @@ Travellers asked for a way to send a small present in a chat: a picture they cho
 - Clients that render messages (the web app) need the `gift` kind and the `gift` field on `Message`. The contract and the generated web types are updated. Until the web shows the pictures, it can show the gift's name.
 - Opening works from the wrapped bubble with a short reveal animation. It shows at once and is confirmed by the server. It retries on a dropped connection; if the server refuses, the gift goes back to wrapped with a message.
 
+## Amendment (2026-11-12): opening effects
+
+The sender also picks what plays on screen when the gift is opened: **flower petals** (the default), a **water splash**, **confetti** or **hearts**.
+
+- The choice is stored with the gift (`messages.gift_effect`, migration 0048) and returned as `gift.effect`. `SendMessageRequest.gift_effect` and the `message.send` frame take it; when it is omitted, the gift opens with petals. Gifts sent before effects existed were set to petals.
+- Like the catalog, the list of effects is checked by the API, not the database, so a new effect is an app release plus one enum value. An app that doesn't know an effect plays petals.
+- The apps draw the effects: a full-screen layer over the chat that never takes touches, is hidden from screen readers, and runs on the native animation driver for about three to four seconds. Petals, drops and hearts are small bundled sprites (`mobile/assets/gifts/effects`); confetti and ripples are plain shapes.
+- It plays for the recipient when they tap to open, and for the sender when the opening arrives while that chat is open. Tapping an opened gift plays it again. Picking an effect in the panel plays a preview.
+- Nothing plays when the system asks for reduced motion.
+- The effect isn't shown on a wrapped gift, so it stays a surprise. Once opened, the gift's caption shows the effect's emoji.
+
 ## Alternatives considered
 
 - **Sticker packs downloaded from the server.** More flexible, but a gift wouldn't show offline until downloaded, and it needs a media pipeline and moderation for packs. Rejected for now.

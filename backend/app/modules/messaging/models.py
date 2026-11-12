@@ -109,6 +109,9 @@ class Message(Base):
         CheckConstraint("(kind = 'gift') = (gift_code IS NOT NULL)", name="gift_code_per_kind"),
         CheckConstraint("char_length(gift_code) <= 32", name="gift_code_length"),
         CheckConstraint("gift_opened_at IS NULL OR kind = 'gift'", name="gift_opened_per_kind"),
+        # The effect the sender chose for the opening; every gift has one.
+        CheckConstraint("(kind = 'gift') = (gift_effect IS NOT NULL)", name="gift_effect_per_kind"),
+        CheckConstraint("char_length(gift_effect) <= 32", name="gift_effect_length"),
         Index(
             "ix_messages__thread",
             "thread_root_id",
@@ -138,6 +141,7 @@ class Message(Base):
     kind: Mapped[str] = mapped_column(Text, server_default=text("'text'"))
     body: Mapped[str | None] = mapped_column(Text)
     gift_code: Mapped[str | None] = mapped_column(Text)
+    gift_effect: Mapped[str | None] = mapped_column(Text)
     gift_opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     reply_to_message_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("messages.id", ondelete="SET NULL")

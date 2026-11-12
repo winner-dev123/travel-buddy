@@ -2,6 +2,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
+import { AccessibilityInfo } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ApiNetworkError, ApiProblem } from '@/api';
@@ -100,12 +101,23 @@ function message(id: string, seq: number, sender: typeof bo, overrides: Partial<
   } satisfies Message as Message;
 }
 
-function gift(id: string, seq: number, sender: typeof bo, openedAt: string | null = null) {
+function gift(
+  id: string,
+  seq: number,
+  sender: typeof bo,
+  openedAt: string | null = null,
+  effect: string = 'petals',
+) {
   return message(id, seq, sender, {
     kind: 'gift',
     body: null,
-    gift: { code: 'coffee', opened_at: openedAt },
+    gift: { code: 'coffee', effect, opened_at: openedAt },
   });
+}
+
+// The effect is hidden from screen readers, so look for it among hidden elements too.
+function playing(effect: string) {
+  return screen.queryByTestId(`gift-effect-${effect}`, { includeHiddenElements: true });
 }
 
 function serve(convo: Conversation, messages: Message[]) {
@@ -166,6 +178,8 @@ function fakeSocket(reply: (type: string, data: Record<string, unknown>) => Serv
 
 beforeEach(async () => {
   jest.clearAllMocks();
+  // React Native's mock is shared, so a test that turns "reduce motion" on can't leak it.
+  jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(false);
   useSessionStore.getState().setSignedIn(me);
   useOutboxStore.setState({ items: [] });
   useRealtimeStore.setState({ status: 'idle', typing: {} });
@@ -213,6 +227,13 @@ describe('emoji and gifts panel', () => {
     await fireEvent.press(screen.getByTestId('gift-coffee'));
     expect(screen.getByTestId('gift-coffee')).toBeSelected();
     expect(screen.getByTestId('gift-snow_globe')).not.toBeSelected();
+
+    // Then how it opens: petals unless changed, and each pick plays as a preview.
+    expect(screen.getByTestId('effect-petals')).toBeSelected();
+    await fireEvent.press(screen.getByTestId('effect-splash'));
+    expect(screen.getByTestId('effect-splash')).toBeSelected();
+    expect(screen.getByTestId('effect-splash')).toHaveProp('accessibilityLabel', 'Water splash');
+    expect(playing('splash')).toBeTruthy();
     await fireEvent.press(screen.getByTestId('gift-send'));
 
     await waitFor(() =>
@@ -223,14 +244,35 @@ describe('emoji and gifts panel', () => {
           client_message_id: 'client-1',
           kind: 'gift',
           gift: 'coffee',
+          gift_effect: 'splash',
         },
       }),
     );
     const bubble = await screen.findByTestId('message-m2');
     expect(bubble).toHaveProp('accessibilityLabel', 'You sent: Coffee');
+    expect(bubble).toHaveTextContent('Coffee💦');
     expect(screen.getByTestId('gift-status-m2')).toHaveTextContent('Not opened yet');
     expect(screen.queryByTestId('expression-tray')).toBeNull();
     expect(mockApi.post).not.toHaveBeenCalled();
+  });
+
+  it('asks for the opening effect only once a gift is chosen', async () => {
+    serve(conversation(), [message('m1', 1, bo)]);
+    await renderUi(<Chat />);
+    await screen.findByText('Hi!');
+    await fireEvent.press(screen.getByTestId('chat-tray'));
+    await fireEvent.press(screen.getByTestId('tray-tab-gifts'));
+    expect(
+      screen.getByText('Gifts are free. They arrive wrapped and open with a tap.'),
+    ).toBeTruthy();
+    expect(screen.queryByTestId('effect-petals')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('gift-flowers'));
+    expect(screen.getByText('Opening effect')).toBeTruthy();
+    for (const effect of ['petals', 'splash', 'confetti', 'hearts']) {
+      expect(screen.getByTestId(`effect-${effect}`)).toBeTruthy();
+    }
+    expect(playing('petals')).toBeNull(); // nothing plays until a pick
   });
 
   it('shows a gift at once while offline and sends it over REST when it can', async () => {
@@ -252,7 +294,7 @@ describe('emoji and gifts panel', () => {
     await waitFor(() =>
       expect(mockApi.post).toHaveBeenCalledWith('/v1/conversations/c1/messages', {
         idempotencyKey: 'client-1',
-        body: { client_message_id: 'client-1', kind: 'gift', gift: 'cake' },
+        body: { client_message_id: 'client-1', kind: 'gift', gift: 'cake', gift_effect: 'petals' },
       }),
     );
     expect(useOutboxStore.getState().items).toEqual([
@@ -274,22 +316,57 @@ describe('emoji and gifts panel', () => {
 });
 
 describe('receiving a gift', () => {
-  it('arrives wrapped and opens with a tap', async () => {
-    serve(conversation(), [gift('g1', 1, bo)]);
-    mockApi.post.mockResolvedValue(gift('g1', 1, bo, '2026-11-12T10:00:00Z'));
+  it('arrives wrapped and opens with a tap, with the effect the sender chose', async () => {
+    serve(conversation(), [gift('g1', 1, bo, null, 'hearts')]);
+    mockApi.post.mockResolvedValue(gift('g1', 1, bo, '2026-11-12T10:00:00Z', 'hearts'));
     await renderUi(<Chat />);
 
     const wrapped = await screen.findByTestId('message-g1');
     expect(wrapped).toHaveProp('accessibilityLabel', 'Gift from Bo, still wrapped. Open it.');
     expect(wrapped).toHaveTextContent(/Bo sent you a gift.*Tap to open/);
+    expect(screen.queryByText(/💖/)).toBeNull(); // no spoiler while it's wrapped
+    expect(playing('hearts')).toBeNull();
     await fireEvent.press(wrapped);
 
+    expect(playing('hearts')).toBeTruthy();
     expect(mockApi.post).toHaveBeenCalledWith('/v1/conversations/c1/messages/g1/gift/open');
     await waitFor(() =>
       expect(screen.getByTestId('message-g1')).toHaveProp('accessibilityLabel', 'Gift: Coffee'),
     );
-    expect(screen.getByTestId('message-g1')).toHaveTextContent('Coffee');
+    expect(screen.getByTestId('message-g1')).toHaveTextContent('Coffee💖');
     expect(screen.queryByText('Tap to open')).toBeNull();
+  });
+
+  it('plays an opened gift again with a tap', async () => {
+    serve(conversation(), [gift('g1', 1, bo, '2026-11-12T10:00:00Z', 'confetti')]);
+    await renderUi(<Chat />);
+    const opened = await screen.findByTestId('message-g1');
+    expect(opened).toHaveProp('accessibilityHint', 'Plays its opening effect again.');
+    expect(playing('confetti')).toBeNull();
+    await fireEvent.press(opened);
+    expect(playing('confetti')).toBeTruthy();
+    expect(mockApi.post).not.toHaveBeenCalled(); // already open
+  });
+
+  it('opens with petals when the effect is one this app does not know', async () => {
+    serve(conversation(), [gift('g1', 1, bo, null, 'fireworks')]);
+    mockApi.post.mockResolvedValue(gift('g1', 1, bo, '2026-11-12T10:00:00Z', 'fireworks'));
+    await renderUi(<Chat />);
+    await fireEvent.press(await screen.findByTestId('message-g1'));
+    expect(playing('petals')).toBeTruthy();
+  });
+
+  it('skips the effect when the system asks for less motion', async () => {
+    jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
+    serve(conversation(), [gift('g1', 1, bo, null, 'splash')]);
+    mockApi.post.mockResolvedValue(gift('g1', 1, bo, '2026-11-12T10:00:00Z', 'splash'));
+    await renderUi(<Chat />);
+    await fireEvent.press(await screen.findByTestId('message-g1'));
+    await waitFor(() =>
+      expect(screen.getByTestId('message-g1')).toHaveProp('accessibilityLabel', 'Gift: Coffee'),
+    );
+    expect(playing('splash')).toBeNull();
+    expect(screen.getByTestId('message-g1').props.accessibilityHint).toBeUndefined();
   });
 
   it('puts the bow back when the gift cannot be opened', async () => {
@@ -311,10 +388,11 @@ describe('receiving a gift', () => {
 
   it('tells the sender once it has been opened', async () => {
     const client = testClient();
-    serve(conversation(), [message('m1', 1, bo), gift('g2', 2, meSummary)]);
+    serve(conversation(), [message('m1', 1, bo), gift('g2', 2, meSummary, null, 'splash')]);
     await renderUi(<Chat />, client);
     expect(await screen.findByTestId('gift-status-g2')).toHaveTextContent('Not opened yet');
     expect(screen.getByTestId('message-g2')).toHaveProp('accessibilityLabel', 'You sent: Coffee');
+    expect(playing('splash')).toBeNull();
 
     // What a `message.updated` (change `gift_opened`) frame does to the cached history.
     await act(async () => {
@@ -323,7 +401,7 @@ describe('receiving a gift', () => {
           ? {
               ...old,
               data: old.data.map((m) =>
-                m.id === 'g2' ? gift('g2', 2, meSummary, '2026-11-12T10:00:00Z') : m,
+                m.id === 'g2' ? gift('g2', 2, meSummary, '2026-11-12T10:00:00Z', 'splash') : m,
               ),
             }
           : old,
@@ -331,5 +409,7 @@ describe('receiving a gift', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(screen.getByTestId('gift-status-g2')).toHaveTextContent('Opened');
+    // ...and sees the splash they chose play as it happens.
+    await waitFor(() => expect(playing('splash')).toBeTruthy());
   });
 });

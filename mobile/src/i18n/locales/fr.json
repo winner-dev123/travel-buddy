@@ -656,7 +656,10 @@
     "giftOpenedA11y": "Cadeau : {{gift}}",
     "giftOpened": "Ouvert",
     "giftNotOpened": "Pas encore ouvert",
-    "giftOpenFailed": "Le cadeau n'a pas pu être ouvert. Réessayez."
+    "giftOpenFailed": "Le cadeau n'a pas pu être ouvert. Réessayez.",
+    "giftEffect": "Effet à l'ouverture",
+    "giftEffectHint": "Affiche un aperçu.",
+    "giftReplayHint": "Rejoue son effet d'ouverture."
   },
   "gifts": {
     "coffee": "Café",
@@ -668,6 +671,12 @@
     "snow_globe": "Boule à neige",
     "coconut": "Noix de coco",
     "unknown": "Cadeau"
+  },
+  "giftEffects": {
+    "petals": "Pétales de fleurs",
+    "splash": "Éclaboussure d'eau",
+    "confetti": "Confettis",
+    "hearts": "Cœurs"
   },
   "groups": {
     "title": "Groupes",

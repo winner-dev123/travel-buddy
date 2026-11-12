@@ -71,10 +71,13 @@ envelope = {
         "MessageKind": {"enum": ["text", "image", "system", "announcement", "gift"]},
         "GiftCode": {"enum": ["coffee", "postcard", "flowers", "ice_cream", "cake", "boarding_pass", "snow_globe", "coconut"],
                      "description": "DM-016 gift catalog; the apps ship the pictures."},
+        "GiftEffect": {"enum": ["petals", "splash", "confetti", "hearts"],
+                       "description": "DM-016 effect that plays when a gift is opened, chosen by the sender."},
         "MessageGift": obj({
             "code": {"$ref": "#/$defs/GiftCode"},
+            "effect": {"$ref": "#/$defs/GiftEffect"},
             "opened_at": {"anyOf": [{"$ref": "#/$defs/Timestamp"}, {"type": "null"}]},
-        }, ["code", "opened_at"]),
+        }, ["code", "effect", "opened_at"]),
         "Message": obj({
             "id": {"$ref": "#/$defs/Uuid"},
             "conversation_id": {"$ref": "#/$defs/Uuid"},
@@ -137,6 +140,7 @@ frames = {
             "kind": {"enum": ["text", "image", "gift"], "default": "text"},
             "body": {"type": "string", "minLength": 1, "maxLength": 4000},
             "gift": ref("GiftCode"),
+            "gift_effect": ref("GiftEffect"),
             "attachment_media_ids": {"type": "array", "minItems": 1, "maxItems": 10, "items": ref("Uuid")},
             "reply_to_message_id": ref("Uuid"),
             "thread_root_id": ref("Uuid"),

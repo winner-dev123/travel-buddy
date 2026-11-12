@@ -15,8 +15,9 @@
   message bodies.
 - Messages of deleted accounts keep their seq but show no content; the daily retention job turns
   them into tombstones (docs/04 §14).
-- Gifts (DM-016) are messages of kind ``gift`` naming a present from the catalog, sent in direct
-  chats only. The recipient opens one once (``gift.opened_at``); the sender sees it as
+- Gifts (DM-016) are messages of kind ``gift`` naming a present from the catalog and the effect
+  that plays when it is opened (petals unless the sender chose another), sent in direct chats
+  only. The recipient opens one once (``gift.opened_at``); the sender sees it as
   ``message.updated`` with change ``gift_opened``. A gift can be unsent but not edited.
 """
 
@@ -43,6 +44,7 @@ from app.modules.connections import service as connections
 from app.modules.identity import service as identity
 from app.modules.media import service as media
 from app.modules.messaging.domain import (
+    DEFAULT_GIFT_EFFECT,
     EDITABLE,
     MAX_PINS,
     USER_CONTENT,
@@ -538,7 +540,11 @@ async def _messages_out(
                 else None,
                 kind=m.kind,  # type: ignore[arg-type]
                 body=None if hidden else m.body,
-                gift=GiftOut(code=m.gift_code, opened_at=m.gift_opened_at)  # type: ignore[arg-type]
+                gift=GiftOut(
+                    code=m.gift_code,  # type: ignore[arg-type]
+                    effect=m.gift_effect or DEFAULT_GIFT_EFFECT,  # type: ignore[arg-type]
+                    opened_at=m.gift_opened_at,
+                )
                 if m.gift_code and not hidden
                 else None,
                 attachments=[refs[i] for i in attachments.get(m.id, []) if i in refs],
@@ -1001,6 +1007,9 @@ class MessagingService:
                 kind=kind or request.kind,
                 body=request.body,
                 gift_code=request.gift if request.kind == "gift" else None,
+                gift_effect=(request.gift_effect or DEFAULT_GIFT_EFFECT)
+                if request.kind == "gift"
+                else None,
                 reply_to_message_id=request.reply_to_message_id,
                 thread_root_id=request.thread_root_id,
             )

@@ -22,3 +22,13 @@ is that SVG rendered at 384 × 384 px, shown at up to 128 points (sharp, `densit
 compression level 9). Draw a new gift in `src/` and render it the same way. Adding one also
 needs its code in the API catalog (`Gift` in `backend/app/modules/messaging/domain.py`) and in
 `src/features/messages/gifts.ts`.
+
+## Opening effects
+
+`effects/` holds the sprites for the effects that play when a gift is opened
+(`src/features/messages/GiftEffectOverlay.tsx`): three petal colours (`petal_blush`,
+`petal_pink`, `petal_rose`), two water drops (`drop_blue`, `drop_light`) and two hearts
+(`heart_red`, `heart_pink`). Confetti and the splash ripples are drawn as plain shapes. The
+sources are in `src/effects/` (64 × 64 view box); each PNG is rendered at 96 × 96 px (sharp,
+`density` 108, compression level 9). A new effect also needs its code in the API
+(`GiftEffect` in `backend/app/modules/messaging/domain.py`) and in `GIFT_EFFECTS`.

@@ -4011,6 +4011,11 @@ export interface components {
          * @enum {string}
          */
         GiftCode: "coffee" | "postcard" | "flowers" | "ice_cream" | "cake" | "boarding_pass" | "snow_globe" | "coconut";
+        /**
+         * @description DM-016 effect that plays on screen when a gift is opened, chosen by the sender; the apps draw it.
+         * @enum {string}
+         */
+        GiftEffect: "petals" | "splash" | "confetti" | "hearts";
         /** @enum {string} */
         NotificationLevel: "all" | "mentions" | "none";
         /** @enum {string} */
@@ -5217,6 +5222,8 @@ export interface components {
         };
         MessageGift: {
             code: components["schemas"]["GiftCode"];
+            /** @description What plays when it is opened (the sender's choice; petals by default). */
+            effect: components["schemas"]["GiftEffect"];
             /** @description When the recipient unwrapped it; null while it is still wrapped. */
             opened_at: components["schemas"]["NullableTimestamp"];
         };
@@ -5234,6 +5241,8 @@ export interface components {
             body?: string;
             /** @description With `kind` gift only, and then without `body` or attachments. Direct chats only (DM-016). */
             gift?: components["schemas"]["GiftCode"];
+            /** @description With `kind` gift only. What plays on screen when it is opened; petals when omitted (DM-016). */
+            gift_effect?: components["schemas"]["GiftEffect"];
             attachment_media_ids?: components["schemas"]["Uuid"][];
             reply_to_message_id?: components["schemas"]["Uuid"];
             thread_root_id?: components["schemas"]["Uuid"];

@@ -38,6 +38,20 @@ class Gift(StrEnum):
     COCONUT = "coconut"
 
 
+class GiftEffect(StrEnum):
+    """What plays on screen when a gift is opened (DM-016), chosen by the sender. The apps draw
+    it; like the catalog, adding one is an app release plus a value here (no migration)."""
+
+    PETALS = "petals"
+    SPLASH = "splash"
+    CONFETTI = "confetti"
+    HEARTS = "hearts"
+
+
+# Gifts sent without a choice (and those sent before effects existed) open with petals.
+DEFAULT_GIFT_EFFECT = GiftEffect.PETALS
+
+
 class ModerationState(StrEnum):
     VISIBLE = "visible"
     REMOVED_BY_MODERATOR = "removed_by_moderator"

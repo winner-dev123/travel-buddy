@@ -459,6 +459,7 @@ erDiagram
 | kind | `text`, `image`, `system`, `announcement`, `gift` |
 | body | text ≤ 4000. Set to NULL on delete (tombstone) |
 | gift_code | text ≤ 32, set exactly when `kind = 'gift'` (DM-016). The catalog is checked by the API, so a new gift needs no migration |
+| gift_effect | text ≤ 32, set exactly when `kind = 'gift'` (DM-016): what plays when it is opened (`petals`, `splash`, `confetti`, `hearts`; checked by the API). Gifts from before migration 0048 were set to `petals` |
 | gift_opened_at | timestamptz. When the recipient opened the gift; gifts only |
 | reply_to_message_id | FK→messages SET NULL |
 | thread_root_id | FK→messages SET NULL (reply threads in group chat) |

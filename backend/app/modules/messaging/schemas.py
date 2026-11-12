@@ -18,6 +18,8 @@ MessageKindName = Literal["text", "image", "system", "announcement", "gift"]
 GiftCode = Literal[
     "coffee", "postcard", "flowers", "ice_cream", "cake", "boarding_pass", "snow_globe", "coconut"
 ]
+# DM-016: what plays when a gift is opened (mirrors ``domain.GiftEffect``).
+GiftEffectName = Literal["petals", "splash", "confetti", "hearts"]
 Level = Literal["all", "mentions", "none"]
 Restriction = Literal[
     "connection_required", "blocked", "member_restricted", "chat_admins_only", "archived"
@@ -42,6 +44,7 @@ class SendMessageRequest(_Request):
     kind: Literal["text", "image", "gift"] = "text"
     body: str | None = Field(default=None, min_length=1, max_length=4000)
     gift: GiftCode | None = None
+    gift_effect: GiftEffectName | None = None
     attachment_media_ids: list[uuid.UUID] | None = Field(default=None, min_length=1, max_length=10)
     reply_to_message_id: uuid.UUID | None = None
     thread_root_id: uuid.UUID | None = None
@@ -57,8 +60,8 @@ class SendMessageRequest(_Request):
             if self.body is not None or self.attachment_media_ids:
                 raise ValueError("a gift has no body or attachments")
             return self
-        if self.gift is not None:
-            raise ValueError("gift is only for gift messages")
+        if self.gift is not None or self.gift_effect is not None:
+            raise ValueError("gift and gift_effect are only for gift messages")
         if self.body is None and not self.attachment_media_ids:
             raise ValueError("a message needs a body or attachments")
         if self.kind == "image" and not self.attachment_media_ids:
@@ -143,6 +146,7 @@ class ReactionSummary(_Response):
 
 class GiftOut(_Response):
     code: GiftCode
+    effect: GiftEffectName
     opened_at: datetime | None
 
 

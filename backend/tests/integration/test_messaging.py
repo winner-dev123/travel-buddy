@@ -433,11 +433,18 @@ def test_new_message_notifications_collapse_and_respect_mute(app: LiveApp) -> No
 # ─────────────────────────────────── gifts ───────────────────────────────────
 
 
-def _gift(live: LiveApp, token: str, conversation: str, gift: str = "coffee") -> Any:
+def _gift(
+    live: LiveApp, token: str, conversation: str, gift: str = "coffee", effect: str | None = None
+) -> Any:
     return live.client.post(
         f"/v1/conversations/{conversation}/messages",
         headers={**_auth(token), "Idempotency-Key": str(uuid.uuid4())},
-        json={"client_message_id": str(uuid.uuid4()), "kind": "gift", "gift": gift},
+        json={
+            "client_message_id": str(uuid.uuid4()),
+            "kind": "gift",
+            "gift": gift,
+            **({"gift_effect": effect} if effect else {}),
+        },
     )
 
 
@@ -456,9 +463,9 @@ def test_gifts_are_sent_wrapped_and_opened_once_by_the_recipient(app: LiveApp) -
     gift = sent.json()
     assert gift["kind"] == "gift"
     assert gift["body"] is None
-    assert gift["gift"] == {"code": "snow_globe", "opened_at": None}
+    assert gift["gift"] == {"code": "snow_globe", "effect": "petals", "opened_at": None}
     [seen] = _messages(app, bo, conversation)["data"]
-    assert seen["gift"] == {"code": "snow_globe", "opened_at": None}
+    assert seen["gift"] == {"code": "snow_globe", "effect": "petals", "opened_at": None}
     last = _conversation(app, bo, conversation)["last_message"]
     assert last["kind"] == "gift"
     assert last["snippet"] is None
@@ -508,6 +515,8 @@ def test_gifts_are_sent_wrapped_and_opened_once_by_the_recipient(app: LiveApp) -
         {"gift": None},
         {"gift": "coffee", "body": "and a note"},
         {"gift": "coffee", "attachment_media_ids": [str(uuid.uuid4())]},
+        {"gift": "coffee", "gift_effect": "fireworks"},  # not an effect the apps draw
+        {"gift_effect": "petals"},  # an effect without a gift
     ],
 )
 def test_invalid_gifts_are_rejected(app: LiveApp, extra: dict[str, Any]) -> None:  # noqa: F811
@@ -521,6 +530,22 @@ def test_invalid_gifts_are_rejected(app: LiveApp, extra: dict[str, Any]) -> None
     _problem(response, 422, "validation_failed")
     # A gift name on a text message is refused too.
     _problem(_send(app, ana, conversation, "Hi", gift="coffee"), 422, "validation_failed")
+    _problem(_send(app, ana, conversation, "Hi", gift_effect="hearts"), 422, "validation_failed")
+
+
+@pytest.mark.req("DM-016")
+@pytest.mark.parametrize("effect", ["petals", "splash", "confetti", "hearts"])
+def test_the_sender_chooses_how_a_gift_opens(app: LiveApp, effect: str) -> None:  # noqa: F811
+    ana, _, bo, _, conversation = _pair(app)
+    sent = _gift(app, ana, conversation, "flowers", effect)
+    assert sent.status_code == 201, sent.text
+    assert_matches_contract(sent.json(), "Message")
+    assert sent.json()["gift"]["effect"] == effect
+    [seen] = _messages(app, bo, conversation)["data"]
+    assert seen["gift"] == {"code": "flowers", "effect": effect, "opened_at": None}
+    opened = _open_gift(app, bo, conversation, seen["id"])
+    assert opened.status_code == 200, opened.text
+    assert opened.json()["gift"]["effect"] == effect  # opening keeps the sender's choice
 
 
 @pytest.mark.req("DM-016")

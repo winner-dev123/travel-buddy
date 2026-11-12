@@ -1,7 +1,7 @@
 import type { ApiClient } from '@/api';
 import type { MediaRef, Page, UserSummary } from '@/features/feed/types';
 
-import type { GiftCode } from './gifts';
+import type { GiftCode, GiftEffect } from './gifts';
 
 /** Contract `MessagePreview`. */
 export interface MessagePreview {
@@ -63,9 +63,13 @@ export interface Message {
   created_at: string;
 }
 
-/** Contract `MessageGift`. The code is a string so a gift added later still parses. */
+/**
+ * Contract `MessageGift`. The code and effect are strings so ones added later still parse; the
+ * effect is missing from servers older than gift effects (it then plays petals).
+ */
 export interface MessageGift {
   code: GiftCode | (string & {});
+  effect?: GiftEffect | (string & {});
   opened_at: string | null;
 }
 
@@ -127,12 +131,16 @@ export function sendMessage(
   });
 }
 
-/** DM-016: a gift (direct chats only); idempotent on `clientMessageId` like any send. */
+/**
+ * DM-016: a gift (direct chats only) with the effect that plays when it is opened; idempotent on
+ * `clientMessageId` like any send.
+ */
 export function sendGiftMessage(
   client: ApiClient,
   id: string,
   clientMessageId: string,
   gift: GiftCode,
+  effect: GiftEffect,
   replyToId?: string,
 ): Promise<Message> {
   return client.post<Message>(`/v1/conversations/${id}/messages`, {
@@ -141,6 +149,7 @@ export function sendGiftMessage(
       client_message_id: clientMessageId,
       kind: 'gift',
       gift,
+      gift_effect: effect,
       ...(replyToId ? { reply_to_message_id: replyToId } : {}),
     },
   });

@@ -7157,6 +7157,10 @@ components:
       type: string
       description: DM-016 gift catalog. Free presents with no money value; the apps ship the pictures.
       enum: [coffee, postcard, flowers, ice_cream, cake, boarding_pass, snow_globe, coconut]
+    GiftEffect:
+      type: string
+      description: DM-016 effect that plays on screen when a gift is opened, chosen by the sender; the apps draw it.
+      enum: [petals, splash, confetti, hearts]
     NotificationLevel: { type: string, enum: [all, mentions, none] }
     GroupVisibility: { type: string, enum: [private, unlisted, public] }
     GroupJoinPolicy: { type: string, enum: [invite_only, request_to_join] }
@@ -8585,9 +8589,12 @@ components:
         created_at: { $ref: '#/components/schemas/Timestamp' }
     MessageGift:
       type: object
-      required: [code, opened_at]
+      required: [code, effect, opened_at]
       properties:
         code: { $ref: '#/components/schemas/GiftCode' }
+        effect:
+          description: What plays when it is opened (the sender's choice; petals by default).
+          allOf: [{ $ref: '#/components/schemas/GiftEffect' }]
         opened_at:
           description: When the recipient unwrapped it; null while it is still wrapped.
           allOf: [{ $ref: '#/components/schemas/NullableTimestamp' }]
@@ -8612,6 +8619,9 @@ components:
         gift:
           description: With `kind` gift only, and then without `body` or attachments. Direct chats only (DM-016).
           allOf: [{ $ref: '#/components/schemas/GiftCode' }]
+        gift_effect:
+          description: With `kind` gift only. What plays on screen when it is opened; petals when omitted (DM-016).
+          allOf: [{ $ref: '#/components/schemas/GiftEffect' }]
         attachment_media_ids: { type: array, minItems: 1, maxItems: 10, items: { $ref: '#/components/schemas/Uuid' } }
         reply_to_message_id: { $ref: '#/components/schemas/Uuid' }
         thread_root_id: { $ref: '#/components/schemas/Uuid' }

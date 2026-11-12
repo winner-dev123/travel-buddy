@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { hashKey, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -57,7 +57,13 @@ import { ChatBackdrop } from '@/features/messages/ChatBackdrop';
 import { Composer } from '@/features/messages/Composer';
 import { ExpressionTray } from '@/features/messages/ExpressionTray';
 import { GiftBubble } from '@/features/messages/GiftBubble';
-import { giftNameKey, type GiftCode } from '@/features/messages/gifts';
+import { GiftEffectOverlay } from '@/features/messages/GiftEffectOverlay';
+import {
+  giftEffectOf,
+  giftNameKey,
+  type GiftCode,
+  type GiftEffect,
+} from '@/features/messages/gifts';
 import {
   discardMessage,
   enqueueMessage,
@@ -72,6 +78,7 @@ import { useRealtimeStore } from '@/features/realtime/store';
 import { useChatPreferences } from '@/state/chatPreferences';
 import { fontFamilies } from '@/theme/tokens';
 import { useAppTheme } from '@/theme/useAppTheme';
+import { useReduceMotion } from '@/theme/useReduceMotion';
 
 /**
  * SCR-081 Direct message thread (DM-001..013). Live over the realtime connection (ADR-0033) and
@@ -111,6 +118,9 @@ export default function ChatScreen() {
   const sendSide = useChatPreferences((state) => state.sendSide);
   const background = useChatPreferences((state) => state.background);
   const [trayOpen, setTrayOpen] = useState(false);
+  // DM-016: the effect playing over the chat after a gift is opened (a new key replays it).
+  const [effect, setEffect] = useState<{ kind: GiftEffect; key: number } | null>(null);
+  const reduceMotion = useReduceMotion();
 
   const conversation = useQuery({
     queryKey: messageKeys.conversation(id),
@@ -122,6 +132,7 @@ export default function ChatScreen() {
     queryFn: () => listMessages(getApiClient(), id),
     refetchInterval: live ? LIVE_POLL_MS : POLL_CHAT_MS,
   });
+  const historyHash = hashKey(messageKeys.history(id));
 
   const newest = history.data?.page.newest_seq ?? 0;
   const readThrough = conversation.data?.read_through_seq ?? 0;
@@ -329,12 +340,21 @@ export default function ChatScreen() {
     return () => back.remove();
   }, [trayOpen]);
   const addEmoji = (emoji: string) => changeDraft(`${draft}${emoji}`);
-  const sendGift = (gift: GiftCode) => {
+  const playEffect = useCallback(
+    (kind: GiftEffect) => {
+      if (reduceMotion) return;
+      setEffect((playing) => ({ kind, key: (playing?.key ?? 0) + 1 }));
+    },
+    [reduceMotion],
+  );
+  const endEffect = useCallback(() => setEffect(null), []);
+  const sendGift = (gift: GiftCode, giftEffect: GiftEffect) => {
     enqueueMessage({
       clientMessageId: pending.current,
       conversationId: id,
       body: '',
       gift,
+      giftEffect,
       replyTo: replyTo ? { id: replyTo.id, snippet: textOf(replyTo) } : null,
     });
     setReplyTo(null);
@@ -365,6 +385,24 @@ export default function ChatScreen() {
     onSuccess: (updated) => patchGift(updated.id, updated.gift?.opened_at ?? null),
     onError: (_error, message) => patchGift(message.id, null),
   });
+  // The sender sees the effect too when the other person opens one of their gifts while this
+  // chat is open (the `gift_opened` update, or a refetch, lands in the history).
+  const giftsSeen = useRef(new Map<string, boolean>());
+  useEffect(() => {
+    const seen = giftsSeen.current;
+    return queryClient.getQueryCache().subscribe((event) => {
+      if (event.type !== 'updated' || event.query.queryHash !== historyHash) return;
+      const list = event.query.state.data as MessageList | undefined;
+      let opened: GiftEffect | null = null;
+      for (const m of list?.data ?? []) {
+        if (!m.gift || m.sender?.id !== me) continue;
+        const isOpen = m.gift.opened_at !== null;
+        if (seen.get(m.id) === false && isOpen) opened = giftEffectOf(m.gift.effect);
+        seen.set(m.id, isOpen);
+      }
+      if (opened) playEffect(opened);
+    });
+  }, [queryClient, historyHash, me, playEffect]);
 
   const queuedActions = (item: OutboxItem) =>
     showActions(t('messages.notSent'), undefined, [
@@ -655,7 +693,11 @@ export default function ChatScreen() {
                   return (
                     <View style={styles.mineColumn}>
                       <GiftBubble
-                        gift={{ code: queuedItem.gift, opened_at: null }}
+                        gift={{
+                          code: queuedItem.gift,
+                          effect: queuedItem.giftEffect,
+                          opened_at: null,
+                        }}
                         mine
                         senderName=""
                         onPress={isFailed ? () => queuedActions(queuedItem) : undefined}
@@ -723,8 +765,13 @@ export default function ChatScreen() {
                   gift={gift}
                   mine={mine}
                   senderName={item.sender?.display_name ?? t('messages.someone')}
-                  onOpen={() => unwrap.mutate(item)}
+                  onOpen={() => {
+                    playEffect(giftEffectOf(gift.effect));
+                    unwrap.mutate(item);
+                  }}
                   opening={unwrap.isPending && unwrap.variables?.id === item.id}
+                  onPress={reduceMotion ? undefined : () => playEffect(giftEffectOf(gift.effect))}
+                  hint={reduceMotion ? undefined : t('messages.giftReplayHint')}
                   onLongPress={() => actions(item)}
                   testID={`message-${item.id}`}
                 />
@@ -1002,9 +1049,16 @@ export default function ChatScreen() {
           )}
         </View>
         {trayOpen && !restriction ? (
-          <ExpressionTray onEmoji={addEmoji} onGift={direct ? sendGift : null} />
+          <ExpressionTray
+            onEmoji={addEmoji}
+            onGift={direct ? sendGift : null}
+            onPreviewEffect={playEffect}
+          />
         ) : null}
       </KeyboardAvoidingView>
+      {effect ? (
+        <GiftEffectOverlay key={effect.key} effect={effect.kind} onDone={endEffect} />
+      ) : null}
     </SafeAreaView>
   );
 }

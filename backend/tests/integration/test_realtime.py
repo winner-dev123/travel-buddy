@@ -298,12 +298,13 @@ def test_a_gift_arrives_wrapped_and_the_sender_sees_it_opened(rt: LiveApp) -> No
             "client_message_id": str(uuid.uuid4()),
             "kind": "gift",
             "gift": "coconut",
+            "gift_effect": "splash",
         }
         ana_ws.send("message.send", payload)
         ack = ana_ws.expect("message.ack")
         wrapped = bo_ws.expect("message.new")["data"]["message"]
         assert wrapped["id"] == ack["data"]["message_id"]
-        assert wrapped["gift"] == {"code": "coconut", "opened_at": None}
+        assert wrapped["gift"] == {"code": "coconut", "effect": "splash", "opened_at": None}
         ana_ws.expect("message.new")
 
         opened = rt.client.post(

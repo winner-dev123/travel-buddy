@@ -643,7 +643,10 @@
     "giftOpenedA11y": "Gift: {{gift}}",
     "giftOpened": "Opened",
     "giftNotOpened": "Not opened yet",
-    "giftOpenFailed": "The gift couldn't be opened. Try again."
+    "giftOpenFailed": "The gift couldn't be opened. Try again.",
+    "giftEffect": "Opening effect",
+    "giftEffectHint": "Plays a preview.",
+    "giftReplayHint": "Plays its opening effect again."
   },
   "gifts": {
     "coffee": "Coffee",
@@ -655,6 +658,12 @@
     "snow_globe": "Snow globe",
     "coconut": "Coconut",
     "unknown": "Gift"
+  },
+  "giftEffects": {
+    "petals": "Flower petals",
+    "splash": "Water splash",
+    "confetti": "Confetti",
+    "hearts": "Hearts"
   },
   "groups": {
     "title": "Groups",

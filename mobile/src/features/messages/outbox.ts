@@ -10,7 +10,7 @@ import type { RealtimeClient, ServerFrame } from '@/features/realtime/client';
 import { realtimeHandle } from '@/features/realtime/handle';
 
 import { messageKeys, sendGiftMessage, sendMessage, type Message, type MessageList } from './api';
-import { isGiftCode, type GiftCode } from './gifts';
+import { giftEffectOf, isGiftCode, isGiftEffect, type GiftCode, type GiftEffect } from './gifts';
 
 /**
  * Messages waiting to reach the server (ADR-0033). A message shows in the chat as soon as it is
@@ -18,7 +18,7 @@ import { isGiftCode, type GiftCode } from './gifts';
  * (waiting for the ack) or, without one, over REST. Every retry reuses the message's
  * `client_message_id`, so a send that got through before the connection dropped is never
  * duplicated (DM-005). Network failures retry with backoff; a refusal stops with its reason.
- * Gifts (DM-016) go the same way: an item with `gift` and an empty body.
+ * Gifts (DM-016) go the same way: an item with `gift` (and its `giftEffect`) and an empty body.
  */
 
 export type FailureReason = 'filtered' | 'restricted' | 'rejected';
@@ -29,6 +29,8 @@ export interface OutboxItem {
   body: string;
   /** A gift instead of text (the body is empty). */
   gift?: GiftCode;
+  /** What plays when the gift is opened; petals when missing. */
+  giftEffect?: GiftEffect;
   replyTo: { id: string; snippet: string | null } | null;
   createdAt: string;
   status: 'sending' | 'failed';
@@ -69,13 +71,15 @@ export function hydrateOutbox(): void {
     const items = JSON.parse(file.textSync()) as OutboxItem[];
     if (Array.isArray(items)) {
       // A send interrupted by the app closing is retried now.
-      useOutboxStore
-        .getState()
-        .replace(
-          items
-            .map((item) => ({ ...item, nextAttemptAt: 0 }))
-            .filter((i) => i.body || isGiftCode(i.gift)),
-        );
+      useOutboxStore.getState().replace(
+        items
+          .map((item) => ({
+            ...item,
+            nextAttemptAt: 0,
+            giftEffect: isGiftEffect(item.giftEffect) ? item.giftEffect : undefined,
+          }))
+          .filter((i) => i.body || isGiftCode(i.gift)),
+      );
     }
   } catch {
     // Unreadable file: start empty.
@@ -83,7 +87,10 @@ export function hydrateOutbox(): void {
 }
 
 export function enqueueMessage(
-  item: Pick<OutboxItem, 'clientMessageId' | 'conversationId' | 'body' | 'replyTo' | 'gift'>,
+  item: Pick<
+    OutboxItem,
+    'clientMessageId' | 'conversationId' | 'body' | 'replyTo' | 'gift' | 'giftEffect'
+  >,
   now: number = Date.now(),
 ): void {
   const items = useOutboxStore.getState().items;
@@ -185,7 +192,9 @@ function fromAck(item: OutboxItem, frame: ServerFrame, me: UserSummary | null): 
     sender: me,
     kind: item.gift ? 'gift' : 'text',
     body: item.gift ? null : item.body,
-    gift: item.gift ? { code: item.gift, opened_at: null } : null,
+    gift: item.gift
+      ? { code: item.gift, effect: giftEffectOf(item.giftEffect), opened_at: null }
+      : null,
     attachments: [],
     reply_to: item.replyTo
       ? {
@@ -245,7 +254,9 @@ async function sendOne(item: OutboxItem, deps: FlushDeps): Promise<'sent' | 'lat
       const frame = await deps.realtime.request('message.send', {
         conversation_id: item.conversationId,
         client_message_id: item.clientMessageId,
-        ...(item.gift ? { kind: 'gift', gift: item.gift } : { body: item.body }),
+        ...(item.gift
+          ? { kind: 'gift', gift: item.gift, gift_effect: giftEffectOf(item.giftEffect) }
+          : { body: item.body }),
         ...(item.replyTo ? { reply_to_message_id: item.replyTo.id } : {}),
       });
       if (frame.type === 'message.ack') {
@@ -281,6 +292,7 @@ async function sendOne(item: OutboxItem, deps: FlushDeps): Promise<'sent' | 'lat
           item.conversationId,
           item.clientMessageId,
           item.gift,
+          giftEffectOf(item.giftEffect),
           item.replyTo?.id,
         )
       : await sendMessage(

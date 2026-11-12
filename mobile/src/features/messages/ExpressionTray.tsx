@@ -13,33 +13,50 @@ import {
 import { Button } from '@/components/Form';
 import { useAppTheme } from '@/theme/useAppTheme';
 
-import { GIFT_CODES, giftImage, giftNameKey, PANEL_EMOJI, type GiftCode } from './gifts';
+import {
+  DEFAULT_GIFT_EFFECT,
+  GIFT_CODES,
+  GIFT_EFFECT_ICONS,
+  GIFT_EFFECTS,
+  giftEffectNameKey,
+  giftImage,
+  giftNameKey,
+  PANEL_EMOJI,
+  type GiftCode,
+  type GiftEffect,
+} from './gifts';
 
 export type TrayTab = 'emoji' | 'gifts';
 
 export interface ExpressionTrayProps {
   /** Adds an emoji to the message being written. */
   onEmoji: (emoji: string) => void;
-  /** Sends a gift; null where gifts aren't offered (group chats: DM-016). */
-  onGift: ((gift: GiftCode) => void) | null;
+  /** Sends a gift with its opening effect; null where gifts aren't offered (group chats: DM-016). */
+  onGift: ((gift: GiftCode, effect: GiftEffect) => void) | null;
+  /** Plays an effect as a preview when the sender picks it. */
+  onPreviewEffect?: (effect: GiftEffect) => void;
 }
 
-// Tall enough for both rows of gifts above the send row on a small phone.
-const TRAY_HEIGHT = 350;
+// Tall enough for both rows of gifts above the effect and send row on a small phone.
+const TRAY_HEIGHT = 360;
 const EMOJI_SIZE = 44;
 const GIFT_COLUMNS = 4;
 const GIFT_GAP = 10;
+const EFFECT_SIZE = 38;
 
 /**
  * The panel beside the message field (SCR-081, DM-016): emoji to add to the text, and gifts. A
- * gift is chosen first and then sent with its own button, so a stray tap never sends one.
+ * gift is chosen first and then sent with its own button, so a stray tap never sends one. Once a
+ * gift is chosen, the sender picks what plays when it is opened (petals unless they change it),
+ * and each pick plays as a preview.
  */
-export function ExpressionTray({ onEmoji, onGift }: ExpressionTrayProps) {
+export function ExpressionTray({ onEmoji, onGift, onPreviewEffect }: ExpressionTrayProps) {
   const { t } = useTranslation();
   const theme = useAppTheme();
   const { width } = useWindowDimensions();
   const [tab, setTab] = useState<TrayTab>('emoji');
   const [chosen, setChosen] = useState<GiftCode | null>(null);
+  const [effect, setEffect] = useState<GiftEffect>(DEFAULT_GIFT_EFFECT);
   const padding = theme.spacing[3];
   const giftWidth = Math.floor(
     (width - padding * 2 - GIFT_GAP * (GIFT_COLUMNS - 1)) / GIFT_COLUMNS,
@@ -150,16 +167,58 @@ export function ExpressionTray({ onEmoji, onGift }: ExpressionTrayProps) {
             })}
           </ScrollView>
           <View style={styles.sendRow}>
-            <Text
-              style={[styles.fill, theme.typography.caption, { color: theme.colors.textSecondary }]}
-            >
-              {t('messages.giftHint')}
-            </Text>
+            {chosen ? (
+              <View style={[styles.fill, styles.effects]}>
+                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+                  {t('messages.giftEffect')}
+                </Text>
+                <View style={styles.effectRow} accessibilityRole="radiogroup">
+                  {GIFT_EFFECTS.map((value) => {
+                    const selected = effect === value;
+                    return (
+                      <Pressable
+                        key={value}
+                        onPress={() => {
+                          setEffect(value);
+                          onPreviewEffect?.(value);
+                        }}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected }}
+                        accessibilityLabel={t(giftEffectNameKey(value))}
+                        accessibilityHint={t('messages.giftEffectHint')}
+                        style={[
+                          styles.effect,
+                          {
+                            backgroundColor: selected
+                              ? theme.colors.primaryMuted
+                              : theme.colors.surface,
+                            borderColor: selected ? theme.colors.primary : theme.colors.divider,
+                          },
+                        ]}
+                        testID={`effect-${value}`}
+                      >
+                        <Text style={styles.effectIcon}>{GIFT_EFFECT_ICONS[value]}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : (
+              <Text
+                style={[
+                  styles.fill,
+                  theme.typography.caption,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
+                {t('messages.giftHint')}
+              </Text>
+            )}
             <Button
               label={chosen ? t('messages.sendGift') : t('messages.chooseGift')}
               onPress={() => {
                 if (!chosen || !onGift) return;
-                onGift(chosen);
+                onGift(chosen, effect);
                 setChosen(null);
               }}
               disabled={!chosen}
@@ -191,4 +250,15 @@ const styles = StyleSheet.create({
   gift: { borderWidth: 1.5, borderRadius: 14, alignItems: 'center', padding: 6, gap: 2 },
   giftName: { textAlign: 'center' },
   sendRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
+  effects: { gap: 4 },
+  effectRow: { flexDirection: 'row', gap: 6 },
+  effect: {
+    width: EFFECT_SIZE,
+    height: EFFECT_SIZE,
+    borderRadius: EFFECT_SIZE / 2,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  effectIcon: { fontSize: 19 },
 });

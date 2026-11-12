@@ -7,7 +7,7 @@ import { useAppTheme } from '@/theme/useAppTheme';
 import { useReduceMotion } from '@/theme/useReduceMotion';
 
 import type { MessageGift } from './api';
-import { giftImage, giftNameKey, WRAPPED_GIFT } from './gifts';
+import { GIFT_EFFECT_ICONS, giftEffectOf, giftImage, giftNameKey, WRAPPED_GIFT } from './gifts';
 
 export interface GiftBubbleProps {
   gift: MessageGift;
@@ -18,8 +18,10 @@ export interface GiftBubbleProps {
   /** Unwrap (the recipient only). */
   onOpen?: () => void;
   opening?: boolean;
-  /** A tap on an open gift (a queued gift that failed: its options). */
+  /** A tap on an open gift: replays its effect, or a queued gift that failed: its options. */
   onPress?: () => void;
+  /** What a tap does, for screen readers. */
+  hint?: string;
   onLongPress?: () => void;
   testID: string;
 }
@@ -28,7 +30,8 @@ const SIZE = 132;
 
 /**
  * A gift in the chat (DM-016). The recipient gets it wrapped, gently moving, and opens it with a
- * tap; it then pops open. The sender sees the gift itself and "Opened" once it has been.
+ * tap; it then pops open (the chat plays its effect). The sender sees the gift itself, with the
+ * effect they chose, and "Opened" once it has been.
  */
 export function GiftBubble({
   gift,
@@ -37,6 +40,7 @@ export function GiftBubble({
   onOpen,
   opening = false,
   onPress,
+  hint,
   onLongPress,
   testID,
 }: GiftBubbleProps) {
@@ -121,6 +125,7 @@ export function GiftBubble({
       onPress={onPress}
       onLongPress={onLongPress}
       accessibilityRole={onPress ? 'button' : 'image'}
+      accessibilityHint={hint}
       accessibilityLabel={
         mine
           ? t('messages.giftSentA11y', { gift: name })
@@ -138,6 +143,7 @@ export function GiftBubble({
       <View style={[styles.caption, { backgroundColor: theme.colors.surface }]}>
         <Ionicons name="gift" size={13} color={theme.colors.primary} />
         <Text style={[theme.typography.label, { color: theme.colors.textPrimary }]}>{name}</Text>
+        <Text style={styles.effect}>{GIFT_EFFECT_ICONS[giftEffectOf(gift.effect)]}</Text>
       </View>
     </Pressable>
   );
@@ -165,4 +171,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
+  effect: { fontSize: 13 },
 });

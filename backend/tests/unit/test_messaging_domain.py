@@ -10,10 +10,12 @@ from typing import get_args
 import pytest
 
 from app.modules.messaging.domain import (
+    DEFAULT_GIFT_EFFECT,
     EDITABLE,
     USER_CONTENT,
     DirectFacts,
     Gift,
+    GiftEffect,
     MessageKind,
     SendRestriction,
     can_edit,
@@ -25,7 +27,7 @@ from app.modules.messaging.domain import (
     should_notify,
     snippet,
 )
-from app.modules.messaging.schemas import GiftCode, SendMessageRequest
+from app.modules.messaging.schemas import GiftCode, GiftEffectName, SendMessageRequest
 from app.modules.notifications.domain import render
 
 NOW = datetime(2026, 11, 9, 12, 0, tzinfo=UTC)
@@ -121,6 +123,25 @@ def test_gift_catalog_is_the_same_in_rules_and_api() -> None:
 
 
 @pytest.mark.req("DM-016")
+def test_gift_effects_are_the_same_in_rules_and_api() -> None:
+    assert {e.value for e in GiftEffect} == set(get_args(GiftEffectName))
+    assert DEFAULT_GIFT_EFFECT == GiftEffect.PETALS
+    request = SendMessageRequest.model_validate(
+        {"client_message_id": str(uuid.uuid4()), "kind": "gift", "gift": "cake"}
+    )
+    assert request.gift_effect is None  # the service stores the default
+    chosen = SendMessageRequest.model_validate(
+        {
+            "client_message_id": str(uuid.uuid4()),
+            "kind": "gift",
+            "gift": "cake",
+            "gift_effect": "splash",
+        }
+    )
+    assert chosen.gift_effect == "splash"
+
+
+@pytest.mark.req("DM-016")
 def test_only_the_recipient_of_a_direct_gift_opens_it() -> None:
     sender, recipient = uuid.UUID(int=1), uuid.UUID(int=2)
 
@@ -150,6 +171,9 @@ def test_only_the_recipient_of_a_direct_gift_opens_it() -> None:
         {"kind": "gift", "gift": "cake", "body": "a note"},
         {"kind": "gift", "gift": "cake", "attachment_media_ids": [str(uuid.UUID(int=1))]},
         {"body": "hi", "gift": "cake"},
+        {"kind": "gift", "gift": "cake", "gift_effect": "fireworks"},
+        {"kind": "gift", "gift_effect": "petals"},
+        {"body": "hi", "gift_effect": "petals"},
     ],
 )
 def test_gift_request_validation(body: dict[str, object]) -> None:

@@ -50,6 +50,40 @@ export function giftNameKey(code: string): GiftNameKey {
 }
 
 /**
+ * What plays on screen when a gift is opened (DM-016), chosen by the sender. The codes are the
+ * API's `GiftEffect`; GiftEffectOverlay draws them.
+ */
+export const GIFT_EFFECTS = ['petals', 'splash', 'confetti', 'hearts'] as const;
+
+export type GiftEffect = (typeof GIFT_EFFECTS)[number];
+
+export const DEFAULT_GIFT_EFFECT: GiftEffect = 'petals';
+
+/** The emoji that stands for each effect in the panel and on an opened gift. */
+export const GIFT_EFFECT_ICONS: Record<GiftEffect, string> = {
+  petals: '🌸',
+  splash: '💦',
+  confetti: '🎉',
+  hearts: '💖',
+};
+
+export function isGiftEffect(value: unknown): value is GiftEffect {
+  return typeof value === 'string' && (GIFT_EFFECTS as readonly string[]).includes(value);
+}
+
+/** A gift's effect; one this app doesn't know (or a gift from before effects) plays petals. */
+export function giftEffectOf(value: unknown): GiftEffect {
+  return isGiftEffect(value) ? value : DEFAULT_GIFT_EFFECT;
+}
+
+export type GiftEffectNameKey = `giftEffects.${GiftEffect}`;
+
+/** The translation key of an effect's name ("Flower petals"). */
+export function giftEffectNameKey(effect: GiftEffect): GiftEffectNameKey {
+  return `giftEffects.${effect}`;
+}
+
+/**
  * Emoji offered in the panel beside the message field: faces and gestures first, then travel.
  * Only emoji that older Android versions draw (Emoji 12 or earlier). Any emoji can still be typed
  * from the keyboard.

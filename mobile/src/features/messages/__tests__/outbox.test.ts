@@ -239,14 +239,37 @@ describe('gifts (DM-016)', () => {
       conversationId: 'c1',
       body: '',
       gift: 'flowers',
+      giftEffect: 'hearts',
       replyTo: null,
     });
     useOutboxStore.setState({ items: [] }); // the app closes
 
     hydrateOutbox();
     expect(useOutboxStore.getState().items).toEqual([
-      expect.objectContaining({ clientMessageId: 'cm-g', gift: 'flowers', body: '' }),
+      expect.objectContaining({
+        clientMessageId: 'cm-g',
+        gift: 'flowers',
+        giftEffect: 'hearts',
+        body: '',
+      }),
     ]);
+  });
+
+  it('forgets an effect it does not know when the outbox is read back', () => {
+    enqueueMessage({
+      clientMessageId: 'cm-g',
+      conversationId: 'c1',
+      body: '',
+      gift: 'flowers',
+      giftEffect: 'fireworks' as never, // written by a newer app
+      replyTo: null,
+    });
+    useOutboxStore.setState({ items: [] });
+
+    hydrateOutbox();
+    const [item] = useOutboxStore.getState().items;
+    expect(item).toMatchObject({ clientMessageId: 'cm-g', gift: 'flowers' });
+    expect(item!.giftEffect).toBeUndefined(); // sent as petals
   });
 
   it('sends a gift over the socket and shows it wrapped for nobody but me', async () => {
@@ -261,6 +284,7 @@ describe('gifts (DM-016)', () => {
       conversationId: 'c1',
       body: '',
       gift: 'coconut',
+      giftEffect: 'splash',
       replyTo: null,
     });
     await flushOutbox({ client: api(jest.fn()), queryClient, realtime, me, now });
@@ -269,13 +293,14 @@ describe('gifts (DM-016)', () => {
       client_message_id: 'cm-g',
       kind: 'gift',
       gift: 'coconut',
+      gift_effect: 'splash',
     });
     const [shown] = queryClient.getQueryData<MessageList>(['messages', 'history', 'c1'])!.data;
     expect(shown).toMatchObject({
       id: 'm9',
       kind: 'gift',
       body: null,
-      gift: { code: 'coconut', opened_at: null },
+      gift: { code: 'coconut', effect: 'splash', opened_at: null },
     });
   });
 
@@ -285,7 +310,7 @@ describe('gifts (DM-016)', () => {
       ...persisted('m10', 10, 'cm-g', ''),
       kind: 'gift',
       body: null,
-      gift: { code: 'cake', opened_at: null },
+      gift: { code: 'cake', effect: 'petals', opened_at: null },
     }));
     enqueueMessage({
       clientMessageId: 'cm-g',
@@ -301,6 +326,7 @@ describe('gifts (DM-016)', () => {
         client_message_id: 'cm-g',
         kind: 'gift',
         gift: 'cake',
+        gift_effect: 'petals', // none chosen
         reply_to_message_id: 'm1',
       },
     });

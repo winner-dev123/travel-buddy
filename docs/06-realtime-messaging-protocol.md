@@ -51,7 +51,7 @@ Every frame, in both directions:
 |---|---|---|
 | `auth` | First frame within 5 s, and re-auth on an open connection. `data` carries **exactly one** of `access_token` (mobile) or `ticket` (web). Optional: `client`, `app_version`. | `auth.ok` or `auth.error` + close |
 | `ping` | Heartbeat | `pong` |
-| `message.send` | Send `{conversation_id, client_message_id, kind?, body?, gift?, attachment_media_ids?, reply_to_message_id?, thread_root_id?, mentions?}`. Requires `body` or attachments, or `kind: gift` with a `gift` code (direct chats only, DM-016). | `message.ack` (persisted) or `error` / `rate_limited` |
+| `message.send` | Send `{conversation_id, client_message_id, kind?, body?, gift?, gift_effect?, attachment_media_ids?, reply_to_message_id?, thread_root_id?, mentions?}`. Requires `body` or attachments, or `kind: gift` with a `gift` code and optionally its opening `gift_effect` (petals when omitted; direct chats only, DM-016). | `message.ack` (persisted) or `error` / `rate_limited` |
 | `message.edit` | `{conversation_id, message_id, body}`. Sender only, within 15 min. | `message.updated` fanout (including to the sender), or `error` |
 | `message.delete` | `{conversation_id, message_id, reason_code?}`. Sender, or a moderator with `messages.remove` (`reason_code` required). | `message.deleted` fanout, or `error` |
 | `receipt.read` | `{conversation_id, read_through_seq}` (monotonic) | `receipt.updated` to others (if reciprocal), none to the sender |

@@ -223,11 +223,23 @@
       ],
       "description": "DM-016 gift catalog; the apps ship the pictures."
     },
+    "GiftEffect": {
+      "enum": [
+        "petals",
+        "splash",
+        "confetti",
+        "hearts"
+      ],
+      "description": "DM-016 effect that plays when a gift is opened, chosen by the sender."
+    },
     "MessageGift": {
       "type": "object",
       "properties": {
         "code": {
           "$ref": "#/$defs/GiftCode"
+        },
+        "effect": {
+          "$ref": "#/$defs/GiftEffect"
         },
         "opened_at": {
           "anyOf": [
@@ -243,6 +255,7 @@
       "additionalProperties": false,
       "required": [
         "code",
+        "effect",
         "opened_at"
       ]
     },
