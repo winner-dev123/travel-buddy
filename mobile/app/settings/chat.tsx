@@ -137,7 +137,7 @@ export default function ChatSettingsScreen() {
       <View style={[styles.tileLabel, { backgroundColor: theme.colors.surface }]}>
         <Text
           numberOfLines={1}
-          style={[theme.typography.caption, { color: theme.colors.textPrimary }]}
+          style={[theme.typography.caption, styles.fill, { color: theme.colors.textPrimary }]}
         >
           {label}
         </Text>
