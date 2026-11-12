@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-11-12
 - **Deciders:** Product owner (asked for fast, reliable delivery that keeps working on very poor networks, typing indicators, read receipts with avatars and instant friend-request notifications), backend/mobile
-- **Requirements:** DM-003..008, DM-012, NOTIF-001, CONN-001, NFR-001
+- **Requirements:** DM-003..008, DM-012, DM-014, DM-015, NOTIF-001, NOTIF-006, CONN-001, NFR-001
 - **Amends:** [ADR-0023](0023-realtime-delivery-and-hosting.md) (adds the PostgreSQL bus; the app now uses the socket instead of polling only)
 
 ## Context
@@ -33,8 +33,11 @@ The WebSocket gateway of ADR-0023 has existed since Phase 3, and staging (Railwa
 4. **Offline-first sending.**
    - The outbox: a message goes into an outbox kept on the device and shows at once as "sending". The outbox sends over the socket and waits up to 10 s for the ack. Without a socket, it falls back to REST.
    - Retries: the same `client_message_id` is reused on every retry, so a send that reached the server is never duplicated (DM-005). Network failures retry with backoff and also wait for connectivity. A refusal (safety filter, restriction) marks the message "not sent" with the reason, and the user can retry or delete it.
-   - History cache: recent conversations and messages are kept on the device, so chats open without a network.
-5. **Typing and read receipts.** The app sends `typing.start` at most every 3 s while the draft is non-empty, and `typing.stop` on send, on an empty draft, or on leaving the chat. It shows "Name is typing…" from `typing` frames (8 s TTL). In direct chats, the reader's avatar replaces the word "Read".
+   - History cache: the inbox and the last 30 conversations (newest 60 messages each) are kept on the device (`chat-cache.json`), restored at startup as stale data, so chats open without a network, even right after a restart.
+   - Session: a launch whose token refresh fails only for lack of network keeps the traveller signed in with the last `Me` kept on the device; the API client refreshes before its first request and `Me` is reloaded once a connection is back. A refused or missing session signs out as before.
+   - Wipe: the outbox, the chat cache and the saved `Me` are deleted whenever the session ends on the device (sign-out, revoked, expired or missing session), never on a network failure, so another account never sees or sends them (T-MSG-08).
+5. **Typing and read receipts.** The app sends `typing.start` at most every 3 s while the draft is non-empty, and `typing.stop` on send, on an empty draft, or on leaving the chat. It shows "Name is typing…" from `typing` frames (8 s TTL). In direct chats, the reader's avatar shows next to "Read" under my newest message ("Sent" before it's read); read marks go over the socket when it is open.
+7. **Chat comfort (DM-015).** The send button sits on the input's line, on the right by default or on the left for left-handed use, and the chat background is none, one of two built-in CC0 trip photos, or one of the traveller's own story photos copied into the app. Both are kept on the device (SCR-119).
 6. **Hosting.** The API and the worker run in the database's region (Railway US East with Supabase us-east-1). This is configuration, done in the Railway dashboard (docs/11 §1.16).
 
 ## Consequences

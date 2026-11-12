@@ -361,6 +361,12 @@ Superadmins give later roles on the console's Staff page.
 
 The API enforces 30 minutes idle and 12 hours in total per staff session (ADM-008).
 
+### 1.16 Realtime and speed on staging (ADR-0033)
+
+* **Realtime needs nothing to configure.** With no `REDIS_URL`, `REALTIME_BUS=auto` uses PostgreSQL `LISTEN`/`NOTIFY`, so messages, typing, receipts and notifications made by the worker reach open apps across the API and worker processes. It needs a **session-mode** connection (Supabase session pooler on port 5432 or a direct connection); behind the transaction pooler (port 6543) it falls back to in-process delivery, and the worker's notifications then reach apps only by polling.
+* **Keep the API and the worker in the database's region.** Every request makes several database round trips, so the distance between them multiplies. Measured on 2026-11-12 with the API in Railway US West and Supabase in us-east-1: about 0.4 s for a request without the database, 2–4 s for one with it. To fix it, in Railway open each service (api, worker) → Settings → Deploy → Region, choose **US East (Virginia)** and redeploy. Expect database requests to drop well under a second. (§1.0 already assumes US East.)
+* **Push for a closed app** is separate from realtime: it needs the Expo (EAS) project ID and FCM credentials for Android (§1.9, docs/14 §6). Until then, the app sees new messages and requests while it's open, and catches up when it's opened.
+
 ## 2. Runtime topology (production reference)
 
 ```mermaid

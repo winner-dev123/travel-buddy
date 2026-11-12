@@ -231,6 +231,8 @@ destination_match = 1.0 exact, 0.8 child (neighborhood within city), 0.5 parent,
 | DM-011 | Mute conversation. History pagination | M | 3 | — |
 | DM-012 | Block and report from the conversation. Blocking stops delivery both ways immediately | M | 3 | — |
 | DM-013 | Messages are not end-to-end encrypted in v1. The privacy policy states this. Encryption in transit (TLS 1.2+) and at rest | M | 3 | — |
+| DM-014 | Works on poor networks: a message written without a connection shows at once, is kept on the device across restarts, and is sent (same `client_message_id`) when a connection is back. Refused messages stay with their reason for retry or delete | S | 3 | Offline send → queued bubble → sent once on reconnect, no duplicate |
+| DM-015 | Chat appearance on the device: send button on the right or left (left-handed use) and a background from at least two built-in trip photos or the traveller's own story photos | S | 3 | Kept on the device; a chosen photo is copied into the app and shows offline |
 
 ### 4.10 Travel groups: GRP
 
@@ -369,6 +371,7 @@ destination_match = 1.0 exact, 0.8 child (neighborhood within city), 0.5 parent,
 | NOTIF-003 | Quiet hours in the user's time zone | S | 3 | — |
 | NOTIF-005 | Web Push for the web app (VAPID), through the same device registry and preferences as native push | S | 3 | `POST /v1/users/me/devices {provider: webpush}`. Endpoints stored encrypted and never logged |
 | NOTIF-004 | Push payloads minimize sensitive content (no message body if previews are disabled; never location) | M | 3 | — |
+| NOTIF-006 | While the app is open, a new connection request or acceptance shows at once as an in-app notice (realtime), and the notification center and request lists refresh | S | 3 | Connection request → `notification.new` frame on the recipient's open socket |
 
 ### 4.20 Trust, safety and compliance: SAFE
 

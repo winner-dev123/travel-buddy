@@ -35,6 +35,11 @@ export interface ApiClientConfig {
    * token is in place, and the request is then retried once. Concurrent failures share one call.
    */
   refreshAccessToken?: () => Promise<boolean>;
+  /**
+   * True while signed in. A signed-in session without an access token (the app was opened
+   * without a network and kept the session) refreshes before its first request.
+   */
+  hasSession?: () => boolean;
 }
 
 const DEFAULT_TIMEOUT_MS = 15_000;
@@ -50,6 +55,7 @@ export class ApiClient {
       fetchImpl: (input, init) => fetch(input, init),
       timeoutMs: DEFAULT_TIMEOUT_MS,
       refreshAccessToken: async () => false,
+      hasSession: () => false,
       ...config,
       baseUrl: config.baseUrl.replace(/\/+$/, ''),
     };
@@ -91,6 +97,9 @@ export class ApiClient {
   }
 
   async request<T>(method: HttpMethod, path: string, options: RequestOptions = {}): Promise<T> {
+    if (path !== REFRESH_PATH && !this.config.getAccessToken() && this.config.hasSession()) {
+      await this.refreshOnce();
+    }
     try {
       return await this.send<T>(method, path, options);
     } catch (error) {

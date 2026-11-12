@@ -344,6 +344,37 @@ describe('companions map', () => {
     expect(screen.getByTestId('discovery-search-companions')).toBeDisabled();
   });
 
+  it('offers to switch when the connection now points to another city than the shared one', async () => {
+    useSessionStore.getState().setSignedIn(me(true));
+    let current: unknown = session('visible'); // still sharing Lisbon
+    mockApi.get.mockImplementation(async (path: string) => {
+      if (path === '/v1/users/me/approximate-location') return aroundHelsinki;
+      if (path === '/v1/users/me/discovery-location') return current;
+      if (path === '/v1/destinations/d-lisbon') {
+        return { ...lisbon, centroid: { lat: 38.7223, lng: -9.1393 }, time_zone: 'Europe/Lisbon' };
+      }
+      throw new Error(path);
+    });
+    mockApi.put.mockImplementation(async () => {
+      current = { ...session('visible'), destination: helsinkiSummary };
+      return current;
+    });
+    await renderUi(<DiscoverSection />);
+    expect(await screen.findByTestId('discovery-moved')).toHaveTextContent(
+      /^Your connection says you're in Helsinki now, but you're sharing Lisbon.Switch to Helsinki$/,
+    );
+    await fireEvent.press(screen.getByTestId('discovery-move-here'));
+    await waitFor(() =>
+      expect(mockApi.put).toHaveBeenCalledWith('/v1/users/me/discovery-location', {
+        body: { mode: 'destination', destination_id: 'd-helsinki', visibility: 'visible' },
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('discovery-status')).toHaveTextContent(/^Visible in Helsinki/),
+    );
+    expect(screen.queryByTestId('discovery-moved')).toBeNull();
+  });
+
   it('asks for a city when the connection says nothing, then centres on it', async () => {
     useSessionStore.getState().setSignedIn(me(true));
     let current: unknown = null;

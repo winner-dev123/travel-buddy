@@ -135,7 +135,7 @@ describe('profile tab', () => {
     expect(mockRouter.push).toHaveBeenCalledWith('/settings/privacy');
   });
 
-  it('groups the menu and opens the appearance setting', async () => {
+  it('groups the menu and opens the appearance and chat settings', async () => {
     useSessionStore.getState().setSignedIn(makeMe({ profile: { bio: 'Slow travel' } }));
     mockApi.get.mockResolvedValue({ count: 0 });
     await renderScreen(<Profile />);
@@ -147,6 +147,8 @@ describe('profile tab', () => {
     }
     await fireEvent.press(screen.getByTestId('profile-menu-appearance'));
     expect(mockRouter.push).toHaveBeenCalledWith('/settings/appearance');
+    await fireEvent.press(screen.getByTestId('profile-menu-chat'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/settings/chat');
   });
 });
 

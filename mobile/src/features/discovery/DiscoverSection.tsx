@@ -202,6 +202,12 @@ export function DiscoverSection() {
     ? [current.area?.name, current.destination.name].filter(Boolean).join(', ')
     : (here?.label ?? null);
   const searchCity = current?.destination ?? here?.destination ?? null;
+  // The shared city stays until it expires; when the connection now points to another covered
+  // city (the traveller moved on), offer to switch instead of showing the old one silently.
+  const movedTo =
+    current && here?.destination && here.destination.id !== current.destination.id
+      ? here.destination
+      : null;
   const uncovered = !current && !!here && !here.destination;
   const unknown = !current && approximate.isFetched && !here;
 
@@ -502,6 +508,36 @@ export function DiscoverSection() {
         <Notice tone="info" testID="discovery-not-covered">
           {t('discovery.notCovered', { place: here?.label ?? '' })}
         </Notice>
+      ) : null}
+      {movedTo && !picking ? (
+        <View
+          style={[
+            styles.section,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.primary,
+              borderRadius: theme.radii.lg,
+              padding: theme.spacing[4],
+              gap: theme.spacing[3],
+            },
+          ]}
+          testID="discovery-moved"
+        >
+          {body(
+            t('discovery.movedBody', {
+              city: movedTo.name,
+              shared: current?.destination.name ?? '',
+            }),
+          )}
+          <Button
+            label={t('discovery.moveHere', { city: movedTo.name })}
+            variant="secondary"
+            icon="navigate-outline"
+            onPress={() => share.mutate({ mode: 'destination', destinationId: movedTo.id })}
+            busy={share.isPending}
+            testID="discovery-move-here"
+          />
+        </View>
       ) : null}
       {current && !visible ? <Notice tone="info">{t('discovery.invisibleNote')}</Notice> : null}
       {scanError ? <Notice tone="error">{scanError}</Notice> : null}

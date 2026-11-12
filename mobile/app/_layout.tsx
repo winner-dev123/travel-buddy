@@ -11,12 +11,17 @@ import { refreshAccessToken, restoreSession } from '@/auth/session';
 import { useSessionStore } from '@/auth/sessionStore';
 import { usePush } from '@/features/push/usePush';
 import { ActionSheetHost } from '@/components/ActionSheet';
+import { InAppBannerHost } from '@/components/InAppBanner';
+import { hydrateChatCache, persistChatCache } from '@/features/messages/chatCache';
+import { hydrateOutbox } from '@/features/messages/outbox';
+import { RealtimeConnection } from '@/features/realtime/RealtimeProvider';
 import { UpdateGate } from '@/features/update/UpdateGate';
 import { i18n, SUPPORTED_LOCALES, type SupportedLocale } from '@/i18n';
 import { useLaunchScreen } from '@/launch/launchScreen';
 import { resolveSupportedLocale } from '@/i18n/resolveLocale';
 import { bindQueryOnlineManager } from '@/offline/connectivity';
 import { createQueryClient, refetchWhenForegrounded } from '@/query/queryClient';
+import { hydrateChatPreferences } from '@/state/chatPreferences';
 import { useSettingsStore } from '@/state/settingsStore';
 import { hydrateUiPreferences } from '@/state/uiPreferences';
 import { useAppFonts } from '@/theme/fonts';
@@ -27,6 +32,11 @@ export default function RootLayout() {
   // The saved appearance is applied before the first frame, so the app never opens in the
   // wrong theme and then switches.
   useState(hydrateUiPreferences);
+  // The chat look and any messages still waiting to be sent come back from the last run.
+  useState(hydrateChatPreferences);
+  useState(hydrateOutbox);
+  // Recent chats from the last run, so they open even without a network.
+  useState(() => hydrateChatCache(queryClient));
   const theme = useAppTheme();
   const fontsReady = useAppFonts();
   useLaunchScreen(fontsReady);
@@ -71,6 +81,7 @@ export default function RootLayout() {
 
   useEffect(() => bindQueryOnlineManager(), []);
   useEffect(() => refetchWhenForegrounded(), []);
+  useEffect(() => persistChatCache(queryClient), [queryClient]);
   usePush();
 
   // Resume the platform session from the refresh token in secure storage (ADR-0003).
@@ -125,11 +136,14 @@ export default function RootLayout() {
               <Stack.Screen name="settings/blocked" />
               <Stack.Screen name="settings/delete-account" />
               <Stack.Screen name="settings/appearance" />
+              <Stack.Screen name="settings/chat" />
               <Stack.Screen name="discovery/consent" options={{ presentation: 'modal' }} />
               <Stack.Screen name="+not-found" />
             </Stack>
           </UpdateGate>
         </ThemeProvider>
+        <RealtimeConnection />
+        <InAppBannerHost />
         <ActionSheetHost />
         <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       </QueryClientProvider>

@@ -551,7 +551,9 @@
     "notCovered": "Discovery isn't available in {{place}} yet. Choose a city that has it.",
     "changeCity": "Not here? Choose a city",
     "ipCredit": "IP location by DB-IP",
-    "openProfile": "Open profile: {{name}}"
+    "openProfile": "Open profile: {{name}}",
+    "movedBody": "Your connection says you're in {{city}} now, but you're sharing {{shared}}.",
+    "moveHere": "Switch to {{city}}"
   },
   "messages": {
     "title": "Messages",
@@ -613,7 +615,20 @@
     "threadReplies_other": "{{count}} replies",
     "threadEmpty": "No replies yet. Start the thread.",
     "threadRootMissing": "Replies to an earlier message",
-    "threadInput": "Reply in thread"
+    "threadInput": "Reply in thread",
+    "typingOne": "{{name}} is typing…",
+    "typingTwo": "{{first}} and {{second}} are typing…",
+    "typingMany_one": "{{count}} person is typing…",
+    "typingMany_other": "{{count}} people are typing…",
+    "someone": "Someone",
+    "sending": "Sending…",
+    "sent": "Sent",
+    "readBy": "Read by {{name}}",
+    "notSent": "Not sent",
+    "notSentTap": "Not sent · Tap for options",
+    "notSentHint": "A message couldn't be sent. Tap it to try again or delete it.",
+    "retry": "Try again",
+    "discard": "Delete message"
   },
   "groups": {
     "title": "Groups",
@@ -1219,6 +1234,32 @@
       "system": "Follows the light or dark setting of your phone."
     },
     "hint": "Your choice is kept on this phone."
+  },
+  "chatSettings": {
+    "title": "Chat",
+    "preview": "Preview of a chat with these settings",
+    "sampleTheirs": "Sunset at the old harbour?",
+    "sampleMine": "Yes! See you at 7",
+    "sendSide": "Send button",
+    "sides": {
+      "right": "Right",
+      "left": "Left"
+    },
+    "sideDescriptions": {
+      "right": "Send sits on the right of the message box.",
+      "left": "Send sits on the left — easier with your left thumb."
+    },
+    "background": "Background",
+    "backgrounds": {
+      "none": "None",
+      "coast": "Coast",
+      "mountains": "Mountains"
+    },
+    "yourPhotos": "Your trip photos",
+    "noPhotos": "Photos from the stories you post show up here, ready to use as a background.",
+    "photoLabel": "Trip photo {{number}}",
+    "photoFailed": "Couldn't save that photo. Check your connection and try again.",
+    "hint": "These settings are kept on this phone. A trip photo is saved in the app, so chats show it even offline."
   },
   "purchases": {
     "title": "Purchase history",

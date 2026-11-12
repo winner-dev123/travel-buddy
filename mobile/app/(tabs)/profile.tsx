@@ -251,6 +251,12 @@ function SignedInProfile({ me }: { me: Me }) {
             testID="profile-menu-appearance"
           />
           <MenuRow
+            icon="chatbubbles-outline"
+            label={t('chatSettings.title')}
+            onPress={() => router.push('/settings/chat')}
+            testID="profile-menu-chat"
+          />
+          <MenuRow
             icon="options-outline"
             label={t('notificationSettings.title')}
             onPress={() => router.push('/settings/notifications')}

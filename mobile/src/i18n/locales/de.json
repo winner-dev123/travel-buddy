@@ -551,7 +551,9 @@
     "notCovered": "„Entdecken“ gibt es in {{place}} noch nicht. Wähle eine Stadt, in der es verfügbar ist.",
     "changeCity": "Nicht hier? Wähle eine Stadt",
     "ipCredit": "IP-Standort von DB-IP",
-    "openProfile": "Profil öffnen: {{name}}"
+    "openProfile": "Profil öffnen: {{name}}",
+    "movedBody": "Laut deiner Verbindung bist du jetzt in {{city}}, du teilst aber {{shared}}.",
+    "moveHere": "Zu {{city}} wechseln"
   },
   "messages": {
     "title": "Nachrichten",
@@ -613,7 +615,20 @@
     "threadReplies_other": "{{count}} Antworten",
     "threadEmpty": "Noch keine Antworten. Starte den Thread.",
     "threadRootMissing": "Antworten auf eine frühere Nachricht",
-    "threadInput": "Im Thread antworten"
+    "threadInput": "Im Thread antworten",
+    "typingOne": "{{name}} schreibt …",
+    "typingTwo": "{{first}} und {{second}} schreiben …",
+    "typingMany_one": "{{count}} Person schreibt …",
+    "typingMany_other": "{{count}} Personen schreiben …",
+    "someone": "Jemand",
+    "sending": "Wird gesendet …",
+    "sent": "Gesendet",
+    "readBy": "Gelesen von {{name}}",
+    "notSent": "Nicht gesendet",
+    "notSentTap": "Nicht gesendet · Tippen für Optionen",
+    "notSentHint": "Eine Nachricht konnte nicht gesendet werden. Tippe sie an, um es erneut zu versuchen oder sie zu löschen.",
+    "retry": "Erneut versuchen",
+    "discard": "Nachricht löschen"
   },
   "groups": {
     "title": "Gruppen",
@@ -1219,6 +1234,32 @@
       "system": "Folgt dem hellen oder dunklen Modus deines Telefons."
     },
     "hint": "Deine Auswahl wird auf diesem Telefon gespeichert."
+  },
+  "chatSettings": {
+    "title": "Chat",
+    "preview": "Vorschau eines Chats mit diesen Einstellungen",
+    "sampleTheirs": "Sonnenuntergang am alten Hafen?",
+    "sampleMine": "Ja! Bis um 19 Uhr",
+    "sendSide": "Senden-Taste",
+    "sides": {
+      "right": "Rechts",
+      "left": "Links"
+    },
+    "sideDescriptions": {
+      "right": "Senden liegt rechts neben dem Nachrichtenfeld.",
+      "left": "Senden liegt links – bequemer mit dem linken Daumen."
+    },
+    "background": "Hintergrund",
+    "backgrounds": {
+      "none": "Keiner",
+      "coast": "Küste",
+      "mountains": "Berge"
+    },
+    "yourPhotos": "Deine Reisefotos",
+    "noPhotos": "Fotos aus deinen Storys erscheinen hier und können als Hintergrund dienen.",
+    "photoLabel": "Reisefoto {{number}}",
+    "photoFailed": "Das Foto konnte nicht gespeichert werden. Prüfe deine Verbindung und versuche es erneut.",
+    "hint": "Diese Einstellungen bleiben auf diesem Handy. Das Reisefoto wird in der App gespeichert, damit Chats es auch offline zeigen."
   },
   "purchases": {
     "title": "Kaufverlauf",

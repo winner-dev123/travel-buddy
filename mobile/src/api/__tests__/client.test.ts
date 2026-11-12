@@ -331,6 +331,31 @@ describe('access-token refresh', () => {
     await expect(other.client.get('/v1/feed')).rejects.toMatchObject({ code: 'token_invalid' });
   });
 
+  it('refreshes before the first request of a session kept without a network', async () => {
+    let token: string | null = null;
+    const refreshAccessToken = jest.fn(async () => {
+      token = 'fresh-token';
+      return true;
+    });
+    const { client, lastCall } = setup({
+      getAccessToken: () => token,
+      refreshAccessToken,
+      hasSession: () => true,
+    });
+    await client.get('/v1/conversations');
+    expect(refreshAccessToken).toHaveBeenCalledTimes(1);
+    expect(lastCall().headers.Authorization).toBe('Bearer fresh-token');
+
+    // Guests (no session) call public endpoints without trying to refresh.
+    const guest = setup({
+      getAccessToken: () => null,
+      refreshAccessToken,
+      hasSession: () => false,
+    });
+    await guest.client.get('/v1/client-config');
+    expect(refreshAccessToken).toHaveBeenCalledTimes(1);
+  });
+
   it('does not loop when the refresh endpoint itself reports an expired token', async () => {
     const refreshAccessToken = jest.fn(async () => true);
     const { client } = setup({ refreshAccessToken }, expired());

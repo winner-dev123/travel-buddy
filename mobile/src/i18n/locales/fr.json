@@ -559,7 +559,9 @@
     "notCovered": "La découverte n'est pas encore disponible à {{place}}. Choisissez une ville où elle l'est.",
     "changeCity": "Pas ici ? Choisissez une ville",
     "ipCredit": "Localisation IP par DB-IP",
-    "openProfile": "Ouvrir le profil : {{name}}"
+    "openProfile": "Ouvrir le profil : {{name}}",
+    "movedBody": "Votre connexion indique que vous êtes maintenant à {{city}}, mais vous partagez {{shared}}.",
+    "moveHere": "Passer à {{city}}"
   },
   "messages": {
     "title": "Messages",
@@ -625,7 +627,21 @@
     "threadReplies_other": "{{count}} réponses",
     "threadEmpty": "Pas encore de réponse. Lancez le fil.",
     "threadRootMissing": "Réponses à un message précédent",
-    "threadInput": "Répondre dans le fil"
+    "threadInput": "Répondre dans le fil",
+    "typingOne": "{{name}} écrit…",
+    "typingTwo": "{{first}} et {{second}} écrivent…",
+    "typingMany_one": "{{count}} personne écrit…",
+    "typingMany_many": "{{count}} personnes écrivent…",
+    "typingMany_other": "{{count}} personnes écrivent…",
+    "someone": "Quelqu'un",
+    "sending": "Envoi…",
+    "sent": "Envoyé",
+    "readBy": "Lu par {{name}}",
+    "notSent": "Non envoyé",
+    "notSentTap": "Non envoyé · Touchez pour les options",
+    "notSentHint": "Un message n'a pas pu être envoyé. Touchez-le pour réessayer ou le supprimer.",
+    "retry": "Réessayer",
+    "discard": "Supprimer le message"
   },
   "groups": {
     "title": "Groupes",
@@ -1239,6 +1255,32 @@
       "system": "Suit le mode clair ou sombre de votre téléphone."
     },
     "hint": "Votre choix est conservé sur ce téléphone."
+  },
+  "chatSettings": {
+    "title": "Discussion",
+    "preview": "Aperçu d'une discussion avec ces réglages",
+    "sampleTheirs": "Coucher de soleil au vieux port ?",
+    "sampleMine": "Oui ! À 19 h",
+    "sendSide": "Bouton d'envoi",
+    "sides": {
+      "right": "À droite",
+      "left": "À gauche"
+    },
+    "sideDescriptions": {
+      "right": "Envoyer se trouve à droite du champ de message.",
+      "left": "Envoyer se trouve à gauche — plus pratique avec le pouce gauche."
+    },
+    "background": "Arrière-plan",
+    "backgrounds": {
+      "none": "Aucun",
+      "coast": "Côte",
+      "mountains": "Montagnes"
+    },
+    "yourPhotos": "Vos photos de voyage",
+    "noPhotos": "Les photos des stories que vous publiez apparaissent ici, prêtes à servir d'arrière-plan.",
+    "photoLabel": "Photo de voyage {{number}}",
+    "photoFailed": "Impossible d'enregistrer cette photo. Vérifiez votre connexion et réessayez.",
+    "hint": "Ces réglages restent sur ce téléphone. La photo de voyage est enregistrée dans l'app, les discussions l'affichent même hors ligne."
   },
   "purchases": {
     "title": "Historique des achats",

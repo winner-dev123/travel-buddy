@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -15,11 +16,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ApiProblem, getApiClient } from '@/api';
+import { getApiClient } from '@/api';
 import { useSessionStore } from '@/auth/sessionStore';
 import { showActions } from '@/components/ActionSheet';
-import { Button, Notice, TextField } from '@/components/Form';
+import { Notice } from '@/components/Form';
 import { MediaPreview } from '@/features/feed/PhotoGallery';
+import { Avatar } from '@/features/feed/PostCard';
 import { getGroup, groupKeys } from '@/features/groups/api';
 import {
   pickPhotos,
@@ -44,25 +46,44 @@ import {
   sendMessage,
   setMessageReaction,
   unpinMessage,
+  type Conversation,
   type Message,
   type MessageList,
 } from '@/features/messages/api';
+import { ChatBackdrop } from '@/features/messages/ChatBackdrop';
+import { Composer } from '@/features/messages/Composer';
+import {
+  discardMessage,
+  enqueueMessage,
+  retryMessage,
+  sendQueuedMessages,
+  useOutboxStore,
+  type OutboxItem,
+} from '@/features/messages/outbox';
+import { TypingIndicator } from '@/features/messages/TypingIndicator';
+import { realtimeHandle, reportTyping } from '@/features/realtime/handle';
+import { useRealtimeStore } from '@/features/realtime/store';
+import { useChatPreferences } from '@/state/chatPreferences';
 import { fontFamilies } from '@/theme/tokens';
 import { useAppTheme } from '@/theme/useAppTheme';
 
-/** SCR-081 Direct message thread (DM-001..013), refreshed by polling (ADR-0023). */
+/**
+ * SCR-081 Direct message thread (DM-001..013). Live over the realtime connection (ADR-0033) and
+ * refreshed by polling when there isn't one (ADR-0023). Text messages go through the outbox, so a
+ * message written without a network shows at once and is sent when a connection comes back.
+ */
 const MUTE_FOR = [
   { hours: 1, label: 'messages.muteFor.1' },
   { hours: 8, label: 'messages.muteFor.8' },
   { hours: 168, label: 'messages.muteFor.168' },
 ] as const;
 
-/** SAFE-006: a new connection's message matched the safety filter (not a network failure). */
-function isFiltered(error: unknown): boolean {
-  return (
-    error instanceof ApiProblem && error.errors.some((field) => field.code === 'message_filtered')
-  );
-}
+/** With a live connection, polling is only a safety net (new messages arrive as frames). */
+const LIVE_POLL_MS = 30_000;
+/** "Typing" stops this long after the last keystroke. */
+const TYPING_IDLE_MS = 5_000;
+
+type Row = { kind: 'message'; message: Message } | { kind: 'queued'; item: OutboxItem };
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -77,22 +98,39 @@ export default function ChatScreen() {
   // One client_message_id per message the user writes; a retry of that message reuses it, so a
   // send that reached the server before the connection dropped is never duplicated (DM-005).
   const pending = useRef<string>(getApiClient().newIdempotencyKey());
+  const live = useRealtimeStore((state) => state.status === 'online');
+  const typingMap = useRealtimeStore((state) => state.typing[id]);
+  const outbox = useOutboxStore((state) => state.items);
+  const sendSide = useChatPreferences((state) => state.sendSide);
+  const background = useChatPreferences((state) => state.background);
 
   const conversation = useQuery({
     queryKey: messageKeys.conversation(id),
     queryFn: () => getConversation(getApiClient(), id),
-    refetchInterval: POLL_CHAT_MS * 4,
+    refetchInterval: live ? LIVE_POLL_MS * 2 : POLL_CHAT_MS * 4,
   });
   const history = useQuery({
     queryKey: messageKeys.history(id),
     queryFn: () => listMessages(getApiClient(), id),
-    refetchInterval: POLL_CHAT_MS,
+    refetchInterval: live ? LIVE_POLL_MS : POLL_CHAT_MS,
   });
 
   const newest = history.data?.page.newest_seq ?? 0;
   const readThrough = conversation.data?.read_through_seq ?? 0;
   useEffect(() => {
     if (newest <= readThrough) return;
+    // Over the live connection the other side sees "Read" at once; REST otherwise.
+    const socket = realtimeHandle.current;
+    if (
+      socket?.isOnline &&
+      socket.send('receipt.read', { conversation_id: id, read_through_seq: newest })
+    ) {
+      queryClient.setQueryData<Conversation>(messageKeys.conversation(id), (old) =>
+        old ? { ...old, read_through_seq: Math.max(old.read_through_seq, newest) } : old,
+      );
+      void queryClient.invalidateQueries({ queryKey: messageKeys.inbox });
+      return;
+    }
     void markRead(getApiClient(), id, newest)
       .then(() => {
         void queryClient.invalidateQueries({ queryKey: messageKeys.conversation(id) });
@@ -114,7 +152,7 @@ export default function ChatScreen() {
   const pins = useQuery({
     queryKey: messageKeys.pins(id),
     queryFn: () => listPins(getApiClient(), id),
-    refetchInterval: POLL_CHAT_MS * 4,
+    refetchInterval: live ? LIVE_POLL_MS * 2 : POLL_CHAT_MS * 4,
   });
   const pin = useMutation({
     mutationFn: ({ message, on }: { message: Message; on: boolean }) =>
@@ -233,17 +271,55 @@ export default function ChatScreen() {
       { text: t('common.cancel'), style: 'cancel' },
     ]);
 
-  const send = useMutation({
-    mutationFn: (body: string) =>
-      sendMessage(getApiClient(), id, pending.current, body, replyTo?.id),
-    onSuccess: (message) => {
-      setDraft('');
-      setReplyTo(null);
-      pending.current = getApiClient().newIdempotencyKey();
-      void showSent(message);
-      void queryClient.invalidateQueries({ queryKey: messageKeys.inbox });
+  // Typing: started while the draft has text, stopped when it's cleared, sent, idle or left.
+  const typingIdle = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const changeDraft = (text: string) => {
+    setDraft(text);
+    const typing = text.trim().length > 0;
+    reportTyping(id, typing);
+    if (typingIdle.current) clearTimeout(typingIdle.current);
+    typingIdle.current = typing ? setTimeout(() => reportTyping(id, false), TYPING_IDLE_MS) : null;
+  };
+  useEffect(
+    () => () => {
+      if (typingIdle.current) clearTimeout(typingIdle.current);
+      reportTyping(id, false);
     },
-  });
+    [id],
+  );
+
+  const submit = () => {
+    const body = draft.trim();
+    if (!body) return;
+    enqueueMessage({
+      clientMessageId: pending.current,
+      conversationId: id,
+      body,
+      replyTo: replyTo ? { id: replyTo.id, snippet: replyTo.body } : null,
+    });
+    setDraft('');
+    setReplyTo(null);
+    pending.current = getApiClient().newIdempotencyKey();
+    if (typingIdle.current) clearTimeout(typingIdle.current);
+    reportTyping(id, false);
+    void sendQueuedMessages(queryClient);
+  };
+  const queuedActions = (item: OutboxItem) =>
+    showActions(t('messages.notSent'), undefined, [
+      {
+        text: t('messages.retry'),
+        onPress: () => {
+          retryMessage(item.clientMessageId);
+          void sendQueuedMessages(queryClient);
+        },
+      },
+      {
+        text: t('messages.discard'),
+        style: 'destructive',
+        onPress: () => discardMessage(item.clientMessageId),
+      },
+      { text: t('common.cancel'), style: 'cancel' },
+    ]);
   const remove = useMutation({
     mutationFn: (message: Message) => deleteMessage(getApiClient(), id, message.id),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: messageKeys.history(id) }),
@@ -300,9 +376,25 @@ export default function ChatScreen() {
   };
 
   const data = conversation.data;
-  const messages = [...(history.data?.data ?? [])].reverse(); // inverted list: newest first
+  const persisted = history.data?.data ?? [];
+  // Messages still in the outbox show after the persisted ones until the server has them.
+  const known = new Set(persisted.map((m) => m.client_message_id).filter(Boolean));
+  const queued = outbox.filter((i) => i.conversationId === id && !known.has(i.clientMessageId));
+  const rows: Row[] = [
+    ...queued.map((item): Row => ({ kind: 'queued', item })).reverse(),
+    ...[...persisted].reverse().map((message): Row => ({ kind: 'message', message })),
+  ]; // inverted list: newest first
+  const failed = queued.filter((i) => i.status === 'failed').at(-1);
   const peerRead = data?.peer_read_through_seq ?? null;
-  const lastMine = (history.data?.data ?? []).filter((m) => m.sender?.id === me).at(-1);
+  const lastMine = persisted.filter((m) => m.sender?.id === me).at(-1);
+  const direct = data?.kind === 'direct';
+  const nameOf = (userId: string) =>
+    (data?.counterpart?.id === userId ? data.counterpart.display_name : null) ??
+    persisted.find((m) => m.sender?.id === userId)?.sender?.display_name ??
+    t('messages.someone');
+  const typingNames = Object.keys(typingMap ?? {})
+    .filter((userId) => userId !== me)
+    .map(nameOf);
   const restriction =
     data && !data.can_send
       ? {
@@ -324,6 +416,17 @@ export default function ChatScreen() {
         options={{
           headerShown: true,
           title: data?.title ?? data?.counterpart?.display_name ?? t('messages.chatTitle'),
+          headerRight: () => (
+            <Pressable
+              onPress={() => router.push('/settings/chat')}
+              accessibilityRole="button"
+              accessibilityLabel={t('chatSettings.title')}
+              hitSlop={10}
+              testID="chat-settings"
+            >
+              <Ionicons name="color-palette-outline" size={22} color={theme.colors.textPrimary} />
+            </Pressable>
+          ),
         }}
       />
       <KeyboardAvoidingView
@@ -424,177 +527,279 @@ export default function ChatScreen() {
           </View>
         ) : null}
         {pin.isError ? <Notice tone="error">{t('user.actionFailed')}</Notice> : null}
-        <FlatList<Message>
-          inverted
-          data={messages}
-          keyExtractor={(message) => message.id}
-          contentContainerStyle={{ padding: theme.spacing[4], gap: theme.spacing[2] }}
-          ListFooterComponent={
-            <Text
-              style={[
-                theme.typography.caption,
-                styles.center,
-                { color: theme.colors.textSecondary },
-              ]}
-            >
-              {t('messages.notEncrypted')}
-            </Text>
-          }
-          ListEmptyComponent={
-            history.isPending ? (
-              <ActivityIndicator color={theme.colors.primary} />
-            ) : history.isError ? (
-              <Notice tone="error">{t('messages.loadFailed')}</Notice>
-            ) : (
+        <View style={styles.fill}>
+          <ChatBackdrop background={background} />
+          <FlatList<Row>
+            inverted
+            data={rows}
+            keyExtractor={(row) =>
+              row.kind === 'queued' ? `queued-${row.item.clientMessageId}` : row.message.id
+            }
+            contentContainerStyle={{ padding: theme.spacing[4], gap: theme.spacing[2] }}
+            ListHeaderComponent={<TypingIndicator names={typingNames} />}
+            ListFooterComponent={
               <Text
                 style={[
-                  theme.typography.body,
+                  theme.typography.caption,
                   styles.center,
                   { color: theme.colors.textSecondary },
                 ]}
               >
-                {t('messages.noMessages')}
+                {t('messages.notEncrypted')}
               </Text>
-            )
-          }
-          renderItem={({ item }) => {
-            const mine = item.sender?.id === me;
-            const hidden = isHidden(item);
-            const group = data?.kind === 'group';
-            return (
-              <Pressable
-                onLongPress={() => actions(item)}
-                accessibilityHint={t('messages.actionsHint')}
-                style={[
-                  styles.bubble,
-                  mine ? styles.mine : styles.theirs,
-                  { backgroundColor: mine ? theme.colors.primary : theme.colors.surface },
-                ]}
-                testID={`message-${item.id}`}
-              >
-                {item.kind === 'announcement' ? (
-                  <Text
-                    style={[
-                      theme.typography.caption,
-                      { color: mine ? theme.colors.onPrimary : theme.colors.primary },
-                    ]}
-                    testID={`announcement-${item.id}`}
-                  >
-                    {t('messages.announcement')}
-                  </Text>
-                ) : null}
-                {group && !mine ? (
-                  <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
-                    {item.sender?.display_name ?? t('messages.deletedUser')}
-                  </Text>
-                ) : null}
-                {item.reply_to ? (
-                  <Text
-                    numberOfLines={1}
-                    style={[
-                      theme.typography.caption,
-                      styles.quote,
-                      { color: mine ? theme.colors.onPrimary : theme.colors.textSecondary },
-                    ]}
-                    testID={`reply-quote-${item.id}`}
-                  >
-                    {`↩ ${item.reply_to.deleted ? t('messages.deleted') : (item.reply_to.snippet ?? '')}`}
-                  </Text>
-                ) : null}
-                {!hidden && item.attachments.length > 0 ? (
-                  <View style={styles.attachments} testID={`message-photos-${item.id}`}>
-                    {item.attachments.map((media) => (
-                      <MediaPreview key={media.id} media={media} />
-                    ))}
+            }
+            ListEmptyComponent={
+              history.isPending ? (
+                <ActivityIndicator color={theme.colors.primary} />
+              ) : history.isError ? (
+                <Notice tone="error">{t('messages.loadFailed')}</Notice>
+              ) : (
+                <Text
+                  style={[
+                    theme.typography.body,
+                    styles.center,
+                    { color: theme.colors.textSecondary },
+                  ]}
+                >
+                  {t('messages.noMessages')}
+                </Text>
+              )
+            }
+            renderItem={({ item: row }) => {
+              if (row.kind === 'queued') {
+                const queuedItem = row.item;
+                const isFailed = queuedItem.status === 'failed';
+                return (
+                  <View style={styles.mineColumn}>
+                    <Pressable
+                      onPress={isFailed ? () => queuedActions(queuedItem) : undefined}
+                      onLongPress={() => queuedActions(queuedItem)}
+                      accessibilityHint={t('messages.actionsHint')}
+                      style={[
+                        styles.bubble,
+                        styles.mine,
+                        {
+                          backgroundColor: isFailed ? theme.colors.surface : theme.colors.primary,
+                          borderColor: isFailed ? theme.colors.danger : 'transparent',
+                          borderWidth: isFailed ? 1 : 0,
+                          opacity: isFailed ? 1 : 0.8,
+                        },
+                      ]}
+                      testID={`queued-${queuedItem.clientMessageId}`}
+                    >
+                      {queuedItem.replyTo ? (
+                        <Text
+                          numberOfLines={1}
+                          style={[
+                            theme.typography.caption,
+                            styles.quote,
+                            {
+                              color: isFailed ? theme.colors.textSecondary : theme.colors.onPrimary,
+                            },
+                          ]}
+                        >
+                          {`↩ ${queuedItem.replyTo.snippet ?? ''}`}
+                        </Text>
+                      ) : null}
+                      <Text
+                        style={[
+                          theme.typography.body,
+                          { color: isFailed ? theme.colors.textPrimary : theme.colors.onPrimary },
+                        ]}
+                      >
+                        {queuedItem.body}
+                      </Text>
+                    </Pressable>
+                    <View
+                      style={styles.status}
+                      testID={`queued-status-${queuedItem.clientMessageId}`}
+                    >
+                      <Ionicons
+                        name={isFailed ? 'alert-circle' : 'time-outline'}
+                        size={13}
+                        color={isFailed ? theme.colors.danger : theme.colors.textSecondary}
+                      />
+                      <Text
+                        style={[
+                          theme.typography.caption,
+                          { color: isFailed ? theme.colors.danger : theme.colors.textSecondary },
+                        ]}
+                      >
+                        {isFailed ? t('messages.notSentTap') : t('messages.sending')}
+                      </Text>
+                    </View>
                   </View>
-                ) : null}
-                {hidden || item.body ? (
-                  <Text
-                    style={[
-                      theme.typography.body,
-                      {
-                        color: mine ? theme.colors.onPrimary : theme.colors.textPrimary,
-                        fontStyle: hidden ? 'italic' : 'normal',
-                      },
-                    ]}
-                  >
-                    {hidden ? t('messages.deleted') : item.body}
-                  </Text>
-                ) : null}
-                {item.edited_at && !hidden ? (
-                  <Text
-                    style={[
-                      theme.typography.caption,
-                      { color: mine ? theme.colors.onPrimary : theme.colors.textSecondary },
-                    ]}
-                  >
-                    {t('messages.edited')}
-                  </Text>
-                ) : null}
-                {threaded && (item.thread_reply_count ?? 0) > 0 ? (
-                  <Pressable
-                    onPress={() => openThread(item)}
-                    accessibilityRole="link"
-                    hitSlop={6}
-                    testID={`thread-link-${item.id}`}
-                  >
+                );
+              }
+              const item = row.message;
+              const mine = item.sender?.id === me;
+              const hidden = isHidden(item);
+              const group = data?.kind === 'group';
+              const isLastMine = mine && item.id === lastMine?.id;
+              const read = isLastMine && peerRead !== null && peerRead >= item.seq;
+              const bubble = (
+                <Pressable
+                  onLongPress={() => actions(item)}
+                  accessibilityHint={t('messages.actionsHint')}
+                  style={[
+                    styles.bubble,
+                    mine ? styles.mine : styles.theirs,
+                    { backgroundColor: mine ? theme.colors.primary : theme.colors.surface },
+                  ]}
+                  testID={`message-${item.id}`}
+                >
+                  {item.kind === 'announcement' ? (
                     <Text
                       style={[
                         theme.typography.caption,
-                        styles.threadLink,
                         { color: mine ? theme.colors.onPrimary : theme.colors.primary },
                       ]}
+                      testID={`announcement-${item.id}`}
                     >
-                      {t('messages.threadReplies', { count: item.thread_reply_count ?? 0 })}
+                      {t('messages.announcement')}
                     </Text>
-                  </Pressable>
-                ) : null}
-                {item.reactions.length > 0 && !hidden ? (
-                  <View style={styles.reactions}>
-                    {item.reactions.map((reaction) => (
-                      <Pressable
-                        key={reaction.emoji}
-                        onPress={() => toggleReaction(item, reaction.emoji)}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: reaction.reacted_by_me }}
-                        accessibilityLabel={t('messages.reactionA11y', {
-                          emoji: reaction.emoji,
-                          count: reaction.count,
-                        })}
+                  ) : null}
+                  {group && !mine ? (
+                    <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+                      {item.sender?.display_name ?? t('messages.deletedUser')}
+                    </Text>
+                  ) : null}
+                  {item.reply_to ? (
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        theme.typography.caption,
+                        styles.quote,
+                        { color: mine ? theme.colors.onPrimary : theme.colors.textSecondary },
+                      ]}
+                      testID={`reply-quote-${item.id}`}
+                    >
+                      {`↩ ${item.reply_to.deleted ? t('messages.deleted') : (item.reply_to.snippet ?? '')}`}
+                    </Text>
+                  ) : null}
+                  {!hidden && item.attachments.length > 0 ? (
+                    <View style={styles.attachments} testID={`message-photos-${item.id}`}>
+                      {item.attachments.map((media) => (
+                        <MediaPreview key={media.id} media={media} />
+                      ))}
+                    </View>
+                  ) : null}
+                  {hidden || item.body ? (
+                    <Text
+                      style={[
+                        theme.typography.body,
+                        {
+                          color: mine ? theme.colors.onPrimary : theme.colors.textPrimary,
+                          fontStyle: hidden ? 'italic' : 'normal',
+                        },
+                      ]}
+                    >
+                      {hidden ? t('messages.deleted') : item.body}
+                    </Text>
+                  ) : null}
+                  {item.edited_at && !hidden ? (
+                    <Text
+                      style={[
+                        theme.typography.caption,
+                        { color: mine ? theme.colors.onPrimary : theme.colors.textSecondary },
+                      ]}
+                    >
+                      {t('messages.edited')}
+                    </Text>
+                  ) : null}
+                  {threaded && (item.thread_reply_count ?? 0) > 0 ? (
+                    <Pressable
+                      onPress={() => openThread(item)}
+                      accessibilityRole="link"
+                      hitSlop={6}
+                      testID={`thread-link-${item.id}`}
+                    >
+                      <Text
                         style={[
-                          styles.reaction,
-                          {
-                            borderColor: reaction.reacted_by_me
-                              ? theme.colors.onPrimary
-                              : theme.colors.divider,
-                          },
+                          theme.typography.caption,
+                          styles.threadLink,
+                          { color: mine ? theme.colors.onPrimary : theme.colors.primary },
                         ]}
-                        testID={`reaction-${item.id}-${reaction.emoji}`}
                       >
-                        <Text
+                        {t('messages.threadReplies', { count: item.thread_reply_count ?? 0 })}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                  {item.reactions.length > 0 && !hidden ? (
+                    <View style={styles.reactions}>
+                      {item.reactions.map((reaction) => (
+                        <Pressable
+                          key={reaction.emoji}
+                          onPress={() => toggleReaction(item, reaction.emoji)}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: reaction.reacted_by_me }}
+                          accessibilityLabel={t('messages.reactionA11y', {
+                            emoji: reaction.emoji,
+                            count: reaction.count,
+                          })}
                           style={[
-                            theme.typography.caption,
-                            { color: mine ? theme.colors.onPrimary : theme.colors.textPrimary },
+                            styles.reaction,
+                            {
+                              borderColor: reaction.reacted_by_me
+                                ? theme.colors.onPrimary
+                                : theme.colors.divider,
+                            },
                           ]}
+                          testID={`reaction-${item.id}-${reaction.emoji}`}
                         >
-                          {`${reaction.emoji} ${reaction.count}`}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                ) : null}
-                {mine && item.id === lastMine?.id && peerRead !== null && peerRead >= item.seq ? (
-                  <Text
-                    style={[theme.typography.caption, { color: theme.colors.onPrimary }]}
-                    testID="message-read"
-                  >
-                    {t('messages.read')}
-                  </Text>
-                ) : null}
-              </Pressable>
-            );
-          }}
-        />
+                          <Text
+                            style={[
+                              theme.typography.caption,
+                              { color: mine ? theme.colors.onPrimary : theme.colors.textPrimary },
+                            ]}
+                          >
+                            {`${reaction.emoji} ${reaction.count}`}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  ) : null}
+                </Pressable>
+              );
+              if (!isLastMine) return bubble;
+              // My newest message: "Sent", then the reader's face and "Read" once they've seen it.
+              const reader = direct ? (data?.counterpart ?? null) : null;
+              return (
+                <View style={styles.mineColumn}>
+                  {bubble}
+                  {read ? (
+                    <View
+                      style={styles.status}
+                      accessible
+                      accessibilityLabel={
+                        reader
+                          ? t('messages.readBy', { name: reader.display_name })
+                          : t('messages.read')
+                      }
+                      testID="message-read"
+                    >
+                      {reader ? <Avatar user={reader} size={16} /> : null}
+                      <Text
+                        style={[theme.typography.caption, { color: theme.colors.textSecondary }]}
+                      >
+                        {t('messages.read')}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={styles.status} testID="message-sent">
+                      <Ionicons name="checkmark" size={13} color={theme.colors.textSecondary} />
+                      <Text
+                        style={[theme.typography.caption, { color: theme.colors.textSecondary }]}
+                      >
+                        {t('messages.sent')}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              );
+            }}
+          />
+        </View>
         <View
           style={[
             styles.composer,
@@ -607,9 +812,11 @@ export default function ChatScreen() {
             </Notice>
           ) : (
             <>
-              {send.isError ? (
+              {failed ? (
                 <Notice tone="error" testID="chat-send-error">
-                  {isFiltered(send.error) ? t('messages.filtered') : t('messages.sendFailed')}
+                  {failed.reason === 'filtered'
+                    ? t('messages.filtered')
+                    : t('messages.notSentHint')}
                 </Notice>
               ) : null}
               {replyTo ? (
@@ -637,44 +844,20 @@ export default function ChatScreen() {
                   </Pressable>
                 </View>
               ) : null}
-              <TextField
-                label={t('messages.placeholder')}
-                value={draft}
-                onChangeText={setDraft}
-                maxLength={4000}
-                multiline
-                testID="chat-input"
-              />
               {photoNotice ? (
                 <Notice tone="info" testID="chat-photo-notice">
                   {photoNotice}
                 </Notice>
               ) : null}
               {sendPhoto.isError ? <Notice tone="error">{t('compose.uploadFailed')}</Notice> : null}
-              <View style={styles.sendRow}>
-                <Pressable
-                  onPress={choosePhoto}
-                  disabled={sendPhoto.isPending}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('messages.sendPhoto')}
-                  hitSlop={8}
-                  style={styles.photoButton}
-                  testID="chat-photo"
-                >
-                  <Text style={[theme.typography.title3, { color: theme.colors.primary }]}>
-                    {sendPhoto.isPending ? '…' : '📷'}
-                  </Text>
-                </Pressable>
-                <View style={styles.fill}>
-                  <Button
-                    label={t('messages.send')}
-                    onPress={() => send.mutate(draft.trim())}
-                    disabled={draft.trim().length === 0}
-                    busy={send.isPending}
-                    testID="chat-send"
-                  />
-                </View>
-              </View>
+              <Composer
+                value={draft}
+                onChangeText={changeDraft}
+                onSend={submit}
+                onPhoto={choosePhoto}
+                photoBusy={sendPhoto.isPending}
+                sendSide={sendSide}
+              />
             </>
           )}
         </View>
@@ -689,6 +872,8 @@ const styles = StyleSheet.create({
   bubble: { maxWidth: '80%', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 8, gap: 2 },
   mine: { alignSelf: 'flex-end' },
   theirs: { alignSelf: 'flex-start' },
+  mineColumn: { alignItems: 'flex-end', gap: 3 },
+  status: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 4 },
   composer: { borderTopWidth: StyleSheet.hairlineWidth, gap: 8 },
   pins: {
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -700,8 +885,6 @@ const styles = StyleSheet.create({
   reactions: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 },
   attachments: { gap: 4, width: 220 },
   threadLink: { fontFamily: fontFamilies.semibold, marginTop: 4 },
-  sendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  photoButton: { paddingHorizontal: 4 },
   reaction: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 6, paddingVertical: 1 },
   muteBar: {
     flexDirection: 'row',

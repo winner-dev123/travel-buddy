@@ -1,6 +1,6 @@
 // req: DM-001, DM-005, DM-007, DM-010, DM-012, SAFE-006
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { Alert } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { ApiProblem } from '@/api';
 import { useSessionStore } from '@/auth/sessionStore';
 import type { Me } from '@/auth/types';
 import type { Conversation, Message } from '@/features/messages/api';
+import { useOutboxStore } from '@/features/messages/outbox';
 import { i18n } from '@/i18n';
 
 import Messages from '../app/(tabs)/messages';
@@ -126,6 +127,7 @@ beforeEach(async () => {
   jest.clearAllMocks();
   mockParams = {};
   useSessionStore.getState().setSignedIn(me);
+  useOutboxStore.setState({ items: [] });
   await i18n.changeLanguage('en');
 });
 
@@ -270,7 +272,9 @@ describe('chat', () => {
     ]);
     await renderUi(<Chat />);
     expect(await screen.findByText('Message deleted')).toBeTruthy();
-    expect(screen.getByTestId('message-read')).toHaveTextContent('Read');
+    const read = screen.getByTestId('message-read');
+    expect(read).toHaveProp('accessibilityLabel', 'Read by Bo');
+    expect(within(read).getByText('Read')).toBeTruthy();
   });
 
   it('explains why sending is unavailable after a block', async () => {

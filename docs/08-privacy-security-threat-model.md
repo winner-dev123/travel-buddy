@@ -136,6 +136,7 @@ Verification column: **U** = unit test, **I** = integration test, **S** = securi
 | T-MSG-05 | Message bodies in push or logs | Push payloads contain IDs and a preview only if allowed. Logs never contain bodies (redaction) | U |
 | T-MSG-07 | Web Push endpoint leakage (endpoints are capability URLs that let anyone push to the browser) | Stored envelope-encrypted with a hash for lookup. Never logged or returned by any API. Deleted on session revocation or provider 404/410 | U, R |
 | T-MSG-06 | Lack of E2EE expectations | Disclosed in privacy policy (DM-013). E2EE requires a separate threat model | O |
+| T-MSG-08 | Chats left on a shared or handed-over phone (the app keeps recent chats, queued messages and the last profile on the device so it works offline, ADR-0033) | Kept only in the app's private documents (sandboxed, encrypted by the OS with the device lock). Capped (30 chats, 60 messages each). Wiped when the session ends on the device (sign-out, revoked, expired or missing session), never on a network failure. Queued messages are never sent for another account. The refresh token stays in secure storage | U |
 
 ### 4.5 Groups and invitations (A8)
 

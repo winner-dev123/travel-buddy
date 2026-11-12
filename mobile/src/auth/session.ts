@@ -1,9 +1,12 @@
+import NetInfo from '@react-native-community/netinfo';
 import { randomUUID } from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 import { ApiProblem, type ApiClient } from '@/api';
+import { isOnlineState } from '@/offline/connectivity';
 
+import { endDeviceSession, readCachedMe } from './deviceSession';
 import { useSessionStore } from './sessionStore';
 import { tokenStore } from './tokenStore';
 import type { AuthResult, LegalDocuments, Me, SessionTokens, SupportContact } from './types';
@@ -114,7 +117,38 @@ export async function register(client: ApiClient, input: RegistrationInput): Pro
   return signedIn(result);
 }
 
-/** At launch: rotate the stored refresh token and load `Me`. Any failure means signed out. */
+/** Retry loading `Me` after a launch without a network, when this delay has passed. */
+const RESUME_RETRY_MS = 15_000;
+
+/**
+ * Finish a session restored without a network: once a connection is back, load `Me` (the API
+ * client refreshes the access token first). A refused refresh ends the session there.
+ */
+function resumeWhenOnline(client: ApiClient): void {
+  const unsubscribe = NetInfo.addEventListener((state) => {
+    if (!isOnlineState(state)) return;
+    unsubscribe();
+    client
+      .get<Me>('/v1/users/me')
+      .then((me) => {
+        if (useSessionStore.getState().status === 'signed_in') {
+          useSessionStore.getState().setSignedIn(me);
+        }
+      })
+      .catch((error: unknown) => {
+        if (error instanceof ApiProblem || useSessionStore.getState().status !== 'signed_in') {
+          return;
+        }
+        setTimeout(() => resumeWhenOnline(client), RESUME_RETRY_MS);
+      });
+  });
+}
+
+/**
+ * At launch: rotate the stored refresh token and load `Me`. A refused or missing session means
+ * signed out. Without a network (or on one too poor to answer), the traveller stays signed in
+ * with what this device knows and the session is finished when a connection is back.
+ */
 export async function restoreSession(client: ApiClient): Promise<void> {
   const store = useSessionStore.getState();
   let refreshToken: string | null;
@@ -126,10 +160,12 @@ export async function restoreSession(client: ApiClient): Promise<void> {
       console.warn('[session] refresh token unreadable', error);
     }
     await tokenStore.clear().catch(() => undefined);
+    endDeviceSession();
     store.setSignedOut();
     return;
   }
   if (!refreshToken) {
+    endDeviceSession();
     store.setSignedOut();
     return;
   }
@@ -145,8 +181,17 @@ export async function restoreSession(client: ApiClient): Promise<void> {
     }
     if (error instanceof ApiProblem) {
       await tokenStore.clear(); // revoked, expired or reused: the session is gone
+      endDeviceSession();
+      store.setSignedOut();
+      return;
     }
-    // Network errors keep the refresh token for the next launch.
+    // Network errors keep the refresh token: carry on with this device's copy of `Me`.
+    const cached = readCachedMe();
+    if (cached) {
+      store.setSignedIn(cached);
+      resumeWhenOnline(client);
+      return;
+    }
     store.setSignedOut();
   }
 }
@@ -161,6 +206,7 @@ export async function refreshAccessToken(client: ApiClient): Promise<boolean> {
     // Nothing to refresh with (unreadable keystore, cleared storage): the session is over, so
     // the app shows sign-in instead of failing every request with an expired token.
     await tokenStore.clear().catch(() => undefined);
+    endDeviceSession();
     useSessionStore.getState().setSignedOut();
     return false;
   }
@@ -173,6 +219,7 @@ export async function refreshAccessToken(client: ApiClient): Promise<boolean> {
   } catch (error) {
     if (error instanceof ApiProblem) {
       await tokenStore.clear();
+      endDeviceSession();
       useSessionStore.getState().setSignedOut();
     }
     return false;
@@ -188,6 +235,7 @@ export async function signOut(client: ApiClient): Promise<void> {
     // Signing out locally must always succeed; the server session expires anyway.
   } finally {
     await tokenStore.clear();
+    endDeviceSession();
     useSessionStore.getState().setSignedOut();
   }
 }

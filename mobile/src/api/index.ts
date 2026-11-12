@@ -1,5 +1,6 @@
 import { randomUUID } from 'expo-crypto';
 
+import { useSessionStore } from '@/auth/sessionStore';
 import { tokenStore } from '@/auth/tokenStore';
 import { getApiBaseUrl } from '@/config/env';
 import { i18n } from '@/i18n';
@@ -28,6 +29,7 @@ export function getApiClient(): ApiClient {
     getLocale: () => i18n.language || 'en',
     generateId: randomUUID,
     refreshAccessToken: async () => (refresher ? refresher() : false),
+    hasSession: () => useSessionStore.getState().status === 'signed_in',
   });
   return defaultClient;
 }

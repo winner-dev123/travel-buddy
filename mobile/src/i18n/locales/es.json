@@ -559,7 +559,9 @@
     "notCovered": "Descubrir aún no está disponible en {{place}}. Elige una ciudad donde lo esté.",
     "changeCity": "¿No estás aquí? Elige una ciudad",
     "ipCredit": "Ubicación por IP de DB-IP",
-    "openProfile": "Abrir perfil: {{name}}"
+    "openProfile": "Abrir perfil: {{name}}",
+    "movedBody": "Tu conexión indica que ahora estás en {{city}}, pero estás compartiendo {{shared}}.",
+    "moveHere": "Cambiar a {{city}}"
   },
   "messages": {
     "title": "Mensajes",
@@ -625,7 +627,21 @@
     "threadReplies_other": "{{count}} respuestas",
     "threadEmpty": "Todavía no hay respuestas. Empieza el hilo.",
     "threadRootMissing": "Respuestas a un mensaje anterior",
-    "threadInput": "Responder en el hilo"
+    "threadInput": "Responder en el hilo",
+    "typingOne": "{{name}} está escribiendo…",
+    "typingTwo": "{{first}} y {{second}} están escribiendo…",
+    "typingMany_one": "{{count}} persona está escribiendo…",
+    "typingMany_many": "{{count}} personas están escribiendo…",
+    "typingMany_other": "{{count}} personas están escribiendo…",
+    "someone": "Alguien",
+    "sending": "Enviando…",
+    "sent": "Enviado",
+    "readBy": "Leído por {{name}}",
+    "notSent": "No enviado",
+    "notSentTap": "No enviado · Toca para ver opciones",
+    "notSentHint": "Un mensaje no se pudo enviar. Tócalo para reintentarlo o eliminarlo.",
+    "retry": "Reintentar",
+    "discard": "Eliminar mensaje"
   },
   "groups": {
     "title": "Grupos",
@@ -1239,6 +1255,32 @@
       "system": "Sigue el modo claro u oscuro de tu teléfono."
     },
     "hint": "Tu elección se guarda en este teléfono."
+  },
+  "chatSettings": {
+    "title": "Chat",
+    "preview": "Vista previa de un chat con estos ajustes",
+    "sampleTheirs": "¿Atardecer en el puerto viejo?",
+    "sampleMine": "¡Sí! Nos vemos a las 7",
+    "sendSide": "Botón de enviar",
+    "sides": {
+      "right": "Derecha",
+      "left": "Izquierda"
+    },
+    "sideDescriptions": {
+      "right": "Enviar queda a la derecha del cuadro de mensaje.",
+      "left": "Enviar queda a la izquierda: más cómodo con el pulgar izquierdo."
+    },
+    "background": "Fondo",
+    "backgrounds": {
+      "none": "Ninguno",
+      "coast": "Costa",
+      "mountains": "Montañas"
+    },
+    "yourPhotos": "Tus fotos de viaje",
+    "noPhotos": "Las fotos de las historias que publicas aparecen aquí, listas para usarlas como fondo.",
+    "photoLabel": "Foto de viaje {{number}}",
+    "photoFailed": "No se pudo guardar esa foto. Revisa tu conexión e inténtalo de nuevo.",
+    "hint": "Estos ajustes se guardan en este teléfono. La foto de viaje se guarda en la app, así que los chats la muestran incluso sin conexión."
   },
   "purchases": {
     "title": "Historial de compras",
