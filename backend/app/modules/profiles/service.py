@@ -26,6 +26,7 @@ from app.modules.media.schemas import MediaRef
 from app.modules.platform import service as platform_service
 from app.modules.profiles.domain import (
     BIO_MAX,
+    DEFAULT_HANDLE_BASE,
     HOME_REGION_MAX,
     INTEREST_MAX,
     clean_display_name,
@@ -89,7 +90,11 @@ async def create_default_profile(
     a random numeric suffix inside a savepoint.
     """
     base = handle_base(idp_name)
-    candidates = [base] if len(base) >= 3 and base != "traveler" else []
+    if is_reserved_handle(base):
+        # A name like "Travel Buddy Fan" stays reserved with any digits added: start from the
+        # generic stem instead of failing the sign-up.
+        base = DEFAULT_HANDLE_BASE
+    candidates = [base] if len(base) >= 3 and base != DEFAULT_HANDLE_BASE else []
     candidates += [
         handle_with_suffix(base, secrets.randbelow(9000) + 1000) for _ in range(_HANDLE_ATTEMPTS)
     ]

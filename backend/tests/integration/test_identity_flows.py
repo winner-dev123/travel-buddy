@@ -461,6 +461,19 @@ def test_logout_current_and_all_sessions(live_app: LiveApp) -> None:
     assert sessions == 0
 
 
+@pytest.mark.req("AUTH-001", "PROF-002")
+@pytest.mark.parametrize("name", ["Travel Buddy Admin", "TravelBuddy", "Admin"])
+def test_names_that_make_reserved_handles_still_register(live_app: LiveApp, name: str) -> None:
+    """A brand or staff word in the name (reserved even with digits added) used to fail the
+    sign-up with a 500; the handle now starts from the generic stem instead."""
+    response = _register(live_app, _id_token(live_app, name=name))
+    assert response.status_code == 201, response.text
+    profile = response.json()["user"]["profile"]
+    assert profile["display_name"] == name
+    assert "travelbuddy" not in profile["handle"].replace(".", "")
+    assert profile["handle"] not in {"admin", "travel.buddy"}
+
+
 def test_dev_idp_accepts_reserved_test_domains(live_app: LiveApp) -> None:
     token = _id_token(live_app, email="fixture@example.test")
     assert _register(live_app, token).status_code == 201
