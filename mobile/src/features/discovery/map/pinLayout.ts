@@ -15,19 +15,23 @@ export const SPREAD_M = {
   neighborhood: { min: 120, max: 420 },
 } as const;
 
-/**
- * Pins of nearby areas (a city and a neighbourhood 1.5 km from its centre) can land on each other.
- * Each pin keeps this distance from the others where it can, about one avatar at the city view.
- */
-export const SEPARATION_M = 600;
-/** How much further out than its spread a pin may be pushed to make room. */
-export const MAX_PUSH_M = { city: 800, neighborhood: 900 } as const;
-const PUSH_STEP_M = 150;
-const PUSH_TURN = 0.9;
-
 /** The circle the map shows around a city before a search: the city spread plus a margin. */
 export const CITY_VIEW_RADIUS_M = 3200;
 export const COUNTRY_VIEW_RADIUS_M = 350_000;
+
+/**
+ * Pins of nearby areas (a city and a neighbourhood 1.5 km from its centre) can land on each other.
+ * On the map, CITY_VIEW_RADIUS_M spans RADAR_RADIUS_PX (mapPage.ts: radar 280 px wide, 92% of its
+ * half), and a pin with its name takes about PIN_FOOTPRINT_PX. Each pin keeps that distance from
+ * the others where it can (about 1.5 km).
+ */
+const RADAR_RADIUS_PX = (280 / 2) * 0.92;
+const PIN_FOOTPRINT_PX = 60;
+export const SEPARATION_M = Math.round((CITY_VIEW_RADIUS_M * PIN_FOOTPRINT_PX) / RADAR_RADIUS_PX);
+/** How much further out than its spread a pin may be pushed to make room. */
+export const MAX_PUSH_M = { city: 1200, neighborhood: 1600 } as const;
+const PUSH_STEP_M = 200;
+const PUSH_TURN = 0.9;
 
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 const METRES_PER_DEGREE = 111_320;
