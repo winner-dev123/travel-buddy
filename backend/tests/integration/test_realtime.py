@@ -409,3 +409,28 @@ def test_browsers_authenticate_with_single_use_tickets(rt: LiveApp) -> None:
         reader = Reader(ws)
         reader.send("auth", {"ticket": pending})
         assert reader.closed() == 4001
+
+
+# ─────────────────────────────── notifications ───────────────────────────────
+
+
+@pytest.mark.req("NOTIF-001", "CONN-001")
+def test_a_connection_request_reaches_the_open_app_at_once(rt: LiveApp) -> None:
+    """ADR-0033: the job that creates the notification announces it on the recipient's socket."""
+    from tests.integration.test_connections import _send
+    from tests.integration.test_posts import _tick
+
+    ana, ana_id = _user(rt)
+    bo, bo_id = _user(rt)
+    with _socket(rt, ana) as ana_ws, _socket(rt, bo) as bo_ws:
+        sent = _send(rt, bo, ana_id)
+        assert sent.status_code == 201, sent.text
+        _tick(rt)
+        frame = ana_ws.expect("notification.new")
+        assert_realtime_frame(frame)
+        notification = frame["data"]["notification"]
+        assert notification["type"] == "connection_request"
+        assert notification["actor"]["id"] == bo_id
+        assert notification["title"]
+        assert "read_at" not in notification
+        assert all(f["type"] != "notification.new" for f in bo_ws.quiet())

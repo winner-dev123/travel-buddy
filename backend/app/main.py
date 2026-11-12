@@ -137,7 +137,7 @@ from app.modules.trust_safety.api import router as trust_safety_router
 from app.modules.trust_safety.service import BlockService, ReportService
 from app.modules.web_cache import service as web_cache_service
 from app.modules.web_cache.config import WebCacheSettings
-from app.realtime.bus import MemoryBus, RealtimeBus, RedisBus
+from app.realtime.bus import MemoryBus, PostgresBus, RealtimeBus, RedisBus
 from app.realtime.gateway import router as realtime_router
 from app.realtime.tickets import router as realtime_tickets_router
 
@@ -172,6 +172,7 @@ def create_app(
 
     database = Database.from_settings(settings)
     redis = create_redis(settings.redis_url) if settings.redis_url else None
+    realtime_bus = build_realtime_bus(settings, redis, database)
     http_client = httpx.AsyncClient(follow_redirects=False, transport=http_transport)
 
     async def _ping_redis() -> object:
@@ -184,6 +185,8 @@ def create_app(
             yield
         finally:
             await http_client.aclose()
+            if isinstance(realtime_bus, PostgresBus):
+                await realtime_bus.close()
             if redis is not None:
                 await redis.aclose()
             await database.dispose()
@@ -255,6 +258,7 @@ def create_app(
         push_sender=push_sender,
         ai=ai,
         billing=build_billing_jobs(settings, database, clock, http_client),
+        publish=realtime_bus.publish,
     )
 
     app = FastAPI(
@@ -398,7 +402,6 @@ def create_app(
         partial_refund_revokes=settings.stripe_partial_refund_revokes,
         refund_duplicates=settings.stripe_refund_duplicates,
     )
-    realtime_bus = build_realtime_bus(settings, redis)
     app.state.realtime_bus = realtime_bus
     app.state.messaging_service = messaging_service.MessagingService(
         sessionmaker=database.sessionmaker,
@@ -830,12 +833,22 @@ def build_vapid(settings: Settings) -> Vapid | None:
     )
 
 
-def build_realtime_bus(settings: Settings, redis: Redis | None) -> RealtimeBus:
-    """Realtime fanout (ADR-0023): Redis pub/sub across processes, or in-process."""
-    if settings.resolved_realtime_bus == "redis":
+def build_realtime_bus(
+    settings: Settings, redis: Redis | None, database: Database | None = None
+) -> RealtimeBus:
+    """Realtime fanout (ADR-0023, ADR-0033): Redis pub/sub or PostgreSQL LISTEN/NOTIFY across
+    processes, or in-process."""
+    resolved = settings.resolved_realtime_bus
+    if resolved == "redis":
         if redis is None:
             raise RuntimeError("REALTIME_BUS=redis needs REDIS_URL")
         return RedisBus(redis)
+    if resolved == "postgres":
+        if database is None:
+            raise RuntimeError("REALTIME_BUS=postgres needs the database")
+        # One extra connection, held for LISTEN (through a session, never a transaction pooler).
+        listener = Database.from_settings(settings, pool_size=1, max_overflow=0)
+        return PostgresBus(publish_engine=database.engine, listen_engine=listener.engine)
     return MemoryBus()
 
 
@@ -881,6 +894,7 @@ def build_job_runner(
     push_sender: PushSender | None = None,
     ai: ai_service.AIService | None = None,
     billing: billing_service.BillingService | None = None,
+    publish: notifications_service.Publish | None = None,
 ) -> JobRunner:
     """Event subscriptions and job handlers for every module (shared by the API and workers)."""
     router = EventRouter()
@@ -900,6 +914,7 @@ def build_job_runner(
             database.sessionmaker,
             push_sender=push_sender,
             push_cipher=identity_module.push_cipher(identity_settings),
+            publish=publish,
         )
     )
     handlers.update(

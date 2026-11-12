@@ -119,9 +119,10 @@ class Settings(BaseSettings):
     # secret in X-TB-Forwarding-Secret (otherwise every web user shares the BFF's egress IP).
     client_ip_forwarding_secret: SecretStr | None = None
 
-    # Realtime gateway (BL-3.04, docs/06, ADR-0023). "auto": Redis fanout when REDIS_URL is set
-    # outside development and test, otherwise in-process (a single gateway process).
-    realtime_bus: Literal["auto", "memory", "redis"] = "auto"
+    # Realtime gateway (BL-3.04, docs/06, ADR-0023, ADR-0033). "auto": in-process in development
+    # and test; elsewhere Redis fanout when REDIS_URL is set, otherwise PostgreSQL LISTEN/NOTIFY
+    # (in-process behind a transaction pooler, which can't LISTEN).
+    realtime_bus: Literal["auto", "memory", "redis", "postgres"] = "auto"
     realtime_auth_timeout_seconds: float = Field(default=5.0, gt=0, le=30)
     realtime_idle_timeout_seconds: float = Field(default=60.0, gt=0, le=600)
 
@@ -218,9 +219,11 @@ class Settings(BaseSettings):
     def resolved_realtime_bus(self) -> str:
         if self.realtime_bus != "auto":
             return self.realtime_bus
-        if self.app_env in (AppEnv.TEST, AppEnv.DEVELOPMENT) or not self.redis_url:
+        if self.app_env in (AppEnv.TEST, AppEnv.DEVELOPMENT):
             return "memory"
-        return "redis"
+        if self.redis_url:
+            return "redis"
+        return "memory" if self.database_transaction_pooler else "postgres"
 
     @property
     def resolved_push_provider(self) -> str:

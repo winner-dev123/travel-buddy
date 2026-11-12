@@ -11,8 +11,10 @@ reader's locale and resolves the actor's current public identity.
 
 from __future__ import annotations
 
+import logging
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
+from contextvars import ContextVar
 from typing import Any
 
 from sqlalchemy import and_, func, select, update
@@ -31,7 +33,14 @@ from app.modules.platform import service as platform
 from app.modules.profiles import service as profiles
 from app.modules.trust_safety import service as trust_safety
 
+logger = logging.getLogger(__name__)
+
 JOB_KIND = "notifications.from_event"
+# The notifications a job created, so they can be announced once its transaction commits.
+_created: ContextVar[list[tuple[uuid.UUID, uuid.UUID]] | None] = ContextVar(
+    "notifications_created", default=None
+)
+Publish = Callable[[Sequence[uuid.UUID], Mapping[str, Any]], Awaitable[None]]
 PUSH_JOB = "notifications.push"
 
 
@@ -78,6 +87,9 @@ async def notify(
         payload={"notification_id": str(created[0])},
         dedupe_key=f"push:{created[0]}",
     )
+    collected = _created.get()
+    if collected is not None:
+        collected.append((user_id, created[0]))
     return True
 
 
@@ -356,16 +368,36 @@ def make_handlers(
     *,
     push_sender: PushSender | None = None,
     push_cipher: identity.PushTokenCipher | None = None,
+    publish: Publish | None = None,
 ) -> dict[str, platform.JobHandler]:
     async def handle(job: platform.Job) -> None:
         payload = job.payload
-        async with sessionmaker() as session, session.begin():
-            await notify_from_event(
-                session,
-                str(payload["event_type"]),
-                str(payload["event_id"]),
-                payload.get("data") or {},
-            )
+        created: list[tuple[uuid.UUID, uuid.UUID]] = []
+        token = _created.set(created)
+        try:
+            async with sessionmaker() as session, session.begin():
+                await notify_from_event(
+                    session,
+                    str(payload["event_type"]),
+                    str(payload["event_id"]),
+                    payload.get("data") or {},
+                )
+        finally:
+            _created.reset(token)
+        # Committed: tell the recipient's open apps right away (ADR-0033). Best effort; the
+        # notification list is the record.
+        if publish is not None:
+            for user_id, notification_id in created:
+                try:
+                    await publish(
+                        [user_id],
+                        {
+                            "type": "notification.new",
+                            "data": {"notification_id": str(notification_id)},
+                        },
+                    )
+                except Exception:  # pragma: no cover - the bus must never fail the job
+                    logger.warning("notification_publish_failed", exc_info=True)
 
     handlers: dict[str, platform.JobHandler] = {JOB_KIND: handle}
     if push_cipher is not None:
@@ -451,6 +483,35 @@ class NotificationService:
         )
         return NotificationPage(
             data=data, page=PageInfo(next_cursor=next_cursor, has_more=has_more)
+        )
+
+    async def get(self, user_id: uuid.UUID, notification_id: uuid.UUID) -> NotificationOut | None:
+        """One of the user's notifications as the list renders it, or None when it isn't theirs
+        or its actor is now blocked (the realtime ``notification.new`` frame, ADR-0033)."""
+        async with self._sessionmaker() as session:
+            conditions = await self._visible(session, user_id)
+            row = await session.scalar(
+                select(Notification).where(and_(*conditions, Notification.id == notification_id))
+            )
+            if row is None:
+                return None
+            actors = await profiles.authors(session, [row.actor_id] if row.actor_id else [])
+            locale = await profiles.ui_locale(session, user_id)
+        actor = actors.get(row.actor_id) if row.actor_id else None
+        title, body = render(
+            row.type, row.payload, actor=actor.display_name if actor else None, locale=locale
+        )
+        return NotificationOut(
+            id=row.id,
+            type=row.type,
+            actor=profiles.user_summary(actor) if actor else None,
+            entity_type=row.entity_type,
+            entity_id=row.entity_id,
+            title=title,
+            body=body,
+            data={k: v for k, v in row.payload.items() if k != "variant"},
+            read_at=row.read_at,
+            created_at=row.created_at,
         )
 
     async def unread_count(self, user_id: uuid.UUID) -> int:

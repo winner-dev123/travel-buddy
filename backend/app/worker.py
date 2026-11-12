@@ -17,6 +17,7 @@ import httpx
 from app.core.config import get_settings
 from app.core.db import Database
 from app.core.logging import configure_logging
+from app.core.redis import create_redis
 from app.core.time import SystemClock
 from app.main import (
     build_ai_provider,
@@ -24,12 +25,14 @@ from app.main import (
     build_billing_jobs,
     build_job_runner,
     build_media_storage,
+    build_realtime_bus,
     build_vapid,
 )
 from app.modules.identity.config import IdentitySettings
 from app.modules.media.config import MediaSettings
 from app.modules.notifications.webpush import build_sender as build_push_sender
 from app.modules.web_cache.config import WebCacheSettings
+from app.realtime.bus import PostgresBus
 
 logger = logging.getLogger("app.worker")
 
@@ -48,6 +51,8 @@ async def run(*, once: bool, idle_sleep_seconds: float) -> None:
         # Windows has no add_signal_handler; Ctrl+C raises KeyboardInterrupt there instead.
         with contextlib.suppress(NotImplementedError):
             loop.add_signal_handler(sig, stop.set)
+    redis = create_redis(settings.redis_url) if settings.redis_url else None
+    bus = build_realtime_bus(settings, redis, database)
     async with httpx.AsyncClient(follow_redirects=False) as http_client:
         runner = build_job_runner(
             database=database,
@@ -73,6 +78,8 @@ async def run(*, once: bool, idle_sleep_seconds: float) -> None:
             ),
             ai=build_ai_service(settings, database, SystemClock(), build_ai_provider(settings)),
             billing=build_billing_jobs(settings, database, SystemClock(), http_client),
+            # Notifications reach the API's open sockets through the bus (ADR-0033).
+            publish=bus.publish,
         )
         try:
             while not stop.is_set():
@@ -85,6 +92,10 @@ async def run(*, once: bool, idle_sleep_seconds: float) -> None:
                     with contextlib.suppress(TimeoutError):
                         await asyncio.wait_for(stop.wait(), timeout=idle_sleep_seconds)
         finally:
+            if isinstance(bus, PostgresBus):
+                await bus.close()
+            if redis is not None:
+                await redis.aclose()
             await database.dispose()
 
 

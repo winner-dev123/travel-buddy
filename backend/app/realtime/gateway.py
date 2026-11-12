@@ -6,8 +6,8 @@ receipt and typing frame is re-authorized by the service. Events reach a connect
 user's channel on the realtime bus; message frames are loaded for the receiving user at delivery
 time, so access is checked again then.
 
-Browsers authenticate with single-use tickets (``auth {ticket}``, ADR-0013). Not here yet:
-``notification.new`` frames.
+Browsers authenticate with single-use tickets (``auth {ticket}``, ADR-0013). New in-app
+notifications arrive as ``notification.new`` (ADR-0033).
 """
 
 from __future__ import annotations
@@ -555,6 +555,15 @@ class Connection:
             if kind == "message.updated":
                 payload["change"] = data.get("change", "edited")
             return frame(kind, payload)
+        if kind == "notification.new":
+            item = await self.ws.app.state.notification_service.get(
+                self._me.user_id, uuid.UUID(str(data["notification_id"]))
+            )
+            if item is None:
+                return None  # not theirs, or its actor is now blocked
+            notification = item.model_dump(mode="json")
+            notification.pop("read_at", None)
+            return frame(kind, {"notification": notification})
         if kind == "session.revoked" and data.get("session_id") not in (
             None,
             str(self._me.session_id),
