@@ -49,7 +49,9 @@ function Preview({ conversation }: { conversation: Conversation }) {
       ? t('messages.deleted')
       : last.kind === 'image' && !last.snippet
         ? t('messages.photo')
-        : (last.snippet ?? '');
+        : last.kind === 'gift'
+          ? `🎁 ${t('messages.giftPreview')}`
+          : (last.snippet ?? '');
   return (
     <Text
       numberOfLines={1}

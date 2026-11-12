@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <radialGradient id="shadow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#000" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glass" cx="0.4" cy="0.35" r="0.75">
+      <stop offset="0" stop-color="#E4F3FF" stop-opacity="0.95"/>
+      <stop offset="0.7" stop-color="#9CCBF0" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#5E97C8" stop-opacity="0.95"/>
+    </radialGradient>
+    <linearGradient id="base" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6E4524"/>
+      <stop offset="0.45" stop-color="#A9713F"/>
+      <stop offset="1" stop-color="#5A3719"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#B07E33"/>
+      <stop offset="0.5" stop-color="#F7DA97"/>
+      <stop offset="1" stop-color="#BE8D40"/>
+    </linearGradient>
+    <linearGradient id="mountain" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5A6F96"/>
+      <stop offset="1" stop-color="#34466A"/>
+    </linearGradient>
+    <clipPath id="inside">
+      <circle cx="128" cy="110" r="70"/>
+    </clipPath>
+  </defs>
+  <ellipse cx="128" cy="226" rx="78" ry="10" fill="url(#shadow)"/>
+  <circle cx="128" cy="110" r="74" fill="#fff" opacity="0.35"/>
+  <circle cx="128" cy="110" r="70" fill="url(#glass)"/>
+  <g clip-path="url(#inside)">
+    <path d="M60 156 L106 96 L124 118 L146 84 L196 156 Z" fill="url(#mountain)"/>
+    <path d="M106 96 L96 110 L104 108 L110 114 L116 108 Z" fill="#fff"/>
+    <path d="M146 84 L134 102 L142 99 L148 106 L156 99 Z" fill="#fff"/>
+    <ellipse cx="128" cy="168" rx="80" ry="26" fill="#fff"/>
+    <path d="M92 150 L102 134 L112 150 Z M95 142 L102 130 L109 142 Z" fill="#2E7D52"/>
+    <rect x="100" y="150" width="4" height="6" fill="#5A3719"/>
+    <path d="M150 154 L160 136 L170 154 Z M153 145 L160 132 L167 145 Z" fill="#2E7D52"/>
+    <rect x="158" y="154" width="4" height="6" fill="#5A3719"/>
+    <rect x="120" y="138" width="22" height="18" fill="#F2C66B"/>
+    <path d="M116 140 L131 126 L146 140 Z" fill="#C2413B"/>
+    <rect x="128" y="146" width="6" height="10" fill="#7A4A26"/>
+    <rect x="122" y="142" width="4" height="4" fill="#FFF3C4"/>
+    <g fill="#fff">
+      <circle cx="84" cy="70" r="2.5"/><circle cx="104" cy="58" r="2"/><circle cx="150" cy="56" r="2.5"/>
+      <circle cx="172" cy="76" r="2"/><circle cx="96" cy="88" r="2"/><circle cx="128" cy="70" r="2.5"/>
+      <circle cx="176" cy="104" r="2.5"/><circle cx="74" cy="110" r="2"/><circle cx="160" cy="120" r="2"/>
+      <circle cx="116" cy="84" r="1.8"/><circle cx="188" cy="128" r="1.8"/><circle cx="68" cy="132" r="2"/>
+    </g>
+  </g>
+  <path d="M82 76 C 92 58, 110 48, 128 46" fill="none" stroke="#fff" stroke-opacity="0.75" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="82" cy="92" r="4" fill="#fff" opacity="0.6"/>
+  <path d="M74 176 L182 176 L194 214 Q195 220 188 220 L68 220 Q61 220 62 214 Z" fill="url(#base)"/>
+  <rect x="70" y="170" width="116" height="12" rx="5" fill="url(#gold)"/>
+  <rect x="104" y="194" width="48" height="12" rx="3" fill="url(#gold)"/>
+  <path d="M82 186 L76 212" stroke="#fff" stroke-opacity="0.15" stroke-width="5" stroke-linecap="round"/>
+</svg>

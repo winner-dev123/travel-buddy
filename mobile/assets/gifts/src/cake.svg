@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <radialGradient id="shadow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#000" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="plate" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FBF6EE"/>
+      <stop offset="1" stop-color="#D3C6B0"/>
+    </linearGradient>
+    <linearGradient id="sponge" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6A3B27"/>
+      <stop offset="0.4" stop-color="#8E5638"/>
+      <stop offset="1" stop-color="#4F2A1A"/>
+    </linearGradient>
+    <linearGradient id="cream" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFF6EA"/>
+      <stop offset="1" stop-color="#F3DEC4"/>
+    </linearGradient>
+    <radialGradient id="berry" cx="0.35" cy="0.3" r="0.75">
+      <stop offset="0" stop-color="#FF7A7A"/>
+      <stop offset="1" stop-color="#C21F34"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFE7A3" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#FFB547" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFF4C4"/>
+      <stop offset="0.6" stop-color="#FFC14D"/>
+      <stop offset="1" stop-color="#FF7B3A"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="128" cy="222" rx="96" ry="12" fill="url(#shadow)"/>
+  <ellipse cx="128" cy="204" rx="94" ry="20" fill="url(#plate)"/>
+  <path d="M56 128 L56 186 A72 18 0 0 0 200 186 L200 128 Z" fill="url(#sponge)"/>
+  <path d="M56 156 A72 18 0 0 0 200 156 L200 164 A72 18 0 0 1 56 164 Z" fill="#F7E6CF" opacity="0.9"/>
+  <ellipse cx="128" cy="128" rx="72" ry="18" fill="url(#cream)"/>
+  <path d="M56 128 C 56 140, 60 146, 66 146 C 72 146, 72 136, 74 134 C 76 146, 80 152, 86 152 C 92 152, 94 140, 96 138 C 98 150, 104 156, 110 156 C 116 156, 118 144, 120 141 C 122 152, 128 158, 134 158 C 140 158, 142 146, 144 141 C 146 152, 152 156, 158 155 C 164 154, 166 144, 168 138 C 170 148, 176 152, 182 150 C 188 148, 188 140, 190 134 C 192 142, 196 144, 200 140 L200 128 Z" fill="url(#cream)"/>
+  <circle cx="92" cy="124" r="9" fill="url(#berry)"/>
+  <circle cx="164" cy="124" r="9" fill="url(#berry)"/>
+  <circle cx="110" cy="134" r="9" fill="url(#berry)"/>
+  <circle cx="146" cy="134" r="9" fill="url(#berry)"/>
+  <circle cx="89" cy="121" r="2.5" fill="#fff" opacity="0.7"/>
+  <circle cx="161" cy="121" r="2.5" fill="#fff" opacity="0.7"/>
+  <circle cx="107" cy="131" r="2.5" fill="#fff" opacity="0.7"/>
+  <circle cx="143" cy="131" r="2.5" fill="#fff" opacity="0.7"/>
+  <rect x="122" y="76" width="12" height="50" rx="3" fill="#FFF6EA"/>
+  <path d="M122 84 l12 -6 M122 96 l12 -6 M122 108 l12 -6 M122 120 l12 -6" stroke="#D9B56C" stroke-width="4"/>
+  <circle cx="128" cy="62" r="24" fill="url(#glow)"/>
+  <path d="M128 44 C 136 54, 138 62, 134 68 C 131 72, 125 72, 122 68 C 118 62, 122 54, 128 44 Z" fill="url(#flame)"/>
+  <path d="M74 140 C 72 150, 74 160, 80 168" fill="none" stroke="#fff" stroke-opacity="0.18" stroke-width="5" stroke-linecap="round"/>
+</svg>

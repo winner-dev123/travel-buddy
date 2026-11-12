@@ -15,6 +15,9 @@
   message bodies.
 - Messages of deleted accounts keep their seq but show no content; the daily retention job turns
   them into tombstones (docs/04 §14).
+- Gifts (DM-016) are messages of kind ``gift`` naming a present from the catalog, sent in direct
+  chats only. The recipient opens one once (``gift.opened_at``); the sender sees it as
+  ``message.updated`` with change ``gift_opened``. A gift can be unsent but not edited.
 """
 
 from __future__ import annotations
@@ -40,6 +43,7 @@ from app.modules.connections import service as connections
 from app.modules.identity import service as identity
 from app.modules.media import service as media
 from app.modules.messaging.domain import (
+    EDITABLE,
     MAX_PINS,
     USER_CONTENT,
     ConversationKind,
@@ -48,6 +52,7 @@ from app.modules.messaging.domain import (
     ModerationState,
     SendRestriction,
     can_edit,
+    can_open_gift,
     canonical_emoji,
     direct_key,
     direct_restriction,
@@ -68,6 +73,7 @@ from app.modules.messaging.models import (
 from app.modules.messaging.schemas import (
     ConversationOut,
     ConversationPage,
+    GiftOut,
     MessageList,
     MessageOut,
     MessagePreview,
@@ -532,6 +538,9 @@ async def _messages_out(
                 else None,
                 kind=m.kind,  # type: ignore[arg-type]
                 body=None if hidden else m.body,
+                gift=GiftOut(code=m.gift_code, opened_at=m.gift_opened_at)  # type: ignore[arg-type]
+                if m.gift_code and not hidden
+                else None,
                 attachments=[refs[i] for i in attachments.get(m.id, []) if i in refs],
                 reply_to=_preview(reply) if reply else None,
                 thread_root_id=m.thread_root_id,
@@ -945,6 +954,8 @@ class MessagingService:
                 self._ensure_kind_enabled(conversation)
                 await _ensure_can_send(session, me, conversation, self._group_policy)
             await _ensure_not_filtered(session, me, conversation, request.body)
+            if request.kind == "gift" and conversation.kind != ConversationKind.DIRECT:
+                raise _invalid("/kind", "Gifts can be sent in direct chats.")
             floor = _floor(member)
             if request.reply_to_message_id is not None:
                 target = await session.get(Message, request.reply_to_message_id)
@@ -989,6 +1000,7 @@ class MessagingService:
                 client_message_id=request.client_message_id,
                 kind=kind or request.kind,
                 body=request.body,
+                gift_code=request.gift if request.kind == "gift" else None,
                 reply_to_message_id=request.reply_to_message_id,
                 thread_root_id=request.thread_root_id,
             )
@@ -1054,7 +1066,7 @@ class MessagingService:
         async with self._sessionmaker() as session, session.begin():
             conversation, member = await _access(session, conversation_id, user_id)
             message = await _message_in(session, conversation, member, message_id, lock=True)
-            if message.sender_id != user_id or message.kind not in USER_CONTENT:
+            if message.sender_id != user_id or message.kind not in EDITABLE:
                 raise AppError(ErrorCode.FORBIDDEN, "You can edit only your own messages.")
             if _hidden(message):
                 raise _not_found("Message")
@@ -1144,6 +1156,46 @@ class MessagingService:
                 "by_moderator": by_moderator,
             }
         await self._emit(recipients, {"type": "message.deleted", "data": tombstone})
+
+    async def open_gift(
+        self, user_id: uuid.UUID, conversation_id: uuid.UUID, message_id: uuid.UUID
+    ) -> MessageOut:
+        """The recipient unwraps a gift (DM-016). Idempotent: opening it again changes nothing."""
+        async with self._sessionmaker() as session, session.begin():
+            conversation, member = await _access(session, conversation_id, user_id)
+            message = await _message_in(session, conversation, member, message_id, lock=True)
+            if _hidden(message):
+                raise _not_found("Message")
+            if not can_open_gift(
+                kind=message.kind,
+                conversation_kind=conversation.kind,
+                sender_id=message.sender_id,
+                user_id=user_id,
+            ):
+                raise AppError(ErrorCode.FORBIDDEN, "Only the person it was sent to opens a gift.")
+            opened = message.gift_opened_at is None
+            if opened:
+                message.gift_opened_at = await _db_now(session)
+                platform.record_event(
+                    session,
+                    aggregate_type="conversation",
+                    aggregate_id=conversation.id,
+                    event_type="message.gift_opened",
+                    payload={
+                        "conversation_id": str(conversation.id),
+                        "message_id": str(message.id),
+                        "seq": message.seq,
+                        "user_id": str(user_id),
+                    },
+                )
+                await session.flush()
+            [out] = await _messages_out(session, user_id, member, [message], self._sign)
+            recipients = await _active_members(session, conversation.id) if opened else []
+        await self._emit(
+            recipients,
+            _message_event("message.updated", conversation_id, message_id, "gift_opened"),
+        )
+        return out
 
     async def react(
         self,

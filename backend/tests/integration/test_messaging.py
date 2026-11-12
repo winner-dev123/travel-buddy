@@ -1,4 +1,4 @@
-"""Direct conversations and messages end to end (BL-3.03; DM-001..013, SAFE-001/002)."""
+"""Direct conversations and messages end to end (BL-3.03; DM-001..016, SAFE-001/002)."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from app.modules.notifications.domain import MODERATION_BODIES
+from app.modules.notifications.domain import GIFT_TEXTS, MODERATION_BODIES
 from tests.contract_schemas import assert_matches_contract
 from tests.integration.conftest import LiveApp, db_scalar
 from tests.integration.test_destinations import catalog  # noqa: F401 - module-scoped fixture
@@ -428,6 +428,113 @@ def test_new_message_notifications_collapse_and_respect_mute(app: LiveApp) -> No
     _sent(app, ana, conversation, "Four")
     _tick(app)
     assert len([n for n in _notifications(app, bo) if n["type"] == "new_message"]) == 2
+
+
+# ─────────────────────────────────── gifts ───────────────────────────────────
+
+
+def _gift(live: LiveApp, token: str, conversation: str, gift: str = "coffee") -> Any:
+    return live.client.post(
+        f"/v1/conversations/{conversation}/messages",
+        headers={**_auth(token), "Idempotency-Key": str(uuid.uuid4())},
+        json={"client_message_id": str(uuid.uuid4()), "kind": "gift", "gift": gift},
+    )
+
+
+def _open_gift(live: LiveApp, token: str, conversation: str, message_id: str) -> Any:
+    return live.client.post(
+        f"/v1/conversations/{conversation}/messages/{message_id}/gift/open", headers=_auth(token)
+    )
+
+
+@pytest.mark.req("DM-016")
+def test_gifts_are_sent_wrapped_and_opened_once_by_the_recipient(app: LiveApp) -> None:  # noqa: F811
+    ana, _, bo, _, conversation = _pair(app)
+    sent = _gift(app, ana, conversation, "snow_globe")
+    assert sent.status_code == 201, sent.text
+    assert_matches_contract(sent.json(), "Message")
+    gift = sent.json()
+    assert gift["kind"] == "gift"
+    assert gift["body"] is None
+    assert gift["gift"] == {"code": "snow_globe", "opened_at": None}
+    [seen] = _messages(app, bo, conversation)["data"]
+    assert seen["gift"] == {"code": "snow_globe", "opened_at": None}
+    last = _conversation(app, bo, conversation)["last_message"]
+    assert last["kind"] == "gift"
+    assert last["snippet"] is None
+    assert last["deleted"] is False
+
+    # Only the recipient unwraps it; the sender can't, and neither can anyone outside the chat.
+    _problem(_open_gift(app, ana, conversation, gift["id"]), 403, "forbidden")
+    stranger, _ = _user(app)
+    _problem(_open_gift(app, stranger, conversation, gift["id"]), 404, "not_found")
+    opened = _open_gift(app, bo, conversation, gift["id"])
+    assert opened.status_code == 200, opened.text
+    assert_matches_contract(opened.json(), "Message")
+    opened_at = opened.json()["gift"]["opened_at"]
+    assert opened_at is not None
+    again = _open_gift(app, bo, conversation, gift["id"])
+    assert again.status_code == 200, again.text
+    assert again.json()["gift"]["opened_at"] == opened_at  # idempotent
+    [mine] = _messages(app, ana, conversation)["data"]
+    assert mine["gift"]["opened_at"] == opened_at
+
+    # A text message isn't a gift; a gift can't be edited, but it can be unsent.
+    text = _sent(app, bo, conversation, "Thank you!")
+    _problem(_open_gift(app, ana, conversation, text["id"]), 403, "forbidden")
+    edit = app.client.patch(
+        f"/v1/conversations/{conversation}/messages/{gift['id']}",
+        headers=_auth(ana),
+        json={"body": "A coffee"},
+    )
+    _problem(edit, 403, "forbidden")
+    second = _gift(app, ana, conversation, "cake")
+    assert second.status_code == 201, second.text
+    deleted = app.client.delete(
+        f"/v1/conversations/{conversation}/messages/{second.json()['id']}", headers=_auth(ana)
+    )
+    assert deleted.status_code == 204, deleted.text
+    tombstone = _messages(app, bo, conversation)["data"][-1]
+    assert tombstone["gift"] is None
+    assert tombstone["deleted_at"] is not None
+    _problem(_open_gift(app, bo, conversation, second.json()["id"]), 404, "not_found")
+
+
+@pytest.mark.req("DM-016")
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"gift": "diamond_ring"},  # not in the catalog
+        {"gift": None},
+        {"gift": "coffee", "body": "and a note"},
+        {"gift": "coffee", "attachment_media_ids": [str(uuid.uuid4())]},
+    ],
+)
+def test_invalid_gifts_are_rejected(app: LiveApp, extra: dict[str, Any]) -> None:  # noqa: F811
+    ana, _, _, _, conversation = _pair(app)
+    payload = {"client_message_id": str(uuid.uuid4()), "kind": "gift", **extra}
+    response = app.client.post(
+        f"/v1/conversations/{conversation}/messages",
+        headers={**_auth(ana), "Idempotency-Key": str(uuid.uuid4())},
+        json={k: v for k, v in payload.items() if v is not None},
+    )
+    _problem(response, 422, "validation_failed")
+    # A gift name on a text message is refused too.
+    _problem(_send(app, ana, conversation, "Hi", gift="coffee"), 422, "validation_failed")
+
+
+@pytest.mark.req("DM-016")
+def test_a_gift_notifies_as_a_gift(app: LiveApp) -> None:  # noqa: F811
+    ana, ana_id, bo, _, conversation = _pair(app)
+    assert _gift(app, ana, conversation, "flowers").status_code == 201
+    _tick(app)
+    [notice] = [n for n in _notifications(app, bo) if n["type"] == "new_message"]
+    assert notice["actor"]["id"] == ana_id
+    name = notice["actor"]["display_name"]
+    titles, bodies = GIFT_TEXTS  # rendered in the reader's language
+    assert (notice["title"], notice["body"]) in {
+        (titles[locale], bodies[locale].format(actor=name)) for locale in titles
+    }
 
 
 @pytest.mark.req("DM-011")

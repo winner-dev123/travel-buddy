@@ -456,8 +456,10 @@ erDiagram
 | seq | bigint. `uq (conversation_id, seq)` |
 | sender_id FK→users SET NULL | NULL for system messages or deleted users |
 | client_message_id | uuid. `uq (conversation_id, sender_id, client_message_id)` gives idempotent submission |
-| kind | `text`, `image`, `system`, `announcement` |
+| kind | `text`, `image`, `system`, `announcement`, `gift` |
 | body | text ≤ 4000. Set to NULL on delete (tombstone) |
+| gift_code | text ≤ 32, set exactly when `kind = 'gift'` (DM-016). The catalog is checked by the API, so a new gift needs no migration |
+| gift_opened_at | timestamptz. When the recipient opened the gift; gifts only |
 | reply_to_message_id | FK→messages SET NULL |
 | thread_root_id | FK→messages SET NULL (reply threads in group chat) |
 | moderation_state | `visible`, `removed_by_moderator`, `removed_by_admin` |

@@ -68,7 +68,13 @@ envelope = {
             "deleted": {"type": "boolean"},
             "created_at": {"$ref": "#/$defs/Timestamp"},
         }, ["id", "seq", "sender_id", "kind", "snippet", "deleted", "created_at"]),
-        "MessageKind": {"enum": ["text", "image", "system", "announcement"]},
+        "MessageKind": {"enum": ["text", "image", "system", "announcement", "gift"]},
+        "GiftCode": {"enum": ["coffee", "postcard", "flowers", "ice_cream", "cake", "boarding_pass", "snow_globe", "coconut"],
+                     "description": "DM-016 gift catalog; the apps ship the pictures."},
+        "MessageGift": obj({
+            "code": {"$ref": "#/$defs/GiftCode"},
+            "opened_at": {"anyOf": [{"$ref": "#/$defs/Timestamp"}, {"type": "null"}]},
+        }, ["code", "opened_at"]),
         "Message": obj({
             "id": {"$ref": "#/$defs/Uuid"},
             "conversation_id": {"$ref": "#/$defs/Uuid"},
@@ -77,6 +83,7 @@ envelope = {
             "sender": {"anyOf": [{"$ref": "#/$defs/UserSummary"}, {"type": "null"}]},
             "kind": {"$ref": "#/$defs/MessageKind"},
             "body": {"type": ["string", "null"], "maxLength": 4000},
+            "gift": {"anyOf": [{"$ref": "#/$defs/MessageGift"}, {"type": "null"}], "description": "Gift messages only; null for tombstones."},
             "attachments": {"type": "array", "items": {"$ref": "#/$defs/MediaRef"}},
             "reply_to": {"anyOf": [{"$ref": "#/$defs/MessagePreview"}, {"type": "null"}]},
             "thread_root_id": {"anyOf": [{"$ref": "#/$defs/Uuid"}, {"type": "null"}]},
@@ -127,13 +134,14 @@ frames = {
         "data": obj({
             "conversation_id": ref("Uuid"),
             "client_message_id": ref("Uuid"),
-            "kind": {"enum": ["text", "image"], "default": "text"},
+            "kind": {"enum": ["text", "image", "gift"], "default": "text"},
             "body": {"type": "string", "minLength": 1, "maxLength": 4000},
+            "gift": ref("GiftCode"),
             "attachment_media_ids": {"type": "array", "minItems": 1, "maxItems": 10, "items": ref("Uuid")},
             "reply_to_message_id": ref("Uuid"),
             "thread_root_id": ref("Uuid"),
             "mentions": {"type": "array", "maxItems": 20, "uniqueItems": True, "items": ref("Uuid")},
-        }, ["conversation_id", "client_message_id"], anyOf=[{"required": ["body"]}, {"required": ["attachment_media_ids"]}]),
+        }, ["conversation_id", "client_message_id"], anyOf=[{"required": ["body"]}, {"required": ["attachment_media_ids"]}, {"required": ["gift"]}]),
     },
     (C2S, "message.edit"): {
         "description": "Edit own message within the edit window (default 15 min).",
@@ -210,8 +218,8 @@ frames = {
         "data": obj({"message": ref("Message")}, ["message"]),
     },
     (S2C, "message.updated"): {
-        "description": "A message was edited, or its reactions or pin state changed.",
-        "data": obj({"message": ref("Message"), "change": {"enum": ["edited", "reactions", "pinned", "unpinned", "moderated"]}},
+        "description": "A message was edited, its reactions or pin state changed, or its gift was opened.",
+        "data": obj({"message": ref("Message"), "change": {"enum": ["edited", "reactions", "pinned", "unpinned", "moderated", "gift_opened"]}},
                     ["message", "change"]),
     },
     (S2C, "message.deleted"): {

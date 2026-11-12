@@ -1,4 +1,4 @@
-"""``/v1/conversations``: direct conversations, messages, receipts, mute, clear, pins (BL-3.03)."""
+"""``/v1/conversations``: conversations, messages, receipts, mute, clear, pins, gifts (BL-3.03)."""
 
 from __future__ import annotations
 
@@ -147,6 +147,17 @@ async def delete_message(
         principal.user_id, conversation_id, message_id, reason_code=reason_code
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{conversation_id}/messages/{message_id}/gift/open", response_model=MessageOut)
+async def open_gift(
+    conversation_id: uuid.UUID,
+    message_id: uuid.UUID,
+    request: Request,
+    principal: CurrentPrincipal,
+) -> MessageOut:
+    """DM-016: the recipient unwraps a gift (idempotent)."""
+    return await _service(request).open_gift(principal.user_id, conversation_id, message_id)
 
 
 @router.put(

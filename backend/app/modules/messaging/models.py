@@ -104,6 +104,11 @@ class Message(Base):
         enum_check("moderation_state", ModerationState, "moderation_state_enum"),
         CheckConstraint("seq >= 1", name="seq_positive"),
         CheckConstraint("char_length(body) <= 4000", name="body_length"),
+        # DM-016: a gift names its present (validated against the app catalog, so adding one
+        # needs no migration); only gifts carry one, and only gifts are opened.
+        CheckConstraint("(kind = 'gift') = (gift_code IS NOT NULL)", name="gift_code_per_kind"),
+        CheckConstraint("char_length(gift_code) <= 32", name="gift_code_length"),
+        CheckConstraint("gift_opened_at IS NULL OR kind = 'gift'", name="gift_opened_per_kind"),
         Index(
             "ix_messages__thread",
             "thread_root_id",
@@ -116,7 +121,7 @@ class Message(Base):
             "ix_messages__orphaned",
             "id",
             postgresql_where=text(
-                "sender_id IS NULL AND deleted_at IS NULL AND kind IN ('text', 'image')"
+                "sender_id IS NULL AND deleted_at IS NULL AND kind IN ('text', 'image', 'gift')"
             ),
         ),
     )
@@ -132,6 +137,8 @@ class Message(Base):
     client_message_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     kind: Mapped[str] = mapped_column(Text, server_default=text("'text'"))
     body: Mapped[str | None] = mapped_column(Text)
+    gift_code: Mapped[str | None] = mapped_column(Text)
+    gift_opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     reply_to_message_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("messages.id", ondelete="SET NULL")
     )

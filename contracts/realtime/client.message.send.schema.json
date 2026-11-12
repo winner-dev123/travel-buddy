@@ -28,7 +28,8 @@
         "kind": {
           "enum": [
             "text",
-            "image"
+            "image",
+            "gift"
           ],
           "default": "text"
         },
@@ -36,6 +37,9 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 4000
+        },
+        "gift": {
+          "$ref": "envelope.schema.json#/$defs/GiftCode"
         },
         "attachment_media_ids": {
           "type": "array",
@@ -74,6 +78,11 @@
         {
           "required": [
             "attachment_media_ids"
+          ]
+        },
+        {
+          "required": [
+            "gift"
           ]
         }
       ]

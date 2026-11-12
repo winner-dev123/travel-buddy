@@ -2919,6 +2919,32 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/conversations/{conversationId}/messages/{messageId}/gift/open:
+    post:
+      tags: [messaging]
+      operationId: openMessageGift
+      summary: Unwrap a gift sent to me (idempotent)
+      description: >-
+        Only the recipient of a gift in a direct chat opens it (`403 forbidden` for the sender or
+        another kind of message). The first call records `gift.opened_at` and sends
+        `message.updated` (change `gift_opened`) to both members; later calls return the message
+        unchanged.
+      x-phase: 3
+      x-requirements: [DM-016]
+      x-rate-limit-class: write
+      parameters:
+        - $ref: '#/components/parameters/ConversationId'
+        - $ref: '#/components/parameters/MessageId'
+      responses:
+        '200':
+          description: The gift message, opened.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/conversations/{conversationId}/messages/{messageId}/reactions/{emoji}:
     put:
       tags: [messaging]
@@ -7126,7 +7152,11 @@ components:
     ConnectionRequestStatus: { type: string, enum: [pending, accepted, declined, cancelled, expired] }
     ConnectionContext: { type: string, enum: [discovery, group, profile, post] }
     ConversationKind: { type: string, enum: [direct, group, challenge_team] }
-    MessageKind: { type: string, enum: [text, image, system, announcement] }
+    MessageKind: { type: string, enum: [text, image, system, announcement, gift] }
+    GiftCode:
+      type: string
+      description: DM-016 gift catalog. Free presents with no money value; the apps ship the pictures.
+      enum: [coffee, postcard, flowers, ice_cream, cake, boarding_pass, snow_globe, coconut]
     NotificationLevel: { type: string, enum: [all, mentions, none] }
     GroupVisibility: { type: string, enum: [private, unlisted, public] }
     GroupJoinPolicy: { type: string, enum: [invite_only, request_to_join] }
@@ -8534,6 +8564,11 @@ components:
             - { type: 'null' }
         kind: { $ref: '#/components/schemas/MessageKind' }
         body: { type: [string, 'null'], maxLength: 4000, description: Null for tombstones. }
+        gift:
+          description: Gift messages only (DM-016); null for other kinds and for tombstones.
+          anyOf:
+            - { $ref: '#/components/schemas/MessageGift' }
+            - { type: 'null' }
         attachments: { type: array, items: { $ref: '#/components/schemas/MediaRef' } }
         reply_to:
           anyOf:
@@ -8548,6 +8583,14 @@ components:
         edited_at: { $ref: '#/components/schemas/NullableTimestamp' }
         deleted_at: { $ref: '#/components/schemas/NullableTimestamp' }
         created_at: { $ref: '#/components/schemas/Timestamp' }
+    MessageGift:
+      type: object
+      required: [code, opened_at]
+      properties:
+        code: { $ref: '#/components/schemas/GiftCode' }
+        opened_at:
+          description: When the recipient unwrapped it; null while it is still wrapped.
+          allOf: [{ $ref: '#/components/schemas/NullableTimestamp' }]
     MessageList:
       type: object
       required: [data, page]
@@ -8561,10 +8604,14 @@ components:
       anyOf:
         - { required: [body] }
         - { required: [attachment_media_ids] }
+        - { required: [gift] }
       properties:
         client_message_id: { $ref: '#/components/schemas/Uuid' }
-        kind: { type: string, enum: [text, image], default: text }
+        kind: { type: string, enum: [text, image, gift], default: text }
         body: { type: string, minLength: 1, maxLength: 4000 }
+        gift:
+          description: With `kind` gift only, and then without `body` or attachments. Direct chats only (DM-016).
+          allOf: [{ $ref: '#/components/schemas/GiftCode' }]
         attachment_media_ids: { type: array, minItems: 1, maxItems: 10, items: { $ref: '#/components/schemas/Uuid' } }
         reply_to_message_id: { $ref: '#/components/schemas/Uuid' }
         thread_root_id: { $ref: '#/components/schemas/Uuid' }

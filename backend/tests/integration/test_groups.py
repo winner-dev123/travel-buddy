@@ -164,6 +164,20 @@ def test_direct_invitations_are_free_to_accept_and_do_not_open_dms(store: LiveAp
     _problem(dm, 403, "connection_required")
 
 
+@pytest.mark.req("DM-016")
+def test_gifts_are_for_direct_chats(store: LiveApp) -> None:  # noqa: F811
+    owner, _, _ = _premium(store)
+    group = _group(store, owner)
+    member, _ = _join(store, owner, group["id"])
+    refused = store.client.post(
+        f"/v1/conversations/{group['conversation_id']}/messages",
+        headers={**_auth(member), "Idempotency-Key": str(uuid.uuid4())},
+        json={"client_message_id": str(uuid.uuid4()), "kind": "gift", "gift": "cake"},
+    )
+    problem = _problem(refused, 422, "validation_failed")
+    assert [e["field"] for e in problem["errors"]] == ["/kind"]
+
+
 @pytest.mark.req("GCHAT-002", "I18N-004")
 def test_group_chat_threads_mentions_reactions_pins_and_mute(store: LiveApp) -> None:  # noqa: F811
     owner, owner_id, _ = _premium(store)

@@ -206,7 +206,44 @@
         "text",
         "image",
         "system",
-        "announcement"
+        "announcement",
+        "gift"
+      ]
+    },
+    "GiftCode": {
+      "enum": [
+        "coffee",
+        "postcard",
+        "flowers",
+        "ice_cream",
+        "cake",
+        "boarding_pass",
+        "snow_globe",
+        "coconut"
+      ],
+      "description": "DM-016 gift catalog; the apps ship the pictures."
+    },
+    "MessageGift": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/GiftCode"
+        },
+        "opened_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "opened_at"
       ]
     },
     "Message": {
@@ -251,6 +288,17 @@
             "null"
           ],
           "maxLength": 4000
+        },
+        "gift": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MessageGift"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Gift messages only; null for tombstones."
         },
         "attachments": {
           "type": "array",

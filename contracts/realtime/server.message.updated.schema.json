@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://contracts.travelbuddy.example/realtime/server.message.updated.schema.json",
   "title": "server → client: message.updated",
-  "description": "A message was edited, or its reactions or pin state changed.",
+  "description": "A message was edited, its reactions or pin state changed, or its gift was opened.",
   "allOf": [
     {
       "$ref": "envelope.schema.json"
@@ -28,7 +28,8 @@
             "reactions",
             "pinned",
             "unpinned",
-            "moderated"
+            "moderated",
+            "gift_opened"
           ]
         }
       },

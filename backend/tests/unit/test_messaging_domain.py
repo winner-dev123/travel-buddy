@@ -1,16 +1,23 @@
-"""Messaging rules (pure): emoji allow-list, direct keys, previews, edit window, send checks."""
+"""Messaging rules (pure): emoji allow-list, gifts, direct keys, previews, edit window, send
+checks."""
 
 from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import get_args
 
 import pytest
 
 from app.modules.messaging.domain import (
+    EDITABLE,
+    USER_CONTENT,
     DirectFacts,
+    Gift,
+    MessageKind,
     SendRestriction,
     can_edit,
+    can_open_gift,
     canonical_emoji,
     direct_key,
     direct_restriction,
@@ -18,7 +25,8 @@ from app.modules.messaging.domain import (
     should_notify,
     snippet,
 )
-from app.modules.messaging.schemas import SendMessageRequest
+from app.modules.messaging.schemas import GiftCode, SendMessageRequest
+from app.modules.notifications.domain import render
 
 NOW = datetime(2026, 11, 9, 12, 0, tzinfo=UTC)
 
@@ -102,3 +110,68 @@ def test_notification_rules_follow_mute_and_level() -> None:
 def test_send_request_validation(body: dict[str, object]) -> None:
     with pytest.raises(ValueError):
         SendMessageRequest.model_validate({"client_message_id": str(uuid.uuid4()), **body})
+
+
+@pytest.mark.req("DM-016")
+def test_gift_catalog_is_the_same_in_rules_and_api() -> None:
+    assert {g.value for g in Gift} == set(get_args(GiftCode))
+    assert len(Gift) == 8
+    assert MessageKind.GIFT in USER_CONTENT  # hidden with a deleted sender, like text
+    assert MessageKind.GIFT not in EDITABLE  # nothing to edit
+
+
+@pytest.mark.req("DM-016")
+def test_only_the_recipient_of_a_direct_gift_opens_it() -> None:
+    sender, recipient = uuid.UUID(int=1), uuid.UUID(int=2)
+
+    def opens(
+        user: uuid.UUID,
+        kind: str = "gift",
+        conversation_kind: str = "direct",
+        sent_by: uuid.UUID | None = sender,
+    ) -> bool:
+        return can_open_gift(
+            kind=kind, conversation_kind=conversation_kind, sender_id=sent_by, user_id=user
+        )
+
+    assert opens(recipient)
+    assert not opens(sender)
+    assert not opens(recipient, kind="text")
+    assert not opens(recipient, conversation_kind="group")
+    assert not opens(recipient, sent_by=None)  # the sender's account is gone
+
+
+@pytest.mark.req("DM-016")
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"kind": "gift"},
+        {"kind": "gift", "gift": "yacht"},
+        {"kind": "gift", "gift": "cake", "body": "a note"},
+        {"kind": "gift", "gift": "cake", "attachment_media_ids": [str(uuid.UUID(int=1))]},
+        {"body": "hi", "gift": "cake"},
+    ],
+)
+def test_gift_request_validation(body: dict[str, object]) -> None:
+    with pytest.raises(ValueError):
+        SendMessageRequest.model_validate({"client_message_id": str(uuid.uuid4()), **body})
+
+
+@pytest.mark.req("DM-016")
+@pytest.mark.parametrize(
+    ("locale", "title", "body"),
+    [
+        ("en", "New gift", "Ana sent you a gift."),
+        ("pt-BR", "Novo presente", "Ana enviou um presente para você."),
+        ("de", "Neues Geschenk", "Ana hat dir ein Geschenk geschickt."),
+    ],
+)
+def test_a_gift_notification_says_gift(locale: str, title: str, body: str) -> None:
+    assert render("new_message", {"message_kind": "gift"}, actor="Ana", locale=locale) == (
+        title,
+        body,
+    )
+    assert render("new_message", {}, actor="Ana", locale="en") == (
+        "New message",
+        "Ana sent you a message.",
+    )

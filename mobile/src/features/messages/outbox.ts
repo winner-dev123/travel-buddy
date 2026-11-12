@@ -9,7 +9,8 @@ import type { UserSummary } from '@/features/feed/types';
 import type { RealtimeClient, ServerFrame } from '@/features/realtime/client';
 import { realtimeHandle } from '@/features/realtime/handle';
 
-import { messageKeys, sendMessage, type Message, type MessageList } from './api';
+import { messageKeys, sendGiftMessage, sendMessage, type Message, type MessageList } from './api';
+import { isGiftCode, type GiftCode } from './gifts';
 
 /**
  * Messages waiting to reach the server (ADR-0033). A message shows in the chat as soon as it is
@@ -17,6 +18,7 @@ import { messageKeys, sendMessage, type Message, type MessageList } from './api'
  * (waiting for the ack) or, without one, over REST. Every retry reuses the message's
  * `client_message_id`, so a send that got through before the connection dropped is never
  * duplicated (DM-005). Network failures retry with backoff; a refusal stops with its reason.
+ * Gifts (DM-016) go the same way: an item with `gift` and an empty body.
  */
 
 export type FailureReason = 'filtered' | 'restricted' | 'rejected';
@@ -25,6 +27,8 @@ export interface OutboxItem {
   clientMessageId: string;
   conversationId: string;
   body: string;
+  /** A gift instead of text (the body is empty). */
+  gift?: GiftCode;
   replyTo: { id: string; snippet: string | null } | null;
   createdAt: string;
   status: 'sending' | 'failed';
@@ -67,7 +71,11 @@ export function hydrateOutbox(): void {
       // A send interrupted by the app closing is retried now.
       useOutboxStore
         .getState()
-        .replace(items.map((item) => ({ ...item, nextAttemptAt: 0 })).filter((i) => i.body));
+        .replace(
+          items
+            .map((item) => ({ ...item, nextAttemptAt: 0 }))
+            .filter((i) => i.body || isGiftCode(i.gift)),
+        );
     }
   } catch {
     // Unreadable file: start empty.
@@ -75,7 +83,7 @@ export function hydrateOutbox(): void {
 }
 
 export function enqueueMessage(
-  item: Pick<OutboxItem, 'clientMessageId' | 'conversationId' | 'body' | 'replyTo'>,
+  item: Pick<OutboxItem, 'clientMessageId' | 'conversationId' | 'body' | 'replyTo' | 'gift'>,
   now: number = Date.now(),
 ): void {
   const items = useOutboxStore.getState().items;
@@ -175,8 +183,9 @@ function fromAck(item: OutboxItem, frame: ServerFrame, me: UserSummary | null): 
     seq: Number(data.seq),
     client_message_id: item.clientMessageId,
     sender: me,
-    kind: 'text',
-    body: item.body,
+    kind: item.gift ? 'gift' : 'text',
+    body: item.gift ? null : item.body,
+    gift: item.gift ? { code: item.gift, opened_at: null } : null,
     attachments: [],
     reply_to: item.replyTo
       ? {
@@ -236,7 +245,7 @@ async function sendOne(item: OutboxItem, deps: FlushDeps): Promise<'sent' | 'lat
       const frame = await deps.realtime.request('message.send', {
         conversation_id: item.conversationId,
         client_message_id: item.clientMessageId,
-        body: item.body,
+        ...(item.gift ? { kind: 'gift', gift: item.gift } : { body: item.body }),
         ...(item.replyTo ? { reply_to_message_id: item.replyTo.id } : {}),
       });
       if (frame.type === 'message.ack') {
@@ -266,13 +275,21 @@ async function sendOne(item: OutboxItem, deps: FlushDeps): Promise<'sent' | 'lat
     }
   }
   try {
-    const message = await sendMessage(
-      deps.client,
-      item.conversationId,
-      item.clientMessageId,
-      item.body,
-      item.replyTo?.id,
-    );
+    const message = item.gift
+      ? await sendGiftMessage(
+          deps.client,
+          item.conversationId,
+          item.clientMessageId,
+          item.gift,
+          item.replyTo?.id,
+        )
+      : await sendMessage(
+          deps.client,
+          item.conversationId,
+          item.clientMessageId,
+          item.body,
+          item.replyTo?.id,
+        );
     discardMessage(item.clientMessageId);
     await showPersisted(deps.queryClient, message);
     return 'sent';

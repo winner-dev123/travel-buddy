@@ -13,7 +13,11 @@ from app.modules.media.schemas import MediaRef
 from app.modules.profiles.schemas import UserSummary
 
 Kind = Literal["direct", "group", "challenge_team"]
-MessageKindName = Literal["text", "image", "system", "announcement"]
+MessageKindName = Literal["text", "image", "system", "announcement", "gift"]
+# DM-016: the gift catalog (mirrors ``domain.Gift``; the app ships the pictures).
+GiftCode = Literal[
+    "coffee", "postcard", "flowers", "ice_cream", "cake", "boarding_pass", "snow_globe", "coconut"
+]
 Level = Literal["all", "mentions", "none"]
 Restriction = Literal[
     "connection_required", "blocked", "member_restricted", "chat_admins_only", "archived"
@@ -35,8 +39,9 @@ class OpenDirectConversationRequest(_Request):
 
 class SendMessageRequest(_Request):
     client_message_id: uuid.UUID
-    kind: Literal["text", "image"] = "text"
+    kind: Literal["text", "image", "gift"] = "text"
     body: str | None = Field(default=None, min_length=1, max_length=4000)
+    gift: GiftCode | None = None
     attachment_media_ids: list[uuid.UUID] | None = Field(default=None, min_length=1, max_length=10)
     reply_to_message_id: uuid.UUID | None = None
     thread_root_id: uuid.UUID | None = None
@@ -46,6 +51,14 @@ class SendMessageRequest(_Request):
     def _content(self) -> Self:
         if self.body is not None and not self.body.strip():
             raise ValueError("body must not be blank")
+        if self.kind == "gift":
+            if self.gift is None:
+                raise ValueError("gift messages name a gift")
+            if self.body is not None or self.attachment_media_ids:
+                raise ValueError("a gift has no body or attachments")
+            return self
+        if self.gift is not None:
+            raise ValueError("gift is only for gift messages")
         if self.body is None and not self.attachment_media_ids:
             raise ValueError("a message needs a body or attachments")
         if self.kind == "image" and not self.attachment_media_ids:
@@ -128,6 +141,11 @@ class ReactionSummary(_Response):
     reacted_by_me: bool
 
 
+class GiftOut(_Response):
+    code: GiftCode
+    opened_at: datetime | None
+
+
 class MessageOut(_Response):
     id: uuid.UUID
     conversation_id: uuid.UUID
@@ -136,6 +154,7 @@ class MessageOut(_Response):
     sender: UserSummary | None
     kind: MessageKindName
     body: str | None
+    gift: GiftOut | None = None
     attachments: list[MediaRef]
     reply_to: MessagePreview | None
     thread_root_id: uuid.UUID | None

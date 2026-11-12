@@ -1,4 +1,4 @@
-// req: DM-005, DM-014
+// req: DM-005, DM-014, DM-016
 import { QueryClient } from '@tanstack/react-query';
 
 import { ApiNetworkError, ApiProblem, type ApiClient } from '@/api';
@@ -230,4 +230,81 @@ it('drops a message from the outbox once the server echoes it', () => {
   settleMessage('cm-1');
   settleMessage('unknown');
   expect(useOutboxStore.getState().items).toEqual([]);
+});
+
+describe('gifts (DM-016)', () => {
+  it('keeps a queued gift across restarts even though it has no text', () => {
+    enqueueMessage({
+      clientMessageId: 'cm-g',
+      conversationId: 'c1',
+      body: '',
+      gift: 'flowers',
+      replyTo: null,
+    });
+    useOutboxStore.setState({ items: [] }); // the app closes
+
+    hydrateOutbox();
+    expect(useOutboxStore.getState().items).toEqual([
+      expect.objectContaining({ clientMessageId: 'cm-g', gift: 'flowers', body: '' }),
+    ]);
+  });
+
+  it('sends a gift over the socket and shows it wrapped for nobody but me', async () => {
+    const { realtime, request } = socket((data) => ({
+      v: 1,
+      type: 'message.ack',
+      id: 'a',
+      data: { message_id: 'm9', seq: 9, client_message_id: data.client_message_id },
+    }));
+    enqueueMessage({
+      clientMessageId: 'cm-g',
+      conversationId: 'c1',
+      body: '',
+      gift: 'coconut',
+      replyTo: null,
+    });
+    await flushOutbox({ client: api(jest.fn()), queryClient, realtime, me, now });
+    expect(request).toHaveBeenCalledWith('message.send', {
+      conversation_id: 'c1',
+      client_message_id: 'cm-g',
+      kind: 'gift',
+      gift: 'coconut',
+    });
+    const [shown] = queryClient.getQueryData<MessageList>(['messages', 'history', 'c1'])!.data;
+    expect(shown).toMatchObject({
+      id: 'm9',
+      kind: 'gift',
+      body: null,
+      gift: { code: 'coconut', opened_at: null },
+    });
+  });
+
+  it('falls back to REST for a gift with the same client id', async () => {
+    const { realtime } = socket(() => Promise.reject(new Error('timeout')));
+    const post = jest.fn(async () => ({
+      ...persisted('m10', 10, 'cm-g', ''),
+      kind: 'gift',
+      body: null,
+      gift: { code: 'cake', opened_at: null },
+    }));
+    enqueueMessage({
+      clientMessageId: 'cm-g',
+      conversationId: 'c1',
+      body: '',
+      gift: 'cake',
+      replyTo: { id: 'm1', snippet: 'Happy birthday!' },
+    });
+    await flushOutbox({ client: api(post), queryClient, realtime, me, now });
+    expect(post).toHaveBeenCalledWith('/v1/conversations/c1/messages', {
+      idempotencyKey: 'cm-g',
+      body: {
+        client_message_id: 'cm-g',
+        kind: 'gift',
+        gift: 'cake',
+        reply_to_message_id: 'm1',
+      },
+    });
+    expect(history()).toEqual(['m10']);
+    expect(useOutboxStore.getState().items).toEqual([]);
+  });
 });

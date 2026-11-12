@@ -233,6 +233,7 @@ Legend. **Auth:** `bearer` = platform access token. `optional` = anonymous allow
 | `POST /v1/conversations/{conversationId}/messages` | 3 | bearer | required | message |  | DM-004, DM-005, DM-012, DM-013, GCHAT-002, SAFE-005 |
 | `PATCH /v1/conversations/{conversationId}/messages/{messageId}` | 3 | bearer | — | message |  | DM-010 |
 | `DELETE /v1/conversations/{conversationId}/messages/{messageId}` | 3 | bearer | natural | write |  | DM-010, GCHAT-004 |
+| `POST /v1/conversations/{conversationId}/messages/{messageId}/gift/open` | 3 | bearer | natural | write |  | DM-016 |
 | `PUT /v1/conversations/{conversationId}/messages/{messageId}/reactions/{emoji}` | 3 | bearer | natural | write |  | GCHAT-003 |
 | `DELETE /v1/conversations/{conversationId}/messages/{messageId}/reactions/{emoji}` | 3 | bearer | natural | write |  | GCHAT-003 |
 | `GET /v1/conversations/{conversationId}/threads/{messageId}` | 3 | bearer | — | read |  | GCHAT-004 |

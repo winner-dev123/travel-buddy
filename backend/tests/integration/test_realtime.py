@@ -289,6 +289,39 @@ def test_edits_deletes_reactions_receipts_and_typing(rt: LiveApp) -> None:
         assert ana_id
 
 
+@pytest.mark.req("DM-016")
+def test_a_gift_arrives_wrapped_and_the_sender_sees_it_opened(rt: LiveApp) -> None:
+    ana, _, bo, _, conversation = _pair(rt)
+    with _socket(rt, ana) as ana_ws, _socket(rt, bo) as bo_ws:
+        payload = {
+            "conversation_id": conversation,
+            "client_message_id": str(uuid.uuid4()),
+            "kind": "gift",
+            "gift": "coconut",
+        }
+        ana_ws.send("message.send", payload)
+        ack = ana_ws.expect("message.ack")
+        wrapped = bo_ws.expect("message.new")["data"]["message"]
+        assert wrapped["id"] == ack["data"]["message_id"]
+        assert wrapped["gift"] == {"code": "coconut", "opened_at": None}
+        ana_ws.expect("message.new")
+
+        opened = rt.client.post(
+            f"/v1/conversations/{conversation}/messages/{wrapped['id']}/gift/open",
+            headers=_auth(bo),
+        )
+        assert opened.status_code == 200, opened.text
+        seen = ana_ws.expect("message.updated", change="gift_opened")["data"]["message"]
+        assert seen["gift"]["opened_at"] == opened.json()["gift"]["opened_at"]
+        bo_ws.expect("message.updated", change="gift_opened")
+        # Opening it again tells nobody.
+        rt.client.post(
+            f"/v1/conversations/{conversation}/messages/{wrapped['id']}/gift/open",
+            headers=_auth(bo),
+        )
+        assert ana_ws.quiet() == []
+
+
 @pytest.mark.req("DM-007")
 def test_read_receipts_need_both_sides_to_share(rt: LiveApp) -> None:
     ana, _, bo, _, conversation = _pair(rt)

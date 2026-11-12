@@ -142,12 +142,23 @@ describe('inbox', () => {
           unread_count: 3,
           last_message: { ...conversation().last_message!, sender_id: 'u3', snippet: 'Hi!' },
         }),
+        conversation({
+          id: 'c3',
+          counterpart: { ...bo, id: 'u4', display_name: 'Di' },
+          last_message: {
+            ...conversation().last_message!,
+            sender_id: 'u4',
+            kind: 'gift',
+            snippet: null,
+          },
+        }),
       ],
       page: { next_cursor: null, has_more: false },
     });
     await renderUi(<Messages />);
     expect(await screen.findByText('You: See you at 8')).toBeTruthy();
     expect(screen.getByText('Hi!')).toBeTruthy();
+    expect(screen.getByText('🎁 Gift')).toBeTruthy(); // DM-016
     expect(screen.getByTestId('conversation-unread-c2')).toHaveTextContent('3');
     expect(screen.getByLabelText('Cy, 3 unread messages')).toBeTruthy();
     expect(mockApi.get).toHaveBeenCalledWith('/v1/conversations', { query: { limit: 50 } });

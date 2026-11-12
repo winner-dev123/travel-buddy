@@ -327,7 +327,12 @@ async def _new_message(session: AsyncSession, data: Mapping[str, Any]) -> bool:
             actor_id=sender,
             entity_type="conversation",
             entity_id=conversation,
-            payload={"conversation_id": str(conversation), "seq": data.get("seq")},
+            payload={
+                "conversation_id": str(conversation),
+                "seq": data.get("seq"),
+                # A gift reads "sent you a gift" (DM-016); other kinds keep the generic text.
+                **({"message_kind": "gift"} if data.get("kind") == "gift" else {}),
+            },
             dedupe_key=f"new_message:{message}",
         )
     return created

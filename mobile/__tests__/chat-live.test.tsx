@@ -178,7 +178,7 @@ describe('composer', () => {
     await renderUi(<Chat />);
     expect(childIds(await screen.findByTestId('chat-composer'))).toEqual([
       'chat-photo',
-      'chat-input',
+      'chat-field',
       'chat-send',
     ]);
 
@@ -187,7 +187,7 @@ describe('composer', () => {
     });
     expect(childIds(screen.getByTestId('chat-composer'))).toEqual([
       'chat-send',
-      'chat-input',
+      'chat-field',
       'chat-photo',
     ]);
   });

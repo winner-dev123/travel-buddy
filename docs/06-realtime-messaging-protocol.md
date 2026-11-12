@@ -51,7 +51,7 @@ Every frame, in both directions:
 |---|---|---|
 | `auth` | First frame within 5 s, and re-auth on an open connection. `data` carries **exactly one** of `access_token` (mobile) or `ticket` (web). Optional: `client`, `app_version`. | `auth.ok` or `auth.error` + close |
 | `ping` | Heartbeat | `pong` |
-| `message.send` | Send `{conversation_id, client_message_id, kind?, body?, attachment_media_ids?, reply_to_message_id?, thread_root_id?, mentions?}`. Requires `body` or attachments. | `message.ack` (persisted) or `error` / `rate_limited` |
+| `message.send` | Send `{conversation_id, client_message_id, kind?, body?, gift?, attachment_media_ids?, reply_to_message_id?, thread_root_id?, mentions?}`. Requires `body` or attachments, or `kind: gift` with a `gift` code (direct chats only, DM-016). | `message.ack` (persisted) or `error` / `rate_limited` |
 | `message.edit` | `{conversation_id, message_id, body}`. Sender only, within 15 min. | `message.updated` fanout (including to the sender), or `error` |
 | `message.delete` | `{conversation_id, message_id, reason_code?}`. Sender, or a moderator with `messages.remove` (`reason_code` required). | `message.deleted` fanout, or `error` |
 | `receipt.read` | `{conversation_id, read_through_seq}` (monotonic) | `receipt.updated` to others (if reciprocal), none to the sender |
@@ -69,7 +69,7 @@ Every frame, in both directions:
 | `pong` | Heartbeat reply `{server_time}` |
 | `message.ack` | The send was persisted: `{conversation_id, client_message_id, message_id, seq, created_at, duplicate}` |
 | `message.new` | New message `{message}`. The `Message` shape mirrors the OpenAPI `Message` exactly. `client_message_id` is present only on frames sent to the sender's own devices. |
-| `message.updated` | Edit, reactions, pin or moderation change: `{message, change}` |
+| `message.updated` | Edit, reactions, pin, moderation change, or a gift opened by its recipient (`gift_opened`): `{message, change}` |
 | `message.deleted` | Tombstone `{conversation_id, message_id, seq, deleted_at, by_moderator}` |
 | `receipt.updated` | Another member's watermark `{conversation_id, user_id, read_through_seq?, delivered_through_seq?}` |
 | `typing` | `{conversation_id, user_id, state, expires_at}` (8 s TTL) |

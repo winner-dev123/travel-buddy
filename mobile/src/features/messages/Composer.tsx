@@ -14,6 +14,11 @@ export interface ComposerProps {
   photoBusy: boolean;
   /** Right (the default) or left, for one-handed use with the left hand (SCR-119). */
   sendSide: SendSide;
+  /** The emoji and gifts panel (DM-016): open or close it, and whether it's open. */
+  onToggleTray?: () => void;
+  trayOpen?: boolean;
+  /** The text field got focus (the keyboard replaces the panel). */
+  onFocusField?: () => void;
   placeholder?: string;
   testID?: string;
 }
@@ -22,7 +27,8 @@ const BUTTON = 44;
 
 /**
  * The message bar (SCR-081): the text field with the send button beside it on one line, and the
- * photo button on the opposite side. The field grows with the text up to a few lines.
+ * photo button on the opposite side. The field grows with the text up to a few lines; the emoji
+ * and gifts button sits inside it, on the send button's side, within reach of the same thumb.
  */
 export function Composer({
   value,
@@ -31,6 +37,9 @@ export function Composer({
   onPhoto,
   photoBusy,
   sendSide,
+  onToggleTray,
+  trayOpen = false,
+  onFocusField,
   placeholder,
   testID = 'chat-input',
 }: ComposerProps) {
@@ -60,9 +69,9 @@ export function Composer({
     </Pressable>
   );
 
-  const field = (
+  const input = (
     <TextInput
-      key="field"
+      key="input"
       value={value}
       onChangeText={onChangeText}
       placeholder={label}
@@ -72,19 +81,49 @@ export function Composer({
       cursorColor={theme.colors.primary}
       maxLength={4000}
       multiline
-      onFocus={() => setFocused(true)}
+      onFocus={() => {
+        setFocused(true);
+        onFocusField?.();
+      }}
       onBlur={() => setFocused(false)}
-      style={[
-        theme.typography.body,
-        styles.field,
-        {
-          color: theme.colors.textPrimary,
-          backgroundColor: theme.colors.surface,
-          borderColor: focused ? theme.colors.primary : theme.colors.borderStrong,
-        },
-      ]}
+      style={[theme.typography.body, styles.input, { color: theme.colors.textPrimary }]}
       testID={testID}
     />
+  );
+
+  const tray = onToggleTray ? (
+    <Pressable
+      key="tray"
+      onPress={onToggleTray}
+      accessibilityRole="button"
+      accessibilityLabel={t('messages.expressions')}
+      accessibilityState={{ expanded: trayOpen }}
+      hitSlop={6}
+      style={({ pressed }) => [styles.trayButton, { opacity: pressed ? 0.6 : 1 }]}
+      testID="chat-tray"
+    >
+      <Ionicons
+        name={trayOpen ? 'happy' : 'happy-outline'}
+        size={24}
+        color={trayOpen ? theme.colors.primary : theme.colors.textSecondary}
+      />
+    </Pressable>
+  ) : null;
+
+  const field = (
+    <View
+      key="field"
+      style={[
+        styles.field,
+        {
+          backgroundColor: theme.colors.surface,
+          borderColor: focused || trayOpen ? theme.colors.primary : theme.colors.borderStrong,
+        },
+      ]}
+      testID="chat-field"
+    >
+      {sendSide === 'right' ? [input, tray] : [tray, input]}
+    </View>
   );
 
   const send = (
@@ -125,15 +164,22 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   field: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     minHeight: BUTTON,
-    maxHeight: 132,
     borderWidth: 1,
     borderRadius: BUTTON / 2,
-    paddingHorizontal: 16,
-    paddingTop: 11,
-    paddingBottom: 11,
+    paddingHorizontal: 6,
+  },
+  input: {
+    flex: 1,
+    maxHeight: 130,
+    paddingHorizontal: 10,
+    paddingTop: 10,
+    paddingBottom: 10,
     textAlignVertical: 'center',
   },
+  trayButton: { width: 34, height: BUTTON - 2, alignItems: 'center', justifyContent: 'center' },
   round: { width: BUTTON, height: BUTTON, alignItems: 'center', justifyContent: 'center' },
   send: { borderRadius: BUTTON / 2 },
 });

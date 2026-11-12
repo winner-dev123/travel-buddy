@@ -6,7 +6,9 @@ import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,7 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getApiClient } from '@/api';
+import { ApiNetworkError, getApiClient } from '@/api';
 import { useSessionStore } from '@/auth/sessionStore';
 import { showActions } from '@/components/ActionSheet';
 import { Notice } from '@/components/Form';
@@ -40,6 +42,7 @@ import {
   markRead,
   messageKeys,
   muteConversation,
+  openGift,
   pinMessage,
   POLL_CHAT_MS,
   QUICK_REACTIONS,
@@ -52,6 +55,9 @@ import {
 } from '@/features/messages/api';
 import { ChatBackdrop } from '@/features/messages/ChatBackdrop';
 import { Composer } from '@/features/messages/Composer';
+import { ExpressionTray } from '@/features/messages/ExpressionTray';
+import { GiftBubble } from '@/features/messages/GiftBubble';
+import { giftNameKey, type GiftCode } from '@/features/messages/gifts';
 import {
   discardMessage,
   enqueueMessage,
@@ -69,8 +75,9 @@ import { useAppTheme } from '@/theme/useAppTheme';
 
 /**
  * SCR-081 Direct message thread (DM-001..013). Live over the realtime connection (ADR-0033) and
- * refreshed by polling when there isn't one (ADR-0023). Text messages go through the outbox, so a
- * message written without a network shows at once and is sent when a connection comes back.
+ * refreshed by polling when there isn't one (ADR-0023). Text messages and gifts go through the
+ * outbox, so a message written without a network shows at once and is sent when a connection comes
+ * back. The panel beside the field adds emoji and, in direct chats, sends gifts (DM-016).
  */
 const MUTE_FOR = [
   { hours: 1, label: 'messages.muteFor.1' },
@@ -103,6 +110,7 @@ export default function ChatScreen() {
   const outbox = useOutboxStore((state) => state.items);
   const sendSide = useChatPreferences((state) => state.sendSide);
   const background = useChatPreferences((state) => state.background);
+  const [trayOpen, setTrayOpen] = useState(false);
 
   const conversation = useQuery({
     queryKey: messageKeys.conversation(id),
@@ -288,6 +296,9 @@ export default function ChatScreen() {
     [id],
   );
 
+  // What a message says in a quote or the pinned bar (a gift by its name).
+  const textOf = (message: Message) =>
+    message.gift ? t(giftNameKey(message.gift.code)) : (message.body ?? '');
   const submit = () => {
     const body = draft.trim();
     if (!body) return;
@@ -295,7 +306,7 @@ export default function ChatScreen() {
       clientMessageId: pending.current,
       conversationId: id,
       body,
-      replyTo: replyTo ? { id: replyTo.id, snippet: replyTo.body } : null,
+      replyTo: replyTo ? { id: replyTo.id, snippet: textOf(replyTo) } : null,
     });
     setDraft('');
     setReplyTo(null);
@@ -304,6 +315,57 @@ export default function ChatScreen() {
     reportTyping(id, false);
     void sendQueuedMessages(queryClient);
   };
+  // DM-016: the emoji and gifts panel replaces the keyboard while it's open.
+  const toggleTray = () => {
+    if (!trayOpen) Keyboard.dismiss();
+    setTrayOpen((open) => !open);
+  };
+  useEffect(() => {
+    if (!trayOpen) return;
+    const back = BackHandler.addEventListener('hardwareBackPress', () => {
+      setTrayOpen(false);
+      return true;
+    });
+    return () => back.remove();
+  }, [trayOpen]);
+  const addEmoji = (emoji: string) => changeDraft(`${draft}${emoji}`);
+  const sendGift = (gift: GiftCode) => {
+    enqueueMessage({
+      clientMessageId: pending.current,
+      conversationId: id,
+      body: '',
+      gift,
+      replyTo: replyTo ? { id: replyTo.id, snippet: textOf(replyTo) } : null,
+    });
+    setReplyTo(null);
+    setTrayOpen(false);
+    pending.current = getApiClient().newIdempotencyKey();
+    void sendQueuedMessages(queryClient);
+  };
+  // Opening shows at once; the server's answer replaces the guess, a failure puts the bow back.
+  const patchGift = (messageId: string, openedAt: string | null) =>
+    queryClient.setQueryData<MessageList>(messageKeys.history(id), (old) =>
+      old
+        ? {
+            ...old,
+            data: old.data.map((m) =>
+              m.id === messageId && m.gift ? { ...m, gift: { ...m.gift, opened_at: openedAt } } : m,
+            ),
+          }
+        : old,
+    );
+  const unwrap = useMutation({
+    mutationFn: (message: Message) => openGift(getApiClient(), id, message.id),
+    // A dropped connection is worth another try; a refusal isn't.
+    retry: (failures, error) => error instanceof ApiNetworkError && failures < 2,
+    onMutate: async (message) => {
+      await queryClient.cancelQueries({ queryKey: messageKeys.history(id) });
+      patchGift(message.id, new Date().toISOString());
+    },
+    onSuccess: (updated) => patchGift(updated.id, updated.gift?.opened_at ?? null),
+    onError: (_error, message) => patchGift(message.id, null),
+  });
+
   const queuedActions = (item: OutboxItem) =>
     showActions(t('messages.notSent'), undefined, [
       {
@@ -495,7 +557,7 @@ export default function ChatScreen() {
                 numberOfLines={1}
                 style={[theme.typography.label, { color: theme.colors.textPrimary }]}
               >
-                {`📌 ${t('messages.pinnedCount', { count: pinned.length })} · ${pinned[0]?.body ?? ''}`}
+                {`📌 ${t('messages.pinnedCount', { count: pinned.length })} · ${pinned[0] ? textOf(pinned[0]) : ''}`}
               </Text>
             </Pressable>
             {showPins
@@ -508,7 +570,7 @@ export default function ChatScreen() {
                         { color: theme.colors.textPrimary },
                       ]}
                     >
-                      {message.body}
+                      {textOf(message)}
                     </Text>
                     {canPin ? (
                       <Pressable
@@ -569,6 +631,41 @@ export default function ChatScreen() {
               if (row.kind === 'queued') {
                 const queuedItem = row.item;
                 const isFailed = queuedItem.status === 'failed';
+                const queuedStatus = (
+                  <View
+                    style={styles.status}
+                    testID={`queued-status-${queuedItem.clientMessageId}`}
+                  >
+                    <Ionicons
+                      name={isFailed ? 'alert-circle' : 'time-outline'}
+                      size={13}
+                      color={isFailed ? theme.colors.danger : theme.colors.textSecondary}
+                    />
+                    <Text
+                      style={[
+                        theme.typography.caption,
+                        { color: isFailed ? theme.colors.danger : theme.colors.textSecondary },
+                      ]}
+                    >
+                      {isFailed ? t('messages.notSentTap') : t('messages.sending')}
+                    </Text>
+                  </View>
+                );
+                if (queuedItem.gift) {
+                  return (
+                    <View style={styles.mineColumn}>
+                      <GiftBubble
+                        gift={{ code: queuedItem.gift, opened_at: null }}
+                        mine
+                        senderName=""
+                        onPress={isFailed ? () => queuedActions(queuedItem) : undefined}
+                        onLongPress={() => queuedActions(queuedItem)}
+                        testID={`queued-${queuedItem.clientMessageId}`}
+                      />
+                      {queuedStatus}
+                    </View>
+                  );
+                }
                 return (
                   <View style={styles.mineColumn}>
                     <Pressable
@@ -610,24 +707,7 @@ export default function ChatScreen() {
                         {queuedItem.body}
                       </Text>
                     </Pressable>
-                    <View
-                      style={styles.status}
-                      testID={`queued-status-${queuedItem.clientMessageId}`}
-                    >
-                      <Ionicons
-                        name={isFailed ? 'alert-circle' : 'time-outline'}
-                        size={13}
-                        color={isFailed ? theme.colors.danger : theme.colors.textSecondary}
-                      />
-                      <Text
-                        style={[
-                          theme.typography.caption,
-                          { color: isFailed ? theme.colors.danger : theme.colors.textSecondary },
-                        ]}
-                      >
-                        {isFailed ? t('messages.notSentTap') : t('messages.sending')}
-                      </Text>
-                    </View>
+                    {queuedStatus}
                   </View>
                 );
               }
@@ -637,7 +717,18 @@ export default function ChatScreen() {
               const group = data?.kind === 'group';
               const isLastMine = mine && item.id === lastMine?.id;
               const read = isLastMine && peerRead !== null && peerRead >= item.seq;
-              const bubble = (
+              const gift = !hidden ? item.gift : null;
+              const bubble = gift ? (
+                <GiftBubble
+                  gift={gift}
+                  mine={mine}
+                  senderName={item.sender?.display_name ?? t('messages.someone')}
+                  onOpen={() => unwrap.mutate(item)}
+                  opening={unwrap.isPending && unwrap.variables?.id === item.id}
+                  onLongPress={() => actions(item)}
+                  testID={`message-${item.id}`}
+                />
+              ) : (
                 <Pressable
                   onLongPress={() => actions(item)}
                   accessibilityHint={t('messages.actionsHint')}
@@ -674,7 +765,13 @@ export default function ChatScreen() {
                       ]}
                       testID={`reply-quote-${item.id}`}
                     >
-                      {`↩ ${item.reply_to.deleted ? t('messages.deleted') : (item.reply_to.snippet ?? '')}`}
+                      {`↩ ${
+                        item.reply_to.deleted
+                          ? t('messages.deleted')
+                          : item.reply_to.kind === 'gift' && !item.reply_to.snippet
+                            ? t('messages.giftPreview')
+                            : (item.reply_to.snippet ?? '')
+                      }`}
                     </Text>
                   ) : null}
                   {!hidden && item.attachments.length > 0 ? (
@@ -761,12 +858,43 @@ export default function ChatScreen() {
                   ) : null}
                 </Pressable>
               );
-              if (!isLastMine) return bubble;
+              // My gifts say whether the other person has opened them yet (DM-016).
+              const giftStatus =
+                mine && gift ? (
+                  <View style={styles.status} testID={`gift-status-${item.id}`}>
+                    <Ionicons
+                      name={gift.opened_at ? 'gift' : 'gift-outline'}
+                      size={13}
+                      color={gift.opened_at ? theme.colors.primary : theme.colors.textSecondary}
+                    />
+                    <Text
+                      style={[
+                        theme.typography.caption,
+                        {
+                          color: gift.opened_at ? theme.colors.primary : theme.colors.textSecondary,
+                        },
+                      ]}
+                    >
+                      {gift.opened_at ? t('messages.giftOpened') : t('messages.giftNotOpened')}
+                    </Text>
+                  </View>
+                ) : null;
+              if (!isLastMine) {
+                return giftStatus ? (
+                  <View style={styles.mineColumn}>
+                    {bubble}
+                    {giftStatus}
+                  </View>
+                ) : (
+                  bubble
+                );
+              }
               // My newest message: "Sent", then the reader's face and "Read" once they've seen it.
               const reader = direct ? (data?.counterpart ?? null) : null;
               return (
                 <View style={styles.mineColumn}>
                   {bubble}
+                  {giftStatus}
                   {read ? (
                     <View
                       style={styles.status}
@@ -835,7 +963,7 @@ export default function ChatScreen() {
                   >
                     {t('messages.replyingTo', {
                       name: replyTo.sender?.display_name ?? t('messages.deletedUser'),
-                      text: replyTo.body ?? '',
+                      text: textOf(replyTo),
                     })}
                   </Text>
                   <Pressable
@@ -854,6 +982,11 @@ export default function ChatScreen() {
                 </Notice>
               ) : null}
               {sendPhoto.isError ? <Notice tone="error">{t('compose.uploadFailed')}</Notice> : null}
+              {unwrap.isError ? (
+                <Notice tone="error" testID="gift-open-failed">
+                  {t('messages.giftOpenFailed')}
+                </Notice>
+              ) : null}
               <Composer
                 value={draft}
                 onChangeText={changeDraft}
@@ -861,10 +994,16 @@ export default function ChatScreen() {
                 onPhoto={choosePhoto}
                 photoBusy={sendPhoto.isPending}
                 sendSide={sendSide}
+                onToggleTray={toggleTray}
+                trayOpen={trayOpen}
+                onFocusField={() => setTrayOpen(false)}
               />
             </>
           )}
         </View>
+        {trayOpen && !restriction ? (
+          <ExpressionTray onEmoji={addEmoji} onGift={direct ? sendGift : null} />
+        ) : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

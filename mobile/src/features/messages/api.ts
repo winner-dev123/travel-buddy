@@ -1,12 +1,14 @@
 import type { ApiClient } from '@/api';
 import type { MediaRef, Page, UserSummary } from '@/features/feed/types';
 
+import type { GiftCode } from './gifts';
+
 /** Contract `MessagePreview`. */
 export interface MessagePreview {
   id: string;
   seq: number;
   sender_id: string | null;
-  kind: 'text' | 'image' | 'system' | 'announcement';
+  kind: 'text' | 'image' | 'system' | 'announcement' | 'gift';
   snippet: string | null;
   deleted: boolean;
   created_at: string;
@@ -46,6 +48,8 @@ export interface Message {
   sender: UserSummary | null;
   kind: MessagePreview['kind'];
   body: string | null;
+  /** DM-016: gift messages only; `opened_at` stays null until the recipient unwraps it. */
+  gift?: MessageGift | null;
   attachments: MediaRef[];
   reply_to: MessagePreview | null;
   /** Group chats: the thread this message replies in, and how many replies it has itself. */
@@ -57,6 +61,12 @@ export interface Message {
   edited_at: string | null;
   deleted_at: string | null;
   created_at: string;
+}
+
+/** Contract `MessageGift`. The code is a string so a gift added later still parses. */
+export interface MessageGift {
+  code: GiftCode | (string & {});
+  opened_at: string | null;
 }
 
 export interface MessageList {
@@ -115,6 +125,30 @@ export function sendMessage(
       ...(replyToId ? { reply_to_message_id: replyToId } : {}),
     },
   });
+}
+
+/** DM-016: a gift (direct chats only); idempotent on `clientMessageId` like any send. */
+export function sendGiftMessage(
+  client: ApiClient,
+  id: string,
+  clientMessageId: string,
+  gift: GiftCode,
+  replyToId?: string,
+): Promise<Message> {
+  return client.post<Message>(`/v1/conversations/${id}/messages`, {
+    idempotencyKey: clientMessageId,
+    body: {
+      client_message_id: clientMessageId,
+      kind: 'gift',
+      gift,
+      ...(replyToId ? { reply_to_message_id: replyToId } : {}),
+    },
+  });
+}
+
+/** DM-016: the recipient unwraps a gift (idempotent); returns the message with `opened_at`. */
+export function openGift(client: ApiClient, id: string, messageId: string): Promise<Message> {
+  return client.post<Message>(`/v1/conversations/${id}/messages/${messageId}/gift/open`);
 }
 
 /** SCR-083: replies in a group chat thread, oldest first (GCHAT-004). */
@@ -202,11 +236,11 @@ export function deleteMessage(
 
 /** Tombstones, removed messages and messages of deleted accounts show no content. */
 export function isHidden(
-  message: Pick<Message, 'deleted_at' | 'moderation_state' | 'body' | 'attachments'>,
+  message: Pick<Message, 'deleted_at' | 'moderation_state' | 'body' | 'attachments' | 'gift'>,
 ): boolean {
   return (
     message.deleted_at !== null ||
     message.moderation_state !== 'visible' ||
-    (message.body === null && message.attachments.length === 0)
+    (message.body === null && message.attachments.length === 0 && !message.gift)
   );
 }

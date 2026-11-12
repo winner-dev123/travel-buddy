@@ -233,6 +233,7 @@ destination_match = 1.0 exact, 0.8 child (neighborhood within city), 0.5 parent,
 | DM-013 | Messages are not end-to-end encrypted in v1. The privacy policy states this. Encryption in transit (TLS 1.2+) and at rest | M | 3 | — |
 | DM-014 | Works on poor networks: a message written without a connection shows at once, is kept on the device across restarts, and is sent (same `client_message_id`) when a connection is back. Refused messages stay with their reason for retry or delete | S | 3 | Offline send → queued bubble → sent once on reconnect, no duplicate |
 | DM-015 | Chat appearance on the device: send button on the right or left (left-handed use) and a background from at least two built-in trip photos or the traveller's own story photos | S | 3 | Kept on the device; a chosen photo is copied into the app and shows offline |
+| DM-016 | Emoji and gifts in direct chats: an emoji panel beside the message field, and illustrated gifts from a fixed catalog (free, no money value, can't be bought, sold or converted). The recipient receives a wrapped gift and opens it; the sender sees that it was opened | S | 3 | Gift sent → wrapped on the recipient's phone → opened → "Opened" on the sender's, live; refused in group chats |
 
 ### 4.10 Travel groups: GRP
 

@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <radialGradient id="shadow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#000" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="shell" cx="0.38" cy="0.35" r="0.8">
+      <stop offset="0" stop-color="#A16B45"/>
+      <stop offset="1" stop-color="#4A2B17"/>
+    </radialGradient>
+    <linearGradient id="flesh" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFDF7"/>
+      <stop offset="1" stop-color="#EFE3CB"/>
+    </linearGradient>
+    <radialGradient id="milk" cx="0.5" cy="0.4" r="0.6">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E9DFCC"/>
+    </radialGradient>
+    <radialGradient id="petal" cx="0.3" cy="0.3" r="0.9">
+      <stop offset="0" stop-color="#FF9BB0"/>
+      <stop offset="1" stop-color="#E23E6B"/>
+    </radialGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5DB27A"/>
+      <stop offset="1" stop-color="#2C7047"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="128" cy="226" rx="74" ry="10" fill="url(#shadow)"/>
+  <path d="M150 112 L178 40 Q181 33 188 36" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M150 112 L178 40 Q181 33 188 36" fill="none" stroke="#FF6F91" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 8"/>
+  <path d="M96 116 L76 64" stroke="#7A5A3A" stroke-width="3" stroke-linecap="round"/>
+  <path d="M42 66 Q76 30 112 62 Z" fill="#FFC857"/>
+  <path d="M42 66 Q56 50 64 48 L76 64 Z" fill="#FF8A5B"/>
+  <path d="M112 62 Q98 48 88 46 L76 64 Z" fill="#2EC4B6"/>
+  <path d="M42 66 Q76 30 112 62" fill="none" stroke="#fff" stroke-opacity="0.4" stroke-width="2"/>
+  <circle cx="128" cy="156" r="68" fill="url(#shell)"/>
+  <path d="M74 140 C 84 150, 86 170, 80 186 M96 172 C 104 184, 104 200, 98 212 M168 176 C 162 188, 162 200, 168 210 M180 140 C 172 152, 172 166, 178 180 M128 196 C 124 206, 126 216, 130 222" fill="none" stroke="#2E1A0E" stroke-opacity="0.35" stroke-width="3" stroke-linecap="round"/>
+  <ellipse cx="128" cy="112" rx="52" ry="16" fill="url(#flesh)"/>
+  <ellipse cx="128" cy="113" rx="40" ry="10" fill="url(#milk)"/>
+  <ellipse cx="128" cy="113" rx="40" ry="10" fill="none" stroke="#D9CBB0" stroke-width="1.5"/>
+  <path d="M84 138 C 80 150, 82 164, 88 176" fill="none" stroke="#fff" stroke-opacity="0.2" stroke-width="7" stroke-linecap="round"/>
+  <path d="M176 150 C 196 140, 212 152, 206 168 C 196 168, 184 162, 176 150 Z" fill="url(#leaf)"/>
+  <g transform="translate(184 140)">
+    <ellipse cx="0" cy="-14" rx="10" ry="15" fill="url(#petal)"/>
+    <ellipse cx="0" cy="-14" rx="10" ry="15" fill="url(#petal)" transform="rotate(72)"/>
+    <ellipse cx="0" cy="-14" rx="10" ry="15" fill="url(#petal)" transform="rotate(144)"/>
+    <ellipse cx="0" cy="-14" rx="10" ry="15" fill="url(#petal)" transform="rotate(216)"/>
+    <ellipse cx="0" cy="-14" rx="10" ry="15" fill="url(#petal)" transform="rotate(288)"/>
+    <circle cx="0" cy="0" r="6" fill="#B3164A"/>
+    <path d="M0 0 L10 -10" stroke="#FFD166" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="11" cy="-11" r="2.5" fill="#FFD166"/>
+  </g>
+</svg>

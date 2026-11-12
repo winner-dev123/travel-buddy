@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <radialGradient id="shadow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#000" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="box" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#C9475B"/>
+      <stop offset="1" stop-color="#76192D"/>
+    </linearGradient>
+    <linearGradient id="lid" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E35D71"/>
+      <stop offset="1" stop-color="#A72C43"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#B07E33"/>
+      <stop offset="0.5" stop-color="#F7DA97"/>
+      <stop offset="1" stop-color="#BE8D40"/>
+    </linearGradient>
+    <linearGradient id="goldV" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F9DF9F"/>
+      <stop offset="1" stop-color="#B58237"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="128" cy="220" rx="88" ry="13" fill="url(#shadow)"/>
+  <rect x="58" y="116" width="140" height="100" rx="10" fill="url(#box)"/>
+  <rect x="58" y="120" width="140" height="10" fill="#000" opacity="0.2"/>
+  <rect x="66" y="132" width="6" height="74" rx="3" fill="#fff" opacity="0.12"/>
+  <rect x="117" y="116" width="22" height="100" fill="url(#gold)"/>
+  <rect x="117" y="120" width="22" height="10" fill="#000" opacity="0.15"/>
+  <rect x="48" y="92" width="160" height="34" rx="8" fill="url(#lid)"/>
+  <rect x="117" y="92" width="22" height="34" fill="url(#gold)"/>
+  <rect x="56" y="96" width="56" height="5" rx="2.5" fill="#fff" opacity="0.28"/>
+  <rect x="144" y="96" width="56" height="5" rx="2.5" fill="#fff" opacity="0.2"/>
+  <path d="M121 98 L100 136 L111 133 L114 145 L131 102 Z" fill="url(#goldV)"/>
+  <path d="M135 98 L156 136 L145 133 L142 145 L125 102 Z" fill="url(#goldV)"/>
+  <path d="M128 92 C 110 56, 70 54, 76 80 C 80 96, 108 98, 128 92 Z" fill="url(#goldV)"/>
+  <path d="M128 92 C 146 56, 186 54, 180 80 C 176 96, 148 98, 128 92 Z" fill="url(#goldV)"/>
+  <path d="M123 90 C 110 70, 90 68, 90 80 C 91 89, 108 92, 123 90 Z" fill="#8E6224" opacity="0.5"/>
+  <path d="M133 90 C 146 70, 166 68, 166 80 C 165 89, 148 92, 133 90 Z" fill="#8E6224" opacity="0.5"/>
+  <path d="M84 70 C 92 62, 104 62, 112 70" fill="none" stroke="#fff" stroke-opacity="0.45" stroke-width="3" stroke-linecap="round"/>
+  <rect x="115" y="80" width="26" height="20" rx="8" fill="url(#gold)"/>
+  <rect x="120" y="83" width="12" height="4" rx="2" fill="#fff" opacity="0.5"/>
+  <path d="M206 58 Q206 70 218 70 Q206 70 206 82 Q206 70 194 70 Q206 70 206 58 Z" fill="#F7DA97"/>
+  <path d="M44 120 Q44 128 52 128 Q44 128 44 136 Q44 128 36 128 Q44 128 44 120 Z" fill="#F7DA97" opacity="0.85"/>
+  <path d="M190 30 Q190 36 196 36 Q190 36 190 42 Q190 36 184 36 Q190 36 190 30 Z" fill="#fff" opacity="0.8"/>
+  <circle cx="58" cy="76" r="3" fill="#F7DA97" opacity="0.8"/>
+  <circle cx="220" cy="118" r="2.5" fill="#fff" opacity="0.7"/>
+</svg>

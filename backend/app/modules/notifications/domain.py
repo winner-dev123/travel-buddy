@@ -470,10 +470,33 @@ DATA_EXPORT_TEXTS: Final[tuple[Text, Text]] = (
 )
 
 
+# new_message whose message is a gift (payload.message_kind == "gift"; DM-016).
+GIFT_TEXTS: Final[tuple[Text, Text]] = (
+    {
+        "en": "New gift",
+        "es": "Nuevo regalo",
+        "pt-BR": "Novo presente",
+        "fr": "Nouveau cadeau",
+        "de": "Neues Geschenk",
+    },
+    {
+        "en": "{actor} sent you a gift.",
+        "es": "{actor} te envió un regalo.",
+        "pt-BR": "{actor} enviou um presente para você.",
+        "fr": "{actor} vous a envoyé un cadeau.",
+        "de": "{actor} hat dir ein Geschenk geschickt.",
+    },
+)
+
+
 def render(
     kind: str, payload: Mapping[str, Any], *, actor: str | None, locale: str
 ) -> tuple[str, str]:
     """(title, body) for a stored notification in ``locale``."""
+    if kind == "new_message" and payload.get("message_kind") == "gift":
+        title, body = GIFT_TEXTS
+        name = actor or _pick(SOMEONE, locale)
+        return _pick(title, locale), _pick(body, locale).format(actor=name)
     if kind == "subscription_notice":
         body = SUBSCRIPTION_BODIES.get(
             str(payload.get("variant")), SUBSCRIPTION_BODIES["group_premium_lapsed"]

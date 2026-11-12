@@ -1782,6 +1782,26 @@ export interface paths {
         patch: operations["editMessage"];
         trace?: never;
     };
+    "/v1/conversations/{conversationId}/messages/{messageId}/gift/open": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unwrap a gift sent to me (idempotent)
+         * @description Only the recipient of a gift in a direct chat opens it (`403 forbidden` for the sender or another kind of message). The first call records `gift.opened_at` and sends `message.updated` (change `gift_opened`) to both members; later calls return the message unchanged.
+         */
+        post: operations["openMessageGift"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/conversations/{conversationId}/messages/{messageId}/reactions/{emoji}": {
         parameters: {
             query?: never;
@@ -3985,7 +4005,12 @@ export interface components {
         /** @enum {string} */
         ConversationKind: "direct" | "group" | "challenge_team";
         /** @enum {string} */
-        MessageKind: "text" | "image" | "system" | "announcement";
+        MessageKind: "text" | "image" | "system" | "announcement" | "gift";
+        /**
+         * @description DM-016 gift catalog. Free presents with no money value; the apps ship the pictures.
+         * @enum {string}
+         */
+        GiftCode: "coffee" | "postcard" | "flowers" | "ice_cream" | "cake" | "boarding_pass" | "snow_globe" | "coconut";
         /** @enum {string} */
         NotificationLevel: "all" | "mentions" | "none";
         /** @enum {string} */
@@ -5174,6 +5199,8 @@ export interface components {
             kind: components["schemas"]["MessageKind"];
             /** @description Null for tombstones. */
             body: string | null;
+            /** @description Gift messages only (DM-016); null for other kinds and for tombstones. */
+            gift?: components["schemas"]["MessageGift"] | null;
             attachments: components["schemas"]["MediaRef"][];
             reply_to: components["schemas"]["MessagePreview"] | null;
             /** Format: uuid */
@@ -5188,6 +5215,11 @@ export interface components {
             deleted_at: components["schemas"]["NullableTimestamp"];
             created_at: components["schemas"]["Timestamp"];
         };
+        MessageGift: {
+            code: components["schemas"]["GiftCode"];
+            /** @description When the recipient unwrapped it; null while it is still wrapped. */
+            opened_at: components["schemas"]["NullableTimestamp"];
+        };
         MessageList: {
             data: components["schemas"]["Message"][];
             page: components["schemas"]["SeqPageInfo"];
@@ -5198,13 +5230,15 @@ export interface components {
              * @default text
              * @enum {string}
              */
-            kind?: "text" | "image";
+            kind?: "text" | "image" | "gift";
             body?: string;
+            /** @description With `kind` gift only, and then without `body` or attachments. Direct chats only (DM-016). */
+            gift?: components["schemas"]["GiftCode"];
             attachment_media_ids?: components["schemas"]["Uuid"][];
             reply_to_message_id?: components["schemas"]["Uuid"];
             thread_root_id?: components["schemas"]["Uuid"];
             mentions?: components["schemas"]["Uuid"][];
-        } | unknown | unknown;
+        } | unknown | unknown | unknown;
         UpdateReceiptsRequest: {
             /** Format: int64 */
             read_through_seq?: number;
@@ -10241,6 +10275,33 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    openMessageGift: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: components["parameters"]["ConversationId"];
+                messageId: components["parameters"]["MessageId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The gift message, opened. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             default: components["responses"]["Problem"];
         };
