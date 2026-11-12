@@ -92,7 +92,14 @@ export function GiftBubble({
           resizeMode="contain"
           accessibilityIgnoresInvertColors
         />
-        <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+        {/* On a pill so it reads over a chat background photo. */}
+        <Text
+          style={[
+            theme.typography.caption,
+            styles.from,
+            { color: theme.colors.textPrimary, backgroundColor: theme.colors.surface },
+          ]}
+        >
           {t('messages.giftFrom', { name: senderName })}
         </Text>
         <View style={[styles.pill, { backgroundColor: theme.colors.primary }]}>
@@ -141,6 +148,7 @@ const styles = StyleSheet.create({
   mine: { alignSelf: 'flex-end' },
   theirs: { alignSelf: 'flex-start' },
   image: { width: SIZE, height: SIZE },
+  from: { borderRadius: 10, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 2 },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',

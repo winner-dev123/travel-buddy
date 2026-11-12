@@ -51,12 +51,13 @@ export function giftNameKey(code: string): GiftNameKey {
 
 /**
  * Emoji offered in the panel beside the message field: faces and gestures first, then travel.
- * Any emoji can still be typed from the keyboard.
+ * Only emoji that older Android versions draw (Emoji 12 or earlier). Any emoji can still be typed
+ * from the keyboard.
  */
 export const PANEL_EMOJI = [
   '😀',
   '😂',
-  '🥹',
+  '😁',
   '😊',
   '😍',
   '🥰',

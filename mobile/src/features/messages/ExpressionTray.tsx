@@ -24,7 +24,8 @@ export interface ExpressionTrayProps {
   onGift: ((gift: GiftCode) => void) | null;
 }
 
-const TRAY_HEIGHT = 300;
+// Tall enough for both rows of gifts above the send row on a small phone.
+const TRAY_HEIGHT = 350;
 const EMOJI_SIZE = 44;
 const GIFT_COLUMNS = 4;
 const GIFT_GAP = 10;
@@ -128,7 +129,7 @@ export function ExpressionTray({ onEmoji, onGift }: ExpressionTrayProps) {
                 >
                   <Image
                     source={giftImage(code)}
-                    style={{ width: giftWidth - 16, height: giftWidth - 16 }}
+                    style={{ width: giftWidth - 22, height: giftWidth - 22 }}
                     resizeMode="contain"
                     accessibilityIgnoresInvertColors
                   />
