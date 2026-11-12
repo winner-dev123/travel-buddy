@@ -22,7 +22,7 @@
 | Subprotocol | `Sec-WebSocket-Protocol: travelbuddy.v1`. The server echoes it. A missing or unknown subprotocol closes with `4010`. |
 | Frames | UTF-8 **text** frames, one JSON object each. Binary frames close with `4000`. |
 | Credentials in URL | **Never.** Query strings and paths carry no tokens or tickets, so credentials never reach access logs or proxies. |
-| Origin check | Browser connections (those sending an `Origin` header) must match the configured web-origin allow-list, otherwise close `4005`. Native clients send no `Origin`. A native client that sends one is checked the same way. |
+| Origin check | Browser connections (those sending an `Origin` header) must match the configured web-origin allow-list, otherwise close `4005`. Connections without an `Origin`, and those whose `Origin` host is the API's own host, also pass: native WebSocket libraries send the API's own origin by default (React Native on Android derives it from the socket URL), and only a page served by the API itself could have it. |
 | Compression | `permessage-deflate` is **disabled**, to avoid compression side channels on mixed secret and attacker-influenced content. |
 | Heartbeat | Client `ping` frame every 25 s (and WebSocket-level pings from the server). The server closes idle connections after 60 s with no inbound frame. |
 

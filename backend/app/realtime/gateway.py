@@ -22,6 +22,7 @@ from collections import deque
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, WebSocket
 from pydantic import BaseModel, ValidationError
@@ -76,6 +77,21 @@ async def realtime(websocket: WebSocket) -> None:
     await Connection(websocket).run()
 
 
+def origin_allowed(origin: str | None, host: str | None, allowed: list[str]) -> bool:
+    """The Origin check guards browsers against cross-site WebSocket hijacking (docs/06 §12).
+
+    No Origin, or an allow-listed one, passes. So does the API's own origin: the mobile apps'
+    WebSocket libraries send it by default (React Native derives it from the socket URL), and a
+    page can only have that origin if it is served by the API itself. The host is compared, not
+    the scheme, because proxies in front of the API end TLS.
+    """
+    if origin is None or origin in allowed:
+        return True
+    if not host:
+        return False
+    return urlsplit(origin).netloc.lower() == host.strip().lower()
+
+
 class _ClosedError(Exception):
     """The socket is gone (or we closed it); stop handling this connection."""
 
@@ -108,7 +124,8 @@ class Connection:
             return
         await self.ws.accept(subprotocol=PROTOCOL)
         origin = self.ws.headers.get("origin")
-        if origin is not None and origin not in self.settings.cors_allowed_origins:
+        host = self.ws.headers.get("host")
+        if not origin_allowed(origin, host, self.settings.cors_allowed_origins):
             await self._auth_error("origin_not_allowed", "This origin is not allowed.", 4005)
             return
         try:

@@ -177,6 +177,14 @@ def test_handshake_rejections(rt: LiveApp) -> None:
         reader.send("auth", {"access_token": token})
         reader.expect("auth.ok")
 
+    # The mobile apps' WebSocket sends the API's own origin by default (React Native on Android).
+    with rt.client.websocket_connect(
+        "/v1/realtime", subprotocols=[PROTOCOL], headers={"origin": "https://testserver"}
+    ) as ws:
+        reader = Reader(ws)
+        reader.send("auth", {"access_token": token})
+        reader.expect("auth.ok")
+
 
 @pytest.mark.req("DM-003")
 def test_reauth_keeps_the_same_session(rt: LiveApp) -> None:
