@@ -1,5 +1,12 @@
 // req: DISC-004, DISC-012
-import { layoutPins, SPREAD_M, stableHash, type PlacedTraveller } from '../pinLayout';
+import {
+  layoutPins,
+  MAX_PUSH_M,
+  SEPARATION_M,
+  SPREAD_M,
+  stableHash,
+  type PlacedTraveller,
+} from '../pinLayout';
 
 const helsinki = { lat: 60.1699, lng: 24.9384 };
 const kallio = { lat: 60.1841, lng: 24.9497 };
@@ -36,7 +43,7 @@ describe('pin layout', () => {
       const spread = SPREAD_M[traveller.anchorKind];
       const distance = metres(at, centre);
       expect(distance).toBeGreaterThanOrEqual(spread.min - 1);
-      expect(distance).toBeLessThanOrEqual(spread.max + 1);
+      expect(distance).toBeLessThanOrEqual(spread.max + MAX_PUSH_M[traveller.anchorKind] + 1);
     }
   });
 
@@ -50,6 +57,23 @@ describe('pin layout', () => {
     for (let i = 0; i < placed.length; i += 1) {
       for (let j = i + 1; j < placed.length; j += 1) {
         expect(metres(placed[i]!, placed[j]!)).toBeGreaterThan(250);
+      }
+    }
+  });
+
+  it('pushes apart pins of a city and a neighbourhood near its centre', () => {
+    // The staging demo: three travellers sharing Helsinki, two sharing Kallio, 1.6 km away.
+    const travellers = [
+      inCity('mika'),
+      inCity('lucas'),
+      inCity('thabo'),
+      inArea('sofia'),
+      inArea('priya'),
+    ];
+    const placed = [...layoutPins(travellers, centres).values()];
+    for (let i = 0; i < placed.length; i += 1) {
+      for (let j = i + 1; j < placed.length; j += 1) {
+        expect(metres(placed[i]!, placed[j]!)).toBeGreaterThanOrEqual(SEPARATION_M - 1);
       }
     }
   });
