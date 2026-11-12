@@ -533,7 +533,7 @@
     "compatibility": {
       "high": "Viele Gemeinsamkeiten",
       "medium": "Einige Gemeinsamkeiten",
-      "low": "Andere Interessen"
+      "low": "Weniger Gemeinsamkeiten"
     },
     "shared": "Gemeinsam: {{items}}",
     "search": "Reisebegleitung suchen",

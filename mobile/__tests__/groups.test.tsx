@@ -167,6 +167,11 @@ describe('groups list', () => {
     expect(screen.getByText('Invited by Ana')).toBeTruthy();
     expect(screen.getByTestId('groups-premium-note')).toBeTruthy();
     expect(screen.queryByTestId('groups-create')).toBeNull();
+    await fireEvent.press(screen.getByTestId('groups-see-premium'));
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/paywall',
+      params: { reason: 'groups.create' },
+    });
     await fireEvent.press(screen.getByTestId('invitation-accept-i1'));
     await waitFor(() =>
       expect(mockApi.post).toHaveBeenCalledWith('/v1/group-invitations/i1/accept'),

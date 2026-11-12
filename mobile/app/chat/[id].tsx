@@ -183,6 +183,19 @@ export default function ChatScreen() {
 
   // DM-002: photos go to quarantine first and are scanned before anyone else sees them.
   const [photoNotice, setPhotoNotice] = useState<string | null>(null);
+  // A poll that started before the send would overwrite the new bubble with an older list when it
+  // lands, so in-flight polls are cancelled first; the next one includes the message anyway.
+  const showSent = async (message: Message) => {
+    await queryClient.cancelQueries({ queryKey: messageKeys.history(id) });
+    queryClient.setQueryData<MessageList>(messageKeys.history(id), (old) =>
+      old && !old.data.some((m) => m.id === message.id)
+        ? {
+            data: [...old.data, message],
+            page: { ...old.page, newest_seq: Math.max(old.page.newest_seq ?? 0, message.seq) },
+          }
+        : old,
+    );
+  };
   const sendPhoto = useMutation({
     mutationFn: async (photo: DraftPhoto) => {
       const client = getApiClient();
@@ -193,14 +206,7 @@ export default function ChatScreen() {
       setDraft('');
       setReplyTo(null);
       pending.current = getApiClient().newIdempotencyKey();
-      queryClient.setQueryData<MessageList>(messageKeys.history(id), (old) =>
-        old && !old.data.some((m) => m.id === message.id)
-          ? {
-              data: [...old.data, message],
-              page: { ...old.page, newest_seq: Math.max(old.page.newest_seq ?? 0, message.seq) },
-            }
-          : old,
-      );
+      void showSent(message);
       void queryClient.invalidateQueries({ queryKey: messageKeys.inbox });
     },
   });
@@ -234,14 +240,7 @@ export default function ChatScreen() {
       setDraft('');
       setReplyTo(null);
       pending.current = getApiClient().newIdempotencyKey();
-      queryClient.setQueryData<MessageList>(messageKeys.history(id), (old) =>
-        old && !old.data.some((m) => m.id === message.id)
-          ? {
-              data: [...old.data, message],
-              page: { ...old.page, newest_seq: Math.max(old.page.newest_seq ?? 0, message.seq) },
-            }
-          : old,
-      );
+      void showSent(message);
       void queryClient.invalidateQueries({ queryKey: messageKeys.inbox });
     },
   });

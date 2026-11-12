@@ -540,7 +540,7 @@
     "compatibility": {
       "high": "Muito em comum",
       "medium": "Algumas coisas em comum",
-      "low": "Interesses diferentes"
+      "low": "Menos coisas em comum"
     },
     "shared": "Em comum: {{items}}",
     "search": "Buscar companheiros de viagem",

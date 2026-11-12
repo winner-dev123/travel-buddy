@@ -1,6 +1,6 @@
 // req: DM-001, DM-005, DM-007, DM-010, DM-012, SAFE-006
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { Alert } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -33,13 +33,16 @@ jest.mock('expo-router', () => ({
   Stack: { Screen: () => null },
 }));
 
-async function renderUi(ui: ReactElement) {
-  const client = new QueryClient({
+function testClient() {
+  return new QueryClient({
     defaultOptions: {
       queries: { retry: false, gcTime: Infinity, refetchInterval: false },
       mutations: { retry: false, gcTime: Infinity },
     },
   });
+}
+
+async function renderUi(ui: ReactElement, client: QueryClient = testClient()) {
   return await render(
     <SafeAreaProvider
       initialMetrics={{
@@ -200,6 +203,38 @@ describe('chat', () => {
       }),
     );
     expect(await screen.findByText('On my way')).toBeTruthy();
+  });
+
+  it('keeps a sent message when an older poll lands after it', async () => {
+    mockParams = { id: 'c1' };
+    const before = [message('m1', 1, bo, 'Dinner?')];
+    serve(conversation({ read_through_seq: 1, last_seq: 1 }), before);
+    mockApi.put.mockResolvedValue({});
+    const client = testClient();
+    await renderUi(<Chat />, client);
+    expect(await screen.findByText('Dinner?')).toBeTruthy();
+
+    // A poll starts and stays in flight with the list from before the send.
+    let landPoll: (value: unknown) => void = () => undefined;
+    mockApi.get.mockImplementation((path: string) =>
+      path === '/v1/conversations/c1'
+        ? Promise.resolve(conversation({ read_through_seq: 1, last_seq: 1 }))
+        : new Promise((resolve) => {
+            landPoll = resolve;
+          }),
+    );
+    void client.refetchQueries({ queryKey: ['messages', 'history', 'c1'] });
+    mockApi.post.mockResolvedValue(message('m2', 2, meSummary, 'Yes, 8pm'));
+    await fireEvent.changeText(screen.getByTestId('chat-input'), 'Yes, 8pm');
+    await fireEvent.press(screen.getByTestId('chat-send'));
+    expect(await screen.findByText('Yes, 8pm')).toBeTruthy();
+
+    await act(async () => {
+      landPoll({ data: before, page: { has_more: false, oldest_seq: 1, newest_seq: 1 } });
+    });
+    const kept = client.getQueryData<{ data: Message[] }>(['messages', 'history', 'c1']);
+    expect(kept?.data.map((m) => m.id)).toEqual(['m1', 'm2']);
+    expect(screen.getByText('Yes, 8pm')).toBeTruthy();
   });
 
   it('explains a message refused by the new-connection safety filter', async () => {

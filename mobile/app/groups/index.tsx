@@ -197,9 +197,21 @@ export default function GroupsScreen() {
             testID="groups-create"
           />
         ) : (
-          <Notice tone="info" testID="groups-premium-note">
-            {t('groups.premiumNote')}
-          </Notice>
+          <>
+            <Notice tone="info" testID="groups-premium-note">
+              {t('groups.premiumNote')}
+            </Notice>
+            {/* Free travellers can't reach the create screen, so the way to Premium starts here. */}
+            <Button
+              label={t('paywall.seePremium')}
+              variant="secondary"
+              icon="diamond-outline"
+              onPress={() =>
+                router.push({ pathname: '/paywall', params: { reason: 'groups.create' } })
+              }
+              testID="groups-see-premium"
+            />
+          </>
         )}
       </ScrollView>
     </SafeAreaView>

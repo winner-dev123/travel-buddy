@@ -533,7 +533,7 @@
     "compatibility": {
       "high": "Lots in common",
       "medium": "Some things in common",
-      "low": "Different interests"
+      "low": "Fewer things in common"
     },
     "shared": "In common: {{items}}",
     "search": "Search for companions",
