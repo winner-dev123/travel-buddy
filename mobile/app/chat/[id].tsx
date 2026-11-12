@@ -527,7 +527,7 @@ export default function ChatScreen() {
           </View>
         ) : null}
         {pin.isError ? <Notice tone="error">{t('user.actionFailed')}</Notice> : null}
-        <View style={styles.fill}>
+        <View style={[styles.fill, styles.clip]}>
           <ChatBackdrop background={background} />
           <FlatList<Row>
             inverted
@@ -803,7 +803,11 @@ export default function ChatScreen() {
         <View
           style={[
             styles.composer,
-            { borderTopColor: theme.colors.divider, padding: theme.spacing[3] },
+            {
+              borderTopColor: theme.colors.divider,
+              backgroundColor: theme.colors.background,
+              padding: theme.spacing[3],
+            },
           ]}
         >
           {restriction ? (
@@ -868,6 +872,7 @@ export default function ChatScreen() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  clip: { overflow: 'hidden' },
   center: { textAlign: 'center' },
   bubble: { maxWidth: '80%', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 8, gap: 2 },
   mine: { alignSelf: 'flex-end' },

@@ -10,6 +10,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
   type ImageSourcePropType,
 } from 'react-native';
@@ -33,6 +34,8 @@ import {
 import { useAppTheme } from '@/theme/useAppTheme';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
+
+const TILE_GAP = 10;
 
 const SIDES: { value: SendSide; icon: IoniconName }[] = [
   { value: 'right', icon: 'hand-right-outline' },
@@ -64,6 +67,11 @@ function sameBackground(a: ChatBackground, b: ChatBackground): boolean {
 export default function ChatSettingsScreen() {
   const { t } = useTranslation();
   const theme = useAppTheme();
+  // Three tiles a row, sized in points: an image's own size would otherwise win over a
+  // percentage width and stretch the row.
+  const { width: windowWidth } = useWindowDimensions();
+  const tileWidth = Math.floor((windowWidth - theme.spacing[4] * 2 - TILE_GAP * 2) / 3);
+  const tileSize = { width: tileWidth, height: Math.round((tileWidth * 13) / 9) };
   const me = useSessionStore((state) => state.me?.account.id);
   const sendSide = useChatPreferences((state) => state.sendSide);
   const background = useChatPreferences((state) => state.background);
@@ -110,6 +118,7 @@ export default function ChatSettingsScreen() {
       accessibilityState={{ selected, busy }}
       style={[
         styles.tile,
+        { width: tileWidth },
         {
           borderColor: selected ? theme.colors.primary : theme.colors.divider,
           borderWidth: selected ? 2 : StyleSheet.hairlineWidth,
@@ -119,9 +128,9 @@ export default function ChatSettingsScreen() {
       testID={`chat-bg-${key}`}
     >
       {source ? (
-        <Image source={source} style={styles.tileImage} resizeMode="cover" />
+        <Image source={source} style={tileSize} resizeMode="cover" />
       ) : (
-        <View style={[styles.tileImage, styles.center]}>
+        <View style={[tileSize, styles.center]}>
           <Ionicons name="remove-circle-outline" size={26} color={theme.colors.textSecondary} />
         </View>
       )}
@@ -322,9 +331,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   text: { flex: 1, gap: 2 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  tile: { width: '31%', borderRadius: 14, overflow: 'hidden' },
-  tileImage: { width: '100%', aspectRatio: 9 / 13 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: TILE_GAP },
+  tile: { borderRadius: 14, overflow: 'hidden' },
   tileLabel: {
     flexDirection: 'row',
     alignItems: 'center',
