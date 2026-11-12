@@ -73,9 +73,9 @@ function fade(u: number, fadeIn: number, fadeOut: number): number {
 
 const sign = (random: Random) => (random() < 0.5 ? -1 : 1);
 
-// Flower petals drift down from the top, swaying and turning over as they fall.
+// Flower petals drift down from the top, swaying and turning over as they fall: a full shower.
 const petals: Builder = (width, height, random) =>
-  Array.from({ length: 30 }, (_, i) => {
+  Array.from({ length: 44 }, (_, i) => {
     const size = 18 + random() * 16;
     const x0 = random() * width;
     const drift = (random() - 0.5) * 120;
