@@ -327,7 +327,8 @@ screen was folded into another one; ✅ built, ⚠️ partly, ⬜ not yet (reaso
 | SCR-024 destination page | ⚠️ | Destination content shows in Explore once chosen (guides, places, offline packages, neighbourhoods); no standalone page |
 | SCR-025, SCR-063 traveller profile | ✅ | `/user/[id]` (summary of stories, followers and following; badges; the lists open at `/user/follows`) |
 | SCR-026 notifications | ✅ | `/notifications` (push opt-in banner; unread items are marked with a dot) |
-| SCR-040 Explore | ⚠️ | `/(tabs)/explore` lists places, featured destinations and neighbourhoods; no map yet (BL-4.06, provider decision) |
+| SCR-040 Explore | ⚠️ | `/(tabs)/explore` lists places, featured destinations and neighbourhoods; no map yet (BL-4.06, provider decision). "Places near me" explains an approximate position and links to the settings |
+| SCR-041 "Where to?" search | ✅ | Full-screen sheet opened from every destination field (Explore, trips, composer, groups, upcoming trips, onboarding, Companions; ADR-0035): current location, recent choices (device only, forgotten at sign-out), popular destinations; towns, neighbourhoods, countries and places to visit as you type, with where they are; no streets. A place opens from Explore, is tagged from the composer and gives its town elsewhere |
 | SCR-041 place, SCR-042 planner, SCR-043 review | ✅ | `/places/[id]`, `/trips/plan`, `/trips/review` |
 | SCR-044 guides list, SCR-045 guide reader | ✅ | Guides listed in Explore; `/guides/[id]` |
 | SCR-046 audio tour player, SCR-047 walking route | ⬜ | Need editorial audio (BL-4.07) and maps (BL-4.06) |

@@ -40,6 +40,9 @@ class DestinationSummary(_Model):
     name: str
     country_code: str
     country_name: str | None
+    # First-level region of a gazetteer town ("São Paulo" for Campinas), for telling namesakes
+    # apart; absent for editorial destinations (ADR-0035).
+    region_name: str | None = None
     continent: ContinentName
     tagline: str | None
     cover: MediaRef | None = None  # editorial media with verified rights (DEST-007)
@@ -94,3 +97,12 @@ class Place(PlaceSummary):
     data_stale: bool
     attribution: PlaceAttribution
     status: Literal["active", "closed_permanently"]
+
+
+class Suggestion(_Model):
+    """One search-as-you-type result (ADR-0035): a destination, or a tourist place together
+    with the destination it is in."""
+
+    type: Literal["destination", "place"]
+    destination: DestinationSummary
+    place: PlaceSummary | None = None

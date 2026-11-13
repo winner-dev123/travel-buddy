@@ -52,10 +52,8 @@ def test_an_uncovered_area_is_named_but_offers_no_city(
     geolocator: _Geolocator,
 ) -> None:
     token, _ = _user(app)
-    geolocator.answer = _point(-33.86882, 151.20929, "Somewhere", "AU")
-    if db_scalar(app.db_url, "SELECT to_regclass('destination_boundaries') IS NOT NULL"):
-        # With PostGIS, Sydney is covered: use a point no destination covers instead.
-        geolocator.answer = _point(-77.84633, 166.67628, "McMurdo Station", None)
+    # Far from every town and outside every boundary (ADR-0035 resolves anything near a town).
+    geolocator.answer = _point(-77.84633, 166.67628, "McMurdo Station", None)
     response = app.client.get(PATH, headers={**_auth(token), "Accept-Language": "de"})
     assert response.status_code == 200, response.text
     body = response.json()
@@ -63,9 +61,9 @@ def test_an_uncovered_area_is_named_but_offers_no_city(
     assert body["source"] == "ip"
     assert body["precision"] == "city"
     assert body["destination"] is None
-    assert body["label"] in {"Somewhere, AU", "McMurdo Station"}
+    assert body["label"] == "McMurdo Station"
     # Rounded to 0.01° (about 1 km): never finer than a city.
-    assert body["center"] in ({"lat": -33.87, "lng": 151.21}, {"lat": -77.85, "lng": 166.68})
+    assert body["center"] == {"lat": -77.85, "lng": 166.68}
     assert geolocator.asked  # the request's client address was looked up
 
 

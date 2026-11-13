@@ -65,6 +65,14 @@ AS $body$ SELECT public.unaccent('public.unaccent'::regdictionary, $1) $body$
 """
 
 
+# Migration 0049 (alternative-name search index).
+_F_SEARCH_NAMES_SQL = """
+CREATE OR REPLACE FUNCTION public.f_search_names(text[]) RETURNS text
+LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT
+AS $$ SELECT public.f_unaccent(lower(array_to_string($1, ' | '))) $$
+"""
+
+
 def _needs_postgis(table: Table) -> bool:
     return any(isinstance(column.type, Geography) for column in table.columns)
 
@@ -76,8 +84,9 @@ def _create_all(url: str) -> None:
             async with engine.begin() as conn:
                 for extension in ("citext", "pg_trgm", "unaccent"):
                     await conn.execute(text(f"CREATE EXTENSION IF NOT EXISTS {extension}"))
-                # Same IMMUTABLE wrapper the baseline migration creates (destination search).
+                # Same IMMUTABLE wrappers the migrations create (destination search).
                 await conn.execute(text(_F_UNACCENT_SQL))
+                await conn.execute(text(_F_SEARCH_NAMES_SQL))
                 # Rebuild so the schema always matches the current models (create_all never
                 # alters existing tables). Only ever runs against a local test database.
                 # PostGIS-only tables are skipped: this path runs only without PostGIS.

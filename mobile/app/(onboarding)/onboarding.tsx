@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,7 +10,7 @@ import { takeHomeRoute, useSessionStore } from '@/auth/sessionStore';
 import { FeatureGate } from '@/components/FeatureGate';
 import { Button, Notice, TextField } from '@/components/Form';
 import { refreshMe, updateProfile } from '@/features/account/api';
-import { searchDestinations } from '@/features/feed/api';
+import { DestinationPicker } from '@/features/explore/DestinationPicker';
 import type { DestinationSummary } from '@/features/feed/types';
 import { SUPPORTED_LOCALES, type SupportedLocale } from '@/i18n/locales';
 import { useSettingsStore } from '@/state/settingsStore';
@@ -96,17 +95,10 @@ function OnboardingWizard() {
   const [index, setIndex] = useState(0);
   const [displayName, setDisplayName] = useState(me?.profile.display_name ?? '');
   const [interests, setInterests] = useState<string[]>([]);
-  const [search, setSearch] = useState('');
   const [destination, setDestination] = useState<DestinationSummary | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const step: Step = STEPS[index] ?? 'profile';
-
-  const matches = useQuery({
-    queryKey: ['destinations', 'search', search],
-    queryFn: () => searchDestinations(getApiClient(), search),
-    enabled: step === 'destination' && search.trim().length >= 2 && destination === null,
-  });
 
   if (!me) {
     return (
@@ -254,48 +246,13 @@ function OnboardingWizard() {
         {step === 'destination' ? (
           <>
             {title(t('onboarding.destinationTitle'), t('onboarding.destinationHint'))}
-            {destination ? (
-              <View style={styles.row}>
-                <Text
-                  style={[
-                    theme.typography.bodyStrong,
-                    styles.fill,
-                    { color: theme.colors.textPrimary },
-                  ]}
-                  testID="onboarding-destination"
-                >
-                  {[destination.name, destination.country_name].filter(Boolean).join(', ')}
-                </Text>
-                <Button
-                  label={t('compose.changePlace')}
-                  variant="secondary"
-                  onPress={() => setDestination(null)}
-                />
-              </View>
-            ) : (
-              <View style={{ gap: theme.spacing[2] }}>
-                <TextField
-                  label={t('compose.searchPlace')}
-                  value={search}
-                  onChangeText={setSearch}
-                  autoCorrect={false}
-                  testID="onboarding-search"
-                />
-                {(matches.data ?? []).map((match) => (
-                  <Pressable
-                    key={match.id}
-                    onPress={() => setDestination(match)}
-                    accessibilityRole="button"
-                    style={[styles.match, { borderColor: theme.colors.divider }]}
-                    testID={`onboarding-match-${match.slug}`}
-                  >
-                    <Text style={[theme.typography.body, { color: theme.colors.textPrimary }]}>
-                      {[match.name, match.country_name].filter(Boolean).join(', ')}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            )}
+            <DestinationPicker
+              value={destination}
+              onChange={setDestination}
+              label={t('compose.searchPlace')}
+              variant="destination"
+              testID="onboarding-place"
+            />
           </>
         ) : null}
         {error ? <Notice tone="error">{error}</Notice> : null}

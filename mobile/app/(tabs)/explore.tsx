@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getApiClient } from '@/api';
@@ -24,7 +24,12 @@ import {
 } from '@/features/explore/api';
 import { DestinationPicker } from '@/features/explore/DestinationPicker';
 import { PlaceRow } from '@/features/explore/PlaceRow';
-import { freshFix, getCoarsePosition, type DeviceFix } from '@/features/feed/location';
+import {
+  freshFix,
+  getCoarsePosition,
+  isApproximate,
+  type DeviceFix,
+} from '@/features/feed/location';
 import { useServerFlags } from '@/features/flags/serverFlags';
 import { OfflinePackages } from '@/features/offline/OfflinePackages';
 import type { DestinationSummary } from '@/features/feed/types';
@@ -168,7 +173,12 @@ function Explore() {
         )}
 
         {heading(t('explore.places'))}
-        <DestinationPicker value={destination} onChange={choose} testID="explore-destination" />
+        <DestinationPicker
+          value={destination}
+          onChange={choose}
+          onPlace={(place) => router.push({ pathname: '/places/[id]', params: { id: place.id } })}
+          testID="explore-destination"
+        />
         {destination === null && (featured.data ?? []).length > 0 ? (
           <View style={styles.chips} testID="explore-featured">
             {(featured.data ?? []).map((item) => (
@@ -237,6 +247,18 @@ function Explore() {
           testID="explore-near-me"
         />
         {locationDenied ? <Notice tone="info">{t('explore.locationDenied')}</Notice> : null}
+        {near !== null && isApproximate(deviceFix) ? (
+          <View style={{ gap: theme.spacing[2] }} testID="explore-approximate">
+            <Notice tone="info">{t('explore.approximate')}</Notice>
+            <Button
+              label={t('explore.openSettings')}
+              variant="secondary"
+              icon="settings-outline"
+              onPress={() => void Linking.openSettings().catch(() => undefined)}
+              testID="explore-open-settings"
+            />
+          </View>
+        ) : null}
         {!signedIn ? null : places.isError ? (
           <Notice tone="error">{t('explore.loadFailed')}</Notice>
         ) : places.data && places.data.length === 0 ? (

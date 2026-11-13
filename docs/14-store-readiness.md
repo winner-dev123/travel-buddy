@@ -54,8 +54,8 @@ today. If one is added, update this table and the label.
 | User content: photos or videos | Yes (uploads) | Yes | App functionality |
 | User content: other (posts, comments, trips, challenge answers) | Yes | Yes | App functionality |
 | User content: messages (direct and group chats) | Yes | Yes | App functionality |
-| Location: coarse | Yes, only while the app is open and only to pick the city; not stored (PROF-005, NFR-007) | No storage · used transiently | App functionality |
-| Location: precise | No (fine location is blocked on Android and not requested on iOS) | – | – |
+| Location: coarse | Yes, only while the app is open, to find the city; not stored (PROF-005, NFR-007) | No storage · used transiently | App functionality |
+| Location: precise | Yes, only while the app is open and only if the traveller allows precise location: rounded to about 110 m on the device, used for one lookup (city, places near me) and never stored (LOC-003) | No storage · used transiently | App functionality |
 | Identifiers: user ID | Yes | Yes | App functionality |
 | Identifiers: device ID | Yes (push registration, per session) | Yes | App functionality |
 | Purchases: purchase history | Yes | Yes | App functionality |
@@ -69,7 +69,7 @@ today. If one is added, update this table and the label.
 | Data encrypted in transit | Yes (TLS 1.2+, NFR-006) |
 | Users can request deletion | Yes (in the app and on the web) |
 | Data shared with third parties | No sale or sharing for advertising. Processors: Google (Firebase Auth, Cloud SQL, Cloud Storage, FCM) and Railway (hosting) after the ADR-0028 cutover, Supabase (database, auth) and Vercel (hosting) until then, Anthropic (AI itineraries and translations, only the request text, no account data), Apple and Google for purchases and push |
-| Data types | As in §4: email, photos and videos, other user content, messages, approximate location (transient), user and device IDs, purchase history |
+| Data types | As in §4: email, photos and videos, other user content, messages, approximate and precise location (transient, rounded to about 110 m; ADR-0035), user and device IDs, purchase history |
 | Optional collection | Discovery location and post translation are opt-in (consents) |
 
 ## 6. Gaps before the first submission
@@ -117,7 +117,7 @@ iOS usage strings come from the config plugins (English) and `mobile/native-loca
 
 | Permission | When it is asked | iOS key | Android |
 |---|---|---|---|
-| Location (approximate, while in use) | Opening the Nearby feed tab | `NSLocationWhenInUseUsageDescription` | `ACCESS_COARSE_LOCATION`; fine and background location blocked |
+| Location (while in use) | Opening the Nearby feed tab, "Places near me" or "Use my current location" in search | `NSLocationWhenInUseUsageDescription` (precise is the traveller's choice in the iOS prompt) | `ACCESS_COARSE_LOCATION` and `ACCESS_FINE_LOCATION`: Android 12+ lets the traveller pick approximate or precise; background location blocked. With approximate only, Explore explains that places may be off and links to the settings |
 | Photos | Not asked: the system photo picker returns only the photos the user picks | `NSPhotoLibraryUsageDescription` (required by the picker module) | Photo picker, no media permission; legacy storage permissions only up to Android 12 (`maxSdkVersion 32`) |
 | Camera | Tapping "Take a photo" in the composer | `NSCameraUsageDescription` | `CAMERA` |
 | Microphone | Never (no video recording) | not declared | `RECORD_AUDIO` blocked |

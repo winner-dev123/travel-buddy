@@ -12,6 +12,7 @@ import { useBannerStore } from '@/components/InAppBanner';
 import { getApiBaseUrl } from '@/config/env';
 import { forgetCachedChats } from '@/features/messages/chatCache';
 import { sendQueuedMessages, settleMessage, useOutboxStore } from '@/features/messages/outbox';
+import { forgetRecentSearches } from '@/features/search/recents';
 import { isOnlineState } from '@/offline/connectivity';
 
 import { applyFrame, syncRequest, type LiveNotification } from './apply';
@@ -40,9 +41,11 @@ export function RealtimeConnection() {
   const signedIn = useSessionStore((state) => state.status === 'signed_in');
   const signedOut = useSessionStore((state) => state.status === 'signed_out');
 
-  // Signed out (or the saved session turned out to be gone): no one else's chats stay in memory.
+  // Signed out (or the saved session turned out to be gone): no one else's chats or searches stay.
   useEffect(() => {
-    if (signedOut) forgetCachedChats(queryClient);
+    if (!signedOut) return;
+    forgetCachedChats(queryClient);
+    forgetRecentSearches();
   }, [signedOut, queryClient]);
 
   useEffect(() => {

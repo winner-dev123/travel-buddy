@@ -16,6 +16,13 @@ import LanguageScreen from '../app/settings/language';
 import NotificationSettings from '../app/settings/notifications';
 import UpcomingTrips from '../app/settings/upcoming';
 
+/** The "Where to?" field opens the full-screen search; type, then pick a result (ADR-0035). */
+async function pickDestination(testID: string, text: string, slug: string) {
+  await fireEvent.press(await screen.findByTestId(testID));
+  await fireEvent.changeText(await screen.findByTestId(`${testID}-input`), text);
+  await fireEvent.press(await screen.findByTestId(`${testID}-${slug}`));
+}
+
 const mockApi = { get: jest.fn(), patch: jest.fn(), post: jest.fn(), delete: jest.fn() };
 
 jest.mock('@/api', () => ({ ...jest.requireActual('@/api'), getApiClient: () => mockApi }));
@@ -252,8 +259,11 @@ describe('upcoming trips', () => {
 
   it('adds a destination with dates and removes one', async () => {
     mockApi.get.mockImplementation(async (path: string) =>
-      path === '/v1/destinations/search'
-        ? { data: [lisbon], page: { next_cursor: null, has_more: false } }
+      path === '/v1/destinations/suggest'
+        ? {
+            data: [{ type: 'destination', destination: lisbon }],
+            page: { next_cursor: null, has_more: false },
+          }
         : {
             data: [
               {
@@ -272,8 +282,7 @@ describe('upcoming trips', () => {
     await renderUi(<UpcomingTrips />);
     expect(await screen.findByTestId('upcoming-up1')).toHaveTextContent(/Porto, Portugal/);
 
-    await fireEvent.changeText(screen.getByTestId('upcoming-search'), 'lis');
-    await fireEvent.press(await screen.findByTestId('upcoming-match-lisbon-pt'));
+    await pickDestination('upcoming-destination', 'lis', 'lisbon-pt');
     await fireEvent.changeText(screen.getByTestId('upcoming-start'), '2026-12-08');
     await fireEvent.changeText(screen.getByTestId('upcoming-end'), '2026-12-04');
     expect(screen.getByTestId('upcoming-dates-invalid')).toBeTruthy(); // end before start

@@ -13,7 +13,7 @@ import {
   removeUpcoming,
   upcomingKey,
 } from '@/features/account/upcoming';
-import { searchDestinations } from '@/features/feed/api';
+import { DestinationPicker } from '@/features/explore/DestinationPicker';
 import type { DestinationSummary } from '@/features/feed/types';
 import { useAppTheme } from '@/theme/useAppTheme';
 
@@ -25,16 +25,10 @@ export default function UpcomingTripsScreen() {
   const { t } = useTranslation();
   const theme = useAppTheme();
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState('');
   const [chosen, setChosen] = useState<DestinationSummary | null>(null);
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
   const upcoming = useQuery({ queryKey: upcomingKey, queryFn: () => listUpcoming(getApiClient()) });
-  const matches = useQuery({
-    queryKey: ['destinations', 'search', search],
-    queryFn: () => searchDestinations(getApiClient(), search),
-    enabled: search.trim().length >= 2 && chosen === null,
-  });
   const refresh = () => void queryClient.invalidateQueries({ queryKey: upcomingKey });
   const add = useMutation({
     mutationFn: () =>
@@ -45,7 +39,6 @@ export default function UpcomingTripsScreen() {
       }),
     onSuccess: () => {
       setChosen(null);
-      setSearch('');
       setStart('');
       setEnd('');
       refresh();
@@ -113,44 +106,13 @@ export default function UpcomingTripsScreen() {
         >
           {t('upcoming.add')}
         </Text>
-        {chosen ? (
-          <View style={styles.row}>
-            <Text
-              style={[styles.fill, theme.typography.body, { color: theme.colors.textPrimary }]}
-              testID="upcoming-chosen"
-            >
-              {label(chosen)}
-            </Text>
-            <Button
-              label={t('compose.changePlace')}
-              variant="secondary"
-              onPress={() => setChosen(null)}
-            />
-          </View>
-        ) : (
-          <>
-            <TextField
-              label={t('compose.searchPlace')}
-              value={search}
-              onChangeText={setSearch}
-              autoCorrect={false}
-              testID="upcoming-search"
-            />
-            {(matches.data ?? []).map((match) => (
-              <Pressable
-                key={match.id}
-                onPress={() => setChosen(match)}
-                accessibilityRole="button"
-                style={[styles.match, { borderColor: theme.colors.divider }]}
-                testID={`upcoming-match-${match.slug}`}
-              >
-                <Text style={[theme.typography.body, { color: theme.colors.textPrimary }]}>
-                  {label(match)}
-                </Text>
-              </Pressable>
-            ))}
-          </>
-        )}
+        <DestinationPicker
+          value={chosen}
+          onChange={setChosen}
+          label={t('compose.searchPlace')}
+          variant="destination"
+          testID="upcoming-destination"
+        />
         <View style={styles.row}>
           <View style={styles.fill}>
             <TextField

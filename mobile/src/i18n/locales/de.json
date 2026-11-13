@@ -726,6 +726,8 @@
     "searchPlaces": "Orte in {{place}} suchen",
     "nearMe": "Orte in meiner Nähe",
     "locationDenied": "Erlaube den Standortzugriff, um Orte in der Nähe zu sehen, oder wähle ein Reiseziel.",
+    "approximate": "Dein Telefon hat nur einen ungefähren Standort geteilt, daher können diese Orte einige Kilometer entfernt sein. Aktiviere den genauen Standort für Travel Buddy in den Einstellungen.",
+    "openSettings": "Einstellungen öffnen",
     "loadFailed": "Orte konnten nicht geladen werden. Versuch es erneut.",
     "noPlaces": "Hier gibt es noch keine Orte.",
     "place": "Ort",
@@ -760,6 +762,31 @@
     },
     "neighbourhoods": "Stadtteile von {{place}}",
     "destinationChosen": "Reiseziel: {{place}} (zum Ändern tippen)"
+  },
+  "search": {
+    "where": "Wohin?",
+    "placeholder": "Stadt oder Sehenswürdigkeit suchen",
+    "openHint": "Öffnet die Suche nach Städten und Sehenswürdigkeiten.",
+    "change": "Tippe zum Ändern.",
+    "currentLocation": "Meinen aktuellen Standort verwenden",
+    "locating": "Standort wird gesucht…",
+    "locationDenied": "Erlaube den Standortzugriff, um deinen Standort zu verwenden, oder suche.",
+    "locationUnavailable": "Dein Standort wurde nicht gefunden. Versuche es erneut oder suche.",
+    "uncovered": "Deinen Standort decken wir noch nicht ab. Suche eine Stadt.",
+    "failed": "Die Suche ist fehlgeschlagen. Prüfe deine Verbindung.",
+    "retry": "Erneut versuchen",
+    "recent": "Zuletzt",
+    "popular": "Beliebt",
+    "noResults": "Nichts gefunden für „{{query}}“.",
+    "close": "Suche schließen",
+    "clear": "Löschen",
+    "credit": "Städte: GeoNames · Orte: Wikidata",
+    "kind": {
+      "place": "Sehenswürdigkeit",
+      "country": "Land",
+      "city": "Stadt",
+      "area": "Viertel"
+    }
   },
   "planner": {
     "title": "Reise planen",

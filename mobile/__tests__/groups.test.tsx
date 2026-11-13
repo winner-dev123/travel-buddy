@@ -17,6 +17,13 @@ import GroupScreen from '../app/groups/[id]';
 import Groups from '../app/groups/index';
 import NewGroup from '../app/groups/new';
 
+/** The "Where to?" field opens the full-screen search; type, then pick a result (ADR-0035). */
+async function pickDestination(testID: string, text: string, slug: string) {
+  await fireEvent.press(await screen.findByTestId(testID));
+  await fireEvent.changeText(await screen.findByTestId(`${testID}-input`), text);
+  await fireEvent.press(await screen.findByTestId(`${testID}-${slug}`));
+}
+
 const mockApi = {
   get: jest.fn(),
   post: jest.fn(),
@@ -287,12 +294,18 @@ describe('group screen', () => {
 describe('new group', () => {
   it('creates a group at a chosen destination', async () => {
     useSessionStore.getState().setSignedIn(me(true));
-    mockApi.get.mockResolvedValue({ data: [lisbon], page: { next_cursor: null, has_more: false } });
+    mockApi.get.mockImplementation(async (path: string) =>
+      path === '/v1/destinations/suggest'
+        ? {
+            data: [{ type: 'destination', destination: lisbon }],
+            page: { next_cursor: null, has_more: false },
+          }
+        : { data: [lisbon], page: { next_cursor: null, has_more: false } },
+    );
     mockApi.post.mockResolvedValue(group());
     await renderUi(<NewGroup />);
     await fireEvent.changeText(screen.getByTestId('group-name'), 'Alfama supper club');
-    await fireEvent.changeText(screen.getByTestId('group-destination'), 'lis');
-    await fireEvent.press(await screen.findByTestId('group-destination-lisbon-pt'));
+    await pickDestination('group-destination', 'lis', 'lisbon-pt');
     await fireEvent.changeText(screen.getByTestId('group-capacity'), '8');
     await fireEvent.press(screen.getByTestId('group-create'));
     await waitFor(() =>

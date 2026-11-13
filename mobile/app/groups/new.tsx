@@ -1,13 +1,13 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ApiProblem, getApiClient } from '@/api';
 import { Button, Notice, TextField } from '@/components/Form';
-import { searchDestinations } from '@/features/feed/api';
+import { DestinationPicker } from '@/features/explore/DestinationPicker';
 import type { DestinationSummary } from '@/features/feed/types';
 import { createGroup } from '@/features/groups/api';
 import { useAppTheme } from '@/theme/useAppTheme';
@@ -21,15 +21,9 @@ export default function NewGroupScreen() {
   const key = useRef(getApiClient().newIdempotencyKey());
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [search, setSearch] = useState('');
   const [place, setPlace] = useState<DestinationSummary | null>(null);
   const [capacity, setCapacity] = useState('10');
 
-  const matches = useQuery({
-    queryKey: ['destinations', 'search', search],
-    queryFn: () => searchDestinations(getApiClient(), search),
-    enabled: !place && search.trim().length >= 2,
-  });
   const create = useMutation({
     mutationFn: () =>
       createGroup(getApiClient(), key.current, {
@@ -76,36 +70,13 @@ export default function NewGroupScreen() {
           multiline
           testID="group-description"
         />
-        {place ? (
-          <Pressable onPress={() => setPlace(null)} accessibilityRole="button" testID="group-place">
-            <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>
-              {t('groups.where', { place: place.name })}
-            </Text>
-          </Pressable>
-        ) : (
-          <>
-            <TextField
-              label={t('groups.destination')}
-              value={search}
-              onChangeText={setSearch}
-              autoCorrect={false}
-              testID="group-destination"
-            />
-            {(matches.data ?? []).map((match) => (
-              <Pressable
-                key={match.id}
-                onPress={() => setPlace(match)}
-                accessibilityRole="button"
-                style={[styles.match, { borderColor: theme.colors.divider }]}
-                testID={`group-destination-${match.slug}`}
-              >
-                <Text style={[theme.typography.body, { color: theme.colors.textPrimary }]}>
-                  {[match.name, match.country_name].filter(Boolean).join(', ')}
-                </Text>
-              </Pressable>
-            ))}
-          </>
-        )}
+        <DestinationPicker
+          value={place}
+          onChange={setPlace}
+          label={t('groups.destination')}
+          variant="destination"
+          testID="group-destination"
+        />
         <TextField
           label={t('groups.capacity')}
           value={capacity}
@@ -139,5 +110,4 @@ export default function NewGroupScreen() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  match: { borderWidth: 1, borderRadius: 8, padding: 12 },
 });

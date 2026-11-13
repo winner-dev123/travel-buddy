@@ -740,6 +740,8 @@
     "searchPlaces": "Buscar lugares en {{place}}",
     "nearMe": "Lugares cerca de mí",
     "locationDenied": "Permite el acceso a tu ubicación para ver lugares cercanos o elige un destino.",
+    "approximate": "Tu teléfono compartió solo una ubicación aproximada, así que estos lugares pueden estar a unos kilómetros. Activa la ubicación precisa de Travel Buddy en Ajustes.",
+    "openSettings": "Abrir ajustes",
     "loadFailed": "No se pudieron cargar los lugares. Inténtalo de nuevo.",
     "noPlaces": "Todavía no hay lugares aquí.",
     "place": "Lugar",
@@ -774,6 +776,31 @@
     },
     "neighbourhoods": "Barrios de {{place}}",
     "destinationChosen": "Destino: {{place}} (toca para cambiar)"
+  },
+  "search": {
+    "where": "¿Adónde?",
+    "placeholder": "Busca una ciudad o un lugar para visitar",
+    "openHint": "Abre la búsqueda de ciudades y lugares para visitar.",
+    "change": "Toca para cambiar.",
+    "currentLocation": "Usar mi ubicación actual",
+    "locating": "Buscando dónde estás…",
+    "locationDenied": "Permite el acceso a tu ubicación para usar dónde estás, o busca.",
+    "locationUnavailable": "No pudimos encontrar dónde estás. Inténtalo de nuevo o busca.",
+    "uncovered": "Aún no cubrimos dónde estás. Busca una ciudad.",
+    "failed": "La búsqueda falló. Revisa tu conexión.",
+    "retry": "Reintentar",
+    "recent": "Recientes",
+    "popular": "Populares",
+    "noResults": "No encontramos nada para «{{query}}».",
+    "close": "Cerrar la búsqueda",
+    "clear": "Borrar",
+    "credit": "Ciudades: GeoNames · Lugares: Wikidata",
+    "kind": {
+      "place": "lugar para visitar",
+      "country": "país",
+      "city": "ciudad",
+      "area": "barrio"
+    }
   },
   "planner": {
     "title": "Planifica un viaje",

@@ -10,6 +10,13 @@ import { useSettingsStore } from '@/state/settingsStore';
 
 import Onboarding from '../app/(onboarding)/onboarding';
 
+/** The "Where to?" field opens the full-screen search; type, then pick a result (ADR-0035). */
+async function pickDestination(testID: string, text: string, slug: string) {
+  await fireEvent.press(await screen.findByTestId(testID));
+  await fireEvent.changeText(await screen.findByTestId(`${testID}-input`), text);
+  await fireEvent.press(await screen.findByTestId(`${testID}-${slug}`));
+}
+
 const mockApi = {
   get: jest.fn(),
   post: jest.fn(),
@@ -86,8 +93,11 @@ beforeEach(async () => {
       path === '/v1/users/me' ? { ...me, profile: { ...me.profile, ...options.body } } : {},
   );
   mockApi.get.mockImplementation(async (path: string) =>
-    path === '/v1/destinations/search'
-      ? { data: [lisbon], page: { next_cursor: null, has_more: false } }
+    path === '/v1/destinations/suggest'
+      ? {
+          data: [{ type: 'destination', destination: lisbon }],
+          page: { next_cursor: null, has_more: false },
+        }
       : { ...me, onboarding_completed: true },
   );
   mockApi.put.mockResolvedValue({});
@@ -133,8 +143,7 @@ describe('onboarding wizard', () => {
     );
 
     expect(await screen.findByTestId('onboarding-destination')).toBeTruthy();
-    await fireEvent.changeText(screen.getByTestId('onboarding-search'), 'lis');
-    await fireEvent.press(await screen.findByTestId('onboarding-match-lisbon-pt'));
+    await pickDestination('onboarding-place', 'lis', 'lisbon-pt');
     await fireEvent.press(screen.getByTestId('onboarding-next'));
     await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith('/'));
     expect(mockApi.put).toHaveBeenCalledWith('/v1/users/me/browse-destination', {

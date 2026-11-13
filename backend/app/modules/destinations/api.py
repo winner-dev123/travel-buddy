@@ -15,7 +15,13 @@ from app.core.ratelimit import rate_limited
 from app.core.security.authn import get_principal
 from app.core.security.principal import Principal
 from app.modules.destinations.models import PLACE_CATEGORIES, Continent, DestinationKind
-from app.modules.destinations.schemas import Destination, DestinationSummary, Place, PlaceSummary
+from app.modules.destinations.schemas import (
+    Destination,
+    DestinationSummary,
+    Place,
+    PlaceSummary,
+    Suggestion,
+)
 from app.modules.destinations.service import (
     DestinationService,
     ListFilters,
@@ -107,6 +113,20 @@ async def search_destinations(
         country=country,
         limit=limit,
         preferences=_preferences(accept_language),
+    )
+
+
+@router.get("/suggest", response_model=Page[Suggestion], openapi_extra=rate_limited("search"))
+async def suggest_destinations(
+    request: Request,
+    q: Annotated[str, Query(min_length=2, max_length=80)],
+    accept_language: AcceptLanguage = None,
+    limit: Annotated[int, Query(ge=1, le=20)] = 10,
+) -> Page[Suggestion]:
+    """Search as you type (ADR-0035): towns, neighbourhoods, countries and tourist places,
+    never streets or addresses."""
+    return await _service(request).suggest(
+        q, limit=limit, preferences=_preferences(accept_language)
     )
 
 

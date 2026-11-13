@@ -121,6 +121,9 @@ def test_required_extensions_and_indexes_exist(migrated: str) -> None:
         "uq_destinations__sibling_segment",
         "ix_destinations__path",
         "ix_destination_localizations__name_trgm",
+        "ix_destination_localizations__alt_names_trgm",
+        "ix_destinations__default_name_trgm",
+        "ix_destinations__town_centroid",
         "ix_destination_boundaries__boundary",
     } <= {row[0] for row in indexes}
 

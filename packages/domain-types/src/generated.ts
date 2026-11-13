@@ -775,6 +775,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/destinations/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search as you type for towns and tourist places
+         * @description One list for a search box (ADR-0035): towns, neighbourhoods and countries together with the tourist places in them (attractions, museums, beaches, viewpoints, parks, trails, markets), never streets or addresses. Text match first (a name that starts with the query, then words and typos), then how well known the place is; one or two letters match the start of names only. Localized via `Accept-Language`. A place comes with the destination it is in.
+         */
+        get: operations["suggestDestinations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/destinations/featured": {
         parameters: {
             query?: never;
@@ -824,7 +844,7 @@ export interface paths {
         };
         /**
          * Resolve a point to its containing destination chain (not stored)
-         * @description Used by the client to label "You're in Rio de Janeiro". The point is rounded to 3 decimals, used for a single `ST_Covers` lookup, and never persisted or logged. A reading less precise than 5 km resolves to the city only (LOC-008); one older than 15 minutes is refused (`stale_location`, LOC-007).
+         * @description Used by the client to label "You're in Rio de Janeiro". The point is rounded to 3 decimals, used for one lookup, and never persisted or logged. A licensed polygon (neighbourhood or city limits) wins; otherwise the point belongs to the nearest town weighed by its size, within 80 km (ADR-0035), and only then to an approximate bounding box. Farther than that from every town it is `location_unresolvable`. A reading less precise than 5 km resolves to the city only (LOC-008); one older than 15 minutes is refused (`stale_location`, LOC-007).
          */
         get: operations["resolveDestination"];
         put?: never;
@@ -4563,6 +4583,8 @@ export interface components {
             country_code: components["schemas"]["CountryCode"];
             /** @description Localized country name (null for `kind=country`, where it equals `name`). */
             country_name?: string | null;
+            /** @description Where it is below the country, to tell namesakes apart: the state or province of a town (Campinas, São Paulo) or the city of a neighbourhood. Null for countries and when unknown (ADR-0035). */
+            region_name?: string | null;
             continent?: components["schemas"]["Continent"];
             /** @description Localized editorial one-liner for directory cards. */
             tagline?: string | null;
@@ -4697,6 +4719,19 @@ export interface components {
             category: components["schemas"]["PlaceCategory"];
             destination_id: components["schemas"]["Uuid"];
             location: components["schemas"]["GeoPoint"];
+        };
+        /** @description One search-as-you-type result (ADR-0035). */
+        Suggestion: {
+            /** @enum {string} */
+            type: "destination" | "place";
+            /** @description The destination itself, or the one a place is in. */
+            destination: components["schemas"]["DestinationSummary"];
+            /** @description The tourist place (`type=place` only). */
+            place?: components["schemas"]["PlaceSummary"] | null;
+        };
+        SuggestionPage: {
+            data: components["schemas"]["Suggestion"][];
+            page: components["schemas"]["PageInfo"];
         };
         Place: components["schemas"]["PlaceSummary"] & {
             address: {
@@ -8405,6 +8440,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DestinationSummaryPage"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["RateLimited"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    suggestDestinations: {
+        parameters: {
+            query: {
+                q: string;
+                limit?: number;
+            };
+            header?: {
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Suggestions (best first). `page.next_cursor` is always null. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestionPage"];
                 };
             };
             422: components["responses"]["ValidationFailed"];

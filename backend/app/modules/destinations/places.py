@@ -260,6 +260,72 @@ async def ingest(
 # ─────────────────────────────── reads ───────────────────────────────
 
 
+_SEARCH_IDS_SQL = text(
+    """
+    WITH hits AS (
+        SELECT pl.place_id AS id, f_unaccent(lower(pl.name)) AS name
+          FROM place_localizations AS pl
+         WHERE f_unaccent(lower(pl.name)) % :term
+            OR :term <% f_unaccent(lower(pl.name))
+            OR f_unaccent(lower(pl.name)) LIKE :prefix
+        UNION ALL
+        SELECT p.id, f_unaccent(lower(p.default_name))
+          FROM places AS p
+         WHERE f_unaccent(lower(p.default_name)) % :term
+            OR :term <% f_unaccent(lower(p.default_name))
+            OR f_unaccent(lower(p.default_name)) LIKE :prefix
+    )
+    SELECT p.id, p.popularity_score,
+           max(greatest(similarity(h.name, :term), 0.9 * word_similarity(:term, h.name),
+                        CASE WHEN h.name LIKE :prefix THEN 1.0 ELSE 0 END)) AS score
+      FROM hits AS h
+      JOIN places AS p ON p.id = h.id
+     WHERE p.status = 'active' AND p.category = ANY(CAST(:categories AS text[]))
+     GROUP BY p.id, p.popularity_score
+     ORDER BY score DESC, p.popularity_score DESC, p.id
+     LIMIT :limit
+    """
+)
+# One or two letters: names that start with them (trigram similarity means nothing yet).
+_PREFIX_IDS_SQL = text(
+    """
+    WITH hits AS (
+        SELECT pl.place_id AS id FROM place_localizations AS pl
+         WHERE f_unaccent(lower(pl.name)) LIKE :prefix
+        UNION ALL
+        SELECT p.id FROM places AS p WHERE f_unaccent(lower(p.default_name)) LIKE :prefix
+    )
+    SELECT DISTINCT p.id, p.popularity_score, 1.0 AS score
+      FROM hits AS h
+      JOIN places AS p ON p.id = h.id
+     WHERE p.status = 'active' AND p.category = ANY(CAST(:categories AS text[]))
+     ORDER BY p.popularity_score DESC, p.id
+     LIMIT :limit
+    """
+)
+
+
+async def search_ids(
+    session: AsyncSession, q: str, *, categories: Sequence[str], limit: int
+) -> list[tuple[uuid.UUID, float, float]]:
+    """(place id, text score 0..1, popularity) across every destination, best match first;
+    backed by the trigram indexes on default and localized names (search as you type)."""
+    term: str | None = await session.scalar(select(func.f_unaccent(func.lower(q.strip()))))
+    if not term:
+        return []
+    escaped = term.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
+    result = await session.execute(
+        _PREFIX_IDS_SQL if len(term) < 3 else _SEARCH_IDS_SQL,
+        {
+            "term": term,
+            "prefix": f"{escaped}%",
+            "categories": list(categories),
+            "limit": min(limit, _SEARCH_LIMIT_MAX),
+        },
+    )
+    return [(row.id, float(row.score), float(row.popularity_score)) for row in result]
+
+
 def _distance_m(lat: float, lng: float) -> Any:
     """Great-circle (haversine) distance from a point to each place, in metres (SQL)."""
     dlat = func.radians(PlaceRow.lat - lat)

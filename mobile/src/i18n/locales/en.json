@@ -726,6 +726,8 @@
     "searchPlaces": "Search places in {{place}}",
     "nearMe": "Places near me",
     "locationDenied": "Allow location access to see places near you, or pick a destination.",
+    "approximate": "Your phone shared only an approximate location, so these places may be a few kilometres off. Turn on precise location for Travel Buddy in Settings.",
+    "openSettings": "Open settings",
     "loadFailed": "Places couldn't be loaded. Try again.",
     "noPlaces": "No places found here yet.",
     "place": "Place",
@@ -760,6 +762,31 @@
     },
     "neighbourhoods": "Neighbourhoods in {{place}}",
     "destinationChosen": "Destination: {{place}} (tap to change)"
+  },
+  "search": {
+    "where": "Where to?",
+    "placeholder": "Search a city or a place to visit",
+    "openHint": "Opens search for cities and places to visit.",
+    "change": "Tap to change.",
+    "currentLocation": "Use my current location",
+    "locating": "Finding where you are…",
+    "locationDenied": "Allow location access to use where you are, or search instead.",
+    "locationUnavailable": "Couldn't find where you are. Try again or search.",
+    "uncovered": "We don't cover where you are yet. Search for a city instead.",
+    "failed": "Search failed. Check your connection.",
+    "retry": "Try again",
+    "recent": "Recent",
+    "popular": "Popular",
+    "noResults": "Nothing found for “{{query}}”.",
+    "close": "Close search",
+    "clear": "Clear",
+    "credit": "Cities: GeoNames · Places: Wikidata",
+    "kind": {
+      "place": "place to visit",
+      "country": "country",
+      "city": "city",
+      "area": "neighbourhood"
+    }
   },
   "planner": {
     "title": "Plan a trip",

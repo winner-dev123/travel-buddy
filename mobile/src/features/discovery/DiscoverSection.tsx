@@ -16,10 +16,10 @@ import {
 import { ApiProblem, getApiClient } from '@/api';
 import { useSessionStore } from '@/auth/sessionStore';
 import { DiscoverySafetyNotice } from '@/components/DiscoverySafetyNotice';
-import { Button, Notice, TextField } from '@/components/Form';
+import { Button, Notice } from '@/components/Form';
 import { refreshMe, sendConnectionRequest } from '@/features/account/api';
 import { exploreKeys, getDestination, type DestinationDetail } from '@/features/explore/api';
-import { searchDestinations } from '@/features/feed/api';
+import { DestinationPicker } from '@/features/explore/DestinationPicker';
 import { getCoarsePosition } from '@/features/feed/location';
 import { Avatar } from '@/features/feed/PostCard';
 import { scrims } from '@/theme/tokens';
@@ -156,7 +156,6 @@ export function DiscoverSection() {
   const reduceMotion = useReduceMotion();
   const { height: windowHeight } = useWindowDimensions();
   const enabled = useSessionStore((state) => state.me?.privacy.discovery_enabled ?? false);
-  const [search, setSearch] = useState('');
   const [picking, setPicking] = useState(false);
   const [lastScan, setLastScan] = useState<ScanResult | null>(null);
   const [scanId, setScanId] = useState(0);
@@ -298,11 +297,6 @@ export function DiscoverSection() {
     });
   }, [found, queryClient, t]);
 
-  const matches = useQuery({
-    queryKey: ['destinations', 'search', search],
-    queryFn: () => searchDestinations(getApiClient(), search),
-    enabled: enabled && search.trim().length >= 2,
-  });
   const share = useMutation({
     mutationFn: async (target: ShareTarget | 'gps') => {
       if (target === 'gps') {
@@ -318,7 +312,6 @@ export function DiscoverSection() {
     },
     onSuccess: () => {
       setPicking(false);
-      setSearch('');
       refresh();
     },
   });
@@ -623,27 +616,15 @@ export function DiscoverSection() {
               busy={share.isPending}
               testID="discovery-share-gps"
             />
-            <TextField
+            <DestinationPicker
+              value={null}
+              onChange={(city) => {
+                if (city) share.mutate({ mode: 'destination', destinationId: city.id });
+              }}
               label={t('discovery.shareCity')}
-              value={search}
-              onChangeText={setSearch}
-              autoCorrect={false}
-              testID="discovery-search"
+              variant="destination"
+              testID="discovery-city"
             />
-            {(matches.data ?? []).map((match) => (
-              <Pressable
-                key={match.id}
-                onPress={() => share.mutate({ mode: 'destination', destinationId: match.id })}
-                accessibilityRole="button"
-                style={[
-                  styles.match,
-                  { borderColor: theme.colors.divider, borderRadius: theme.radii.md },
-                ]}
-                testID={`discovery-match-${match.slug}`}
-              >
-                {body([match.name, match.country_name].filter(Boolean).join(', '))}
-              </Pressable>
-            ))}
             {shareError ? <Notice tone="info">{shareError}</Notice> : null}
           </>
         ) : (

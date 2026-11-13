@@ -1,7 +1,8 @@
-// req: DEST-003, AI-002, AI-003, TRIP-001, TRIP-003
+// req: DEST-003, AI-002, AI-003, TRIP-001, TRIP-003, LOC-008
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
+import { Linking } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ApiProblem } from '@/api';
@@ -17,6 +18,13 @@ import TripScreen from '../app/trips/[id]';
 import Trips from '../app/trips/index';
 import Plan from '../app/trips/plan';
 import Review from '../app/trips/review';
+
+/** The "Where to?" field opens the full-screen search; type, then pick a result (ADR-0035). */
+async function pickDestination(testID: string, text: string, slug: string) {
+  await fireEvent.press(await screen.findByTestId(testID));
+  await fireEvent.changeText(await screen.findByTestId(`${testID}-input`), text);
+  await fireEvent.press(await screen.findByTestId(`${testID}-${slug}`));
+}
 
 const mockApi = {
   get: jest.fn(),
@@ -230,7 +238,8 @@ describe('explore', () => {
 
   it('lists places in a chosen destination, searches them and opens one', async () => {
     mockApi.get.mockImplementation(async (path: string, options?: { query?: { q?: string } }) => {
-      if (path === '/v1/destinations/search') return page([lisbon]);
+      if (path === '/v1/destinations/suggest')
+        return page([{ type: 'destination', destination: lisbon }]);
       if (path === '/v1/destinations/d-lisbon')
         return { ...lisbon, centroid: { lat: 38.7223, lng: -9.1393 }, time_zone: 'Europe/Lisbon' };
       if (path === '/v1/places/nearby') return page([tower]);
@@ -253,8 +262,7 @@ describe('explore', () => {
       throw new Error(path);
     });
     await renderUi(<Explore />);
-    await fireEvent.changeText(screen.getByTestId('explore-destination'), 'lis');
-    await fireEvent.press(await screen.findByTestId('explore-destination-lisbon-pt'));
+    await pickDestination('explore-destination', 'lis', 'lisbon-pt');
     expect(await screen.findByText('Belém Tower')).toBeTruthy();
     expect(screen.getByText('Attraction')).toBeTruthy();
     await fireEvent.press(await screen.findByTestId('guide-g1'));
@@ -319,6 +327,22 @@ describe('explore', () => {
     expect(mockApi.get).toHaveBeenCalledWith('/v1/places/nearby', {
       query: { near: '38.72,-9.14', radius_m: 5000, limit: 30 },
     });
+    expect(screen.queryByTestId('explore-approximate')).toBeNull();
+  });
+
+  it('explains an approximate position and opens the settings to make it precise', async () => {
+    const fix = { near: '38.722,-9.139', capturedAt: new Date().toISOString(), accuracyM: 3000 };
+    jest
+      .requireMock<{ getCoarsePosition: jest.Mock }>('@/features/feed/location')
+      .getCoarsePosition.mockResolvedValueOnce({ status: 'granted', near: fix.near, fix });
+    const openSettings = jest.spyOn(Linking, 'openSettings').mockResolvedValue(undefined);
+    mockApi.get.mockResolvedValue(page([tower]));
+    await renderUi(<Explore />);
+    await fireEvent.press(screen.getByTestId('explore-near-me'));
+    expect(await screen.findByText(/only an approximate location/)).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('explore-open-settings'));
+    expect(openSettings).toHaveBeenCalled();
+    openSettings.mockRestore();
   });
 });
 
@@ -360,10 +384,13 @@ describe('place detail', () => {
 
 describe('AI planner', () => {
   async function fill() {
-    mockApi.get.mockResolvedValue(page([lisbon]));
+    mockApi.get.mockImplementation(async (path: string) =>
+      path === '/v1/destinations/suggest'
+        ? page([{ type: 'destination', destination: lisbon }])
+        : page([lisbon]),
+    );
     await renderUi(<Plan />);
-    await fireEvent.changeText(screen.getByTestId('plan-destination'), 'lis');
-    await fireEvent.press(await screen.findByTestId('plan-destination-lisbon-pt'));
+    await pickDestination('plan-destination', 'lis', 'lisbon-pt');
     await fireEvent.changeText(screen.getByTestId('plan-start'), '2026-12-04');
     await fireEvent.changeText(screen.getByTestId('plan-end'), '2026-12-06');
     await fireEvent.changeText(screen.getByTestId('plan-interests'), 'food, viewpoints, food');

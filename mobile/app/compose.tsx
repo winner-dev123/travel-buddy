@@ -9,7 +9,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiProblem, getApiClient } from '@/api';
 import { Button, Notice, TextField } from '@/components/Form';
 import { searchPlaces, type PlaceSummary } from '@/features/explore/api';
-import { createPost, feedKeys, searchDestinations, type NewPost } from '@/features/feed/api';
+import { DestinationPicker } from '@/features/explore/DestinationPicker';
+import { createPost, feedKeys, type NewPost } from '@/features/feed/api';
 import type { DestinationSummary, PostKind } from '@/features/feed/types';
 import {
   MAX_PHOTOS,
@@ -84,7 +85,6 @@ export default function ComposeScreen() {
   const [kind, setKind] = useState<PostKind>('tip');
   const [body, setBody] = useState('');
   const [visibility, setVisibility] = useState<NewPost['visibility']>('public');
-  const [search, setSearch] = useState('');
   const [destination, setDestination] = useState<DestinationSummary | null>(null);
   const [spotSearch, setSpotSearch] = useState('');
   const [spot, setSpot] = useState<PlaceSummary | null>(null);
@@ -115,11 +115,6 @@ export default function ComposeScreen() {
     }
   };
 
-  const matches = useQuery({
-    queryKey: ['destinations', 'search', search],
-    queryFn: () => searchDestinations(getApiClient(), search),
-    enabled: search.trim().length >= 2 && destination === null,
-  });
   // POST-002: optionally tag a public place in the chosen destination.
   const spots = useQuery({
     queryKey: ['places', 'search', destination?.id ?? '', spotSearch],
@@ -261,48 +256,24 @@ export default function ComposeScreen() {
             {photoNotice}
           </Notice>
         ) : null}
-        <Text style={[theme.typography.label, { color: theme.colors.textPrimary }]}>
-          {t('compose.place')}
-        </Text>
-        {destination ? (
-          <View style={styles.row}>
-            <Text
-              style={[theme.typography.body, styles.fill, { color: theme.colors.textPrimary }]}
-              testID="compose-destination"
-            >
-              {[destination.name, destination.country_name].filter(Boolean).join(', ')}
-            </Text>
-            <Button
-              label={t('compose.changePlace')}
-              variant="secondary"
-              onPress={() => chooseDestination(null)}
-            />
-          </View>
-        ) : (
-          <View style={{ gap: theme.spacing[2] }}>
-            <TextField
-              label={t('compose.searchPlace')}
-              value={search}
-              onChangeText={setSearch}
-              autoCorrect={false}
-              hint={needsPlace ? t('compose.placeRequired') : t('compose.placeOptional')}
-              testID="compose-search"
-            />
-            {(matches.data ?? []).map((match) => (
-              <Pressable
-                key={match.id}
-                onPress={() => chooseDestination(match)}
-                accessibilityRole="button"
-                style={[styles.match, { borderColor: theme.colors.divider }]}
-                testID={`compose-match-${match.slug}`}
-              >
-                <Text style={[theme.typography.body, { color: theme.colors.textPrimary }]}>
-                  {[match.name, match.country_name].filter(Boolean).join(', ')}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        )}
+        <DestinationPicker
+          value={destination}
+          onChange={chooseDestination}
+          onPlace={(place, where) => {
+            // A tourist place picked in search: its town is the destination, the place is tagged.
+            setDestination(where);
+            setSpot(place);
+            setSpotSearch('');
+          }}
+          label={t('compose.place')}
+          variant="destination"
+          testID="compose-destination"
+        />
+        {destination === null ? (
+          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+            {needsPlace ? t('compose.placeRequired') : t('compose.placeOptional')}
+          </Text>
+        ) : null}
         {destination && spot ? (
           <View style={styles.row}>
             <Text

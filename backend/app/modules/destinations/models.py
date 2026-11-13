@@ -100,6 +100,14 @@ class Destination(Base):
             text("popularity_score DESC"),
             postgresql_where=text("status = 'active'"),
         ),
+        # Nearest town for a device point (LOC-005, ADR-0035). The trigram indexes on
+        # default_name and f_search_names(alt_names) are created by migration 0049.
+        Index(
+            "ix_destinations__town_centroid",
+            "centroid_lat",
+            "centroid_lng",
+            postgresql_where=text("kind = 'city' AND status = 'active'"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
@@ -130,6 +138,13 @@ class Destination(Base):
     # Maintained by the guides module (Phase 4) through events; false until then.
     has_guides: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     status: Mapped[str] = mapped_column(Text, server_default=text("'active'"))
+    # Gazetteer data (ADR-0035): people living there (towns resolve by size and distance) and the
+    # first-level region shown beside the name ("Campinas, São Paulo").
+    population: Mapped[int | None] = mapped_column(BigInteger)
+    region_name: Mapped[str | None] = mapped_column(Text)
+    # Listed in the directory, children lists and sitemap. Gazetteer towns are not until an
+    # editor lists them; they are still searchable, resolvable and postable.
+    in_directory: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

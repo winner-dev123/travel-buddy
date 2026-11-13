@@ -25,6 +25,8 @@ export interface DestinationSummary {
   name: string;
   country_code: string;
   country_name?: string | null;
+  /** A town's state or province, or a neighbourhood's city (ADR-0035). */
+  region_name?: string | null;
 }
 
 export type ReactionType = 'like' | 'love' | 'helpful' | 'wow';

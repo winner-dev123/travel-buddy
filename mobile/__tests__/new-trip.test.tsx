@@ -7,6 +7,13 @@ import { i18n } from '@/i18n';
 
 import NewTrip from '../app/trips/new';
 
+/** The "Where to?" field opens the full-screen search; type, then pick a result (ADR-0035). */
+async function pickDestination(testID: string, text: string, slug: string) {
+  await fireEvent.press(await screen.findByTestId(testID));
+  await fireEvent.changeText(await screen.findByTestId(`${testID}-input`), text);
+  await fireEvent.press(await screen.findByTestId(`${testID}-${slug}`));
+}
+
 const mockApi = { get: jest.fn(), post: jest.fn(), newIdempotencyKey: jest.fn(() => 'key-1') };
 const mockRouter = { push: jest.fn(), back: jest.fn(), replace: jest.fn() };
 
@@ -53,13 +60,19 @@ beforeEach(async () => {
 });
 
 it('creates a trip by hand and opens it in the editor', async () => {
-  mockApi.get.mockResolvedValue({ data: [lisbon], page: { next_cursor: null, has_more: false } });
+  mockApi.get.mockImplementation(async (path: string) =>
+    path === '/v1/destinations/suggest'
+      ? {
+          data: [{ type: 'destination', destination: lisbon }],
+          page: { next_cursor: null, has_more: false },
+        }
+      : { data: [lisbon], page: { next_cursor: null, has_more: false } },
+  );
   mockApi.post.mockResolvedValue({ id: 't1' });
   await renderScreen();
   expect(screen.getByTestId('new-trip-create')).toBeDisabled();
 
-  await fireEvent.changeText(screen.getByTestId('new-trip-destination'), 'lis');
-  await fireEvent.press(await screen.findByText('Lisbon, Portugal'));
+  await pickDestination('new-trip-destination', 'lis', 'lisbon-pt');
   await fireEvent.changeText(screen.getByTestId('new-trip-start'), '2026-12-04');
   await fireEvent.changeText(screen.getByTestId('new-trip-end'), '2026-12-01');
   expect(screen.getByTestId('new-trip-create')).toBeDisabled(); // last day before the first

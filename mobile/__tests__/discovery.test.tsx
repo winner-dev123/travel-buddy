@@ -13,6 +13,13 @@ import { i18n } from '@/i18n';
 
 import Consent from '../app/discovery/consent';
 
+/** The "Where to?" field opens the full-screen search; type, then pick a result (ADR-0035). */
+async function pickDestination(testID: string, text: string, slug: string) {
+  await fireEvent.press(await screen.findByTestId(testID));
+  await fireEvent.changeText(await screen.findByTestId(`${testID}-input`), text);
+  await fireEvent.press(await screen.findByTestId(`${testID}-${slug}`));
+}
+
 const mockApi = {
   get: jest.fn(),
   post: jest.fn(),
@@ -384,7 +391,8 @@ describe('companions map', () => {
         if (!current) throw notFound;
         return current;
       }
-      if (path === '/v1/destinations/search') return page([lisbon]);
+      if (path === '/v1/destinations/suggest')
+        return page([{ type: 'destination', destination: lisbon }]);
       if (path === '/v1/destinations/d-lisbon') {
         return { ...lisbon, centroid: { lat: 38.7223, lng: -9.1393 }, time_zone: 'Europe/Lisbon' };
       }
@@ -398,8 +406,7 @@ describe('companions map', () => {
     await pageSays({ type: 'ready' });
     expect(await screen.findByText('Choose a city to start')).toBeTruthy();
     expect(screen.getByTestId('discovery-search-companions')).toBeDisabled();
-    await fireEvent.changeText(await screen.findByTestId('discovery-search'), 'lis');
-    await fireEvent.press(await screen.findByTestId('discovery-match-lisbon-pt'));
+    await pickDestination('discovery-city', 'lis', 'lisbon-pt');
     await waitFor(() =>
       expect(mockApi.put).toHaveBeenCalledWith('/v1/users/me/discovery-location', {
         body: { mode: 'destination', destination_id: 'd-lisbon', visibility: 'visible' },
@@ -430,7 +437,7 @@ describe('companions map', () => {
     ).toBeTruthy();
     expect(screen.getByText('Around Porto, Portugal')).toBeTruthy();
     expect(screen.getByTestId('discovery-search-companions')).toBeDisabled();
-    expect(screen.getByTestId('discovery-search')).toBeTruthy();
+    expect(screen.getByTestId('discovery-city')).toBeTruthy();
   });
 
   it('says when the map cannot load', async () => {
@@ -457,7 +464,7 @@ describe('companions map', () => {
       expect(mockApi.put).toHaveBeenCalledWith('/v1/users/me/discovery-location', {
         body: {
           mode: 'gps',
-          point: { lat: 38.72, lng: -9.14, captured_at: expect.any(String), accuracy_m: 1200 },
+          point: { lat: 38.722, lng: -9.139, captured_at: expect.any(String), accuracy_m: 1200 },
           visibility: 'visible',
         },
       }),

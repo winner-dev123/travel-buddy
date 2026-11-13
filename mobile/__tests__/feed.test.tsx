@@ -14,6 +14,13 @@ import Compose from '../app/compose';
 import PostDetail from '../app/post/[id]';
 import Home from '../app/(tabs)/index';
 
+/** The "Where to?" field opens the full-screen search; type, then pick a result (ADR-0035). */
+async function pickDestination(testID: string, text: string, slug: string) {
+  await fireEvent.press(await screen.findByTestId(testID));
+  await fireEvent.changeText(await screen.findByTestId(`${testID}-input`), text);
+  await fireEvent.press(await screen.findByTestId(`${testID}-${slug}`));
+}
+
 const mockApi = {
   get: jest.fn(),
   post: jest.fn(),
@@ -193,7 +200,7 @@ describe('nearby and filters', () => {
           tab: 'nearby',
           cursor: undefined,
           limit: 20,
-          near: '38.72,-9.14',
+          near: '38.722,-9.139',
           radius_km: 10,
           near_ts: expect.any(String),
           near_accuracy_m: 1200,
@@ -348,8 +355,11 @@ describe('composer', () => {
   it('requires a place for recommendations and publishes with the destination', async () => {
     useSessionStore.getState().setSignedIn(me);
     mockApi.get.mockImplementation(async (path: string) => {
-      if (path === '/v1/destinations/search') {
-        return { data: [lisbon], page: { next_cursor: null, has_more: false } };
+      if (path === '/v1/destinations/suggest') {
+        return {
+          data: [{ type: 'destination', destination: lisbon }],
+          page: { next_cursor: null, has_more: false },
+        };
       }
       return page([]);
     });
@@ -365,9 +375,10 @@ describe('composer', () => {
     await fireEvent.press(screen.getByTestId('compose-kind-restaurant_recommendation'));
     expect(screen.getByTestId('compose-publish')).toBeDisabled();
 
-    await fireEvent.changeText(screen.getByTestId('compose-search'), 'lis');
-    await fireEvent.press(await screen.findByTestId('compose-match-lisbon-pt'));
-    expect(screen.getByTestId('compose-destination')).toHaveTextContent('Lisbon, Portugal');
+    await pickDestination('compose-destination', 'lis', 'lisbon-pt');
+    expect(screen.getByTestId('compose-destination-chosen')).toHaveTextContent(
+      /Destination: Lisbon.*Portugal/,
+    );
     await fireEvent.press(screen.getByTestId('compose-publish'));
     await waitFor(() =>
       expect(mockApi.post).toHaveBeenCalledWith('/v1/posts', {
@@ -395,8 +406,11 @@ describe('composer', () => {
       location: { lat: 38.6975, lng: -9.2033 },
     };
     mockApi.get.mockImplementation(async (path: string) => {
-      if (path === '/v1/destinations/search') {
-        return { data: [lisbon], page: { next_cursor: null, has_more: false } };
+      if (path === '/v1/destinations/suggest') {
+        return {
+          data: [{ type: 'destination', destination: lisbon }],
+          page: { next_cursor: null, has_more: false },
+        };
       }
       if (path === '/v1/places/search') {
         return { data: [pasteis], page: { next_cursor: null, has_more: false } };
@@ -406,8 +420,7 @@ describe('composer', () => {
     mockApi.post.mockResolvedValue(post('new'));
     await renderScreen(<Compose />);
     await fireEvent.changeText(screen.getByTestId('compose-body'), 'Still warm at 8 a.m.');
-    await fireEvent.changeText(screen.getByTestId('compose-search'), 'lis');
-    await fireEvent.press(await screen.findByTestId('compose-match-lisbon-pt'));
+    await pickDestination('compose-destination', 'lis', 'lisbon-pt');
     await fireEvent.changeText(screen.getByTestId('compose-spot-search'), 'pastéis');
     await fireEvent.press(await screen.findByTestId('compose-spot-pl-1'));
     expect(screen.getByTestId('compose-spot')).toHaveTextContent('📍 Pastéis de Belém');

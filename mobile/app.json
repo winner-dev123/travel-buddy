@@ -25,11 +25,8 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": ["ACCESS_COARSE_LOCATION"],
-      "blockedPermissions": [
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_BACKGROUND_LOCATION"
-      ]
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
+      "blockedPermissions": ["android.permission.ACCESS_BACKGROUND_LOCATION"]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -52,7 +49,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Travel Buddy uses your approximate location to show stories from the city you're in. It is never stored or shown to anyone.",
+          "locationWhenInUsePermission": "Travel Buddy uses your location, only while you use the app, to find your city and the places near you. It is rounded, never stored and never shown to anyone.",
           "isAndroidBackgroundLocationEnabled": false,
           "isIosBackgroundLocationEnabled": false
         }

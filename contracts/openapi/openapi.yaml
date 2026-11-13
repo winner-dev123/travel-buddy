@@ -1280,6 +1280,40 @@ paths:
         '422': { $ref: '#/components/responses/ValidationFailed' }
         '429': { $ref: '#/components/responses/RateLimited' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/destinations/suggest:
+    get:
+      tags: [destinations]
+      operationId: suggestDestinations
+      summary: Search as you type for towns and tourist places
+      description: >-
+        One list for a search box (ADR-0035): towns, neighbourhoods and countries together with the
+        tourist places in them (attractions, museums, beaches, viewpoints, parks, trails, markets),
+        never streets or addresses. Text match first (a name that starts with the query, then
+        words and typos), then how well known the place is; one or two letters match the start of
+        names only. Localized via `Accept-Language`. A place comes with the destination it is in.
+      security: [{}, { bearerAuth: [] }]
+      x-phase: 1
+      x-requirements: [DEST-001, DEST-003, LOC-002, I18N-004]
+      x-rate-limit-class: search
+      parameters:
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 2, maxLength: 80 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 20, default: 10 }
+      responses:
+        '200':
+          description: Suggestions (best first). `page.next_cursor` is always null.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SuggestionPage' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/destinations/featured:
     get:
       tags: [destinations]
@@ -1338,7 +1372,7 @@ paths:
       tags: [destinations]
       operationId: resolveDestination
       summary: Resolve a point to its containing destination chain (not stored)
-      description: Used by the client to label "You're in Rio de Janeiro". The point is rounded to 3 decimals, used for a single `ST_Covers` lookup, and never persisted or logged. A reading less precise than 5 km resolves to the city only (LOC-008); one older than 15 minutes is refused (`stale_location`, LOC-007).
+      description: Used by the client to label "You're in Rio de Janeiro". The point is rounded to 3 decimals, used for one lookup, and never persisted or logged. A licensed polygon (neighbourhood or city limits) wins; otherwise the point belongs to the nearest town weighed by its size, within 80 km (ADR-0035), and only then to an approximate bounding box. Farther than that from every town it is `location_unresolvable`. A reading less precise than 5 km resolves to the city only (LOC-008); one older than 15 minutes is refused (`stale_location`, LOC-007).
       x-phase: 1
       x-requirements: [LOC-001, LOC-007, LOC-008]
       x-rate-limit-class: read
@@ -7768,6 +7802,7 @@ components:
         name: { type: string, description: Localized via Accept-Language. }
         country_code: { $ref: '#/components/schemas/CountryCode' }
         country_name: { type: [string, 'null'], description: 'Localized country name (null for `kind=country`, where it equals `name`).' }
+        region_name: { type: [string, 'null'], description: 'Where it is below the country, to tell namesakes apart: the state or province of a town (Campinas, São Paulo) or the city of a neighbourhood. Null for countries and when unknown (ADR-0035).' }
         continent: { $ref: '#/components/schemas/Continent' }
         tagline: { type: [string, 'null'], maxLength: 140, description: Localized editorial one-liner for directory cards. }
         cover:
@@ -7922,6 +7957,26 @@ components:
         category: { $ref: '#/components/schemas/PlaceCategory' }
         destination_id: { $ref: '#/components/schemas/Uuid' }
         location: { $ref: '#/components/schemas/GeoPoint' }
+    Suggestion:
+      type: object
+      description: One search-as-you-type result (ADR-0035).
+      required: [type, destination]
+      properties:
+        type: { type: string, enum: [destination, place] }
+        destination:
+          $ref: '#/components/schemas/DestinationSummary'
+          description: The destination itself, or the one a place is in.
+        place:
+          description: The tourist place (`type=place` only).
+          anyOf:
+            - { $ref: '#/components/schemas/PlaceSummary' }
+            - { type: 'null' }
+    SuggestionPage:
+      type: object
+      required: [data, page]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Suggestion' } }
+        page: { $ref: '#/components/schemas/PageInfo' }
     Place:
       allOf:
         - { $ref: '#/components/schemas/PlaceSummary' }
