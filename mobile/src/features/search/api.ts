@@ -31,15 +31,22 @@ export function resolveDestination(client: ApiClient, fix: DeviceFix): Promise<D
   });
 }
 
-/** "Campinas · São Paulo, Brasil": what tells a town or place apart from its namesakes. */
+/** Names joined once each: "Rio de Janeiro, Rio de Janeiro" (city and state) reads as one. */
+function joinDistinct(parts: (string | null | undefined)[]): string {
+  const out: string[] = [];
+  for (const part of parts) {
+    if (part && !out.some((seen) => seen.toLowerCase() === part.toLowerCase())) out.push(part);
+  }
+  return out.join(', ');
+}
+
+/** "São Paulo, Brazil" under Campinas: what tells a town or place apart from its namesakes. */
 export function whereIs(suggestion: Suggestion): string {
   const { destination } = suggestion;
   if (suggestion.type === 'place') {
-    return [destination.name, destination.region_name, destination.country_name]
-      .filter(Boolean)
-      .join(', ');
+    return joinDistinct([destination.name, destination.region_name, destination.country_name]);
   }
-  return [destination.region_name, destination.country_name].filter(Boolean).join(', ');
+  return joinDistinct([destination.region_name, destination.country_name]);
 }
 
 export function suggestionKey(suggestion: Suggestion): string {

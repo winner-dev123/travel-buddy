@@ -77,6 +77,7 @@ function Explore() {
     setDestination(value);
     setNear(null);
     setQ('');
+    setLocationProblem(null); // a chosen destination answers "where", not the device
   };
   const isOn = useServerFlags();
   const guides = useQuery({
