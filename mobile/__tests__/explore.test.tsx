@@ -330,6 +330,22 @@ describe('explore', () => {
     expect(screen.queryByTestId('explore-approximate')).toBeNull();
   });
 
+  it('tells a refused permission apart from a device that has no fix', async () => {
+    const located = jest.requireMock<{ getCoarsePosition: jest.Mock }>('@/features/feed/location');
+    located.getCoarsePosition.mockResolvedValueOnce({ status: 'unavailable' });
+    mockApi.get.mockResolvedValue(page([]));
+    await renderUi(<Explore />);
+    await fireEvent.press(screen.getByTestId('explore-near-me'));
+    expect(await screen.findByTestId('explore-location-unavailable')).toHaveTextContent(
+      /couldn't get your location/,
+    );
+    located.getCoarsePosition.mockResolvedValueOnce({ status: 'denied' });
+    await fireEvent.press(screen.getByTestId('explore-near-me'));
+    expect(await screen.findByTestId('explore-location-denied')).toHaveTextContent(
+      /Allow location access/,
+    );
+  });
+
   it('explains an approximate position and opens the settings to make it precise', async () => {
     const fix = { near: '38.722,-9.139', capturedAt: new Date().toISOString(), accuracyM: 3000 };
     jest

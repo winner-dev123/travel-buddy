@@ -53,7 +53,7 @@ function Explore() {
   const [near, setNear] = useState<string | null>(null);
   const [deviceFix, setDeviceFix] = useState<DeviceFix | undefined>(undefined);
   const [locating, setLocating] = useState(false);
-  const [locationDenied, setLocationDenied] = useState(false);
+  const [locationProblem, setLocationProblem] = useState<'denied' | 'unavailable' | null>(null);
   const [q, setQ] = useState('');
 
   const detail = useQuery({
@@ -114,13 +114,13 @@ function Explore() {
     const position = await getCoarsePosition();
     setLocating(false);
     if (position.status === 'granted') {
-      setLocationDenied(false);
+      setLocationProblem(null);
       setDestination(null);
       setQ('');
       setNear(position.near);
       setDeviceFix(position.fix);
     } else {
-      setLocationDenied(true);
+      setLocationProblem(position.status);
     }
   };
 
@@ -246,7 +246,13 @@ function Explore() {
           busy={locating}
           testID="explore-near-me"
         />
-        {locationDenied ? <Notice tone="info">{t('explore.locationDenied')}</Notice> : null}
+        {locationProblem ? (
+          <Notice tone="info" testID={`explore-location-${locationProblem}`}>
+            {locationProblem === 'denied'
+              ? t('explore.locationDenied')
+              : t('feed.nearby.unavailable')}
+          </Notice>
+        ) : null}
         {near !== null && isApproximate(deviceFix) ? (
           <View style={{ gap: theme.spacing[2] }} testID="explore-approximate">
             <Notice tone="info">{t('explore.approximate')}</Notice>
