@@ -318,7 +318,8 @@
       "denied": "Autorisez l'accès à la localisation pour voir les récits de la ville où vous êtes. Vous pouvez toujours parcourir Pour vous.",
       "unavailable": "Impossible d'obtenir votre position pour le moment. Réessayez dans un instant.",
       "uncovered": "Nous n'avons pas encore de récits pour cette zone. Essayez Pour vous.",
-      "privacy": "Votre position approximative sert uniquement à choisir votre ville. Elle n'est ni enregistrée ni montrée à qui que ce soit."
+      "empty": "Pas encore d'histoires de {{place}}. Soyez le premier à en partager une.",
+      "privacy": "Votre position est arrondie et sert seulement à trouver votre ville. Elle n'est ni conservée ni montrée à qui que ce soit."
     }
   },
   "post": {

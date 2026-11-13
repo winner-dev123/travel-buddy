@@ -318,7 +318,8 @@
       "denied": "Permita o acesso à localização para ver histórias da cidade em que você está. Você ainda pode ver Para você.",
       "unavailable": "Não foi possível obter sua localização agora. Tente de novo em instantes.",
       "uncovered": "Ainda não temos histórias desta região. Experimente Para você.",
-      "privacy": "Sua localização aproximada é usada só para escolher sua cidade. Ela não é armazenada nem mostrada a ninguém."
+      "empty": "Ainda não há histórias de {{place}}. Seja a primeira pessoa a compartilhar.",
+      "privacy": "Sua localização é arredondada e usada só para achar sua cidade. Ela não é armazenada nem mostrada a ninguém."
     }
   },
   "post": {

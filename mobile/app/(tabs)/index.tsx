@@ -273,7 +273,11 @@ function HomeFeed() {
               style={[theme.typography.body, { color: theme.colors.textSecondary }]}
               testID="feed-empty"
             >
-              {tab === 'following' ? t('feed.emptyFollowing') : t('feed.empty')}
+              {tab === 'following'
+                ? t('feed.emptyFollowing')
+                : nearby && context?.destination
+                  ? t('feed.nearby.empty', { place: context.destination.name })
+                  : t('feed.empty')}
             </Text>
           )
         }

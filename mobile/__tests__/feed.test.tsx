@@ -261,6 +261,25 @@ describe('nearby and filters', () => {
     expect(screen.queryByTestId('feed-error')).toBeNull();
   });
 
+  it('invites the first story from a town with none yet', async () => {
+    const campinas = { ...lisbon, id: 'd-campinas', slug: 'campinas-br', name: 'Campinas' };
+    mockApi.get.mockImplementation(async (_path: string, options: { query: { tab: string } }) =>
+      options.query.tab === 'nearby'
+        ? {
+            data: [],
+            page: { next_cursor: null, has_more: false, reset: false },
+            context: { destination: campinas, source: 'gps', radius_km: 10 },
+          }
+        : page([post('n1')]),
+    );
+    await renderScreen(<Home />);
+    await screen.findByText('Story n1');
+    await fireEvent.press(screen.getByTestId('feed-tab-nearby'));
+    expect(await screen.findByTestId('feed-empty')).toHaveTextContent(
+      'No stories from Campinas yet. Be the first to share one.',
+    );
+  });
+
   it('filters by story type', async () => {
     await renderScreen(<Home />);
     await screen.findByText('Story n1');

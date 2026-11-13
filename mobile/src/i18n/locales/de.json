@@ -316,7 +316,8 @@
       "denied": "Erlaube den Standortzugriff, um Geschichten aus deiner Stadt zu sehen. Unter „Für dich“ kannst du weiterstöbern.",
       "unavailable": "Dein Standort ist gerade nicht verfügbar. Versuche es gleich noch einmal.",
       "uncovered": "Für diese Gegend gibt es noch keine Geschichten. Versuche „Für dich“.",
-      "privacy": "Dein ungefährer Standort dient nur dazu, deine Stadt zu bestimmen. Er wird weder gespeichert noch anderen gezeigt."
+      "empty": "Noch keine Geschichten aus {{place}}. Teile als Erste:r eine.",
+      "privacy": "Dein Standort wird gerundet und nur verwendet, um deine Stadt zu finden. Er wird weder gespeichert noch jemandem gezeigt."
     }
   },
   "post": {
