@@ -719,7 +719,6 @@
     "name": "Nom du groupe",
     "description": "Quel est le programme ? (facultatif)",
     "destination": "Destination",
-    "where": "Destination : {{place}} (touchez pour changer)",
     "capacity": "Nombre maximum de membres (2–50)",
     "challenges": "Défis",
     "announce": "Publier une annonce",
@@ -737,7 +736,7 @@
     "signInToPlan": "Connectez-vous pour planifier des voyages et voir les lieux.",
     "places": "Lieux",
     "destination": "Destination",
-    "where": "Lieux à {{place}} (touchez pour changer)",
+    "where": "Lieux à {{place}}",
     "searchPlaces": "Rechercher des lieux à {{place}}",
     "nearMe": "Lieux près de moi",
     "locationDenied": "Autorisez l'accès à la localisation pour voir les lieux proches, ou choisissez une destination.",
@@ -776,7 +775,7 @@
       "other": "Autre"
     },
     "neighbourhoods": "Quartiers de {{place}}",
-    "destinationChosen": "Destination : {{place}} (touchez pour changer)"
+    "destinationChosen": "Destination : {{place}}"
   },
   "search": {
     "where": "Où allez-vous ?",

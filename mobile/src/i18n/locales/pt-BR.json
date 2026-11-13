@@ -719,7 +719,6 @@
     "name": "Nome do grupo",
     "description": "Qual é o plano? (opcional)",
     "destination": "Destino",
-    "where": "Destino: {{place}} (toque para trocar)",
     "capacity": "Máximo de membros (2–50)",
     "challenges": "Desafios",
     "announce": "Publicar um aviso",
@@ -737,7 +736,7 @@
     "signInToPlan": "Entre para planejar viagens e ver lugares.",
     "places": "Lugares",
     "destination": "Destino",
-    "where": "Lugares em {{place}} (toque para trocar)",
+    "where": "Lugares em {{place}}",
     "searchPlaces": "Buscar lugares em {{place}}",
     "nearMe": "Lugares perto de mim",
     "locationDenied": "Permita o acesso à localização para ver lugares por perto ou escolha um destino.",
@@ -776,7 +775,7 @@
       "other": "Outro"
     },
     "neighbourhoods": "Bairros de {{place}}",
-    "destinationChosen": "Destino: {{place}} (toque para trocar)"
+    "destinationChosen": "Destino: {{place}}"
   },
   "search": {
     "where": "Para onde?",

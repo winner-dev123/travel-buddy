@@ -705,7 +705,6 @@
     "name": "Group name",
     "description": "What's the plan? (optional)",
     "destination": "Destination",
-    "where": "Destination: {{place}} (tap to change)",
     "capacity": "Maximum members (2–50)",
     "challenges": "Challenges",
     "announce": "Post an announcement",
@@ -723,7 +722,7 @@
     "signInToPlan": "Sign in to plan trips and see places.",
     "places": "Places",
     "destination": "Destination",
-    "where": "Places in {{place}} (tap to change)",
+    "where": "Places in {{place}}",
     "searchPlaces": "Search places in {{place}}",
     "nearMe": "Places near me",
     "locationDenied": "Allow location access to see places near you, or pick a destination.",
@@ -762,7 +761,7 @@
       "other": "Other"
     },
     "neighbourhoods": "Neighbourhoods in {{place}}",
-    "destinationChosen": "Destination: {{place}} (tap to change)"
+    "destinationChosen": "Destination: {{place}}"
   },
   "search": {
     "where": "Where to?",

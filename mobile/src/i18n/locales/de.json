@@ -705,7 +705,6 @@
     "name": "Gruppenname",
     "description": "Was ist geplant? (optional)",
     "destination": "Reiseziel",
-    "where": "Reiseziel: {{place}} (zum Ändern tippen)",
     "capacity": "Maximale Mitgliederzahl (2–50)",
     "challenges": "Challenges",
     "announce": "Ankündigung posten",
@@ -723,7 +722,7 @@
     "signInToPlan": "Melde dich an, um Reisen zu planen und Orte zu sehen.",
     "places": "Orte",
     "destination": "Reiseziel",
-    "where": "Orte in {{place}} (zum Ändern tippen)",
+    "where": "Orte in {{place}}",
     "searchPlaces": "Orte in {{place}} suchen",
     "nearMe": "Orte in meiner Nähe",
     "locationDenied": "Erlaube den Standortzugriff, um Orte in der Nähe zu sehen, oder wähle ein Reiseziel.",
@@ -762,7 +761,7 @@
       "other": "Sonstiges"
     },
     "neighbourhoods": "Stadtteile von {{place}}",
-    "destinationChosen": "Reiseziel: {{place}} (zum Ändern tippen)"
+    "destinationChosen": "Reiseziel: {{place}}"
   },
   "search": {
     "where": "Wohin?",
