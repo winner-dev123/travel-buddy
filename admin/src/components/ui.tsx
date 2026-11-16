@@ -10,6 +10,8 @@ import {
 import { ApiError } from '../api/http';
 import type {
   AccountStatus,
+  ProviderDocumentStatus,
+  ProviderStatus,
   ReportStatus,
   TransactionStatus,
   UserSummary,
@@ -214,6 +216,32 @@ const TX_TONE: Record<TransactionStatus, Tone> = {
 export function TransactionStatusBadge({ status }: { status: TransactionStatus }) {
   const { t } = useI18n();
   return <Badge tone={TX_TONE[status]}>{t(`txStatus.${status}`)}</Badge>;
+}
+
+const PROVIDER_TONE: Record<ProviderStatus, Tone> = {
+  draft: 'neutral',
+  submitted: 'warning',
+  changes_requested: 'info',
+  approved: 'success',
+  rejected: 'danger',
+  suspended: 'warning',
+  deactivated: 'neutral',
+};
+
+export function ProviderStatusBadge({ status }: { status: ProviderStatus }) {
+  const { t } = useI18n();
+  return <Badge tone={PROVIDER_TONE[status]}>{t(`providerStatus.${status}`)}</Badge>;
+}
+
+const DOCUMENT_TONE: Record<ProviderDocumentStatus, Tone> = {
+  pending: 'info',
+  accepted: 'success',
+  rejected: 'danger',
+};
+
+export function DocumentStatusBadge({ status }: { status: ProviderDocumentStatus }) {
+  const { t } = useI18n();
+  return <Badge tone={DOCUMENT_TONE[status]}>{t(`documentStatus.${status}`)}</Badge>;
 }
 
 export function PriorityBadge({ priority }: { priority: number }) {

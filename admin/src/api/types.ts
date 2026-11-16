@@ -23,7 +23,8 @@ export type Permission =
   | 'audit.read'
   | 'privacy.requests.manage'
   | 'safety.filters.manage'
-  | 'roles.assign';
+  | 'roles.assign'
+  | 'providers.verify';
 
 export type AccountStatus = 'active' | 'suspended' | 'deactivated' | 'pending_deletion' | 'deleted';
 
@@ -112,7 +113,17 @@ export interface OpsSummary {
 
 export type ReportStatus = 'open' | 'in_review' | 'actioned' | 'dismissed';
 export const REPORT_STATUSES: ReportStatus[] = ['open', 'in_review', 'actioned', 'dismissed'];
-export type ReportTargetType = 'post' | 'comment' | 'user' | 'message' | 'group' | 'challenge' | 'media';
+export type ReportTargetType =
+  | 'post'
+  | 'comment'
+  | 'user'
+  | 'message'
+  | 'group'
+  | 'challenge'
+  | 'media'
+  | 'provider'
+  | 'provider_offering'
+  | 'provider_review';
 export const REPORT_TARGET_TYPES: ReportTargetType[] = [
   'post',
   'comment',
@@ -121,6 +132,9 @@ export const REPORT_TARGET_TYPES: ReportTargetType[] = [
   'group',
   'challenge',
   'media',
+  'provider',
+  'provider_offering',
+  'provider_review',
 ];
 export const REPORT_REASONS = [
   'spam',
@@ -282,6 +296,175 @@ export interface AdminProduct {
   title?: Record<string, string>;
   description?: Record<string, string>;
   sort_order?: number;
+}
+
+// ───────── Guides and travel companies (ADR-0036) ─────────
+
+export type ProviderKind = 'guide' | 'company';
+export const PROVIDER_KINDS: ProviderKind[] = ['guide', 'company'];
+export type ProviderStatus =
+  | 'draft'
+  | 'submitted'
+  | 'changes_requested'
+  | 'approved'
+  | 'rejected'
+  | 'suspended'
+  | 'deactivated';
+export const PROVIDER_STATUSES: ProviderStatus[] = [
+  'draft',
+  'submitted',
+  'changes_requested',
+  'approved',
+  'rejected',
+  'suspended',
+  'deactivated',
+];
+export type ProviderRole = 'owner' | 'manager' | 'agent';
+export type ProviderMemberStatus = 'invited' | 'active';
+export type ProviderSpecialty =
+  | 'city_tours'
+  | 'history_culture'
+  | 'food_drink'
+  | 'nature'
+  | 'adventure'
+  | 'water_activities'
+  | 'nightlife'
+  | 'photography'
+  | 'art_museums'
+  | 'family'
+  | 'wellness'
+  | 'accessible_travel'
+  | 'transfers'
+  | 'multi_day';
+export type ProviderDocumentKind =
+  | 'identity'
+  | 'tourism_registry'
+  | 'guide_license'
+  | 'business_registration'
+  | 'insurance'
+  | 'other';
+export type ProviderDocumentStatus = 'pending' | 'accepted' | 'rejected';
+
+/** The parts of `MediaRef` the console uses. */
+export interface MediaRef {
+  id: Uuid;
+  kind: 'image' | 'video' | 'audio';
+  status: 'ready' | 'processing' | 'unavailable';
+  url: string | null;
+  url_expires_at: Timestamp | null;
+  alt_text?: string | null;
+}
+
+/** The parts of `DestinationSummary` the console uses. */
+export interface DestinationSummary {
+  id: Uuid;
+  kind: string;
+  slug: string;
+  path: string;
+  name: string;
+  country_code: string;
+  country_name?: string | null;
+  region_name?: string | null;
+}
+
+export interface AdminProviderSummary {
+  id: Uuid;
+  kind: ProviderKind;
+  status: ProviderStatus;
+  display_name: string;
+  country_code: string;
+  owner: UserSummary | null;
+  submitted_at: Timestamp | null;
+  decided_at: Timestamp | null;
+  created_at: Timestamp;
+}
+
+/** `ProviderWorkspace`: the public profile plus the private verification fields. */
+export interface ProviderWorkspace {
+  id: Uuid;
+  slug: string;
+  kind: ProviderKind;
+  status: ProviderStatus;
+  display_name: string;
+  tagline: string | null;
+  logo: MediaRef | null;
+  cover: MediaRef | null;
+  base_destination: DestinationSummary | null;
+  languages: string[];
+  specialties: ProviderSpecialty[];
+  rating_average: number | null;
+  rating_count: number;
+  verified_at: Timestamp | null;
+  response_time_seconds: number | null;
+  about: string | null;
+  years_experience: number | null;
+  website_url: string | null;
+  service_areas: DestinationSummary[];
+  published_offering_count: number;
+  country_code: string;
+  legal_name: string | null;
+  registration_number: string | null;
+  review_note: string | null;
+  suspended_reason: string | null;
+  submitted_at: Timestamp | null;
+  decided_at: Timestamp | null;
+  locked_fields: string[];
+  terms_version: string;
+  terms_accepted_version: string | null;
+  missing_for_submit: string[];
+  inquiry_count: number;
+  response_count: number;
+  version: number;
+  created_at: Timestamp;
+}
+
+export interface ProviderMember {
+  user: UserSummary | null;
+  role: ProviderRole;
+  status: ProviderMemberStatus;
+  created_at: Timestamp;
+  accepted_at: Timestamp | null;
+}
+
+export interface AdminProviderDocument {
+  id: Uuid;
+  kind: ProviderDocumentKind;
+  number: string | null;
+  issuing_country: string | null;
+  /** A local date, `2027-05-31`. */
+  expires_on: string | null;
+  status: ProviderDocumentStatus;
+  /** Files are deleted 90 days after the decision; the record of the check stays. */
+  file_available: boolean;
+  created_at: Timestamp;
+  decided_at: Timestamp | null;
+  decided_by: Uuid | null;
+  uploaded_by: Uuid | null;
+}
+
+export interface AdminProvider {
+  provider: ProviderWorkspace;
+  owner: UserSummary | null;
+  members: ProviderMember[];
+  documents: AdminProviderDocument[];
+  decided_by: Uuid | null;
+  open_report_count: number;
+}
+
+/** A 5-minute signed link to a verification document; each opening is audited. */
+export interface ProviderDocumentFileLink {
+  url: string;
+  expires_at: Timestamp;
+}
+
+export type ProviderDecision = 'approve' | 'request_changes' | 'reject';
+
+export interface ProviderDecisionRequest {
+  decision: ProviderDecision;
+  /** Required unless approving; shown to the applicant. */
+  note?: string;
+  /** On approval, documents not listed are accepted. */
+  documents?: { id: Uuid; status: 'accepted' | 'rejected' }[];
 }
 
 export interface MessageFilterPolicy {

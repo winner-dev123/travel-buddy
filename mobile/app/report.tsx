@@ -105,14 +105,17 @@ export default function ReportScreen() {
           multiline
           testID="report-details"
         />
-        <SwitchRow
-          label={
-            params.name ? t('report.alsoBlockName', { name: params.name }) : t('report.alsoBlock')
-          }
-          value={alsoBlock}
-          onValueChange={setAlsoBlock}
-          testID="report-also-block"
-        />
+        {/* Blocking a guide or company is its own action on their profile (ADR-0036). */}
+        {params.type.startsWith('provider') ? null : (
+          <SwitchRow
+            label={
+              params.name ? t('report.alsoBlockName', { name: params.name }) : t('report.alsoBlock')
+            }
+            value={alsoBlock}
+            onValueChange={setAlsoBlock}
+            testID="report-also-block"
+          />
+        )}
         {send.isError ? <Notice tone="error">{t('report.failed')}</Notice> : null}
         <Button
           label={t('report.submit')}

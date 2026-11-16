@@ -240,6 +240,13 @@ def test_apply_submit_and_staff_approval(app: LiveApp) -> None:  # noqa: F811
     assert_matches_contract(detail.json(), "AdminProvider")
     assert detail.json()["provider"]["legal_name"] == "Ana Souza"
     assert detail.headers["cache-control"] == "no-store"
+    document_id = detail.json()["documents"][0]["id"]
+    link = app.client.get(
+        f"/v1/admin/providers/{provider['id']}/documents/{document_id}/file",
+        headers=_admin(staff),
+    )
+    # The test photo never finishes processing, so there's no file to sign yet.
+    assert link.status_code == 409, link.text
 
     changes = _decide(app, staff, provider["id"], "request_changes", "Please add your CADASTUR.")
     assert changes.status_code == 200, changes.text

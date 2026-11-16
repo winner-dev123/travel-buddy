@@ -58,6 +58,7 @@ import { Composer } from '@/features/messages/Composer';
 import { ExpressionTray } from '@/features/messages/ExpressionTray';
 import { GiftBubble } from '@/features/messages/GiftBubble';
 import { GiftEffectOverlay } from '@/features/messages/GiftEffectOverlay';
+import { ChatRequests } from '@/features/providers/ChatRequests';
 import {
   giftEffectOf,
   giftNameKey,
@@ -167,6 +168,7 @@ export default function ChatScreen() {
   // Direct chats: either member may pin. Groups: only with `messages.pin` (DM-011, GCHAT-005).
   const canPin =
     conversation.data?.kind === 'direct' ||
+    conversation.data?.kind === 'provider' ||
     (groupAccess.data?.my_membership?.permissions.includes('messages.pin') ?? false);
   const pins = useQuery({
     queryKey: messageKeys.pins(id),
@@ -503,6 +505,7 @@ export default function ChatScreen() {
           member_restricted: t('messages.memberRestricted'),
           chat_admins_only: t('messages.adminsOnly'),
           archived: t('messages.archived'),
+          provider_unavailable: t('messages.providerUnavailable'),
         }[data.send_restriction ?? 'connection_required']
       : null;
   const pinned = pins.data?.data ?? [];
@@ -515,7 +518,12 @@ export default function ChatScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: data?.title ?? data?.counterpart?.display_name ?? t('messages.chatTitle'),
+          // Provider chats: the team sees the traveler (with the provider's name); the traveler
+          // sees the provider (ADR-0036).
+          title:
+            data?.kind === 'provider' && data.counterpart
+              ? `${data.counterpart.display_name} · ${data.title ?? ''}`
+              : (data?.title ?? data?.counterpart?.display_name ?? t('messages.chatTitle')),
           headerRight: () => (
             <Pressable
               onPress={() => router.push('/settings/chat')}
@@ -580,6 +588,7 @@ export default function ChatScreen() {
           </View>
         ) : null}
         {mute.isError ? <Notice tone="error">{t('user.actionFailed')}</Notice> : null}
+        {data?.kind === 'provider' ? <ChatRequests conversation={data} /> : null}
         {pinned.length > 0 ? (
           <View
             style={[styles.pins, { borderBottomColor: theme.colors.divider }]}

@@ -9,6 +9,7 @@ import {
   type AdminReport,
   type ModerationActionRequest,
   type ModerationActionType,
+  type ReportTargetType,
   type RestrictionKind,
 } from '../api/types';
 import { useSession } from '../auth/session';
@@ -30,6 +31,27 @@ import { useI18n } from '../i18n/I18n';
 const CONTENT_ACTIONS: ModerationActionType[] = ['remove_content', 'limit_visibility'];
 const ACCOUNT_ACTIONS: ModerationActionType[] = ['warn', 'restrict', 'suspend', 'ban'];
 const DURATIONS = [1, 3, 7, 30, 0];
+
+/** What can be done to the reported thing itself; the author's account has its own actions. */
+function contentActions(target: ReportTargetType): ModerationActionType[] {
+  switch (target) {
+    case 'user':
+    case 'provider': // a guide or company is suspended from its own page
+      return [];
+    case 'provider_offering':
+    case 'provider_review':
+      return ['remove_content'];
+    default:
+      return CONTENT_ACTIONS;
+  }
+}
+
+/** The guide or company a report is about (offerings and reviews carry it in the evidence). */
+function reportedProvider(report: AdminReport): string | null {
+  if (report.target_type === 'provider') return report.target_id;
+  if (report.target_type !== 'provider_offering' && report.target_type !== 'provider_review') return null;
+  return typeof report.evidence.provider_id === 'string' ? report.evidence.provider_id : null;
+}
 
 export function ReportDetailPage() {
   const { id = '' } = useParams();
@@ -59,6 +81,7 @@ export function ReportDetailPage() {
   const waiting = r.status === 'open' || r.status === 'in_review';
   const manage = can('moderation.reports.manage');
   const author = r.target_type === 'user' ? { id: r.target_id } : r.target_author;
+  const providerId = reportedProvider(r);
 
   return (
     <>
@@ -136,6 +159,14 @@ export function ReportDetailPage() {
               {r.target_author ? <Person person={r.target_author} /> : <span className="muted">—</span>}
               {author && can('users.read') && <Link to={`/users/${author.id}`}>{t('report.openAccount')}</Link>}
             </dd>
+            {providerId && can('providers.verify') && (
+              <>
+                <dt>{t('target.provider')}</dt>
+                <dd>
+                  <Link to={`/providers/${providerId}`}>{t('report.openProvider')}</Link>
+                </dd>
+              </>
+            )}
             <dt>{t('report.assignedTo')}</dt>
             <dd>{r.assigned_to ? <Person person={r.assigned_to} /> : t('report.unassigned')}</dd>
             {r.resolution_note && (
@@ -187,9 +218,8 @@ function ResolveDialog({
   const [days, setDays] = useState(7);
   const [notes, setNotes] = useState('');
 
-  const contentTarget = report.target_type !== 'user';
   const available = [
-    ...(contentTarget ? CONTENT_ACTIONS : []),
+    ...contentActions(report.target_type),
     ...(authorId ? ACCOUNT_ACTIONS.filter((a) => a !== 'ban' || can('users.ban')) : []),
   ];
   const timed = action === 'suspend' || action === 'restrict';

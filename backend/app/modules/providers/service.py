@@ -2210,8 +2210,10 @@ async def staff_document_link(
     document = await session.get(ProviderDocument, document_id)
     if document is None or document.provider_id != provider_id:
         raise _not_found("Document")
-    if document.media_id is None or document.file_deleted_at is not None or sign is None:
+    if document.media_id is None or document.file_deleted_at is not None:
         raise AppError(ErrorCode.CONFLICT, "The file is no longer kept.", status=410)
+    if sign is None:  # no private storage configured here: the file exists but can't be served
+        raise AppError(ErrorCode.SERVICE_UNAVAILABLE, "Document storage isn't available here.")
     ref = (await media.refs(session, [document.media_id], sign=sign)).get(document.media_id)
     if ref is None or ref.url is None or ref.url_expires_at is None:
         raise AppError(ErrorCode.CONFLICT, "The file is still being processed.")

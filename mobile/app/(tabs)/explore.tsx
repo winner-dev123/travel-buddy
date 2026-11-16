@@ -32,6 +32,7 @@ import {
 } from '@/features/feed/location';
 import { useServerFlags } from '@/features/flags/serverFlags';
 import { OfflinePackages } from '@/features/offline/OfflinePackages';
+import { LocalProviders } from '@/features/providers/LocalProviders';
 import type { DestinationSummary } from '@/features/feed/types';
 import { useAppTheme } from '@/theme/useAppTheme';
 
@@ -227,6 +228,9 @@ function Explore() {
             </Text>
           </Pressable>
         ))}
+        {destination && isOn('provider_marketplace') ? (
+          <LocalProviders destination={destination} />
+        ) : null}
         {destination && signedIn && isOn('offline_packages') ? (
           <OfflinePackages destination={destination} />
         ) : null}

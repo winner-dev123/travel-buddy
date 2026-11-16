@@ -7,11 +7,17 @@ import type { ApiClient } from '@/api';
 /** Where a notification leads (the same mapping for the inbox and for push taps). */
 export type NotificationRoute =
   | {
-      pathname: '/post/[id]' | '/user/[id]' | '/chat/[id]' | '/challenges/[id]' | '/groups/[id]';
+      pathname:
+        | '/post/[id]'
+        | '/user/[id]'
+        | '/chat/[id]'
+        | '/challenges/[id]'
+        | '/groups/[id]'
+        | '/provider-requests/[id]';
       params: { id: string };
     }
   | { pathname: '/trips/review'; params: { generation: string } }
-  | { pathname: '/settings/data' | '/settings/subscription' }
+  | { pathname: '/settings/data' | '/settings/subscription' | '/providers/mine' }
   | null;
 
 export function notificationRoute(
@@ -21,6 +27,10 @@ export function notificationRoute(
   if (!entityType) return null;
   if (entityType === 'data_request') return { pathname: '/settings/data' }; // export ready
   if (entityType === 'subscription') return { pathname: '/settings/subscription' }; // BILL-011
+  // Guides and companies (ADR-0036): invitations, application decisions and reviews.
+  if (entityType === 'provider' || entityType === 'provider_review') {
+    return { pathname: '/providers/mine' };
+  }
   if (!entityId) return null;
   if (entityType === 'ai_generation') {
     return { pathname: '/trips/review', params: { generation: entityId } };
@@ -32,8 +42,9 @@ export function notificationRoute(
       conversation: '/chat/[id]',
       challenge: '/challenges/[id]',
       group: '/groups/[id]',
+      provider_inquiry: '/provider-requests/[id]',
     } as const
-  )[entityType as 'post' | 'user' | 'conversation' | 'challenge' | 'group'];
+  )[entityType as 'post' | 'user' | 'conversation' | 'challenge' | 'group' | 'provider_inquiry'];
   return pathname ? { pathname, params: { id: entityId } } : null;
 }
 

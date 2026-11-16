@@ -16,7 +16,12 @@ export type NotificationType =
   | 'moderation_notice'
   | 'subscription_notice'
   | 'ai_generation_ready'
-  | 'data_export_ready';
+  | 'data_export_ready'
+  | 'provider_invitation'
+  | 'provider_application'
+  | 'provider_inquiry'
+  | 'provider_inquiry_update'
+  | 'provider_review';
 
 export interface ChannelSettings {
   push?: boolean;
@@ -56,6 +61,12 @@ export const NOTIFICATION_GROUPS = {
   challenges: ['challenge_started', 'challenge_result'],
   stories: ['post_reaction', 'post_comment'],
   planning: ['ai_generation_ready'],
+  providers: [
+    'provider_inquiry',
+    'provider_inquiry_update',
+    'provider_invitation',
+    'provider_review',
+  ],
 } as const satisfies Record<string, readonly NotificationType[]>;
 export type NotificationGroup = keyof typeof NOTIFICATION_GROUPS;
 

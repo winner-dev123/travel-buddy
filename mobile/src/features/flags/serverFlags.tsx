@@ -26,7 +26,8 @@ export type ServerFlag =
   | 'post_translation'
   | 'ai_itineraries'
   | 'ai_replanning'
-  | 'group_challenges';
+  | 'group_challenges'
+  | 'provider_marketplace';
 
 /**
  * `isOn(flag)`: a flag counts as on until the server says it is off, so a slow or failed config

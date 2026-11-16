@@ -3,6 +3,8 @@ import type {
   AdminDataRequest,
   AdminOverview,
   AdminProduct,
+  AdminProvider,
+  AdminProviderSummary,
   AdminReport,
   AdminTransaction,
   AdminUser,
@@ -16,6 +18,10 @@ import type {
   OpsSummary,
   Page,
   PlatformRole,
+  ProviderDecisionRequest,
+  ProviderDocumentFileLink,
+  ProviderKind,
+  ProviderStatus,
   ReportStatus,
   Uuid,
 } from './types';
@@ -34,6 +40,11 @@ export interface ResolveReportBody {
   status: 'actioned' | 'dismissed';
   resolution_note: string;
   action?: ModerationActionRequest;
+}
+
+export interface ProviderFilters {
+  status?: ProviderStatus;
+  kind?: ProviderKind;
 }
 
 export interface UserSearch {
@@ -119,6 +130,19 @@ export function createAdminApi(request: Requester) {
       filters: { resource_type?: string; resource_id?: string; actor_id?: string },
       cursor?: string | null,
     ) => page<AuditLogEntry>('/v1/admin/audit-logs', { ...filters }, cursor),
+
+    providers: (filters: ProviderFilters, cursor?: string | null) =>
+      page<AdminProviderSummary>('/v1/admin/providers', { ...filters }, cursor),
+    provider: (id: Uuid) => request<AdminProvider>(`/v1/admin/providers/${id}`),
+    /** A 5-minute signed link (audited). Open it at once; never keep it. */
+    providerDocumentFile: (id: Uuid, documentId: Uuid) =>
+      request<ProviderDocumentFileLink>(`/v1/admin/providers/${id}/documents/${documentId}/file`),
+    decideProvider: (id: Uuid, body: ProviderDecisionRequest) =>
+      request<AdminProvider>(`/v1/admin/providers/${id}/decision`, { method: 'POST', body }),
+    suspendProvider: (id: Uuid, reason: string) =>
+      request<AdminProvider>(`/v1/admin/providers/${id}/suspend`, { method: 'POST', body: { reason } }),
+    reinstateProvider: (id: Uuid) =>
+      request<AdminProvider>(`/v1/admin/providers/${id}/reinstate`, { method: 'POST' }),
 
     messageFilter: () => request<MessageFilterPolicy>('/v1/admin/safety/message-filter'),
     updateMessageFilter: (body: { terms: string[]; new_connection_days: number; version: number }) =>

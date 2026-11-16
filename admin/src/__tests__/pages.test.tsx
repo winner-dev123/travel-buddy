@@ -2,7 +2,16 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { AdminOverview, AdminReport, AdminUser, AdminUserSummary } from '../api/types';
+import { ApiError } from '../api/http';
+import type {
+  AdminOverview,
+  AdminProvider,
+  AdminProviderDocument,
+  AdminProviderSummary,
+  AdminReport,
+  AdminUser,
+  AdminUserSummary,
+} from '../api/types';
 import { ConsoleRoutes } from '../App';
 import { Layout } from '../components/Layout';
 import { fakeApi, page, renderConsole } from '../test/render';
@@ -55,6 +64,103 @@ const USER: AdminUser = {
   moderation_action_count: 0,
   suspended_until: null,
 };
+
+const OWNER = { id: 'u-owner', handle: 'marina', display_name: 'Marina Costa' };
+
+const PROVIDER_SUMMARY: AdminProviderSummary = {
+  id: 'prov-1',
+  kind: 'guide',
+  status: 'submitted',
+  display_name: 'Rio Walks',
+  country_code: 'BR',
+  owner: OWNER,
+  submitted_at: '2026-11-14T09:00:00Z',
+  decided_at: null,
+  created_at: '2026-11-10T09:00:00Z',
+};
+
+const ID_DOCUMENT: AdminProviderDocument = {
+  id: 'doc-1',
+  kind: 'identity',
+  number: 'RG 12.345.678-9',
+  issuing_country: 'BR',
+  expires_on: '2030-05-31',
+  status: 'pending',
+  file_available: true,
+  created_at: '2026-11-12T09:00:00Z',
+  decided_at: null,
+  decided_by: null,
+  uploaded_by: 'u-owner',
+};
+
+const REGISTRY_DOCUMENT: AdminProviderDocument = {
+  ...ID_DOCUMENT,
+  id: 'doc-2',
+  kind: 'tourism_registry',
+  number: 'CAD-0001',
+  expires_on: '2025-01-31',
+  file_available: false,
+};
+
+const APPLICATION: AdminProvider = {
+  provider: {
+    id: 'prov-1',
+    slug: 'rio-walks',
+    kind: 'guide',
+    status: 'submitted',
+    display_name: 'Rio Walks',
+    tagline: 'Hidden corners of Rio, on foot',
+    logo: null,
+    cover: null,
+    base_destination: {
+      id: 'd-rio',
+      kind: 'city',
+      slug: 'rio-de-janeiro-br',
+      path: 'brazil/rio-de-janeiro',
+      name: 'Rio de Janeiro',
+      country_code: 'BR',
+      country_name: 'Brazil',
+      region_name: 'Rio de Janeiro',
+    },
+    languages: ['pt-BR', 'en'],
+    specialties: ['city_tours', 'history_culture'],
+    rating_average: null,
+    rating_count: 0,
+    verified_at: null,
+    response_time_seconds: null,
+    about: 'Licensed guide since 2015.',
+    years_experience: 9,
+    website_url: 'javascript:alert(1)',
+    service_areas: [],
+    published_offering_count: 0,
+    country_code: 'BR',
+    legal_name: 'Marina Costa da Silva',
+    registration_number: '27.123456.10.0001-5',
+    review_note: null,
+    suspended_reason: null,
+    submitted_at: '2026-11-14T09:00:00Z',
+    decided_at: null,
+    locked_fields: [],
+    terms_version: '2026-11-01',
+    terms_accepted_version: '2026-11-01',
+    missing_for_submit: [],
+    inquiry_count: 0,
+    response_count: 0,
+    version: 3,
+    created_at: '2026-11-10T09:00:00Z',
+  },
+  owner: OWNER,
+  members: [
+    { user: OWNER, role: 'owner', status: 'active', created_at: '2026-11-10T09:00:00Z', accepted_at: '2026-11-10T09:00:00Z' },
+  ],
+  documents: [ID_DOCUMENT, REGISTRY_DOCUMENT],
+  decided_by: null,
+  open_report_count: 0,
+};
+
+function withStatus(status: AdminProvider['provider']['status'], extra: Partial<AdminProvider['provider']> = {}): AdminProvider {
+  return { ...APPLICATION, provider: { ...APPLICATION.provider, status, ...extra } };
+}
 
 describe('navigation', () => {
   it('shows only the pages the role may open', () => {
@@ -180,6 +286,35 @@ describe('reports', () => {
     expect(body.action?.expires_at).toBeTruthy();
   });
 
+  it('labels reports about guides and companies and links to the application', async () => {
+    const aboutReview: AdminReport = {
+      ...REPORT,
+      id: 'report-2',
+      target_type: 'provider_review',
+      target_id: 'review-1',
+      reason: 'scam',
+      evidence: { provider_id: 'prov-1', review_id: 'review-1', rating: 1, body: 'Pay me by Pix first' },
+    };
+    const api = fakeApi({
+      reports: vi.fn(async () => page([aboutReview])),
+      report: vi.fn(async () => aboutReview),
+      actions: vi.fn(async () => page([])),
+    });
+    renderConsole(<ConsoleRoutes />, { api, role: 'moderator', route: '/reports' });
+    expect(screen.getByRole('option', { name: 'Guide or company' })).toBeInTheDocument();
+    const row = await screen.findByRole('row', { name: /Scam/ });
+    expect(within(row).getByText('Review')).toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(row);
+    expect(await screen.findByRole('heading', { name: 'Scam · Review' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open the guide or company' })).toHaveAttribute('href', '/providers/prov-1');
+    // A review can be removed, not limited.
+    await user.click(screen.getByRole('button', { name: 'Resolve' }));
+    const dialog = screen.getByRole('dialog', { name: 'Resolve the report' });
+    expect(within(dialog).getByRole('option', { name: 'Remove the content' })).toBeInTheDocument();
+    expect(within(dialog).queryByRole('option', { name: 'Limit who sees it' })).toBeNull();
+  });
+
   it('flags child safety reports', async () => {
     const api = fakeApi({ report: vi.fn(async () => ({ ...REPORT, reason: 'minor_safety' as const })), actions: vi.fn(async () => page([])) });
     renderConsole(<ConsoleRoutes />, { api, role: 'moderator', route: '/reports/report-1' });
@@ -262,5 +397,217 @@ describe('users', () => {
     await userEvent.setup().click(await screen.findByRole('checkbox', { name: 'Moderator' }));
     await waitFor(() => expect(api.assignRole).toHaveBeenCalledWith('u-author', 'moderator'));
     expect(await screen.findByRole('checkbox', { name: 'Moderator' })).toBeChecked();
+  });
+});
+
+describe('providers', () => {
+  it('is in the menu and open only to staff who verify providers', () => {
+    const { unmount } = renderConsole(
+      <Layout>
+        <p>content</p>
+      </Layout>,
+      { role: 'moderator' },
+    );
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(nav).getByRole('link', { name: 'Guides and companies' })).toHaveAttribute('href', '/providers');
+    unmount();
+    renderConsole(<ConsoleRoutes />, { role: 'support', route: '/providers' });
+    expect(screen.getByRole('heading', { name: 'Page not found' })).toBeInTheDocument();
+  });
+
+  it('lists the review queue, filters it and opens an application', async () => {
+    const api = fakeApi({
+      providers: vi.fn(async () => page([PROVIDER_SUMMARY])),
+      provider: vi.fn(async () => APPLICATION),
+    });
+    renderConsole(<ConsoleRoutes />, { api, role: 'moderator', route: '/providers' });
+    const row = await screen.findByRole('row', { name: /Rio Walks/ });
+    expect(api.providers).toHaveBeenCalledWith({ status: 'submitted', kind: undefined }, null);
+    expect(within(row).getByText('Guide')).toBeInTheDocument();
+    expect(within(row).getByText('Brazil')).toBeInTheDocument();
+    expect(within(row).getByText('Marina Costa')).toBeInTheDocument();
+    expect(within(row).getByText('Waiting for review')).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.selectOptions(screen.getByLabelText('Type'), 'company');
+    await waitFor(() =>
+      expect(api.providers).toHaveBeenLastCalledWith({ status: 'submitted', kind: 'company' }, null),
+    );
+    await user.selectOptions(screen.getByLabelText('Status'), 'approved');
+    await waitFor(() =>
+      expect(api.providers).toHaveBeenLastCalledWith({ status: 'approved', kind: 'company' }, null),
+    );
+
+    await user.click(await screen.findByRole('row', { name: /Rio Walks/ }));
+    expect(await screen.findByRole('heading', { name: 'Rio Walks' })).toBeInTheDocument();
+    expect(api.provider).toHaveBeenCalledWith('prov-1');
+  });
+
+  it('shows the private details next to the public profile, and the documents', async () => {
+    const api = fakeApi({ provider: vi.fn(async () => APPLICATION) });
+    renderConsole(<ConsoleRoutes />, { api, role: 'moderator', route: '/providers/prov-1' });
+    expect(await screen.findByRole('heading', { name: 'Rio Walks' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Checked by staff (private)' })).toBeInTheDocument();
+    expect(screen.getByText('Marina Costa da Silva')).toBeInTheDocument();
+    expect(screen.getByText('27.123456.10.0001-5')).toBeInTheDocument();
+    expect(screen.getByText('Brazil (BR)')).toBeInTheDocument();
+    expect(screen.getByText('Hidden corners of Rio, on foot')).toBeInTheDocument();
+    expect(screen.getByText('Rio de Janeiro, Rio de Janeiro, Brazil')).toBeInTheDocument();
+    expect(screen.getByText('City tours, History and culture')).toBeInTheDocument();
+    expect(screen.getByText(/English/)).toBeInTheDocument();
+    // An applicant's website never becomes a script link.
+    expect(screen.getByText('javascript:alert(1)').closest('a')).toBeNull();
+
+    const idRow = screen.getByRole('row', { name: /Identity document/ });
+    expect(within(idRow).getByText('RG 12.345.678-9')).toBeInTheDocument();
+    expect(within(idRow).getByText('Pending')).toBeInTheDocument();
+    expect(within(idRow).getByText('Kept')).toBeInTheDocument();
+    expect(within(idRow).getByRole('button', { name: /Open/ })).toBeEnabled();
+    const registryRow = screen.getByRole('row', { name: /Tourism registry/ });
+    expect(within(registryRow).getByText('Deleted')).toBeInTheDocument();
+    expect(within(registryRow).getByText('Expired')).toBeInTheDocument();
+    expect(within(registryRow).queryByRole('button', { name: /Open/ })).toBeNull();
+
+    // A submitted application gets a decision, not a suspension.
+    expect(screen.getByRole('heading', { name: 'Decision' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Suspend' })).toBeNull();
+  });
+
+  it('blocks asking for changes without a note, then sends the note', async () => {
+    const updated = withStatus('changes_requested', { review_note: 'Send a sharper photo of your ID.' });
+    const api = fakeApi({
+      provider: vi.fn(async () => APPLICATION),
+      decideProvider: vi.fn(async () => updated),
+    });
+    renderConsole(<ConsoleRoutes />, { api, role: 'moderator', route: '/providers/prov-1' });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('radio', { name: /Ask for changes/ }));
+    await user.click(screen.getByRole('button', { name: 'Ask for changes' }));
+    expect(await screen.findByText('Tell the applicant what to change, or why it is rejected.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Note to the applicant')).toHaveFocus();
+    expect(api.decideProvider).not.toHaveBeenCalled();
+
+    await user.type(screen.getByLabelText('Note to the applicant'), '  Send a sharper photo of your ID. ');
+    await user.click(screen.getByRole('button', { name: 'Ask for changes' }));
+    await waitFor(() => expect(api.decideProvider).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(api.decideProvider).mock.calls[0]).toEqual([
+      'prov-1',
+      { decision: 'request_changes', note: 'Send a sharper photo of your ID.' },
+    ]);
+    // The page shows the answer at once; the decision form is gone.
+    expect(await screen.findByText('Changes requested')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Decision' })).toBeNull();
+  });
+
+  it('approves with a decision for each document', async () => {
+    const approved = withStatus('approved', { verified_at: '2026-11-16T12:00:00Z' });
+    const api = fakeApi({
+      provider: vi.fn(async () => APPLICATION),
+      decideProvider: vi.fn(async () => approved),
+    });
+    renderConsole(<ConsoleRoutes />, { api, role: 'moderator', route: '/providers/prov-1' });
+    const user = userEvent.setup();
+    await user.selectOptions(await screen.findByLabelText('Identity document · RG 12.345.678-9'), 'accepted');
+    await user.selectOptions(screen.getByLabelText('Tourism registry (e.g. CADASTUR) · CAD-0001'), 'rejected');
+    await user.click(screen.getByRole('button', { name: 'Approve' }));
+    await waitFor(() => expect(api.decideProvider).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(api.decideProvider).mock.calls[0]).toEqual([
+      'prov-1',
+      {
+        decision: 'approve',
+        documents: [
+          { id: 'doc-1', status: 'accepted' },
+          { id: 'doc-2', status: 'rejected' },
+        ],
+      },
+    ]);
+    expect(await screen.findByRole('button', { name: 'Suspend' })).toBeInTheDocument();
+    // Refreshed from the answer, without another audited read.
+    expect(api.provider).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens a document in a new tab and explains a deleted file', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    const providerDocumentFile = vi
+      .fn()
+      .mockResolvedValueOnce({ url: 'https://files.test/doc-1?sig=abc', expires_at: '2026-11-16T12:05:00Z' })
+      .mockRejectedValueOnce(new ApiError({ status: 410, code: 'conflict', detail: 'The file is no longer kept.' }));
+    const api = fakeApi({ provider: vi.fn(async () => APPLICATION), providerDocumentFile });
+    renderConsole(<ConsoleRoutes />, { api, role: 'moderator', route: '/providers/prov-1' });
+    const user = userEvent.setup();
+    const openButton = () =>
+      within(screen.getByRole('row', { name: /Identity document/ })).queryByRole('button', { name: /Open/ });
+
+    await user.click((await screen.findByRole('button', { name: /Open: Identity document/ })));
+    await waitFor(() =>
+      expect(open).toHaveBeenCalledWith('https://files.test/doc-1?sig=abc', '_blank', expect.stringContaining('noopener')),
+    );
+    expect(providerDocumentFile).toHaveBeenCalledWith('prov-1', 'doc-1');
+    await waitFor(() => expect(openButton()).toBeEnabled());
+
+    await user.click(openButton()!);
+    expect(await screen.findByText(/deleted after the 90-day retention/)).toBeInTheDocument();
+    expect(within(screen.getByRole('row', { name: /Identity document/ })).getByText('Deleted')).toBeInTheDocument();
+    expect(openButton()).toBeNull();
+    expect(open).toHaveBeenCalledTimes(1);
+  });
+
+  it('says when a document is still processing', async () => {
+    const api = fakeApi({
+      provider: vi.fn(async () => APPLICATION),
+      providerDocumentFile: vi.fn(async () => {
+        throw new ApiError({ status: 409, code: 'conflict', detail: 'The file is still being processed.' });
+      }),
+    });
+    renderConsole(<ConsoleRoutes />, { api, role: 'moderator', route: '/providers/prov-1' });
+    await userEvent.setup().click(await screen.findByRole('button', { name: /Open: Identity document/ }));
+    expect(await screen.findByText(/still being processed. Try again in a minute/)).toBeInTheDocument();
+    expect(within(screen.getByRole('row', { name: /Identity document/ })).getByText('Kept')).toBeInTheDocument();
+  });
+
+  it('suspends an approved provider with a reason, then reinstates it', async () => {
+    const approved = withStatus('approved', { verified_at: '2026-11-16T12:00:00Z' });
+    const suspended = withStatus('suspended', {
+      verified_at: '2026-11-16T12:00:00Z',
+      suspended_reason: 'Asked travelers for card numbers',
+    });
+    const api = fakeApi({
+      provider: vi.fn(async () => approved),
+      suspendProvider: vi.fn(async () => suspended),
+      reinstateProvider: vi.fn(async () => approved),
+    });
+    renderConsole(<ConsoleRoutes />, { api, role: 'moderator', route: '/providers/prov-1' });
+    const user = userEvent.setup();
+    expect(await screen.findByText(/Verified since/)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Decision' })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Suspend' }));
+    const dialog = screen.getByRole('dialog', { name: 'Suspend this guide or company' });
+    const submit = within(dialog).getByRole('button', { name: 'Suspend' });
+    expect(submit).toBeDisabled();
+    await user.type(within(dialog).getByLabelText('Reason (their team sees it)'), 'Asked travelers for card numbers');
+    await user.click(submit);
+    await waitFor(() =>
+      expect(api.suspendProvider).toHaveBeenCalledWith('prov-1', 'Asked travelers for card numbers'),
+    );
+    expect(await screen.findByText('Asked travelers for card numbers')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Reinstate' }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Reinstate this guide or company' })).getByRole('button', {
+        name: 'Reinstate',
+      }),
+    );
+    await waitFor(() => expect(api.reinstateProvider).toHaveBeenCalledWith('prov-1'));
+    expect(await screen.findByRole('button', { name: 'Suspend' })).toBeInTheDocument();
+  });
+
+  it('speaks Portuguese', async () => {
+    const api = fakeApi({ providers: vi.fn(async () => page([PROVIDER_SUMMARY])) });
+    renderConsole(<ConsoleRoutes />, { api, role: 'moderator', route: '/providers', locale: 'pt-BR' });
+    expect(screen.getByRole('heading', { name: 'Guias e empresas' })).toBeInTheDocument();
+    const row = await screen.findByRole('row', { name: /Rio Walks/ });
+    expect(within(row).getByText('Aguardando análise')).toBeInTheDocument();
+    expect(within(row).getByText('Brasil')).toBeInTheDocument();
   });
 });

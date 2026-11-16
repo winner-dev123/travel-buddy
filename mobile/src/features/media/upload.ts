@@ -5,7 +5,15 @@ import * as ImagePicker from 'expo-image-picker';
 import type { ApiClient } from '@/api';
 
 /** Contract `MediaPurpose`. */
-export type MediaPurpose = 'post' | 'avatar' | 'message' | 'group_cover' | 'challenge';
+export type MediaPurpose =
+  | 'post'
+  | 'avatar'
+  | 'message'
+  | 'group_cover'
+  | 'challenge'
+  // Guides and companies (ADR-0036): public pictures, and private verification documents.
+  | 'provider'
+  | 'provider_document';
 
 /** A photo chosen on the device; ``mediaId`` is set once it reached the server, so a retried
  * publish never uploads the same photo twice. */

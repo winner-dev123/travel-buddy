@@ -16,6 +16,7 @@ import { ScreenTitle } from '@/components/ScreenTitle';
 import { accountKeys, cancelDeletion, unreadCount } from '@/features/account/api';
 import { Avatar } from '@/features/feed/PostCard';
 import type { UserSummary } from '@/features/feed/types';
+import { useServerFlags } from '@/features/flags/serverFlags';
 import { useAppTheme } from '@/theme/useAppTheme';
 
 /** SCR-100 Profile (Phase 1 slice): account, display name, privacy summary, sign out. */
@@ -59,6 +60,7 @@ export default function ProfileScreen() {
 }
 
 function SignedInProfile({ me }: { me: Me }) {
+  const isOn = useServerFlags();
   const { t, i18n } = useTranslation();
   const theme = useAppTheme();
   const router = useRouter();
@@ -242,6 +244,22 @@ function SignedInProfile({ me }: { me: Me }) {
             onPress={() => router.push('/rewards')}
             testID="profile-menu-rewards"
           />
+          {isOn('provider_marketplace') ? (
+            <MenuRow
+              icon="compass-outline"
+              label={t('providers.myRequests')}
+              onPress={() => router.push('/provider-requests')}
+              testID="profile-menu-provider-requests"
+            />
+          ) : null}
+          {isOn('provider_marketplace') ? (
+            <MenuRow
+              icon="briefcase-outline"
+              label={t('providers.mine.title')}
+              onPress={() => router.push('/providers/mine')}
+              testID="profile-menu-providers"
+            />
+          ) : null}
         </MenuGroup>
         <MenuGroup title={t('profileMenu.preferences')}>
           <MenuRow

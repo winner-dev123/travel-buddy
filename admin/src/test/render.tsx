@@ -19,6 +19,7 @@ export const ROLE_PERMISSIONS: Record<PlatformRole, Permission[]> = {
     'moderation.actions.write',
     'users.suspend',
     'content.rewards.review',
+    'providers.verify',
   ],
   admin: [
     'users.read',
@@ -28,6 +29,7 @@ export const ROLE_PERMISSIONS: Record<PlatformRole, Permission[]> = {
     'moderation.actions.write',
     'users.suspend',
     'content.rewards.review',
+    'providers.verify',
     'users.read_sensitive',
     'users.ban',
     'content.destinations.write',
@@ -79,6 +81,12 @@ export function fakeApi(overrides: Partial<Record<keyof AdminApi, unknown>> = {}
     'dataRequests',
     'resolveDataRequest',
     'auditLogs',
+    'providers',
+    'provider',
+    'providerDocumentFile',
+    'decideProvider',
+    'suspendProvider',
+    'reinstateProvider',
     'messageFilter',
     'updateMessageFilter',
   ];

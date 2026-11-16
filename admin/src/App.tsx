@@ -14,6 +14,8 @@ import { BillingPage } from './pages/BillingPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { PrivacyPage } from './pages/PrivacyPage';
+import { ProviderDetailPage } from './pages/ProviderDetailPage';
+import { ProvidersPage } from './pages/ProvidersPage';
 import { ReportDetailPage } from './pages/ReportDetailPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SafetyPage } from './pages/SafetyPage';
@@ -53,6 +55,14 @@ export function ConsoleRoutes() {
       <Route
         path="/reports/:id"
         element={<Allowed permission="moderation.reports.read"><ReportDetailPage /></Allowed>}
+      />
+      <Route
+        path="/providers"
+        element={<Allowed permission="providers.verify"><ProvidersPage /></Allowed>}
+      />
+      <Route
+        path="/providers/:id"
+        element={<Allowed permission="providers.verify"><ProviderDetailPage /></Allowed>}
       />
       <Route path="/users" element={<Allowed permission="users.read"><UsersPage /></Allowed>} />
       <Route path="/users/:id" element={<Allowed permission="users.read"><UserDetailPage /></Allowed>} />

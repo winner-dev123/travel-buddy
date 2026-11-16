@@ -18,6 +18,7 @@ export interface NavItem {
 export const NAV: NavItem[] = [
   { to: '/', label: 'nav.overview', permission: 'users.read' },
   { to: '/reports', label: 'nav.reports', permission: 'moderation.reports.read' },
+  { to: '/providers', label: 'nav.providers', permission: 'providers.verify' },
   { to: '/users', label: 'nav.users', permission: 'users.read' },
   { to: '/billing', label: 'nav.billing', permission: 'entitlements.grant' },
   { to: '/privacy', label: 'nav.privacy', permission: 'privacy.requests.manage' },

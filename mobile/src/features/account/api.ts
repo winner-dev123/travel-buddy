@@ -165,7 +165,8 @@ export async function setFollowing(
     .status;
 }
 
-export type ReportTarget = 'post' | 'comment' | 'user' | 'message';
+export type ReportTarget =
+  'post' | 'comment' | 'user' | 'message' | 'provider' | 'provider_offering' | 'provider_review';
 export const REPORT_REASONS = [
   'spam',
   'harassment',

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Phase 8a backend and contract built (2026-11-16); mobile and staff console screens next · Phase 8b (bookings, revenue) planned |
+| **Status** | Phase 8a built (2026-11-16): backend, contract, mobile screens (SCR-160..172), staff console queue · Phase 8b (bookings, revenue) planned |
 | **Decision** | [ADR-0036](adr/0036-guides-and-travel-companies-marketplace.md) |
 | **Requirements** | PROV-001..PROV-018 ([PRD §4.22](01-prd.md#422-guides-and-travel-companies-prov)) |
 | **Backlog** | BL-8.01..BL-8.12 ([09 §9a](09-development-backlog.md)) |

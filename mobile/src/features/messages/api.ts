@@ -15,14 +15,21 @@ export interface MessagePreview {
 }
 
 export type SendRestriction =
-  'connection_required' | 'blocked' | 'member_restricted' | 'chat_admins_only' | 'archived';
+  | 'connection_required'
+  | 'blocked'
+  | 'member_restricted'
+  | 'chat_admins_only'
+  | 'archived'
+  | 'provider_unavailable';
 
 /** Contract `Conversation`. */
 export interface Conversation {
   id: string;
-  kind: 'direct' | 'group' | 'challenge_team';
+  kind: 'direct' | 'group' | 'challenge_team' | 'provider';
   title: string | null;
   group_id?: string | null;
+  /** Provider chats (ADR-0036): the guide or company this thread is with. */
+  provider_id?: string | null;
   counterpart: UserSummary | null;
   last_message: MessagePreview | null;
   last_seq: number;

@@ -309,6 +309,26 @@ Offline: **Works offline** (fully functional from local data) · **Cached read-o
 
 **Phase 0 implementation:** the five tabs, SCR-001 and SCR-010 exist as placeholder routes that render "Coming in Phase N" from `mobile/src/config/featureFlags.ts`. SCR-150 is implemented.
 
+### Guides and travel companies (ADR-0036, docs/18)
+
+Entry points: a "Local guides & companies" section on Explore when anyone serves the chosen destination (PROV-008), Profile → "My requests to guides" and "Offer your services", notification taps, and the request card at the top of provider chats. Everything hides when the server flag `provider_marketplace` is off.
+
+| ID | Screen | Route | Phase | Auth | Offline | Key endpoints | Req |
+|---|---|---|---|---|---|---|---|
+| SCR-160 | Guides & companies for a destination | `/providers` | 8a | Guest / User | Online only | `GET /v1/providers` | PROV-007 |
+| SCR-161 | Provider profile (offerings, reviews, request, report, block) | `/providers/[id]` | 8a | Guest / User | Online only | `GET /v1/providers/{id}`, `…/offerings`, `…/reviews`, `PUT …/block` | PROV-002, 007, 012 |
+| SCR-162 | Offering | `/providers/offering/[id]` | 8a | Guest / User | Online only | `GET /v1/provider-offerings/{id}` | PROV-006 |
+| SCR-163 | Send a request (with in-person safety tips) | `/providers/request` | 8a | Verified | Online only | `POST /v1/providers/{id}/inquiries` | PROV-009 |
+| SCR-164 | My requests | `/provider-requests` | 8a | User | Online only | `GET /v1/users/me/inquiries` | PROV-010 |
+| SCR-165 | Request (both sides: accept/decline/complete/cancel/withdraw, review) | `/provider-requests/[id]` | 8a | User | Online only | `GET/POST /v1/provider-inquiries/{id}…` | PROV-010, 011 |
+| SCR-166 | Offer your services (my profiles, invitations) | `/providers/mine` | 8a | User | Online only | `GET /v1/users/me/providers` | PROV-001, 005 |
+| SCR-167 | Apply / edit provider profile | `/providers/apply` | 8a | Verified | Online only | `POST /v1/providers`, `PATCH /v1/providers/{id}` | PROV-001, 002 |
+| SCR-168 | Provider workspace (status, documents, submit) | `/providers/workspace/[id]` | 8a | Member | Online only | `GET …/workspace`, `…/documents`, `POST …/submit` | PROV-003, 004 |
+| SCR-169 | Manage offerings | `/providers/offerings/[id]` | 8a | Manager | Online only | `GET …/offerings?status=all`, publish/archive | PROV-006 |
+| SCR-170 | Offering editor | `/providers/offering-edit` | 8a | Manager | Online only | `POST …/offerings`, `PATCH /v1/provider-offerings/{id}` | PROV-006 |
+| SCR-171 | Request inbox | `/providers/inbox/[id]` | 8a | Member | Online only | `GET /v1/providers/{id}/inquiries` | PROV-010 |
+| SCR-172 | Team | `/providers/team/[id]` | 8a | Member | Online only | `…/members` | PROV-005 |
+
 ### 8.1 Implementation status (mobile app, 2026-11-11)
 
 Where each screen lives in `mobile/app/` today. Routes differ from the target tree where a

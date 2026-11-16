@@ -26,6 +26,10 @@ interface I18n {
   /** Minor units to "R$ 19,90" / "$4.99". */
   money: (amountMinor: number, currency: string) => string;
   number: (value: number) => string;
+  /** "Brazil" for `BR` in the console language (the code itself when unknown). */
+  country: (code: string) => string;
+  /** "Brazilian Portuguese" for `pt-BR` in the console language (the code itself when unknown). */
+  language: (code: string) => string;
 }
 
 const I18nContext = createContext<I18n | null>(null);
@@ -39,6 +43,22 @@ function initialLocale(): Locale {
 }
 
 const ZERO_DECIMAL = new Set(['JPY', 'KRW', 'VND', 'CLP', 'ISK', 'UGX', 'XAF', 'XOF', 'PYG']);
+
+function displayNames(locale: Locale, type: 'region' | 'language'): (code: string) => string {
+  let names: Intl.DisplayNames | null = null;
+  try {
+    names = new Intl.DisplayNames([locale], { type, fallback: 'code' });
+  } catch {
+    names = null;
+  }
+  return (code) => {
+    try {
+      return names?.of(code) ?? code;
+    } catch {
+      return code;
+    }
+  };
+}
 
 export function I18nProvider({ children, locale: fixed }: { children: ReactNode; locale?: Locale }) {
   const [locale, setLocaleState] = useState<Locale>(() => fixed ?? initialLocale());
@@ -61,6 +81,8 @@ export function I18nProvider({ children, locale: fixed }: { children: ReactNode;
     const dateTimeFormat = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
     const dateFormat = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
     const numberFormat = new Intl.NumberFormat(locale);
+    const country = displayNames(locale, 'region');
+    const language = displayNames(locale, 'language');
     return {
       locale,
       setLocale,
@@ -96,6 +118,8 @@ export function I18nProvider({ children, locale: fixed }: { children: ReactNode;
         }
       },
       number: (v) => numberFormat.format(v),
+      country,
+      language,
     };
   }, [locale, setLocale]);
 
