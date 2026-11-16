@@ -361,3 +361,99 @@ def test_suggestion_scores_favour_towns_and_well_known_places() -> None:
     assert place_prominence(0) == 0.0
     assert place_prominence(10_000) == pytest.approx(0.2)
     assert like_escape("50%_off\\") == "50\\%\\_off\\\\"
+
+
+# ─────────────────────────────── local tier and Brazilian names ───────────────────────────────
+
+
+def test_the_local_band_sits_below_the_famous_threshold() -> None:
+    museum = wc.attraction_query("Q33506", 3, 10)
+    assert "FILTER(?sl >= 3) FILTER(?sl < 10)" in museum
+    assert "FILTER(?sl <" not in wc.attraction_query("Q33506", 10)
+    famous = {c: n for c, n, _ in wc.ATTRACTION_CLASSES}
+    for wikidata_class, minimum, _category in wc.LOCAL_CLASSES:
+        assert minimum >= 1
+        assert minimum < famous.get(wikidata_class, 10**6)
+
+
+def test_famous_places_stay_famous_when_also_found_locally(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(wc, "ATTRACTION_CLASSES", (("Q33506", 10, "museum"),))
+    monkeypatch.setattr(wc, "LOCAL_CLASSES", (("Q2977", 3, "attraction"), ("Q33506", 3, "museum")))
+
+    def answer(name: str, *rows: dict[str, object]) -> None:
+        (tmp_path / name).write_text(json.dumps({"results": {"bindings": list(rows)}}), "utf-8")
+
+    answer("Q33506.json", _binding("Q1", "Point(1 2)", "en", "Big Museum", 40))
+    answer(
+        "Q2977.local.json",
+        _binding("Q1", "Point(1 2)", "en", "Big Museum", 40),
+        _binding("Q2", "Point(3 4)", "pt-br", "Catedral Metropolitana de Campinas", 6),
+    )
+    answer("Q33506.local.json", _binding("Q3", "Point(5 6)", "en", "Small Museum", 3))
+    out = tmp_path / "attractions.jsonl.gz"
+    assert wc.build_attractions(tmp_path, out) == 3
+    records = {r["qid"]: r for r in wc.read_records(out)}
+    assert "local" not in records["Q1"]  # famous as a museum wins over the local cathedral
+    assert records["Q1"]["category"] == "museum"
+    assert records["Q2"]["local"] is True
+    assert records["Q2"]["name"] == "Catedral Metropolitana de Campinas"
+    assert records["Q3"]["local"] is True
+
+
+def test_towns_take_their_wikidata_item_and_brazilian_name(tmp_path: Path) -> None:
+    lines = [
+        "1\t524901\tpt\tMoscovo\t1\t\t\t",
+        "2\t524901\twkdt\tQ649\t\t\t\t",
+        "3\t524902\twkdt\tQ649\t\t\t\t",  # the same item linked from a smaller place
+        "4\t999\twkdt\tnot-a-qid\t\t\t\t",
+    ]
+    wikidata: dict[int, str] = {}
+    names, _ = wc.collect_names(lines, {524901, 524902, 999}, wikidata)
+    assert names[524901]["pt-BR"] == "Moscovo"
+    assert wikidata == {524901: "Q649", 524902: "Q649"}
+
+    (tmp_path / "towns-000.json").write_text(
+        json.dumps(
+            {
+                "results": {
+                    "bindings": [
+                        {
+                            "item": {"value": "http://www.wikidata.org/entity/Q649"},
+                            "label": {"value": "Moscou"},
+                        }
+                    ]
+                }
+            }
+        ),
+        "utf-8",
+    )
+    labels = wc.read_town_labels(tmp_path)
+    assert labels == {"Q649": "Moscou"}
+    moscow = wc.Town(524901, "Moscow", "Moscow", 55.75, 37.62, "BR", "", 12_000_000, "")
+    village = wc.Town(524902, "Moskva", "Moskva", 55.0, 37.0, "BR", "", 6_000, "")
+    records = wc.build_city_records(
+        countries=COUNTRIES,
+        towns=[moscow, village],
+        names=names,
+        abbreviations={},
+        launch=[],
+        country_names={},
+        wikidata=wikidata,
+        town_labels=labels,
+    )
+    by_id = {r["geonames_id"]: r for r in records if r["type"] == "town"}
+    assert by_id[524901]["names"]["pt-BR"] == "Moscou"  # Brazilian, not European, Portuguese
+    assert by_id[524901]["wikidata"] == "Q649"
+    assert "wikidata" not in by_id[524902]  # the item belongs to the biggest town only
+    assert "towns-000.rq" not in {p.name for p in wc.write_queries(tmp_path / "q", cities=None)}
+    assert "VALUES ?item { wd:Q1 wd:Q2 }" in wc.town_label_query(["Q1", "Q2"])
+
+
+def test_bigger_towns_keep_more_local_places() -> None:
+    from app.modules.destinations.world_loader import local_quota
+
+    assert local_quota(None) == local_quota(5_000) == 5
+    assert local_quota(1_031_554) == 24  # Campinas
+    assert local_quota(12_400_000) == 32

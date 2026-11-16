@@ -81,3 +81,15 @@ Ride apps get their search from paid geocoding APIs (Google Places, Mapbox). Tha
 - **Attribution:** GeoNames attribution (CC BY 4.0) is shown in search and listed in the seed README. Wikidata is CC0, and CLDR is under the Unicode License.
 - **Store listings:** they must declare precise location (collected transiently, not stored). See docs/14.
 - **Web:** clients gain `region_name` and the suggest endpoint. The web search can switch to `/suggest`, and should `noindex` destinations outside the directory.
+
+## Amendment (2026-11-16): local places and Brazilian Portuguese names
+
+Testing showed most towns had no places in Explore: the famous tier keeps only world-known places (Campinas, a city of a million people, had none).
+
+1. **A local tier.** 47 more classes and bands (`world_catalog.LOCAL_CLASSES`) take what a town is known for locally: museums, parks, cathedrals and basilicas, squares, stadiums, theatres, beaches and nature reserves, from 1 to 8 sitelinks depending on the class. Each class's band stops below its famous threshold.
+   - The loader keeps each town's best local places by sitelinks: `local_quota`, 5 for 5,000 people, 24 for a million, about 30 for the biggest cities. Famous places don't count against it.
+   - Result: 68,642 candidate places, of which 53,199 are kept. Campinas gets 9, among them its stadiums, basilica, cathedral, contemporary art museum and Parque Portugal.
+   - Size: about 65 MB more on PostgreSQL.
+2. **Brazilian Portuguese town names.** GeoNames' Portuguese names are often European ("Moscovo", "Madrid"). GeoNames links about 19,600 towns to their Wikidata item (`wkdt`). The build fetches their `pt-br` labels (`towns-NNN.rq`) and prefers them, giving "Moscou", "Madri" and "Pequim" for 1,782 towns. Launch cities keep their editorial names.
+3. **Build order.** Build the cities once (for the Wikidata ids), write the queries, fetch them, then build again with `--wikidata` (docs/11 §1.6).
+

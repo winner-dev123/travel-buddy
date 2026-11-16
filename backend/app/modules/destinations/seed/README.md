@@ -3,9 +3,9 @@
 | File | What it is | Source and license |
 |---|---|---|
 | `launch_destinations.json` | The editorial launch catalog: countries, cities and neighbourhoods with names, taglines and approximate boundaries | Written for the project |
-| `world_cities.jsonl.gz` | Every populated place of 5,000+ people and its country, with names in the app's languages, abbreviations, first-level region, population and time zone (ADR-0035) | [GeoNames](https://www.geonames.org/) dumps `cities5000`, `countryInfo`, `admin1CodesASCII` and `alternateNamesV2`, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Credit: "GeoNames" |
+| `world_cities.jsonl.gz` | Every populated place of 5,000+ people and its country, with names in the app's languages, abbreviations, first-level region, population, time zone and Wikidata item (ADR-0035). Brazilian Portuguese names come from Wikidata `pt-br` labels where they exist | [GeoNames](https://www.geonames.org/) dumps `cities5000`, `countryInfo`, `admin1CodesASCII` and `alternateNamesV2`, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Credit: "GeoNames" |
 | `country_names.json` | Country names in the app's languages | [Unicode CLDR](https://cldr.unicode.org/) (through ICU), [Unicode License v3](https://www.unicode.org/license.txt) |
-| `world_attractions.jsonl.gz` | Well-known tourist places with coordinates, category and localized names; how well known a place is comes from its Wikipedia/Wikivoyage sitelinks | [Wikidata](https://www.wikidata.org/), [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
+| `world_attractions.jsonl.gz` | Tourist places with coordinates, category and localized names: world-known places, and a local tier (`"local": true`) of what each town is known for, of which the loader keeps each town's best few. How well known a place is comes from its Wikipedia/Wikivoyage sitelinks | [Wikidata](https://www.wikidata.org/), [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
 
 The app credits GeoNames and Wikidata in the search sheet. Each imported place records its license and a link to its Wikidata item.
 

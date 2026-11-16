@@ -172,7 +172,11 @@ ATTRACTIONS = [
 ]
 
 
-def _load(url: str, cities: list[Mapping[str, Any]] | None = None) -> WorldLoadResult:
+def _load(
+    url: str,
+    cities: list[Mapping[str, Any]] | None = None,
+    attractions: list[Mapping[str, Any]] | None = None,
+) -> WorldLoadResult:
     async def run() -> WorldLoadResult:
         engine = create_async_engine(url)
         try:
@@ -181,7 +185,7 @@ def _load(url: str, cities: list[Mapping[str, Any]] | None = None) -> WorldLoadR
                 return await load_world(
                     session,
                     cities if cities is not None else [BR, UY, *TOWNS],
-                    ATTRACTIONS,
+                    attractions if attractions is not None else ATTRACTIONS,
                     now=datetime(2026, 11, 13, tzinfo=UTC),
                 )
         finally:
@@ -334,3 +338,31 @@ def test_the_nearby_feed_works_in_any_town(world: str, live_app: LiveApp) -> Non
     )
     assert body["context"]["source"] == "gps"
     assert body["context"]["destination"]["path"] == "brazil/campinas"
+
+
+def test_each_town_keeps_its_best_local_places(world: str) -> None:
+    # Campinas (SC) has 20,000 people: it keeps 10 local places; famous ones don't count.
+    def place(n: int, sitelinks: int, local: bool = True) -> dict[str, Any]:
+        record = {
+            "qid": f"QL{n}",
+            "name": f"Local place {n}",
+            "names": {},
+            "lat": -27.59 + n / 1000,
+            "lng": -48.6,
+            "category": "park",
+            "sitelinks": sitelinks,
+        }
+        return record | ({"local": True} if local else {})
+
+    extra = [place(n, 3 + n) for n in range(12)] + [place(99, 40, local=False)]
+    try:
+        result = _load(world, attractions=extra)
+        assert result.places_created == 11
+        kept = db_scalar(
+            world,
+            "SELECT string_agg(provider_place_id, ',' ORDER BY popularity_score DESC) FROM places "
+            "WHERE provider_place_id LIKE 'QL%'",
+        )
+        assert kept.split(",") == ["QL99", *[f"QL{n}" for n in range(11, 1, -1)]]
+    finally:
+        db_scalar(world, "DELETE FROM places WHERE provider_place_id LIKE 'QL%' RETURNING 1")

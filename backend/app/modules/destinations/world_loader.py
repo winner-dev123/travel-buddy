@@ -7,7 +7,8 @@ Idempotent and additive:
   GeoNames id to the editorial row. New towns hang directly under their country with the path
   segment chosen at build time, so paths and slugs never change between runs.
 * Attractions become places (provider ``wikidata``) of the town they belong to, by the same rule
-  the API uses to resolve a point (``belonging``), within 50 km. A place already
+  the API uses to resolve a point (``belonging``), within 50 km. Famous places are all kept; of
+  the local tier each town keeps its best few (``local_quota``). A place already
   imported from OpenStreetMap with the same Wikidata id is not duplicated, and an editorial
   takedown (``hidden``) survives re-loading.
 
@@ -56,6 +57,12 @@ _CELL_DEGREES: Final = 0.5
 def chunks[T](items: Sequence[T], size: int = BATCH) -> Iterator[Sequence[T]]:
     for start in range(0, len(items), size):
         yield items[start : start + size]
+
+
+def local_quota(population: int | None) -> int:
+    """How many local-tier places a town keeps: 5 for 5,000 people, 21 for 500,000, about 30
+    for the biggest cities. Famous places don't count against it."""
+    return round(5 + 8 * math.log10(max(population or 0, 5000) / 5000))
 
 
 def town_popularity(population: int | None) -> float:
@@ -388,12 +395,19 @@ async def _load_attractions(
     rows: list[dict[str, Any]] = []
     names: dict[str, Mapping[str, str]] = {}
     skipped = 0
-    for record in records:
+    local_kept: dict[uuid.UUID, int] = defaultdict(int)
+    # Most notable first, so each town keeps its best local places.
+    for record in sorted(records, key=lambda r: (-int(r["sitelinks"]), str(r["qid"]))):
         qid = record["qid"]
         town = towns.nearest(record["lat"], record["lng"], max_km=ATTRACTION_MAX_KM)
         if qid in in_osm or town is None or fold(record["name"]) == town.folded_name:
             skipped += 1  # already from OSM, far from every town, or the town itself
             continue
+        if record.get("local"):
+            if local_kept[town.id] >= local_quota(town.population):
+                skipped += 1  # the town already has its share of local places
+                continue
+            local_kept[town.id] += 1
         rows.append(
             {
                 "id": uuid7(),

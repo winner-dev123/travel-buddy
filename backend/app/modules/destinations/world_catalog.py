@@ -244,6 +244,9 @@ def without_districts(towns: Sequence[Town]) -> list[Town]:
     return kept
 
 
+_QID: Final = re.compile(r"^Q[1-9][0-9]*$")
+
+
 @dataclass(slots=True)
 class _Candidate:
     name: str
@@ -260,9 +263,10 @@ def _is_acronym(name: str) -> bool:
 
 
 def collect_names(
-    lines: Iterable[str], ids: set[int]
+    lines: Iterable[str], ids: set[int], wikidata: dict[int, str] | None = None
 ) -> tuple[dict[int, dict[str, str]], dict[int, list[str]]]:
-    """``alternateNamesV2.txt`` -> (localized names by locale, abbreviations) for ``ids``.
+    """``alternateNamesV2.txt`` -> (localized names by locale, abbreviations) for ``ids``, and
+    each place's Wikidata item into ``wikidata`` when given (GeoNames lists it as ``wkdt``).
 
     Per language the preferred name wins, then a full name over a short one, then the first one
     listed; acronyms are kept as abbreviations, colloquial and historic names are ignored."""
@@ -273,6 +277,10 @@ def collect_names(
         if len(cols) < 8:
             continue
         language = cols[2]
+        if language == "wkdt" and wikidata is not None:
+            if cols[1].isdigit() and int(cols[1]) in ids and _QID.fullmatch(cols[3].strip()):
+                wikidata.setdefault(int(cols[1]), cols[3].strip())
+            continue
         if language not in LANGUAGES and language != "abbr":
             continue
         try:
@@ -408,8 +416,20 @@ def build_city_records(
     abbreviations: Mapping[int, Sequence[str]],
     launch: Sequence[Mapping[str, Any]],
     country_names: Mapping[str, Mapping[str, str]],
+    wikidata: Mapping[int, str] | None = None,
+    town_labels: Mapping[str, str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Country and town records for ``world_cities.jsonl.gz`` (countries first)."""
+    """Country and town records for ``world_cities.jsonl.gz`` (countries first). A town's
+    Brazilian Portuguese name from Wikidata (``town_labels`` by QID) replaces the GeoNames
+    Portuguese one, which is often European ("Moscovo", "Nova Iorque")."""
+    wikidata = wikidata or {}
+    town_labels = town_labels or {}
+    # An item linked from several GeoNames places belongs to the biggest (towns come biggest first).
+    owners: dict[str, int] = {}
+    for town in towns:
+        qid = wikidata.get(town.geonames_id)
+        if qid:
+            owners.setdefault(qid, town.geonames_id)
     launch_countries = {e["country_code"]: e["path"] for e in launch if e["kind"] == "country"}
     reserved_segments: dict[str, set[str]] = defaultdict(set)
     for entry in launch:
@@ -462,7 +482,12 @@ def build_city_records(
             record["segment"] = segment
         records.append(record)
     for town in towns:
-        localized = _localized(town.name, names.get(town.geonames_id, {}))
+        qid = wikidata.get(town.geonames_id)
+        qid = qid if qid and owners.get(qid) == town.geonames_id else None
+        town_names = dict(names.get(town.geonames_id, {}))
+        if qid and town_labels.get(qid):
+            town_names["pt-BR"] = town_labels[qid]
+        localized = _localized(town.name, town_names)
         alts = [town.ascii_name] if town.ascii_name and town.ascii_name != town.name else []
         alts += [a for a in abbreviations.get(town.geonames_id, []) if a not in alts]
         record = {
@@ -478,6 +503,8 @@ def build_city_records(
             "time_zone": town.time_zone,
             "population": town.population,
         }
+        if qid:
+            record["wikidata"] = qid
         if town.geonames_id in matched:
             record["launch_path"] = matched[town.geonames_id]
         elif town.geonames_id in segments:
@@ -515,7 +542,9 @@ def read_records(path: Path) -> Iterator[dict[str, Any]]:
                 yield json.loads(line)
 
 
-def build_cities(geonames_dir: Path, out: Path = CITIES_FILE) -> int:
+def build_cities(
+    geonames_dir: Path, out: Path = CITIES_FILE, *, wikidata_dir: Path | None = None
+) -> int:
     countries = parse_countries(
         (geonames_dir / "countryInfo.txt").read_text(encoding="utf-8").splitlines()
     )
@@ -526,8 +555,9 @@ def build_cities(geonames_dir: Path, out: Path = CITIES_FILE) -> int:
         _zip_lines(geonames_dir / "cities5000.zip", "cities5000.txt"), countries, regions
     )
     ids = {t.geonames_id for t in towns} | {c.geonames_id for c in countries.values()}
+    wikidata: dict[int, str] = {}
     names, abbreviations = collect_names(
-        _zip_lines(geonames_dir / "alternateNamesV2.zip", "alternateNamesV2.txt"), ids
+        _zip_lines(geonames_dir / "alternateNamesV2.zip", "alternateNamesV2.txt"), ids, wikidata
     )
     launch = json.loads(LAUNCH_FILE.read_text(encoding="utf-8"))["destinations"]
     country_names = json.loads(COUNTRY_NAMES_FILE.read_text(encoding="utf-8"))["countries"]
@@ -538,6 +568,8 @@ def build_cities(geonames_dir: Path, out: Path = CITIES_FILE) -> int:
         abbreviations=abbreviations,
         launch=launch,
         country_names=country_names,
+        wikidata=wikidata,
+        town_labels=read_town_labels(wikidata_dir) if wikidata_dir else None,
     )
     return write_records(out, records)
 
@@ -593,6 +625,59 @@ ATTRACTION_CLASSES: Final[tuple[tuple[str, int, str], ...]] = (
     ("Q40080", 5, "beach"),  # beach
     ("Q330284", 8, "market"),  # marketplace
 )
+# Second tier: what a town is known for locally (ADR-0035 amendment). Fewer sitelinks than the
+# famous tier of the same class (the query takes the band below it); the loader keeps only the
+# best few per town, more for bigger towns (``world_loader.local_quota``).
+LOCAL_CLASSES: Final[tuple[tuple[str, int, str], ...]] = (
+    ("Q570116", 1, "attraction"),  # tourist attraction
+    ("Q2319498", 3, "attraction"),  # landmark
+    ("Q4989906", 3, "attraction"),  # monument
+    ("Q179700", 3, "attraction"),  # statue
+    ("Q5003624", 4, "attraction"),  # memorial
+    ("Q23413", 5, "attraction"),  # castle
+    ("Q16560", 4, "attraction"),  # palace
+    ("Q1785071", 4, "attraction"),  # fort
+    ("Q2977", 3, "attraction"),  # cathedral
+    ("Q120560", 3, "attraction"),  # minor basilica
+    ("Q163687", 3, "attraction"),  # basilica
+    ("Q16970", 8, "attraction"),  # church building
+    ("Q32815", 6, "attraction"),  # mosque
+    ("Q44539", 4, "attraction"),  # temple
+    ("Q12518", 6, "attraction"),  # tower
+    ("Q174782", 3, "attraction"),  # town square
+    ("Q43501", 3, "attraction"),  # zoo
+    ("Q2281788", 3, "attraction"),  # public aquarium
+    ("Q194195", 4, "attraction"),  # amusement park
+    ("Q2416723", 4, "attraction"),  # theme park
+    ("Q839954", 5, "attraction"),  # archaeological site
+    ("Q109607", 5, "attraction"),  # ruins
+    ("Q34038", 3, "attraction"),  # waterfall
+    ("Q35509", 4, "attraction"),  # cave
+    ("Q6017969", 1, "viewpoint"),  # scenic viewpoint
+    ("Q39715", 5, "attraction"),  # lighthouse
+    ("Q483110", 5, "attraction"),  # stadium
+    ("Q1154710", 5, "attraction"),  # association football venue
+    ("Q24354", 3, "attraction"),  # theatre building
+    ("Q153562", 3, "attraction"),  # opera house
+    ("Q1060829", 4, "attraction"),  # concert hall
+    ("Q33506", 3, "museum"),  # museum
+    ("Q207694", 3, "museum"),  # art museum
+    ("Q588140", 3, "museum"),  # science museum
+    ("Q1007870", 3, "museum"),  # art gallery
+    ("Q108860927", 2, "museum"),  # contemporary art museum
+    ("Q16735822", 3, "museum"),  # history museum
+    ("Q22698", 3, "park"),  # park
+    ("Q22746", 3, "park"),  # urban park
+    ("Q46169", 3, "park"),  # national park
+    ("Q167346", 3, "park"),  # botanical garden
+    ("Q1107656", 4, "park"),  # garden
+    ("Q2919841", 3, "park"),  # protected area of Brazil
+    ("Q179049", 4, "park"),  # nature reserve
+    ("Q40080", 2, "beach"),  # beach
+    ("Q330284", 3, "market"),  # marketplace
+    ("Q37654", 3, "market"),  # market
+)
+_FAMOUS_MIN: Final[Mapping[str, int]] = {c: n for c, n, _ in ATTRACTION_CLASSES}
 _LABEL_LANGUAGES: Final[Mapping[str, str]] = {
     "en": "en",
     "es": "es",
@@ -608,8 +693,11 @@ _RUIN_CLASSES: Final = frozenset({"heritage-Q9259", "Q9259", "Q839954", "Q109607
 _HERITAGE_CLASSES: Final = frozenset({"heritage-Q9259", "Q9259"})
 
 
-def attraction_query(wikidata_class: str, min_sitelinks: int) -> str:
-    """SPARQL for one class: items with coordinates and enough sitelinks, still standing."""
+def attraction_query(
+    wikidata_class: str, min_sitelinks: int, below_sitelinks: int | None = None
+) -> str:
+    """SPARQL for one class: items with coordinates and enough sitelinks (fewer than
+    ``below_sitelinks`` for the local band), still standing."""
     if wikidata_class.startswith("heritage-"):
         pattern = f"wdt:P1435 wd:{wikidata_class.removeprefix('heritage-')}"
     else:
@@ -623,10 +711,11 @@ def attraction_query(wikidata_class: str, min_sitelinks: int) -> str:
             "\n  FILTER NOT EXISTS { ?item wdt:P31/wdt:P279* ?settlement ."
             " VALUES ?settlement { wd:Q486972 wd:Q123705 wd:Q56061 } }"
         )
+    band = f" FILTER(?sl < {below_sitelinks})" if below_sitelinks is not None else ""
     return f"""
 SELECT ?item ?coord ?sl ?label ?lang WHERE {{
   ?item {pattern} ; wikibase:sitelinks ?sl ; wdt:P625 ?coord .
-  FILTER(?sl >= {min_sitelinks}){standing}
+  FILTER(?sl >= {min_sitelinks}){band}{standing}
   ?item rdfs:label ?label .
   BIND(LANG(?label) AS ?lang)
   FILTER(?lang IN ("en", "es", "pt", "pt-br", "fr", "de"))
@@ -637,7 +726,7 @@ _POINT = re.compile(r"^Point\((-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)\)$")
 
 
 def parse_attraction_rows(
-    bindings: Iterable[Mapping[str, Any]], category: str
+    bindings: Iterable[Mapping[str, Any]], category: str, *, local: bool = False
 ) -> dict[str, dict[str, Any]]:
     """SPARQL JSON bindings -> attraction records by QID (Earth coordinates only)."""
     records: dict[str, dict[str, Any]] = {}
@@ -658,6 +747,7 @@ def parse_attraction_rows(
                 "lng": round(lng, 5),
                 "sitelinks": int(row["sl"]["value"]),
                 "labels": {},
+                "local": local,
             },
         )
         locale = _LABEL_LANGUAGES.get(str(row["lang"]["value"]))
@@ -669,47 +759,88 @@ def parse_attraction_rows(
 
 def attraction_records(found: Mapping[str, Mapping[str, Any]]) -> list[dict[str, Any]]:
     """Final records: a default name (English first), localized names that differ from it,
-    most notable first."""
+    most notable first. Local-tier places carry ``"local": true``."""
     out: list[dict[str, Any]] = []
     for qid, record in found.items():
         labels: Mapping[str, str] = record["labels"]
         default = next((labels[k] for k in ("en", "pt-BR", "es", "fr", "de") if k in labels), None)
         if default is None:
             continue
-        out.append(
-            {
-                "qid": qid,
-                "name": default,
-                "names": _localized(default, labels),
-                "category": record["category"],
-                "lat": record["lat"],
-                "lng": record["lng"],
-                "sitelinks": record["sitelinks"],
-            }
-        )
+        item = {
+            "qid": qid,
+            "name": default,
+            "names": _localized(default, labels),
+            "category": record["category"],
+            "lat": record["lat"],
+            "lng": record["lng"],
+            "sitelinks": record["sitelinks"],
+        }
+        if record.get("local"):
+            item["local"] = True
+        out.append(item)
     out.sort(key=lambda r: (-r["sitelinks"], r["qid"]))
     return out
 
 
-def write_queries(folder: Path) -> list[Path]:
-    """One ``<class>.rq`` SPARQL file per attraction class. Fetch each into ``<class>.json``
-    (``Accept: application/sparql-results+json``) from https://query.wikidata.org/sparql, e.g.
-    with curl; the public endpoint refuses some HTTP client libraries."""
+TOWN_LABEL_BATCH: Final = 300
+
+
+def town_label_query(qids: Sequence[str]) -> str:
+    """SPARQL for the Brazilian Portuguese names of towns (GeoNames links them to Wikidata)."""
+    values = " ".join(f"wd:{qid}" for qid in qids)
+    return f"""
+SELECT ?item ?label WHERE {{
+  VALUES ?item {{ {values} }}
+  ?item rdfs:label ?label .
+  FILTER(LANG(?label) = "pt-br")
+}}"""
+
+
+def write_queries(folder: Path, cities: Path | None = CITIES_FILE) -> list[Path]:
+    """The SPARQL to fetch from https://query.wikidata.org/sparql (``Accept:
+    application/sparql-results+json``), e.g. with curl; the public endpoint refuses some HTTP
+    client libraries. ``<class>.rq`` per famous class, ``<class>.local.rq`` for the local band,
+    and ``towns-NNN.rq`` for town names when a cities file with Wikidata ids exists."""
     folder.mkdir(parents=True, exist_ok=True)
     written = []
     for wikidata_class, min_sitelinks, _category in ATTRACTION_CLASSES:
         path = folder / f"{wikidata_class}.rq"
         path.write_text(attraction_query(wikidata_class, min_sitelinks), encoding="utf-8")
         written.append(path)
+    for wikidata_class, min_sitelinks, _category in LOCAL_CLASSES:
+        path = folder / f"{wikidata_class}.local.rq"
+        query = attraction_query(wikidata_class, min_sitelinks, _FAMOUS_MIN.get(wikidata_class))
+        path.write_text(query, encoding="utf-8")
+        written.append(path)
+    if cities is not None and cities.exists():
+        qids = sorted({r["wikidata"] for r in read_records(cities) if r.get("wikidata")})
+        for index in range(0, len(qids), TOWN_LABEL_BATCH):
+            path = folder / f"towns-{index // TOWN_LABEL_BATCH:03d}.rq"
+            path.write_text(town_label_query(qids[index : index + TOWN_LABEL_BATCH]), "utf-8")
+            written.append(path)
     return written
 
 
+def read_town_labels(wikidata_dir: Path) -> dict[str, str]:
+    """QID -> Brazilian Portuguese name from the fetched ``towns-NNN.json`` answers."""
+    labels: dict[str, str] = {}
+    for path in sorted(wikidata_dir.glob("towns-*.json")):
+        for row in json.loads(path.read_text(encoding="utf-8"))["results"]["bindings"]:
+            label = str(row["label"]["value"]).strip()
+            if label:
+                labels[str(row["item"]["value"]).rsplit("/", 1)[-1]] = label[:200]
+    return labels
+
+
 def build_attractions(wikidata_dir: Path, out: Path = ATTRACTIONS_FILE) -> int:
-    """``world_attractions.jsonl.gz`` from the fetched ``<class>.json`` answers."""
+    """``world_attractions.jsonl.gz`` from the fetched answers: famous classes first, then the
+    local band (an item famous in any class stays famous)."""
     found: dict[str, dict[str, Any]] = {}
-    for wikidata_class, _min_sitelinks, category in ATTRACTION_CLASSES:
-        answer = json.loads((wikidata_dir / f"{wikidata_class}.json").read_text(encoding="utf-8"))
-        rows = parse_attraction_rows(answer["results"]["bindings"], category)
+    tiers = [(c, cat, False, f"{c}.json") for c, _, cat in ATTRACTION_CLASSES]
+    tiers += [(c, cat, True, f"{c}.local.json") for c, _, cat in LOCAL_CLASSES]
+    for _wikidata_class, category, local, name in tiers:
+        answer = json.loads((wikidata_dir / name).read_text(encoding="utf-8"))
+        rows = parse_attraction_rows(answer["results"]["bindings"], category, local=local)
         for qid, record in rows.items():
             found.setdefault(qid, record)  # the first (more specific) class wins
     return write_records(out, attraction_records(found))
@@ -732,7 +863,8 @@ def main() -> None:
         print(f"{len(write_queries(args.folder))} queries")  # noqa: T201 - CLI output
     elif args.command == "build":
         if args.geonames:
-            print(f"cities: {build_cities(args.geonames)} records")  # noqa: T201 - CLI output
+            count = build_cities(args.geonames, wikidata_dir=args.wikidata)
+            print(f"cities: {count} records")  # noqa: T201 - CLI output
         if args.wikidata:
             count = build_attractions(args.wikidata)
             print(f"attractions: {count} records")  # noqa: T201 - CLI output
