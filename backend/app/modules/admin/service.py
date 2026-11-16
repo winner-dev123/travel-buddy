@@ -63,6 +63,7 @@ from app.modules.messaging import service as messaging
 from app.modules.observability import service as observability
 from app.modules.platform import service as platform
 from app.modules.profiles import service as profiles
+from app.modules.providers import service as providers
 from app.modules.social import service as social
 from app.modules.trust_safety import service as trust_safety
 from app.modules.trust_safety.schemas import MessageFilterPolicyOut, UpdateMessageFilterRequest
@@ -314,6 +315,12 @@ class AdminService:
                 raise _invalid("/target_type", f"'{action}' does not apply to a {target}.")
             affected = await messaging.moderate_message(
                 session, request.target_id, remove=action == "remove_content"
+            )
+        elif action in _CONTENT_STATES and target in ("provider_offering", "provider_review"):
+            if action == "limit_visibility":
+                raise _invalid("/target_type", f"'{action}' does not apply to a {target}.")
+            affected = await providers.moderate_content(
+                session, target, request.target_id, remove=action == "remove_content"
             )
         elif action in _CONTENT_STATES:
             if target not in ("post", "comment") or (

@@ -3854,6 +3854,655 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Approved guides and travel companies serving a destination
+         * @description Ordered by a Bayesian rating `(sum + 4.0 × 5) / (count + 5)`, then response rate, then approval date (docs/18 §5). Providers the viewer blocked are hidden.
+         */
+        get: operations["listProviders"];
+        put?: never;
+        /**
+         * Apply as a guide or travel company (creates a draft)
+         * @description Needs a verified email (`403 email_unverified`). A person owns at most one guide profile (`409 guide_profile_exists`).
+         */
+        post: operations["createProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/providers/{providerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public provider profile (non-approved ones only for their members) */
+        get: operations["getProvider"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit the provider profile (owner, manager) */
+        patch: operations["updateProvider"];
+        trace?: never;
+    };
+    "/v1/providers/{providerId}/workspace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The provider as its own members see it */
+        get: operations["getProviderWorkspace"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/providers/{providerId}/service-areas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace the service areas (up to 20; the base town is separate) */
+        put: operations["setProviderServiceAreas"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/providers/{providerId}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Verification documents (metadata only, no file links) */
+        get: operations["listProviderDocuments"];
+        put?: never;
+        /** Attach a verification document (an uploaded `provider_document` image) */
+        post: operations["addProviderDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/providers/{providerId}/documents/{documentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a document that staff haven't checked yet */
+        delete: operations["deleteProviderDocument"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/providers/{providerId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit the application for staff review (accepts the Provider Terms)
+         * @description From `draft` or `changes_requested`. Gaps return `422 provider_incomplete` with `missing` (docs/18 §2.1).
+         */
+        post: operations["submitProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/providers/{providerId}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close the profile for good (owner) */
+        post: operations["deactivateProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/providers/{providerId}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The team (active members) */
+        get: operations["listProviderMembers"];
+        put?: never;
+        /** Invite someone by handle (companies; owners invite managers and agents, managers invite agents) */
+        post: operations["inviteProviderMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/providers/{providerId}/members/me/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept a team invitation */
+        post: operations["acceptProviderInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/providers/{providerId}/members/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a member, or leave (anyone but the owner) */
+        delete: operations["removeProviderMember"];
+        options?: never;
+        head?: never;
+        /** Change a member's role (owner) */
+        patch: operations["changeProviderMemberRole"];
+        trace?: never;
+    };
+    "/v1/providers/{providerId}/offerings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Published offerings (members see every status with `status=all`) */
+        get: operations["listProviderOfferings"];
+        put?: never;
+        /** Create an offering (draft) */
+        post: operations["createOffering"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/provider-offerings/{offeringId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One offering */
+        get: operations["getOffering"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit an offering (owner, manager) */
+        patch: operations["updateOffering"];
+        trace?: never;
+    };
+    "/v1/provider-offerings/{offeringId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish an offering (approved providers; up to 50 live) */
+        post: operations["publishOffering"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/provider-offerings/{offeringId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take an offering down */
+        post: operations["archiveOffering"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/providers/{providerId}/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reviews, newest first */
+        get: operations["listProviderReviews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/users/me/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Providers I belong to or am invited to */
+        get: operations["listMyProviders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/providers/{providerId}/inquiries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The provider's requests (members) */
+        get: operations["listProviderInquiries"];
+        put?: never;
+        /**
+         * Send a request to a provider (opens the provider chat)
+         * @description Signed-in travelers with a verified email; not members of the provider. One open request per provider (`409 inquiry_already_open`); 10 new requests a day (`429`). The provider chat is an exception to DM-001 (ADR-0036).
+         */
+        post: operations["createInquiry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/users/me/inquiries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Requests I sent */
+        get: operations["listMyInquiries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/provider-inquiries/{inquiryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One request (the traveler or the provider's members) */
+        get: operations["getInquiry"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/provider-inquiries/{inquiryId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept a request (provider)
+         * @description Open requests only; `409 inquiry_transition_invalid` when the request isn't in a state that allows it.
+         */
+        post: operations["acceptInquiry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/provider-inquiries/{inquiryId}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decline a request (provider)
+         * @description Open requests only; `409 inquiry_transition_invalid` when the request isn't in a state that allows it.
+         */
+        post: operations["declineInquiry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/provider-inquiries/{inquiryId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark an accepted request as done (provider)
+         * @description Accepted requests only; `409 inquiry_transition_invalid` when the request isn't in a state that allows it.
+         */
+        post: operations["completeInquiry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/provider-inquiries/{inquiryId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel an accepted request (either side)
+         * @description Accepted requests only; `409 inquiry_transition_invalid` when the request isn't in a state that allows it.
+         */
+        post: operations["cancelInquiry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/provider-inquiries/{inquiryId}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Withdraw an open request (traveler)
+         * @description Open requests only; `409 inquiry_transition_invalid` when the request isn't in a state that allows it.
+         */
+        post: operations["withdrawInquiry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/provider-inquiries/{inquiryId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Review the provider after a completed request (traveler, within 60 days) */
+        post: operations["createProviderReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/provider-reviews/{reviewId}/reply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reply once in public (owner, manager) */
+        post: operations["replyProviderReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/provider-reviews/{reviewId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete my own review */
+        delete: operations["deleteProviderReview"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/providers/{providerId}/block": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Block a provider (hidden from me; its chat closes) */
+        put: operations["blockProvider"];
+        post?: never;
+        /** Unblock a provider */
+        delete: operations["unblockProvider"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/providers/{providerId}/blocked-travelers/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Block a traveler from this provider (owner, manager) */
+        put: operations["blockTravelerForProvider"];
+        post?: never;
+        /** Unblock a traveler */
+        delete: operations["unblockTravelerForProvider"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Provider applications (submitted: oldest first) */
+        get: operations["adminListProviders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/providers/{providerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A full application: legal details, team, documents (audited) */
+        get: operations["adminGetProvider"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/providers/{providerId}/documents/{documentId}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A short-lived signed link to a verification document (audited) */
+        get: operations["adminProviderDocumentFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/providers/{providerId}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve, request changes or reject a submitted application */
+        post: operations["adminDecideProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/providers/{providerId}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Suspend an approved provider (hidden at once; chats stay readable) */
+        post: operations["adminSuspendProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/providers/{providerId}/reinstate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reinstate a suspended provider */
+        post: operations["adminReinstateProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export interface webhooks {
     webCacheRevalidation: {
@@ -3958,7 +4607,7 @@ export interface components {
          * @description Stable machine-readable error code. Clients switch on this, never on `title`. See docs/05 §6.
          * @enum {string}
          */
-        ErrorCode: "bad_request" | "validation_failed" | "invalid_cursor" | "method_not_allowed" | "unauthenticated" | "email_unverified" | "mfa_required" | "reauthentication_required" | "justification_required" | "token_expired" | "token_invalid" | "refresh_token_reused" | "session_revoked" | "forbidden" | "not_found" | "conflict" | "precondition_failed" | "precondition_required" | "idempotency_key_reused" | "idempotency_key_in_progress" | "rate_limited" | "entitlement_required" | "quota_exceeded" | "feature_disabled" | "age_restricted" | "consent_required" | "account_suspended" | "account_restricted" | "blocked_relationship" | "connection_required" | "connection_request_cooldown" | "connection_request_not_allowed" | "already_connected" | "discovery_disabled" | "location_unresolvable" | "stale_location" | "group_capacity_reached" | "owner_must_transfer" | "invitation_invalid" | "invitation_not_allowed" | "member_restricted" | "chat_admins_only" | "message_edit_window_expired" | "challenge_not_active" | "challenge_locked" | "attempts_exhausted" | "attempt_cooldown" | "not_team_captain" | "reward_not_permitted" | "purchase_invalid" | "purchase_already_linked" | "media_not_ready" | "media_rejected" | "payload_too_large" | "unsupported_media_type" | "upstream_unavailable" | "ai_unavailable" | "ai_output_invalid" | "service_unavailable" | "internal_error";
+        ErrorCode: "bad_request" | "validation_failed" | "invalid_cursor" | "method_not_allowed" | "unauthenticated" | "email_unverified" | "mfa_required" | "reauthentication_required" | "justification_required" | "token_expired" | "token_invalid" | "refresh_token_reused" | "session_revoked" | "forbidden" | "not_found" | "conflict" | "precondition_failed" | "precondition_required" | "idempotency_key_reused" | "idempotency_key_in_progress" | "rate_limited" | "entitlement_required" | "quota_exceeded" | "feature_disabled" | "age_restricted" | "consent_required" | "account_suspended" | "account_restricted" | "blocked_relationship" | "connection_required" | "connection_request_cooldown" | "connection_request_not_allowed" | "already_connected" | "discovery_disabled" | "location_unresolvable" | "provider_field_locked" | "provider_incomplete" | "provider_not_approved" | "provider_blocked" | "guide_profile_exists" | "inquiry_already_open" | "inquiry_transition_invalid" | "review_not_allowed" | "offering_limit_reached" | "service_area_limit" | "stale_location" | "group_capacity_reached" | "owner_must_transfer" | "invitation_invalid" | "invitation_not_allowed" | "member_restricted" | "chat_admins_only" | "message_edit_window_expired" | "challenge_not_active" | "challenge_locked" | "attempts_exhausted" | "attempt_cooldown" | "not_team_captain" | "reward_not_permitted" | "purchase_invalid" | "purchase_already_linked" | "media_not_ready" | "media_rejected" | "payload_too_large" | "unsupported_media_type" | "upstream_unavailable" | "ai_unavailable" | "ai_output_invalid" | "service_unavailable" | "internal_error";
         FieldError: {
             /** @description JSON Pointer into the body (e.g. `/name`), or `query.<name>` / `header.<name>`. */
             field: string;
@@ -3992,7 +4641,7 @@ export interface components {
          *     support ⊂ moderator ⊂ admin ⊂ superadmin. Admin operations name their permission in `x-platform-permission`.
          * @enum {string}
          */
-        PlatformPermission: "users.read" | "users.read_sensitive" | "users.suspend" | "users.ban" | "moderation.reports.read" | "moderation.reports.manage" | "moderation.actions.read" | "moderation.actions.write" | "content.destinations.write" | "content.feature" | "content.rewards.review" | "entitlements.grant" | "billing.configure" | "audit.read" | "privacy.requests.manage" | "safety.filters.manage" | "roles.assign";
+        PlatformPermission: "users.read" | "users.read_sensitive" | "users.suspend" | "users.ban" | "moderation.reports.read" | "moderation.reports.manage" | "moderation.actions.read" | "moderation.actions.write" | "content.destinations.write" | "content.feature" | "content.rewards.review" | "entitlements.grant" | "billing.configure" | "audit.read" | "privacy.requests.manage" | "safety.filters.manage" | "roles.assign" | "providers.verify";
         /** @enum {string} */
         TravelStyle: "adventure" | "backpacking" | "luxury" | "food" | "culture" | "photography" | "digital_nomad" | "nature" | "family";
         /** @enum {string} */
@@ -4023,7 +4672,7 @@ export interface components {
         /** @enum {string} */
         ConnectionContext: "discovery" | "group" | "profile" | "post";
         /** @enum {string} */
-        ConversationKind: "direct" | "group" | "challenge_team";
+        ConversationKind: "direct" | "group" | "challenge_team" | "provider";
         /** @enum {string} */
         MessageKind: "text" | "image" | "system" | "announcement" | "gift";
         /**
@@ -4082,24 +4731,27 @@ export interface components {
          */
         BillingProvider: "apple" | "google" | "stripe" | "dev";
         /** @enum {string} */
-        ReportTargetType: "post" | "comment" | "user" | "message" | "group" | "challenge" | "media";
+        ReportTargetType: "post" | "comment" | "user" | "message" | "group" | "challenge" | "media" | "provider" | "provider_offering" | "provider_review";
         /** @enum {string} */
         ReportReason: "spam" | "harassment" | "hate" | "sexual_content" | "minor_safety" | "violence" | "self_harm" | "scam" | "privacy_violation" | "impersonation" | "illegal" | "other";
         /** @enum {string} */
         ReportStatus: "open" | "in_review" | "actioned" | "dismissed";
         /** @enum {string} */
         ModerationActionType: "remove_content" | "restore_content" | "limit_visibility" | "warn" | "restrict" | "suspend" | "ban" | "reinstate" | "remove_member";
-        /** @enum {string} */
-        ConsentType: "terms" | "privacy_policy" | "location" | "traveler_discovery" | "marketing" | "ai_personalization" | "post_translation" | "search_indexing";
         /**
-         * @description `editorial` is uploaded by content staff only (DEST-007).
+         * @description `provider_terms` is recorded when applying as a guide or company (ADR-0036); it can't be posted to `/v1/users/me/consents`.
          * @enum {string}
          */
-        MediaPurpose: "post" | "avatar" | "message" | "group_cover" | "challenge" | "editorial";
+        ConsentType: "terms" | "privacy_policy" | "location" | "traveler_discovery" | "marketing" | "ai_personalization" | "post_translation" | "search_indexing" | "provider_terms";
+        /**
+         * @description `editorial` is uploaded by content staff only (DEST-007). `provider` holds public provider pictures; `provider_document` verification documents that only staff open (ADR-0036).
+         * @enum {string}
+         */
+        MediaPurpose: "post" | "avatar" | "message" | "group_cover" | "challenge" | "editorial" | "provider" | "provider_document";
         /** @enum {string} */
         MediaStatus: "pending_upload" | "scanning" | "ready" | "rejected" | "deleted";
         /** @enum {string} */
-        NotificationType: "connection_request" | "connection_accepted" | "new_message" | "group_invitation" | "group_announcement" | "challenge_started" | "challenge_result" | "post_reaction" | "post_comment" | "new_follower" | "follow_request" | "moderation_notice" | "subscription_notice" | "ai_generation_ready" | "data_export_ready";
+        NotificationType: "connection_request" | "connection_accepted" | "new_message" | "group_invitation" | "group_announcement" | "challenge_started" | "challenge_result" | "post_reaction" | "post_comment" | "new_follower" | "follow_request" | "moderation_notice" | "subscription_notice" | "ai_generation_ready" | "data_export_ready" | "provider_invitation" | "provider_application" | "provider_inquiry" | "provider_inquiry_update" | "provider_review";
         LivenessStatus: {
             /** @constant */
             status: "ok";
@@ -5183,7 +5835,12 @@ export interface components {
             group_id: string | null;
             /** Format: uuid */
             challenge_team_id: string | null;
-            /** @description Direct conversations only. */
+            /**
+             * Format: uuid
+             * @description Provider chats (ADR-0036). The traveler sees the provider's name and logo as title and avatar; provider members see the traveler as counterpart.
+             */
+            provider_id?: string | null;
+            /** @description Direct conversations, and the traveler in provider chats seen by provider members. */
             counterpart: components["schemas"]["UserSummary"] | null;
             last_message: components["schemas"]["MessagePreview"] | null;
             /** Format: int64 */
@@ -5207,7 +5864,7 @@ export interface components {
             notification_level: components["schemas"]["NotificationLevel"];
             can_send: boolean;
             /** @enum {string|null} */
-            send_restriction: "connection_required" | "blocked" | "member_restricted" | "chat_admins_only" | "archived" | null;
+            send_restriction: "connection_required" | "blocked" | "member_restricted" | "chat_admins_only" | "archived" | "provider_unavailable" | null;
             created_at: components["schemas"]["Timestamp"];
             last_message_at: components["schemas"]["NullableTimestamp"];
         };
@@ -6771,6 +7428,393 @@ export interface components {
             data: components["schemas"]["AuditLogEntry"][];
             page: components["schemas"]["PageInfo"];
         };
+        /**
+         * @description `guide`: one person working independently; `company`: an agency, tour operator, transfer or activity provider.
+         * @enum {string}
+         */
+        ProviderKind: "guide" | "company";
+        /**
+         * @description Only `approved` providers are visible to travelers (PROV-003).
+         * @enum {string}
+         */
+        ProviderStatus: "draft" | "submitted" | "changes_requested" | "approved" | "rejected" | "suspended" | "deactivated";
+        /** @enum {string} */
+        ProviderRole: "owner" | "manager" | "agent";
+        /** @enum {string} */
+        ProviderMemberStatus: "invited" | "active";
+        /** @enum {string} */
+        ProviderSpecialty: "city_tours" | "history_culture" | "food_drink" | "nature" | "adventure" | "water_activities" | "nightlife" | "photography" | "art_museums" | "family" | "wellness" | "accessible_travel" | "transfers" | "multi_day";
+        /**
+         * @description `tourism_registry`: e.g. CADASTUR (Brazil). `business_registration`: e.g. CNPJ.
+         * @enum {string}
+         */
+        ProviderDocumentKind: "identity" | "tourism_registry" | "guide_license" | "business_registration" | "insurance" | "other";
+        /** @enum {string} */
+        ProviderDocumentStatus: "pending" | "accepted" | "rejected";
+        /** @enum {string} */
+        OfferingKind: "tour" | "activity" | "transfer" | "package" | "class" | "other";
+        /**
+         * @description `removed` is set by staff moderation.
+         * @enum {string}
+         */
+        OfferingStatus: "draft" | "published" | "archived" | "removed";
+        /** @enum {string} */
+        PriceUnit: "per_person" | "per_group";
+        /** @enum {string} */
+        InquiryStatus: "open" | "accepted" | "declined" | "withdrawn" | "expired" | "completed" | "cancelled";
+        ProviderMembership: {
+            role: components["schemas"]["ProviderRole"];
+            status: components["schemas"]["ProviderMemberStatus"];
+        };
+        /** @description A provider card. Never carries legal name, registration number, documents, staff notes or members (PROV-002). */
+        ProviderSummary: {
+            id: components["schemas"]["Uuid"];
+            slug: string;
+            kind: components["schemas"]["ProviderKind"];
+            status: components["schemas"]["ProviderStatus"];
+            display_name: string;
+            tagline: string | null;
+            logo: components["schemas"]["MediaRef"] | null;
+            cover: components["schemas"]["MediaRef"] | null;
+            base_destination: components["schemas"]["DestinationSummary"] | null;
+            languages: string[];
+            specialties: components["schemas"]["ProviderSpecialty"][];
+            rating_average: number | null;
+            rating_count: number;
+            /** @description "Verified by Travel Buddy" since (first approval); null unless approved. */
+            verified_at: components["schemas"]["NullableTimestamp"];
+            /** @description Average time to the first answer, shown after 3 answered requests. */
+            response_time_seconds: number | null;
+        };
+        ProviderProfile: components["schemas"]["ProviderSummary"] & {
+            about: string | null;
+            years_experience: number | null;
+            website_url: string | null;
+            service_areas: components["schemas"]["DestinationSummary"][];
+            published_offering_count: number;
+            /** @description The viewer's own membership, if any. */
+            membership?: components["schemas"]["ProviderMembership"] | null;
+        };
+        /** @description What the provider's own members see; the owner and managers edit it. */
+        ProviderWorkspace: components["schemas"]["ProviderProfile"] & {
+            country_code: components["schemas"]["CountryCode"];
+            legal_name: string | null;
+            registration_number: string | null;
+            /** @description Staff note for `changes_requested` / `rejected`. */
+            review_note: string | null;
+            suspended_reason: string | null;
+            submitted_at: components["schemas"]["NullableTimestamp"];
+            decided_at: components["schemas"]["NullableTimestamp"];
+            /** @description Verified fields that only support can change (after the first approval). */
+            locked_fields: string[];
+            /** @description Current Provider Terms version to send with submit. */
+            terms_version: string;
+            terms_accepted_version: string | null;
+            /** @description E.g. `legal_name`, `document:identity`, `document:business_registration`. */
+            missing_for_submit: string[];
+            inquiry_count: number;
+            response_count: number;
+            version: number;
+            created_at: components["schemas"]["Timestamp"];
+        };
+        ProviderPage: {
+            data: components["schemas"]["ProviderSummary"][];
+            page: components["schemas"]["PageInfo"];
+        };
+        ProviderMembershipEntry: {
+            provider: components["schemas"]["ProviderSummary"];
+            role: components["schemas"]["ProviderRole"];
+            status: components["schemas"]["ProviderMemberStatus"];
+            invited_by: components["schemas"]["UserSummary"] | null;
+            created_at: components["schemas"]["Timestamp"];
+        };
+        ProviderMembershipList: {
+            data: components["schemas"]["ProviderMembershipEntry"][];
+        };
+        /** @description Never carries a file URL for members (PROV-004). */
+        ProviderDocument: {
+            id: components["schemas"]["Uuid"];
+            kind: components["schemas"]["ProviderDocumentKind"];
+            number: string | null;
+            issuing_country: string | null;
+            expires_on: components["schemas"]["NullableLocalDate"];
+            status: components["schemas"]["ProviderDocumentStatus"];
+            /** @description Files are deleted 90 days after the decision (PROV-004). */
+            file_available: boolean;
+            created_at: components["schemas"]["Timestamp"];
+            decided_at: components["schemas"]["NullableTimestamp"];
+        };
+        ProviderDocumentList: {
+            data: components["schemas"]["ProviderDocument"][];
+        };
+        ProviderMember: {
+            user: components["schemas"]["UserSummary"] | null;
+            role: components["schemas"]["ProviderRole"];
+            status: components["schemas"]["ProviderMemberStatus"];
+            created_at: components["schemas"]["Timestamp"];
+            accepted_at: components["schemas"]["NullableTimestamp"];
+        };
+        ProviderMemberList: {
+            data: components["schemas"]["ProviderMember"][];
+        };
+        /** @description An indicative "from" price. Phase 8a moves no money: travelers and providers agree on payment outside the app. */
+        OfferingPrice: {
+            /** Format: int64 */
+            amount_minor: number;
+            currency: components["schemas"]["CurrencyCode"];
+            unit: components["schemas"]["PriceUnit"] | null;
+            /** @constant */
+            indicative: true;
+        };
+        Offering: {
+            id: components["schemas"]["Uuid"];
+            provider: components["schemas"]["ProviderSummary"];
+            status: components["schemas"]["OfferingStatus"];
+            kind: components["schemas"]["OfferingKind"];
+            title: string;
+            description: string | null;
+            destination: components["schemas"]["DestinationSummary"] | null;
+            duration_minutes: number | null;
+            price_from: components["schemas"]["OfferingPrice"] | null;
+            max_group_size: number | null;
+            languages: string[];
+            cover: components["schemas"]["MediaRef"] | null;
+            published_at: components["schemas"]["NullableTimestamp"];
+            created_at: components["schemas"]["Timestamp"];
+            updated_at: components["schemas"]["Timestamp"];
+            version: number;
+        };
+        OfferingPage: {
+            data: components["schemas"]["Offering"][];
+            page: components["schemas"]["PageInfo"];
+        };
+        OfferingRef: {
+            id: components["schemas"]["Uuid"];
+            title: string;
+            kind: components["schemas"]["OfferingKind"];
+        };
+        /** @description A traveler's request to a provider (PROV-009/010). Shown as a card in the provider chat. */
+        Inquiry: {
+            id: components["schemas"]["Uuid"];
+            provider: components["schemas"]["ProviderSummary"];
+            traveler: components["schemas"]["UserSummary"] | null;
+            offering: components["schemas"]["OfferingRef"] | null;
+            start_date: components["schemas"]["NullableLocalDate"];
+            end_date: components["schemas"]["NullableLocalDate"];
+            flexible_dates: boolean;
+            party_size: number;
+            message: string;
+            status: components["schemas"]["InquiryStatus"];
+            decline_reason: string | null;
+            /**
+             * Format: uuid
+             * @description The provider chat (conversation kind `provider`).
+             */
+            conversation_id: string | null;
+            first_response_at: components["schemas"]["NullableTimestamp"];
+            decided_at: components["schemas"]["NullableTimestamp"];
+            completed_at: components["schemas"]["NullableTimestamp"];
+            /** @enum {string} */
+            viewer_side: "traveler" | "provider";
+            can_review: boolean;
+            /** Format: uuid */
+            review_id: string | null;
+            created_at: components["schemas"]["Timestamp"];
+            updated_at: components["schemas"]["Timestamp"];
+            version: number;
+        };
+        InquiryPage: {
+            data: components["schemas"]["Inquiry"][];
+            page: components["schemas"]["PageInfo"];
+        };
+        ProviderReviewReply: {
+            body: string;
+            replied_at: components["schemas"]["Timestamp"];
+        };
+        ProviderReview: {
+            id: components["schemas"]["Uuid"];
+            provider_id: components["schemas"]["Uuid"];
+            rating: number;
+            body: string | null;
+            /** @description Null after the author's account was erased: show "Former traveler". */
+            author: components["schemas"]["UserSummary"] | null;
+            reply: components["schemas"]["ProviderReviewReply"] | null;
+            created_at: components["schemas"]["Timestamp"];
+        };
+        ProviderReviewPage: {
+            data: components["schemas"]["ProviderReview"][];
+            page: components["schemas"]["PageInfo"];
+        };
+        AdminProviderSummary: {
+            id: components["schemas"]["Uuid"];
+            kind: components["schemas"]["ProviderKind"];
+            status: components["schemas"]["ProviderStatus"];
+            display_name: string;
+            country_code: components["schemas"]["CountryCode"];
+            owner: components["schemas"]["UserSummary"] | null;
+            submitted_at: components["schemas"]["NullableTimestamp"];
+            decided_at: components["schemas"]["NullableTimestamp"];
+            created_at: components["schemas"]["Timestamp"];
+        };
+        AdminProviderPage: {
+            data: components["schemas"]["AdminProviderSummary"][];
+            page: components["schemas"]["PageInfo"];
+        };
+        AdminProviderDocument: components["schemas"]["ProviderDocument"] & {
+            /** Format: uuid */
+            decided_by: string | null;
+            /** Format: uuid */
+            uploaded_by: string | null;
+        };
+        AdminProvider: {
+            provider: components["schemas"]["ProviderWorkspace"];
+            owner: components["schemas"]["UserSummary"] | null;
+            members: components["schemas"]["ProviderMember"][];
+            documents: components["schemas"]["AdminProviderDocument"][];
+            /** Format: uuid */
+            decided_by: string | null;
+            open_report_count: number;
+        };
+        /** @description A short-lived signed link; each opening is audited (PROV-004). */
+        ProviderDocumentFileLink: {
+            /** Format: uri */
+            url: string;
+            expires_at: components["schemas"]["Timestamp"];
+        };
+        CreateProviderRequest: {
+            kind: components["schemas"]["ProviderKind"];
+            display_name: string;
+            legal_name?: string | null;
+            tagline?: string | null;
+            about?: string | null;
+            country_code: components["schemas"]["CountryCode"];
+            base_destination_id: components["schemas"]["Uuid"];
+            languages?: string[];
+            specialties?: components["schemas"]["ProviderSpecialty"][];
+            years_experience?: number | null;
+            /** Format: uri */
+            website_url?: string | null;
+            registration_number?: string | null;
+            /**
+             * Format: uuid
+             * @description Media with purpose `provider`.
+             */
+            logo_media_id?: string | null;
+            /** Format: uuid */
+            cover_media_id?: string | null;
+        };
+        /** @description Only the fields sent change. After the first approval `kind`, `legal_name`, `country_code` and `registration_number` are locked (`409 provider_field_locked`). */
+        UpdateProviderRequest: {
+            kind?: components["schemas"]["ProviderKind"];
+            display_name?: string;
+            legal_name?: string | null;
+            tagline?: string | null;
+            about?: string | null;
+            country_code?: components["schemas"]["CountryCode"];
+            base_destination_id?: components["schemas"]["Uuid"];
+            languages?: string[];
+            specialties?: components["schemas"]["ProviderSpecialty"][];
+            years_experience?: number | null;
+            /** Format: uri */
+            website_url?: string | null;
+            registration_number?: string | null;
+            /** Format: uuid */
+            logo_media_id?: string | null;
+            /** Format: uuid */
+            cover_media_id?: string | null;
+        };
+        ProviderServiceAreasRequest: {
+            destination_ids: components["schemas"]["Uuid"][];
+        };
+        AddProviderDocumentRequest: {
+            kind: components["schemas"]["ProviderDocumentKind"];
+            /** @description Media with purpose `provider_document` (private). */
+            media_id: components["schemas"]["Uuid"];
+            number?: string | null;
+            issuing_country?: string | null;
+            expires_on?: components["schemas"]["NullableLocalDate"];
+        };
+        SubmitProviderRequest: {
+            terms_version: string;
+        };
+        InviteProviderMemberRequest: {
+            handle: string;
+            /** @enum {string} */
+            role: "manager" | "agent";
+        };
+        ChangeProviderMemberRoleRequest: {
+            /** @enum {string} */
+            role: "manager" | "agent";
+        };
+        CreateOfferingRequest: {
+            kind: components["schemas"]["OfferingKind"];
+            title: string;
+            description?: string | null;
+            destination_id: components["schemas"]["Uuid"];
+            duration_minutes?: number | null;
+            /**
+             * Format: int64
+             * @description Send with `currency`.
+             */
+            price_from_minor?: number | null;
+            currency?: string | null;
+            price_unit?: components["schemas"]["PriceUnit"] | null;
+            max_group_size?: number | null;
+            languages?: string[];
+            /** Format: uuid */
+            cover_media_id?: string | null;
+        };
+        UpdateOfferingRequest: {
+            kind?: components["schemas"]["OfferingKind"];
+            title?: string;
+            description?: string | null;
+            destination_id?: components["schemas"]["Uuid"];
+            duration_minutes?: number | null;
+            /** Format: int64 */
+            price_from_minor?: number | null;
+            currency?: string | null;
+            price_unit?: components["schemas"]["PriceUnit"] | null;
+            max_group_size?: number | null;
+            languages?: string[];
+            /** Format: uuid */
+            cover_media_id?: string | null;
+        };
+        CreateInquiryRequest: {
+            /** Format: uuid */
+            offering_id?: string | null;
+            /** @description Required unless `flexible_dates`; from today on. */
+            start_date?: components["schemas"]["NullableLocalDate"];
+            end_date?: components["schemas"]["NullableLocalDate"];
+            /** @default false */
+            flexible_dates?: boolean;
+            party_size: number;
+            message: string;
+        };
+        DeclineInquiryRequest: {
+            reason?: string | null;
+        };
+        CreateProviderReviewRequest: {
+            rating: number;
+            body?: string | null;
+        };
+        ReplyProviderReviewRequest: {
+            body: string;
+        };
+        ProviderDecisionRequest: {
+            /** @enum {string} */
+            decision: "approve" | "request_changes" | "reject";
+            /** @description Required for `request_changes` and `reject`; shown to the applicant. */
+            note?: string | null;
+            /** @description Per-document outcome. On approval, documents not listed are accepted. */
+            documents?: {
+                id: components["schemas"]["Uuid"];
+                /** @enum {string} */
+                status: "accepted" | "rejected";
+            }[];
+        };
+        SuspendProviderRequest: {
+            reason: string;
+        };
     };
     responses: {
         /** @description Work done by this tick. */
@@ -6996,6 +8040,14 @@ export interface components {
         ConversationId: components["schemas"]["Uuid"];
         MessageId: components["schemas"]["Uuid"];
         GroupId: components["schemas"]["Uuid"];
+        ProviderId: components["schemas"]["Uuid"];
+        OfferingId: components["schemas"]["Uuid"];
+        InquiryId: components["schemas"]["Uuid"];
+        ProviderReviewId: components["schemas"]["Uuid"];
+        ProviderDocumentId: components["schemas"]["Uuid"];
+        ProviderMemberUserId: components["schemas"]["Uuid"];
+        /** @description Optional here: when sent, the version must match (`412 precondition_failed`). */
+        IfMatchOptional: string;
         InvitationId: components["schemas"]["Uuid"];
         JoinRequestId: components["schemas"]["Uuid"];
         TransferId: components["schemas"]["Uuid"];
@@ -14775,6 +15827,1592 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    listProviders: {
+        parameters: {
+            query?: {
+                /** @description Providers whose base town or a service area is this place or lies inside it, or contains it (a provider serving Rio de Janeiro is listed on Copacabana and on Brazil). */
+                destination_id?: components["schemas"]["Uuid"];
+                kind?: components["schemas"]["ProviderKind"];
+                /** @description Base language match: `pt` also finds `pt-BR`. */
+                language?: string;
+                specialty?: components["schemas"]["ProviderSpecialty"];
+                /** @description Opaque, HMAC-signed, expiring cursor from `page.next_cursor`. Never construct or modify it. */
+                cursor?: components["parameters"]["Cursor"];
+                limit?: number;
+            };
+            header?: {
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderPage"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    createProvider: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-generated UUID. Replays with the same key and body return the original response (header `Idempotent-Replayed` = `true`). The same key with a different body returns `409 idempotency_key_reused`. A concurrent duplicate returns `409 idempotency_key_in_progress`. Retained for 24 h (billing 72 h). */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProviderRequest"];
+            };
+        };
+        responses: {
+            /** @description Draft created; the caller is its owner. */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    Location: components["headers"]["Location"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderWorkspace"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            /** @description `guide_profile_exists` or `idempotency_key_reused`. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getProvider: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderProfile"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateProvider: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional here: when sent, the version must match (`412 precondition_failed`). */
+                "If-Match"?: components["parameters"]["IfMatchOptional"];
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProviderRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderWorkspace"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description `provider_field_locked` (verified fields) or the profile is closed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            412: components["responses"]["PreconditionFailed"];
+            422: components["responses"]["ValidationFailed"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getProviderWorkspace: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderWorkspace"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    setProviderServiceAreas: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderServiceAreasRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderWorkspace"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description `validation_failed` or `service_area_limit`. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listProviderDocuments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderDocumentList"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    addProviderDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddProviderDocumentRequest"];
+            };
+        };
+        responses: {
+            /** @description Attached. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderDocument"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteProviderDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+                documentId: components["parameters"]["ProviderDocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Done. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    submitProvider: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitProviderRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderWorkspace"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description Not submittable in its current status. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description `provider_incomplete` (with `missing`) or `validation_failed` (`outdated_version`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deactivateProvider: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderWorkspace"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    listProviderMembers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderMemberList"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    inviteProviderMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteProviderMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description Invited. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderMemberList"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    acceptProviderInvitation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderWorkspace"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    removeProviderMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+                userId: components["parameters"]["ProviderMemberUserId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Done. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    changeProviderMemberRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+                userId: components["parameters"]["ProviderMemberUserId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeProviderMemberRoleRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderMemberList"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    listProviderOfferings: {
+        parameters: {
+            query?: {
+                status?: "published" | "all";
+                /** @description Opaque, HMAC-signed, expiring cursor from `page.next_cursor`. Never construct or modify it. */
+                cursor?: components["parameters"]["Cursor"];
+                limit?: number;
+            };
+            header?: {
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferingPage"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    createOffering: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOfferingRequest"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Offering"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getOffering: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                offeringId: components["parameters"]["OfferingId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Offering"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateOffering: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional here: when sent, the version must match (`412 precondition_failed`). */
+                "If-Match"?: components["parameters"]["IfMatchOptional"];
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                offeringId: components["parameters"]["OfferingId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOfferingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Offering"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            412: components["responses"]["PreconditionFailed"];
+            422: components["responses"]["ValidationFailed"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    publishOffering: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                offeringId: components["parameters"]["OfferingId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Offering"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description `provider_not_approved` or `offering_limit_reached`. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    archiveOffering: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                offeringId: components["parameters"]["OfferingId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Offering"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    listProviderReviews: {
+        parameters: {
+            query?: {
+                /** @description Opaque, HMAC-signed, expiring cursor from `page.next_cursor`. Never construct or modify it. */
+                cursor?: components["parameters"]["Cursor"];
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderReviewPage"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    listMyProviders: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderMembershipList"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    listProviderInquiries: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["InquiryStatus"];
+                /** @description Opaque, HMAC-signed, expiring cursor from `page.next_cursor`. Never construct or modify it. */
+                cursor?: components["parameters"]["Cursor"];
+                limit?: number;
+            };
+            header?: {
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InquiryPage"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    createInquiry: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-generated UUID. Replays with the same key and body return the original response (header `Idempotent-Replayed` = `true`). The same key with a different body returns `409 idempotency_key_reused`. A concurrent duplicate returns `409 idempotency_key_in_progress`. Retained for 24 h (billing 72 h). */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInquiryRequest"];
+            };
+        };
+        responses: {
+            /** @description Sent; `conversation_id` is the provider chat. */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    Location: components["headers"]["Location"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Inquiry"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            /** @description `email_unverified`, `provider_blocked`, `account_restricted` or `forbidden` (own team). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            /** @description `inquiry_already_open` or `idempotency_key_reused`. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["RateLimited"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    listMyInquiries: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["InquiryStatus"];
+                /** @description Opaque, HMAC-signed, expiring cursor from `page.next_cursor`. Never construct or modify it. */
+                cursor?: components["parameters"]["Cursor"];
+                limit?: number;
+            };
+            header?: {
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InquiryPage"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getInquiry: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                inquiryId: components["parameters"]["InquiryId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Inquiry"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    acceptInquiry: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional here: when sent, the version must match (`412 precondition_failed`). */
+                "If-Match"?: components["parameters"]["IfMatchOptional"];
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                inquiryId: components["parameters"]["InquiryId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Inquiry"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description `inquiry_transition_invalid` or `provider_not_approved`. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            412: components["responses"]["PreconditionFailed"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    declineInquiry: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional here: when sent, the version must match (`412 precondition_failed`). */
+                "If-Match"?: components["parameters"]["IfMatchOptional"];
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                inquiryId: components["parameters"]["InquiryId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DeclineInquiryRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Inquiry"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description `inquiry_transition_invalid` or `provider_not_approved`. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            412: components["responses"]["PreconditionFailed"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    completeInquiry: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional here: when sent, the version must match (`412 precondition_failed`). */
+                "If-Match"?: components["parameters"]["IfMatchOptional"];
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                inquiryId: components["parameters"]["InquiryId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Inquiry"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description `inquiry_transition_invalid` or `provider_not_approved`. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            412: components["responses"]["PreconditionFailed"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    cancelInquiry: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional here: when sent, the version must match (`412 precondition_failed`). */
+                "If-Match"?: components["parameters"]["IfMatchOptional"];
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                inquiryId: components["parameters"]["InquiryId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Inquiry"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description `inquiry_transition_invalid` or `provider_not_approved`. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            412: components["responses"]["PreconditionFailed"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    withdrawInquiry: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional here: when sent, the version must match (`412 precondition_failed`). */
+                "If-Match"?: components["parameters"]["IfMatchOptional"];
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                inquiryId: components["parameters"]["InquiryId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Inquiry"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description `inquiry_transition_invalid` or `provider_not_approved`. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            412: components["responses"]["PreconditionFailed"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    createProviderReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inquiryId: components["parameters"]["InquiryId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProviderReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Published. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderReview"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description `review_not_allowed`. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    replyProviderReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reviewId: components["parameters"]["ProviderReviewId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplyProviderReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderReview"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteProviderReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reviewId: components["parameters"]["ProviderReviewId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Done. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    blockProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Done. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    unblockProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Done. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    blockTravelerForProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+                userId: components["parameters"]["ProviderMemberUserId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Done. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    unblockTravelerForProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+                userId: components["parameters"]["ProviderMemberUserId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Done. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminListProviders: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["ProviderStatus"];
+                kind?: components["schemas"]["ProviderKind"];
+                /** @description Opaque, HMAC-signed, expiring cursor from `page.next_cursor`. Never construct or modify it. */
+                cursor?: components["parameters"]["Cursor"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProviderPage"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminGetProvider: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Why the staff member is performing this action or viewing sensitive data (ADM-009). Stored verbatim
+                 *     in `audit_logs.metadata.justification`. Missing or blank → `400 justification_required`.
+                 */
+                "X-Audit-Justification": components["parameters"]["AuditJustification"];
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProvider"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminProviderDocumentFile: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Why the staff member is performing this action or viewing sensitive data (ADM-009). Stored verbatim
+                 *     in `audit_logs.metadata.justification`. Missing or blank → `400 justification_required`.
+                 */
+                "X-Audit-Justification": components["parameters"]["AuditJustification"];
+            };
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+                documentId: components["parameters"]["ProviderDocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderDocumentFileLink"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description Still processing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The file was deleted after the retention period. */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminDecideProvider: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Why the staff member is performing this action or viewing sensitive data (ADM-009). Stored verbatim
+                 *     in `audit_logs.metadata.justification`. Missing or blank → `400 justification_required`.
+                 */
+                "X-Audit-Justification": components["parameters"]["AuditJustification"];
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProvider"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminSuspendProvider: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Why the staff member is performing this action or viewing sensitive data (ADM-009). Stored verbatim
+                 *     in `audit_logs.metadata.justification`. Missing or blank → `400 justification_required`.
+                 */
+                "X-Audit-Justification": components["parameters"]["AuditJustification"];
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuspendProviderRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProvider"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    adminReinstateProvider: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Why the staff member is performing this action or viewing sensitive data (ADM-009). Stored verbatim
+                 *     in `audit_logs.metadata.justification`. Missing or blank → `400 justification_required`.
+                 */
+                "X-Audit-Justification": components["parameters"]["AuditJustification"];
+                /** @description Selects UI strings and localized destination/place names. User content is always returned in its original language. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProvider"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             default: components["responses"]["Problem"];
         };
     };

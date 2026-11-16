@@ -99,6 +99,7 @@ _DEFAULTS: tuple[tuple[str, RateClass, Scope, tuple[Limit, ...]], ...] = (
     ("contact", RateClass.CONTACT, Scope.USER, (Limit(20, DAY), Limit(5, MINUTE))),
     ("group_invitations", RateClass.CONTACT, Scope.USER, (Limit(50, DAY),)),
     ("join_requests", RateClass.CONTACT, Scope.USER, (Limit(20, DAY),)),
+    ("provider_inquiries", RateClass.CONTACT, Scope.USER, (Limit(10, DAY),)),  # PROV-009
     ("discovery", RateClass.DISCOVERY, Scope.USER, (Limit(60, MINUTE), Limit(500, DAY))),
     ("message", RateClass.MESSAGE, Scope.USER, (Limit(30, MINUTE), Limit(10, 10))),
     ("conversation", RateClass.MESSAGE, Scope.KEY, (Limit(20, MINUTE),)),

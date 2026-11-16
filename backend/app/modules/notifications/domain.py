@@ -489,10 +489,199 @@ GIFT_TEXTS: Final[tuple[Text, Text]] = (
 )
 
 
+# Guides and travel companies (ADR-0036, docs/18 §6): (kind, payload.variant) → (title, body).
+# Bodies may use {provider} (payload.provider_name) and {actor}.
+_REQUEST_UPDATE: Final[Text] = {
+    "en": "Request update",
+    "es": "Novedades de tu solicitud",
+    "pt-BR": "Atualização do pedido",
+    "fr": "Mise à jour de la demande",
+    "de": "Neuigkeiten zur Anfrage",
+}
+_APPLICATION: Final[Text] = {
+    "en": "Your provider profile",
+    "es": "Tu perfil de proveedor",
+    "pt-BR": "Seu perfil de prestador",
+    "fr": "Votre profil de prestataire",
+    "de": "Dein Anbieterprofil",
+}
+PROVIDER_TEXTS: Final[dict[tuple[str, str], tuple[Text, Text]]] = {
+    ("provider_invitation", ""): (
+        {
+            "en": "Team invitation",
+            "es": "Invitación al equipo",
+            "pt-BR": "Convite para a equipe",
+            "fr": "Invitation à rejoindre l'équipe",
+            "de": "Einladung ins Team",
+        },
+        {
+            "en": "{actor} invited you to join {provider}.",
+            "es": "{actor} te invitó a unirte a {provider}.",
+            "pt-BR": "{actor} convidou você para fazer parte de {provider}.",
+            "fr": "{actor} vous invite à rejoindre {provider}.",
+            "de": "{actor} hat dich zu {provider} eingeladen.",
+        },
+    ),
+    ("provider_application", "approved"): (
+        _APPLICATION,
+        {
+            "en": "{provider} is approved and now visible to travelers.",
+            "es": "{provider} fue aprobado y ya es visible para los viajeros.",
+            "pt-BR": "{provider} foi aprovado e já aparece para os viajantes.",
+            "fr": "{provider} est approuvé et désormais visible par les voyageurs.",
+            "de": "{provider} ist freigegeben und für Reisende sichtbar.",
+        },
+    ),
+    ("provider_application", "changes_requested"): (
+        _APPLICATION,
+        {
+            "en": "Our team asked for a few changes to {provider}.",
+            "es": "Nuestro equipo pidió algunos cambios en {provider}.",
+            "pt-BR": "Nossa equipe pediu alguns ajustes em {provider}.",
+            "fr": "Notre équipe demande quelques modifications pour {provider}.",
+            "de": "Unser Team bittet um ein paar Änderungen an {provider}.",
+        },
+    ),
+    ("provider_application", "rejected"): (
+        _APPLICATION,
+        {
+            "en": "We couldn't approve {provider}. See the note from our team.",
+            "es": "No pudimos aprobar {provider}. Consulta la nota de nuestro equipo.",
+            "pt-BR": "Não foi possível aprovar {provider}. Veja a nota da nossa equipe.",
+            "fr": "Nous n'avons pas pu approuver {provider}. Consultez la note de notre équipe.",
+            "de": "{provider} wurde nicht freigegeben. Sieh dir die Notiz unseres Teams an.",
+        },
+    ),
+    ("provider_application", "suspended"): (
+        _APPLICATION,
+        {
+            "en": "{provider} is suspended and hidden from travelers.",
+            "es": "{provider} está suspendido y oculto para los viajeros.",
+            "pt-BR": "{provider} foi suspenso e não aparece para os viajantes.",
+            "fr": "{provider} est suspendu et masqué aux voyageurs.",
+            "de": "{provider} ist gesperrt und für Reisende ausgeblendet.",
+        },
+    ),
+    ("provider_application", "reinstated"): (
+        _APPLICATION,
+        {
+            "en": "{provider} is visible to travelers again.",
+            "es": "{provider} vuelve a ser visible para los viajeros.",
+            "pt-BR": "{provider} voltou a aparecer para os viajantes.",
+            "fr": "{provider} est de nouveau visible par les voyageurs.",
+            "de": "{provider} ist für Reisende wieder sichtbar.",
+        },
+    ),
+    ("provider_inquiry", ""): (
+        {
+            "en": "New request",
+            "es": "Nueva solicitud",
+            "pt-BR": "Novo pedido",
+            "fr": "Nouvelle demande",
+            "de": "Neue Anfrage",
+        },
+        {
+            "en": "{actor} sent {provider} a request.",
+            "es": "{actor} envió una solicitud a {provider}.",
+            "pt-BR": "{actor} enviou um pedido para {provider}.",
+            "fr": "{actor} a envoyé une demande à {provider}.",
+            "de": "{actor} hat {provider} eine Anfrage geschickt.",
+        },
+    ),
+    ("provider_inquiry_update", "accepted"): (
+        _REQUEST_UPDATE,
+        {
+            "en": "{provider} accepted your request.",
+            "es": "{provider} aceptó tu solicitud.",
+            "pt-BR": "{provider} aceitou seu pedido.",
+            "fr": "{provider} a accepté votre demande.",
+            "de": "{provider} hat deine Anfrage angenommen.",
+        },
+    ),
+    ("provider_inquiry_update", "declined"): (
+        _REQUEST_UPDATE,
+        {
+            "en": "{provider} can't take your request.",
+            "es": "{provider} no puede aceptar tu solicitud.",
+            "pt-BR": "{provider} não pode atender seu pedido.",
+            "fr": "{provider} ne peut pas donner suite à votre demande.",
+            "de": "{provider} kann deine Anfrage nicht annehmen.",
+        },
+    ),
+    ("provider_inquiry_update", "completed"): (
+        _REQUEST_UPDATE,
+        {
+            "en": "How was it with {provider}? Leave a review.",
+            "es": "¿Qué tal con {provider}? Deja una reseña.",
+            "pt-BR": "Como foi com {provider}? Deixe uma avaliação.",
+            "fr": "Comment s'est passé votre expérience avec {provider} ? Laissez un avis.",
+            "de": "Wie war es mit {provider}? Schreib eine Bewertung.",
+        },
+    ),
+    ("provider_inquiry_update", "cancelled_by_provider"): (
+        _REQUEST_UPDATE,
+        {
+            "en": "{provider} cancelled your request.",
+            "es": "{provider} canceló tu solicitud.",
+            "pt-BR": "{provider} cancelou seu pedido.",
+            "fr": "{provider} a annulé votre demande.",
+            "de": "{provider} hat deine Anfrage storniert.",
+        },
+    ),
+    ("provider_inquiry_update", "withdrawn"): (
+        _REQUEST_UPDATE,
+        {
+            "en": "{actor} withdrew their request to {provider}.",
+            "es": "{actor} retiró su solicitud a {provider}.",
+            "pt-BR": "{actor} retirou o pedido para {provider}.",
+            "fr": "{actor} a retiré sa demande à {provider}.",
+            "de": "{actor} hat die Anfrage an {provider} zurückgezogen.",
+        },
+    ),
+    ("provider_inquiry_update", "cancelled_by_traveler"): (
+        _REQUEST_UPDATE,
+        {
+            "en": "{actor} cancelled their request to {provider}.",
+            "es": "{actor} canceló su solicitud a {provider}.",
+            "pt-BR": "{actor} cancelou o pedido para {provider}.",
+            "fr": "{actor} a annulé sa demande à {provider}.",
+            "de": "{actor} hat die Anfrage an {provider} storniert.",
+        },
+    ),
+    ("provider_review", ""): (
+        {
+            "en": "New review",
+            "es": "Nueva reseña",
+            "pt-BR": "Nova avaliação",
+            "fr": "Nouvel avis",
+            "de": "Neue Bewertung",
+        },
+        {
+            "en": "{actor} reviewed {provider}.",
+            "es": "{actor} dejó una reseña de {provider}.",
+            "pt-BR": "{actor} avaliou {provider}.",
+            "fr": "{actor} a laissé un avis sur {provider}.",
+            "de": "{actor} hat {provider} bewertet.",
+        },
+    ),
+}
+PROVIDER_KINDS: Final = frozenset(kind for kind, _ in PROVIDER_TEXTS)
+
+
 def render(
     kind: str, payload: Mapping[str, Any], *, actor: str | None, locale: str
 ) -> tuple[str, str]:
     """(title, body) for a stored notification in ``locale``."""
+    if kind in PROVIDER_KINDS:
+        variant = str(payload.get("variant") or "")
+        texts = PROVIDER_TEXTS.get((kind, variant)) or next(
+            v for (k, _), v in PROVIDER_TEXTS.items() if k == kind
+        )
+        provider = str(payload.get("provider_name") or "")
+        name = actor or _pick(SOMEONE, locale)
+        return _pick(texts[0], locale), _pick(texts[1], locale).format(
+            actor=name, provider=provider
+        )
     if kind == "new_message" and payload.get("message_kind") == "gift":
         title, body = GIFT_TEXTS
         name = actor or _pick(SOMEONE, locale)
@@ -526,6 +715,7 @@ def renderable_kinds() -> frozenset[str]:
     return frozenset(
         {
             *_TEMPLATES,
+            *PROVIDER_KINDS,
             "ai_generation_ready",
             "challenge_started",
             "challenge_result",

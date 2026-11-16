@@ -38,6 +38,8 @@ from app.core.security.access_tokens import (
 )
 from app.core.time import Clock, SystemClock
 from app.modules.admin.api import router as admin_router
+from app.modules.admin.providers import ProviderStaff
+from app.modules.admin.providers import router as admin_providers_router
 from app.modules.admin.service import AdminService
 from app.modules.ai_assistant import service as ai_service
 from app.modules.ai_assistant.api import posts_router as translation_router
@@ -122,6 +124,8 @@ from app.modules.platform.service import (
     retention_handler,
 )
 from app.modules.profiles import service as profiles_service
+from app.modules.providers import service as providers_service
+from app.modules.providers.api import router as providers_router
 from app.modules.social import service as social_service
 from app.modules.social.api import router as social_router
 from app.modules.social.follows import FollowService
@@ -409,7 +413,17 @@ def create_app(
         publish=realtime_bus.publish,
         sign=media_service.private_signer(media_storage),
         group_policy=group_chat_policy,
+        provider_policy=providers_service.chat_policy,
         flags=app.state.feature_flags,
+    )
+    app.state.provider_service = providers_service.ProviderService(
+        sessionmaker=database.sessionmaker, clock=clock, cursors=cursor_codec
+    )
+    app.state.provider_staff = ProviderStaff(
+        sessionmaker=database.sessionmaker,
+        cursors=cursor_codec,
+        clock=clock,
+        sign=media_service.private_signer(media_storage),
     )
     app.state.group_service = groups_service.GroupService(
         sessionmaker=database.sessionmaker,
@@ -503,7 +517,9 @@ def create_app(
     app.include_router(realtime_router)
     app.include_router(realtime_tickets_router)
     app.include_router(media_router)
+    app.include_router(providers_router)
     app.include_router(admin_router)
+    app.include_router(admin_providers_router)
     app.include_router(internal_router)
     if isinstance(media_storage, LocalStorage):  # emulates the object store (dev/test)
         app.mount(LocalStorage.MOUNT, media_storage.asgi_app())
@@ -626,6 +642,7 @@ DATA_EXPORTERS: tuple[data_exports.Exporter, ...] = (
     media_service.export_user_data,
     notifications_service.export_user_data,
     guides_service.export_user_data,
+    providers_service.export_user_data,
 )
 
 
@@ -921,7 +938,10 @@ def build_job_runner(
         identity_module.make_handlers(
             database.sessionmaker,
             build_idp_deleter(identity_settings, http_client),
-            before_delete=[groups_service.hand_over_owned_groups],
+            before_delete=[
+                groups_service.hand_over_owned_groups,
+                providers_service.hand_over_providers,
+            ],
         )
     )
     handlers.update(abuse_signals.make_handlers(database.sessionmaker))
@@ -929,6 +949,8 @@ def build_job_runner(
     if billing is not None:
         handlers.update(billing.make_handlers())
     challenges_service.subscribe(router)
+    providers_service.subscribe(router)
+    handlers.update(providers_service.make_handlers(database.sessionmaker, clock))
     handlers.update(
         data_exports.make_export_handlers(
             database.sessionmaker, clock, media_storage, DATA_EXPORTERS
@@ -989,6 +1011,14 @@ def build_job_runner(
         periodic.append(
             Periodic(billing_service.REMINDERS_JOB, billing_service.REMINDERS_JOB, DAILY)
         )
+    # Provider requests expire and complete on time; verification files go after 90 days.
+    periodic.append(
+        Periodic(
+            providers_service.HOUSEKEEPING_JOB,
+            providers_service.HOUSEKEEPING_JOB,
+            timedelta(hours=1),
+        )
+    )
     # Accounts whose 30-day grace ended are erased within the hour (AUTH-010: 30 + 7 days).
     periodic.append(
         Periodic(
@@ -1054,10 +1084,31 @@ def evidence_providers() -> dict[str, trust_safety_service.EvidenceProvider]:
         found = await groups_service.group_evidence(session, target_id, reporter_id)
         return trust_safety_service.Evidence(*found) if found else None
 
+    async def provider(
+        session: AsyncSession, target_id: uuid.UUID, reporter_id: uuid.UUID
+    ) -> trust_safety_service.Evidence | None:
+        found = await providers_service.provider_evidence(session, target_id, reporter_id)
+        return trust_safety_service.Evidence(*found) if found else None
+
+    async def provider_offering(
+        session: AsyncSession, target_id: uuid.UUID, reporter_id: uuid.UUID
+    ) -> trust_safety_service.Evidence | None:
+        found = await providers_service.offering_evidence(session, target_id, reporter_id)
+        return trust_safety_service.Evidence(*found) if found else None
+
+    async def provider_review(
+        session: AsyncSession, target_id: uuid.UUID, reporter_id: uuid.UUID
+    ) -> trust_safety_service.Evidence | None:
+        found = await providers_service.review_evidence(session, target_id, reporter_id)
+        return trust_safety_service.Evidence(*found) if found else None
+
     return {
         "post": post,
         "comment": comment,
         "user": user,
         "message": message,
         "group": group,
+        "provider": provider,
+        "provider_offering": provider_offering,
+        "provider_review": provider_review,
     }

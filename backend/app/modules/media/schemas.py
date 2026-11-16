@@ -9,7 +9,16 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-Purpose = Literal["post", "avatar", "message", "group_cover", "challenge", "editorial"]
+Purpose = Literal[
+    "post",
+    "avatar",
+    "message",
+    "group_cover",
+    "challenge",
+    "editorial",
+    "provider",
+    "provider_document",
+]
 MimeType = Literal[
     "image/jpeg", "image/png", "image/webp", "image/heic", "video/mp4", "video/quicktime"
 ]

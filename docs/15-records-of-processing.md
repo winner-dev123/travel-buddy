@@ -29,6 +29,7 @@ Legal review must confirm the bases, retention periods and transfer mechanisms b
 | 14 | Staff audit | Accountability for staff access | Audit log (actor, action, resource, justification) | Legitimate interest; legal obligation | 24 months | Staff (superadmins) |
 | 15 | Data-subject requests | Access and deletion | Request records, export archives | Legal obligation | Requests kept for accountability; archives 7 days | – |
 | 16 | Abuse prevention | Rate limiting, abuse signals | IP prefixes, request counters, signal records | Legitimate interest | Hours to days (counters); signals per schedule | – |
+| 17 | Guides and travel companies (ADR-0036) | Verify providers before travelers see them; profiles, offerings, requests, provider chats and reviews | Provider profile (public fields); legal name, registration number (e.g. CADASTUR, CNPJ) and photos of identity and registration documents (staff only, 5-minute audited links); team memberships; requests (dates, party size, message); reviews | Contract; legitimate interest (traveler safety, LIA pending); legal obligation where a registry is required | Document files 90 days after the decision, decision records while the provider exists; requests and chats as activity 5; reviews until deleted (author shown as "Former traveler" after erasure) | Staff with `providers.verify`; Supabase, object storage |
 
 ## 2. Processors
 

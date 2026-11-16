@@ -41,6 +41,8 @@ LAYERS: dict[str, float] = {
     "feed": 5,
     "discovery": 5,
     "notifications": 5,
+    # 5.5: providers open provider chats in messaging and notify (ADR-0036).
+    "providers": 5.5,
     "group_chat": 6,
     "challenges": 6,
     "ai_assistant": 6,

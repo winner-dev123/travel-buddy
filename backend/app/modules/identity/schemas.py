@@ -167,6 +167,18 @@ ConsentTypeName = Literal[
     "post_translation",
     "search_indexing",
 ]
+# Recorded by other flows, never posted to /consents (provider_terms: applying as a provider).
+RecordedConsentTypeName = Literal[
+    "terms",
+    "privacy_policy",
+    "location",
+    "traveler_discovery",
+    "marketing",
+    "ai_personalization",
+    "post_translation",
+    "search_indexing",
+    "provider_terms",
+]
 ConsentSourceName = Literal["onboarding", "settings", "prompt"]
 
 
@@ -178,7 +190,7 @@ class ConsentRequest(_Request):
 
 
 class ConsentRecordOut(_Response):
-    consent_type: ConsentTypeName
+    consent_type: RecordedConsentTypeName
     version: str
     granted: bool
     source: ConsentSourceName

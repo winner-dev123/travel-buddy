@@ -289,6 +289,20 @@ class ReportService:
             return _receipt(report), True
 
 
+async def open_report_count(session: AsyncSession, target_type: str, target_id: uuid.UUID) -> int:
+    """Open or in-review reports about one target (staff views, e.g. a provider application)."""
+    count = await session.scalar(
+        select(func.count())
+        .select_from(ContentReport)
+        .where(
+            ContentReport.target_type == target_type,
+            ContentReport.target_id == target_id,
+            ContentReport.status.in_(_OPEN),
+        )
+    )
+    return int(count or 0)
+
+
 def _receipt(report: ContentReport) -> ReportReceipt:
     return ReportReceipt.model_validate(
         {"id": report.id, "status": report.status, "created_at": report.created_at}

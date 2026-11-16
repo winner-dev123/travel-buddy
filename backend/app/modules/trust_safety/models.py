@@ -74,6 +74,9 @@ class ReportTargetType(StrEnum):
     GROUP = "group"
     CHALLENGE = "challenge"
     MEDIA = "media"
+    PROVIDER = "provider"  # guides and travel companies (ADR-0036)
+    PROVIDER_OFFERING = "provider_offering"
+    PROVIDER_REVIEW = "provider_review"
 
 
 class ContentReport(Base):

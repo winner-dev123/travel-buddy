@@ -70,6 +70,7 @@ class ConsentType(StrEnum):
     AI_PERSONALIZATION = "ai_personalization"
     POST_TRANSLATION = "post_translation"
     SEARCH_INDEXING = "search_indexing"
+    PROVIDER_TERMS = "provider_terms"  # applying as a guide or company (ADR-0036)
 
 
 class ConsentSource(StrEnum):

@@ -76,6 +76,17 @@ class ErrorCode(StrEnum):
     REWARD_NOT_PERMITTED = "reward_not_permitted"
     ATTEMPTS_EXHAUSTED = "attempts_exhausted"
     LOCATION_UNRESOLVABLE = "location_unresolvable"
+    # Guides and travel companies (ADR-0036, docs/18 §4).
+    PROVIDER_FIELD_LOCKED = "provider_field_locked"
+    PROVIDER_INCOMPLETE = "provider_incomplete"
+    PROVIDER_NOT_APPROVED = "provider_not_approved"
+    PROVIDER_BLOCKED = "provider_blocked"
+    GUIDE_PROFILE_EXISTS = "guide_profile_exists"
+    INQUIRY_ALREADY_OPEN = "inquiry_already_open"
+    INQUIRY_TRANSITION_INVALID = "inquiry_transition_invalid"
+    REVIEW_NOT_ALLOWED = "review_not_allowed"
+    OFFERING_LIMIT_REACHED = "offering_limit_reached"
+    SERVICE_AREA_LIMIT = "service_area_limit"
     STALE_LOCATION = "stale_location"
     UPSTREAM_UNAVAILABLE = "upstream_unavailable"
     AI_UNAVAILABLE = "ai_unavailable"
@@ -136,6 +147,16 @@ _DEFAULT_STATUS: Mapping[ErrorCode, HTTPStatus] = {
     ErrorCode.NOT_TEAM_CAPTAIN: HTTPStatus.FORBIDDEN,
     ErrorCode.REWARD_NOT_PERMITTED: HTTPStatus.UNPROCESSABLE_ENTITY,
     ErrorCode.ATTEMPTS_EXHAUSTED: HTTPStatus.CONFLICT,
+    ErrorCode.PROVIDER_FIELD_LOCKED: HTTPStatus.CONFLICT,
+    ErrorCode.PROVIDER_INCOMPLETE: HTTPStatus.UNPROCESSABLE_ENTITY,
+    ErrorCode.PROVIDER_NOT_APPROVED: HTTPStatus.CONFLICT,
+    ErrorCode.PROVIDER_BLOCKED: HTTPStatus.FORBIDDEN,
+    ErrorCode.GUIDE_PROFILE_EXISTS: HTTPStatus.CONFLICT,
+    ErrorCode.INQUIRY_ALREADY_OPEN: HTTPStatus.CONFLICT,
+    ErrorCode.INQUIRY_TRANSITION_INVALID: HTTPStatus.CONFLICT,
+    ErrorCode.REVIEW_NOT_ALLOWED: HTTPStatus.CONFLICT,
+    ErrorCode.OFFERING_LIMIT_REACHED: HTTPStatus.CONFLICT,
+    ErrorCode.SERVICE_AREA_LIMIT: HTTPStatus.UNPROCESSABLE_ENTITY,
     ErrorCode.UPSTREAM_UNAVAILABLE: HTTPStatus.SERVICE_UNAVAILABLE,
     ErrorCode.AI_UNAVAILABLE: HTTPStatus.SERVICE_UNAVAILABLE,
     ErrorCode.AI_OUTPUT_INVALID: HTTPStatus.BAD_GATEWAY,

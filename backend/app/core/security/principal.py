@@ -44,6 +44,7 @@ class Permission(StrEnum):
     PRIVACY_REQUESTS_MANAGE = "privacy.requests.manage"  # GDPR requests: justified + audited
     SAFETY_FILTERS_MANAGE = "safety.filters.manage"  # message keyword filter (SAFE-006)
     ROLES_ASSIGN = "roles.assign"
+    PROVIDERS_VERIFY = "providers.verify"  # guide/company applications (ADR-0036)
 
 
 _SUPPORT = frozenset(
@@ -58,6 +59,7 @@ _MODERATOR = _SUPPORT | {
     Permission.MODERATION_ACTIONS_WRITE,
     Permission.USERS_SUSPEND,
     Permission.CONTENT_REWARDS_REVIEW,
+    Permission.PROVIDERS_VERIFY,
 }
 _ADMIN = _MODERATOR | {
     Permission.USERS_READ_SENSITIVE,

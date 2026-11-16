@@ -40,6 +40,8 @@ class Flag(StrEnum):
     POST_TRANSLATION = "post_translation"
     # Phase 5
     GROUP_CHALLENGES = "group_challenges"
+    # Phase 8: guides and travel companies (ADR-0036)
+    PROVIDER_MARKETPLACE = "provider_marketplace"
 
 
 _DEFAULTS: Mapping[Flag, bool] = dict.fromkeys(Flag, False)

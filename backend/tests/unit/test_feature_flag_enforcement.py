@@ -38,6 +38,10 @@ CASES: list[tuple[Flag, str, str, dict[str, Any] | None]] = [
     (Flag.AI_ITINERARIES, "POST", "/v1/ai/itineraries/generate", {}),
     (Flag.AI_REPLANNING, "POST", f"/v1/ai/trips/{ID}/replan", {}),
     (Flag.POST_TRANSLATION, "GET", f"/v1/posts/{ID}/translation", None),
+    (Flag.PROVIDER_MARKETPLACE, "GET", "/v1/providers", None),
+    (Flag.PROVIDER_MARKETPLACE, "GET", f"/v1/providers/{ID}", None),
+    (Flag.PROVIDER_MARKETPLACE, "POST", "/v1/providers", {}),
+    (Flag.PROVIDER_MARKETPLACE, "GET", "/v1/users/me/inquiries", None),
     (Flag.GUEST_BROWSING, "GET", "/v1/public/posts", None),
     (Flag.GUEST_BROWSING, "GET", f"/v1/public/posts/{ID}", None),
 ]
@@ -89,10 +93,12 @@ def test_enabled_feature_passes_the_flag_check(
 
 
 def test_conversations_stay_reachable_while_either_messaging_feature_is_on() -> None:
+    off = {"direct_messages": False, "travel_groups": False, "provider_marketplace": False}
     for flags, expect_disabled in (
-        ({"direct_messages": False, "travel_groups": False}, True),
-        ({"direct_messages": False, "travel_groups": True}, False),
-        ({"direct_messages": True, "travel_groups": False}, False),
+        (off, True),
+        ({**off, "travel_groups": True}, False),
+        ({**off, "direct_messages": True}, False),
+        ({**off, "provider_marketplace": True}, False),  # provider chats (ADR-0036)
     ):
         for client in _client(**flags):
             response = client.get("/v1/conversations")

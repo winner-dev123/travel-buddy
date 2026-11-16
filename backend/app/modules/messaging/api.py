@@ -31,7 +31,11 @@ from app.modules.messaging.service import MessagingService
 router = APIRouter(
     prefix="/v1/conversations",
     tags=["messaging"],
-    dependencies=[Depends(require_any_flag(Flag.DIRECT_MESSAGES, Flag.TRAVEL_GROUPS))],
+    dependencies=[
+        Depends(
+            require_any_flag(Flag.DIRECT_MESSAGES, Flag.TRAVEL_GROUPS, Flag.PROVIDER_MARKETPLACE)
+        )
+    ],
 )
 
 CurrentPrincipal = Annotated[Principal, Depends(get_principal)]

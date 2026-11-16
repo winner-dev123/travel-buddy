@@ -30,6 +30,8 @@ servers:
 security:
   - bearerAuth: []
 tags:
+  - name: providers
+    description: Guides and travel companies (ADR-0036, docs/18). Behind `provider_marketplace`.
   - name: health
     description: Liveness and readiness probes (unversioned).
   - name: internal
@@ -6657,6 +6659,1712 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         default: { $ref: '#/components/responses/Problem' }
 
+  /v1/providers:
+    get:
+      tags:
+      - providers
+      operationId: listProviders
+      summary: Approved guides and travel companies serving a destination
+      description: Ordered by a Bayesian rating `(sum + 4.0 × 5) / (count + 5)`, then response rate, then approval
+        date (docs/18 §5). Providers the viewer blocked are hidden.
+      security:
+      - {}
+      - bearerAuth: []
+      x-phase: 8
+      x-requirements:
+      - PROV-007
+      x-rate-limit-class: read
+      parameters:
+      - name: destination_id
+        in: query
+        required: false
+        description: Providers whose base town or a service area is this place or lies inside it, or contains it (a
+          provider serving Rio de Janeiro is listed on Copacabana and on Brazil).
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      - name: kind
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/ProviderKind'
+      - name: language
+        in: query
+        required: false
+        description: 'Base language match: `pt` also finds `pt-BR`.'
+        schema:
+          type: string
+          pattern: ^[a-z]{2,3}(-[A-Z]{2})?$
+      - name: specialty
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/ProviderSpecialty'
+      - $ref: '#/components/parameters/Cursor'
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderPage'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Problem'
+    post:
+      tags:
+      - providers
+      operationId: createProvider
+      summary: Apply as a guide or travel company (creates a draft)
+      description: Needs a verified email (`403 email_unverified`). A person owns at most one guide profile (`409
+        guide_profile_exists`).
+      x-phase: 8
+      x-requirements:
+      - PROV-001
+      - PROV-002
+      x-rate-limit-class: write
+      x-idempotency: required
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProviderRequest'
+      responses:
+        '201':
+          description: Draft created; the caller is its owner.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderWorkspace'
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Location:
+              $ref: '#/components/headers/Location'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: '`guide_profile_exists` or `idempotency_key_reused`.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/providers/{providerId}:
+    get:
+      tags:
+      - providers
+      operationId: getProvider
+      summary: Public provider profile (non-approved ones only for their members)
+      security:
+      - {}
+      - bearerAuth: []
+      x-phase: 8
+      x-requirements:
+      - PROV-007
+      x-rate-limit-class: read
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderProfile'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Problem'
+    patch:
+      tags:
+      - providers
+      operationId: updateProvider
+      summary: Edit the provider profile (owner, manager)
+      x-phase: 8
+      x-requirements:
+      - PROV-001
+      - PROV-002
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      - $ref: '#/components/parameters/IfMatchOptional'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProviderRequest'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderWorkspace'
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: '`provider_field_locked` (verified fields) or the profile is closed.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/providers/{providerId}/workspace:
+    get:
+      tags:
+      - providers
+      operationId: getProviderWorkspace
+      summary: The provider as its own members see it
+      x-phase: 8
+      x-requirements:
+      - PROV-001
+      - PROV-002
+      x-rate-limit-class: read
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderWorkspace'
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/providers/{providerId}/service-areas:
+    put:
+      tags:
+      - providers
+      operationId: setProviderServiceAreas
+      summary: Replace the service areas (up to 20; the base town is separate)
+      x-phase: 8
+      x-requirements:
+      - PROV-001
+      - PROV-002
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderServiceAreasRequest'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderWorkspace'
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: '`validation_failed` or `service_area_limit`.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/providers/{providerId}/documents:
+    get:
+      tags:
+      - providers
+      operationId: listProviderDocuments
+      summary: Verification documents (metadata only, no file links)
+      x-phase: 8
+      x-requirements:
+      - PROV-003
+      - PROV-004
+      x-rate-limit-class: read
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderDocumentList'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Problem'
+    post:
+      tags:
+      - providers
+      operationId: addProviderDocument
+      summary: Attach a verification document (an uploaded `provider_document` image)
+      x-phase: 8
+      x-requirements:
+      - PROV-003
+      - PROV-004
+      x-rate-limit-class: sensitive
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddProviderDocumentRequest'
+      responses:
+        '201':
+          description: Attached.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderDocument'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/providers/{providerId}/documents/{documentId}:
+    delete:
+      tags:
+      - providers
+      operationId: deleteProviderDocument
+      summary: Remove a document that staff haven't checked yet
+      x-phase: 8
+      x-requirements:
+      - PROV-003
+      - PROV-004
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      - $ref: '#/components/parameters/ProviderDocumentId'
+      responses:
+        '204':
+          description: Done.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/providers/{providerId}/submit:
+    post:
+      tags:
+      - providers
+      operationId: submitProvider
+      summary: Submit the application for staff review (accepts the Provider Terms)
+      description: From `draft` or `changes_requested`. Gaps return `422 provider_incomplete` with `missing` (docs/18
+        §2.1).
+      x-phase: 8
+      x-requirements:
+      - PROV-003
+      - PROV-004
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitProviderRequest'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderWorkspace'
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Not submittable in its current status.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: '`provider_incomplete` (with `missing`) or `validation_failed` (`outdated_version`).'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/providers/{providerId}/deactivate:
+    post:
+      tags:
+      - providers
+      operationId: deactivateProvider
+      summary: Close the profile for good (owner)
+      x-phase: 8
+      x-requirements:
+      - PROV-001
+      - PROV-002
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderWorkspace'
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/providers/{providerId}/members:
+    get:
+      tags:
+      - providers
+      operationId: listProviderMembers
+      summary: The team (active members)
+      x-phase: 8
+      x-requirements:
+      - PROV-005
+      x-rate-limit-class: read
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderMemberList'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Problem'
+    post:
+      tags:
+      - providers
+      operationId: inviteProviderMember
+      summary: Invite someone by handle (companies; owners invite managers and agents, managers invite agents)
+      x-phase: 8
+      x-requirements:
+      - PROV-005
+      x-rate-limit-class: sensitive
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteProviderMemberRequest'
+      responses:
+        '201':
+          description: Invited.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderMemberList'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/providers/{providerId}/members/me/accept:
+    post:
+      tags:
+      - providers
+      operationId: acceptProviderInvitation
+      summary: Accept a team invitation
+      x-phase: 8
+      x-requirements:
+      - PROV-005
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderWorkspace'
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/providers/{providerId}/members/{userId}:
+    patch:
+      tags:
+      - providers
+      operationId: changeProviderMemberRole
+      summary: Change a member's role (owner)
+      x-phase: 8
+      x-requirements:
+      - PROV-005
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      - $ref: '#/components/parameters/ProviderMemberUserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeProviderMemberRoleRequest'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderMemberList'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Problem'
+    delete:
+      tags:
+      - providers
+      operationId: removeProviderMember
+      summary: Remove a member, or leave (anyone but the owner)
+      x-phase: 8
+      x-requirements:
+      - PROV-005
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      - $ref: '#/components/parameters/ProviderMemberUserId'
+      responses:
+        '204':
+          description: Done.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/providers/{providerId}/offerings:
+    get:
+      tags:
+      - providers
+      operationId: listProviderOfferings
+      summary: Published offerings (members see every status with `status=all`)
+      security:
+      - {}
+      - bearerAuth: []
+      x-phase: 8
+      x-requirements:
+      - PROV-006
+      x-rate-limit-class: read
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - published
+          - all
+          default: published
+      - $ref: '#/components/parameters/Cursor'
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfferingPage'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Problem'
+    post:
+      tags:
+      - providers
+      operationId: createOffering
+      summary: Create an offering (draft)
+      x-phase: 8
+      x-requirements:
+      - PROV-006
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOfferingRequest'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Offering'
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/provider-offerings/{offeringId}:
+    get:
+      tags:
+      - providers
+      operationId: getOffering
+      summary: One offering
+      security:
+      - {}
+      - bearerAuth: []
+      x-phase: 8
+      x-requirements:
+      - PROV-006
+      x-rate-limit-class: read
+      parameters:
+      - $ref: '#/components/parameters/OfferingId'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Offering'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Problem'
+    patch:
+      tags:
+      - providers
+      operationId: updateOffering
+      summary: Edit an offering (owner, manager)
+      x-phase: 8
+      x-requirements:
+      - PROV-006
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/OfferingId'
+      - $ref: '#/components/parameters/IfMatchOptional'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOfferingRequest'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Offering'
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/provider-offerings/{offeringId}/publish:
+    post:
+      tags:
+      - providers
+      operationId: publishOffering
+      summary: Publish an offering (approved providers; up to 50 live)
+      x-phase: 8
+      x-requirements:
+      - PROV-006
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/OfferingId'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Offering'
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: '`provider_not_approved` or `offering_limit_reached`.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/provider-offerings/{offeringId}/archive:
+    post:
+      tags:
+      - providers
+      operationId: archiveOffering
+      summary: Take an offering down
+      x-phase: 8
+      x-requirements:
+      - PROV-006
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/OfferingId'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Offering'
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/providers/{providerId}/reviews:
+    get:
+      tags:
+      - providers
+      operationId: listProviderReviews
+      summary: Reviews, newest first
+      security:
+      - {}
+      - bearerAuth: []
+      x-phase: 8
+      x-requirements:
+      - PROV-011
+      x-rate-limit-class: read
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      - $ref: '#/components/parameters/Cursor'
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderReviewPage'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/users/me/providers:
+    get:
+      tags:
+      - providers
+      operationId: listMyProviders
+      summary: Providers I belong to or am invited to
+      x-phase: 8
+      x-requirements:
+      - PROV-001
+      - PROV-002
+      x-rate-limit-class: read
+      parameters:
+      - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderMembershipList'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/providers/{providerId}/inquiries:
+    post:
+      tags:
+      - providers
+      operationId: createInquiry
+      summary: Send a request to a provider (opens the provider chat)
+      description: Signed-in travelers with a verified email; not members of the provider. One open request per provider
+        (`409 inquiry_already_open`); 10 new requests a day (`429`). The provider chat is an exception to DM-001 (ADR-0036).
+      x-phase: 8
+      x-requirements:
+      - PROV-009
+      - PROV-010
+      x-rate-limit-class: contact
+      x-idempotency: required
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInquiryRequest'
+      responses:
+        '201':
+          description: Sent; `conversation_id` is the provider chat.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inquiry'
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Location:
+              $ref: '#/components/headers/Location'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          description: '`email_unverified`, `provider_blocked`, `account_restricted` or `forbidden` (own team).'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: '`inquiry_already_open` or `idempotency_key_reused`.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        default:
+          $ref: '#/components/responses/Problem'
+    get:
+      tags:
+      - providers
+      operationId: listProviderInquiries
+      summary: The provider's requests (members)
+      x-phase: 8
+      x-requirements:
+      - PROV-009
+      - PROV-010
+      x-rate-limit-class: read
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      - name: status
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/InquiryStatus'
+      - $ref: '#/components/parameters/Cursor'
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InquiryPage'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/users/me/inquiries:
+    get:
+      tags:
+      - providers
+      operationId: listMyInquiries
+      summary: Requests I sent
+      x-phase: 8
+      x-requirements:
+      - PROV-009
+      - PROV-010
+      x-rate-limit-class: read
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/InquiryStatus'
+      - $ref: '#/components/parameters/Cursor'
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InquiryPage'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/provider-inquiries/{inquiryId}:
+    get:
+      tags:
+      - providers
+      operationId: getInquiry
+      summary: One request (the traveler or the provider's members)
+      x-phase: 8
+      x-requirements:
+      - PROV-009
+      - PROV-010
+      x-rate-limit-class: read
+      parameters:
+      - $ref: '#/components/parameters/InquiryId'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inquiry'
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/provider-inquiries/{inquiryId}/accept:
+    post:
+      tags:
+      - providers
+      operationId: acceptInquiry
+      summary: Accept a request (provider)
+      description: Open requests only; `409 inquiry_transition_invalid` when the request isn't in a state that allows
+        it.
+      x-phase: 8
+      x-requirements:
+      - PROV-009
+      - PROV-010
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/InquiryId'
+      - $ref: '#/components/parameters/IfMatchOptional'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inquiry'
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: '`inquiry_transition_invalid` or `provider_not_approved`.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/provider-inquiries/{inquiryId}/decline:
+    post:
+      tags:
+      - providers
+      operationId: declineInquiry
+      summary: Decline a request (provider)
+      description: Open requests only; `409 inquiry_transition_invalid` when the request isn't in a state that allows
+        it.
+      x-phase: 8
+      x-requirements:
+      - PROV-009
+      - PROV-010
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/InquiryId'
+      - $ref: '#/components/parameters/IfMatchOptional'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeclineInquiryRequest'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inquiry'
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: '`inquiry_transition_invalid` or `provider_not_approved`.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/provider-inquiries/{inquiryId}/complete:
+    post:
+      tags:
+      - providers
+      operationId: completeInquiry
+      summary: Mark an accepted request as done (provider)
+      description: Accepted requests only; `409 inquiry_transition_invalid` when the request isn't in a state that
+        allows it.
+      x-phase: 8
+      x-requirements:
+      - PROV-009
+      - PROV-010
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/InquiryId'
+      - $ref: '#/components/parameters/IfMatchOptional'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inquiry'
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: '`inquiry_transition_invalid` or `provider_not_approved`.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/provider-inquiries/{inquiryId}/cancel:
+    post:
+      tags:
+      - providers
+      operationId: cancelInquiry
+      summary: Cancel an accepted request (either side)
+      description: Accepted requests only; `409 inquiry_transition_invalid` when the request isn't in a state that
+        allows it.
+      x-phase: 8
+      x-requirements:
+      - PROV-009
+      - PROV-010
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/InquiryId'
+      - $ref: '#/components/parameters/IfMatchOptional'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inquiry'
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: '`inquiry_transition_invalid` or `provider_not_approved`.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/provider-inquiries/{inquiryId}/withdraw:
+    post:
+      tags:
+      - providers
+      operationId: withdrawInquiry
+      summary: Withdraw an open request (traveler)
+      description: Open requests only; `409 inquiry_transition_invalid` when the request isn't in a state that allows
+        it.
+      x-phase: 8
+      x-requirements:
+      - PROV-009
+      - PROV-010
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/InquiryId'
+      - $ref: '#/components/parameters/IfMatchOptional'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inquiry'
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: '`inquiry_transition_invalid` or `provider_not_approved`.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/provider-inquiries/{inquiryId}/review:
+    post:
+      tags:
+      - providers
+      operationId: createProviderReview
+      summary: Review the provider after a completed request (traveler, within 60 days)
+      x-phase: 8
+      x-requirements:
+      - PROV-011
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/InquiryId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProviderReviewRequest'
+      responses:
+        '201':
+          description: Published.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderReview'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: '`review_not_allowed`.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/provider-reviews/{reviewId}/reply:
+    post:
+      tags:
+      - providers
+      operationId: replyProviderReview
+      summary: Reply once in public (owner, manager)
+      x-phase: 8
+      x-requirements:
+      - PROV-011
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/ProviderReviewId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplyProviderReviewRequest'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderReview'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/provider-reviews/{reviewId}:
+    delete:
+      tags:
+      - providers
+      operationId: deleteProviderReview
+      summary: Delete my own review
+      x-phase: 8
+      x-requirements:
+      - PROV-011
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/ProviderReviewId'
+      responses:
+        '204':
+          description: Done.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/providers/{providerId}/block:
+    put:
+      tags:
+      - providers
+      operationId: blockProvider
+      summary: Block a provider (hidden from me; its chat closes)
+      x-phase: 8
+      x-requirements:
+      - PROV-012
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      responses:
+        '204':
+          description: Done.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Problem'
+    delete:
+      tags:
+      - providers
+      operationId: unblockProvider
+      summary: Unblock a provider
+      x-phase: 8
+      x-requirements:
+      - PROV-012
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      responses:
+        '204':
+          description: Done.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/providers/{providerId}/blocked-travelers/{userId}:
+    put:
+      tags:
+      - providers
+      operationId: blockTravelerForProvider
+      summary: Block a traveler from this provider (owner, manager)
+      x-phase: 8
+      x-requirements:
+      - PROV-012
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      - $ref: '#/components/parameters/ProviderMemberUserId'
+      responses:
+        '204':
+          description: Done.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Problem'
+    delete:
+      tags:
+      - providers
+      operationId: unblockTravelerForProvider
+      summary: Unblock a traveler
+      x-phase: 8
+      x-requirements:
+      - PROV-012
+      x-rate-limit-class: write
+      parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      - $ref: '#/components/parameters/ProviderMemberUserId'
+      responses:
+        '204':
+          description: Done.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/admin/providers:
+    get:
+      tags:
+      - admin
+      operationId: adminListProviders
+      summary: 'Provider applications (submitted: oldest first)'
+      x-phase: 8
+      x-requirements:
+      - PROV-013
+      - ADM-007
+      - ADM-008
+      - ADM-009
+      x-rate-limit-class: admin
+      x-platform-permission: providers.verify
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/ProviderStatus'
+      - name: kind
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/ProviderKind'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminProviderPage'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/admin/providers/{providerId}:
+    get:
+      tags:
+      - admin
+      operationId: adminGetProvider
+      summary: 'A full application: legal details, team, documents (audited)'
+      x-phase: 8
+      x-requirements:
+      - PROV-013
+      - ADM-007
+      - ADM-008
+      - ADM-009
+      x-rate-limit-class: admin
+      x-platform-permission: providers.verify
+      parameters:
+      - $ref: '#/components/parameters/AuditJustification'
+      - $ref: '#/components/parameters/ProviderId'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminProvider'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/admin/providers/{providerId}/documents/{documentId}/file:
+    get:
+      tags:
+      - admin
+      operationId: adminProviderDocumentFile
+      summary: A short-lived signed link to a verification document (audited)
+      x-phase: 8
+      x-requirements:
+      - PROV-013
+      - ADM-007
+      - ADM-008
+      - ADM-009
+      x-rate-limit-class: admin
+      x-platform-permission: providers.verify
+      parameters:
+      - $ref: '#/components/parameters/AuditJustification'
+      - $ref: '#/components/parameters/ProviderId'
+      - $ref: '#/components/parameters/ProviderDocumentId'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderDocumentFileLink'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Still processing.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '410':
+          description: The file was deleted after the retention period.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/admin/providers/{providerId}/decision:
+    post:
+      tags:
+      - admin
+      operationId: adminDecideProvider
+      summary: Approve, request changes or reject a submitted application
+      x-phase: 8
+      x-requirements:
+      - PROV-013
+      - ADM-007
+      - ADM-008
+      - ADM-009
+      x-rate-limit-class: admin
+      x-platform-permission: providers.verify
+      parameters:
+      - $ref: '#/components/parameters/AuditJustification'
+      - $ref: '#/components/parameters/ProviderId'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderDecisionRequest'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminProvider'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/admin/providers/{providerId}/suspend:
+    post:
+      tags:
+      - admin
+      operationId: adminSuspendProvider
+      summary: Suspend an approved provider (hidden at once; chats stay readable)
+      x-phase: 8
+      x-requirements:
+      - PROV-013
+      - ADM-007
+      - ADM-008
+      - ADM-009
+      x-rate-limit-class: admin
+      x-platform-permission: providers.verify
+      parameters:
+      - $ref: '#/components/parameters/AuditJustification'
+      - $ref: '#/components/parameters/ProviderId'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SuspendProviderRequest'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminProvider'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Problem'
+  /v1/admin/providers/{providerId}/reinstate:
+    post:
+      tags:
+      - admin
+      operationId: adminReinstateProvider
+      summary: Reinstate a suspended provider
+      x-phase: 8
+      x-requirements:
+      - PROV-013
+      - ADM-007
+      - ADM-008
+      - ADM-009
+      x-rate-limit-class: admin
+      x-platform-permission: providers.verify
+      parameters:
+      - $ref: '#/components/parameters/AuditJustification'
+      - $ref: '#/components/parameters/ProviderId'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminProvider'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Problem'
 webhooks:
   webCacheRevalidation:
     post:
@@ -6808,6 +8516,50 @@ components:
     ConversationId: { name: conversationId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
     MessageId: { name: messageId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
     GroupId: { name: groupId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+    ProviderId:
+      name: providerId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    OfferingId:
+      name: offeringId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    InquiryId:
+      name: inquiryId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    ProviderReviewId:
+      name: reviewId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    ProviderDocumentId:
+      name: documentId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    ProviderMemberUserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    IfMatchOptional:
+      name: If-Match
+      in: header
+      required: false
+      description: 'Optional here: when sent, the version must match (`412 precondition_failed`).'
+      schema:
+        type: string
+        pattern: ^"\d+"$
     InvitationId: { name: invitationId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
     JoinRequestId: { name: joinRequestId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
     TransferId: { name: transferId, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
@@ -7094,6 +8846,16 @@ components:
         - already_connected
         - discovery_disabled
         - location_unresolvable
+        - provider_field_locked
+        - provider_incomplete
+        - provider_not_approved
+        - provider_blocked
+        - guide_profile_exists
+        - inquiry_already_open
+        - inquiry_transition_invalid
+        - review_not_allowed
+        - offering_limit_reached
+        - service_area_limit
         - stale_location
         - group_capacity_reached
         - owner_must_transfer
@@ -7172,6 +8934,7 @@ components:
         - privacy.requests.manage
         - safety.filters.manage
         - roles.assign
+        - providers.verify
     TravelStyle: { type: string, enum: [adventure, backpacking, luxury, food, culture, photography, digital_nomad, nature, family] }
     DestinationKind: { type: string, enum: [country, admin_region, city, district, neighborhood, area] }
     PlaceCategory: { type: string, enum: [attraction, restaurant, cafe, bar, museum, beach, trail, viewpoint, park, market, lodging, transit_hub, other] }
@@ -7185,7 +8948,7 @@ components:
     RelationshipState: { type: string, enum: [none, request_pending, request_received, connected, declined, blocked] }
     ConnectionRequestStatus: { type: string, enum: [pending, accepted, declined, cancelled, expired] }
     ConnectionContext: { type: string, enum: [discovery, group, profile, post] }
-    ConversationKind: { type: string, enum: [direct, group, challenge_team] }
+    ConversationKind: { type: string, enum: [direct, group, challenge_team, provider] }
     MessageKind: { type: string, enum: [text, image, system, announcement, gift] }
     GiftCode:
       type: string
@@ -7218,19 +8981,22 @@ components:
     OfflinePackageKind: { type: string, enum: [guide, audio_tour, map_region, bundle] }
     ProductPlatform: { type: string, enum: [ios, android, web] }
     BillingProvider: { type: string, enum: [apple, google, stripe, dev], description: '`dev` exists only in development and test (docs/07 §6).' }
-    ReportTargetType: { type: string, enum: [post, comment, user, message, group, challenge, media] }
+    ReportTargetType: { type: string, enum: [post, comment, user, message, group, challenge, media, provider, provider_offering, provider_review] }
     ReportReason: { type: string, enum: [spam, harassment, hate, sexual_content, minor_safety, violence, self_harm, scam, privacy_violation, impersonation, illegal, other] }
     ReportStatus: { type: string, enum: [open, in_review, actioned, dismissed] }
     ModerationActionType: { type: string, enum: [remove_content, restore_content, limit_visibility, warn, restrict, suspend, ban, reinstate, remove_member] }
-    ConsentType: { type: string, enum: [terms, privacy_policy, location, traveler_discovery, marketing, ai_personalization, post_translation, search_indexing] }
+    ConsentType:
+      type: string
+      description: '`provider_terms` is recorded when applying as a guide or company (ADR-0036); it can''t be posted to `/v1/users/me/consents`.'
+      enum: [terms, privacy_policy, location, traveler_discovery, marketing, ai_personalization, post_translation, search_indexing, provider_terms]
     MediaPurpose:
       type: string
-      description: '`editorial` is uploaded by content staff only (DEST-007).'
-      enum: [post, avatar, message, group_cover, challenge, editorial]
+      description: '`editorial` is uploaded by content staff only (DEST-007). `provider` holds public provider pictures; `provider_document` verification documents that only staff open (ADR-0036).'
+      enum: [post, avatar, message, group_cover, challenge, editorial, provider, provider_document]
     MediaStatus: { type: string, enum: [pending_upload, scanning, ready, rejected, deleted] }
     NotificationType:
       type: string
-      enum: [connection_request, connection_accepted, new_message, group_invitation, group_announcement, challenge_started, challenge_result, post_reaction, post_comment, new_follower, follow_request, moderation_notice, subscription_notice, ai_generation_ready, data_export_ready]
+      enum: [connection_request, connection_accepted, new_message, group_invitation, group_announcement, challenge_started, challenge_result, post_reaction, post_comment, new_follower, follow_request, moderation_notice, subscription_notice, ai_generation_ready, data_export_ready, provider_invitation, provider_application, provider_inquiry, provider_inquiry_update, provider_review]
 
     # ───────── Health & config ─────────
     LivenessStatus:
@@ -8560,8 +10326,12 @@ components:
             - { type: 'null' }
         group_id: { type: [string, 'null'], format: uuid }
         challenge_team_id: { type: [string, 'null'], format: uuid }
+        provider_id:
+          type: [string, 'null']
+          format: uuid
+          description: Provider chats (ADR-0036). The traveler sees the provider's name and logo as title and avatar; provider members see the traveler as counterpart.
         counterpart:
-          description: Direct conversations only.
+          description: Direct conversations, and the traveler in provider chats seen by provider members.
           anyOf:
             - { $ref: '#/components/schemas/UserSummary' }
             - { type: 'null' }
@@ -8586,7 +10356,7 @@ components:
         muted_until: { $ref: '#/components/schemas/NullableTimestamp' }
         notification_level: { $ref: '#/components/schemas/NotificationLevel' }
         can_send: { type: boolean }
-        send_restriction: { type: [string, 'null'], enum: [connection_required, blocked, member_restricted, chat_admins_only, archived, null] }
+        send_restriction: { type: [string, 'null'], enum: [connection_required, blocked, member_restricted, chat_admins_only, archived, provider_unavailable, null] }
         created_at: { $ref: '#/components/schemas/Timestamp' }
         last_message_at: { $ref: '#/components/schemas/NullableTimestamp' }
     ConversationPage:
@@ -10531,3 +12301,1248 @@ components:
       properties:
         data: { type: array, items: { $ref: '#/components/schemas/AuditLogEntry' } }
         page: { $ref: '#/components/schemas/PageInfo' }
+
+    # ───────── Guides and travel companies (ADR-0036) ─────────
+    ProviderKind:
+      type: string
+      enum:
+      - guide
+      - company
+      description: '`guide`: one person working independently; `company`: an agency, tour operator, transfer or activity
+        provider.'
+    ProviderStatus:
+      type: string
+      enum:
+      - draft
+      - submitted
+      - changes_requested
+      - approved
+      - rejected
+      - suspended
+      - deactivated
+      description: Only `approved` providers are visible to travelers (PROV-003).
+    ProviderRole:
+      type: string
+      enum:
+      - owner
+      - manager
+      - agent
+    ProviderMemberStatus:
+      type: string
+      enum:
+      - invited
+      - active
+    ProviderSpecialty:
+      type: string
+      enum:
+      - city_tours
+      - history_culture
+      - food_drink
+      - nature
+      - adventure
+      - water_activities
+      - nightlife
+      - photography
+      - art_museums
+      - family
+      - wellness
+      - accessible_travel
+      - transfers
+      - multi_day
+    ProviderDocumentKind:
+      type: string
+      enum:
+      - identity
+      - tourism_registry
+      - guide_license
+      - business_registration
+      - insurance
+      - other
+      description: '`tourism_registry`: e.g. CADASTUR (Brazil). `business_registration`: e.g. CNPJ.'
+    ProviderDocumentStatus:
+      type: string
+      enum:
+      - pending
+      - accepted
+      - rejected
+    OfferingKind:
+      type: string
+      enum:
+      - tour
+      - activity
+      - transfer
+      - package
+      - class
+      - other
+    OfferingStatus:
+      type: string
+      enum:
+      - draft
+      - published
+      - archived
+      - removed
+      description: '`removed` is set by staff moderation.'
+    PriceUnit:
+      type: string
+      enum:
+      - per_person
+      - per_group
+    InquiryStatus:
+      type: string
+      enum:
+      - open
+      - accepted
+      - declined
+      - withdrawn
+      - expired
+      - completed
+      - cancelled
+    ProviderMembership:
+      type: object
+      required:
+      - role
+      - status
+      properties:
+        role:
+          $ref: '#/components/schemas/ProviderRole'
+        status:
+          $ref: '#/components/schemas/ProviderMemberStatus'
+    ProviderSummary:
+      type: object
+      required:
+      - id
+      - slug
+      - kind
+      - status
+      - display_name
+      - tagline
+      - logo
+      - cover
+      - base_destination
+      - languages
+      - specialties
+      - rating_average
+      - rating_count
+      - verified_at
+      - response_time_seconds
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        slug:
+          type: string
+        kind:
+          $ref: '#/components/schemas/ProviderKind'
+        status:
+          $ref: '#/components/schemas/ProviderStatus'
+        display_name:
+          type: string
+          minLength: 2
+          maxLength: 80
+        tagline:
+          type:
+          - string
+          - 'null'
+          maxLength: 120
+        logo:
+          anyOf:
+          - $ref: '#/components/schemas/MediaRef'
+          - type: 'null'
+        cover:
+          anyOf:
+          - $ref: '#/components/schemas/MediaRef'
+          - type: 'null'
+        base_destination:
+          anyOf:
+          - $ref: '#/components/schemas/DestinationSummary'
+          - type: 'null'
+        languages:
+          type: array
+          items:
+            type: string
+        specialties:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProviderSpecialty'
+        rating_average:
+          type:
+          - number
+          - 'null'
+          minimum: 1
+          maximum: 5
+        rating_count:
+          type: integer
+          minimum: 0
+        verified_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+          description: '"Verified by Travel Buddy" since (first approval); null unless approved.'
+        response_time_seconds:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          description: Average time to the first answer, shown after 3 answered requests.
+      description: A provider card. Never carries legal name, registration number, documents, staff notes or members
+        (PROV-002).
+    ProviderProfile:
+      allOf:
+      - $ref: '#/components/schemas/ProviderSummary'
+      - type: object
+        required:
+        - about
+        - years_experience
+        - website_url
+        - service_areas
+        - published_offering_count
+        properties:
+          about:
+            type:
+            - string
+            - 'null'
+            maxLength: 4000
+          years_experience:
+            type:
+            - integer
+            - 'null'
+            minimum: 0
+            maximum: 80
+          website_url:
+            type:
+            - string
+            - 'null'
+            maxLength: 300
+          service_areas:
+            type: array
+            items:
+              $ref: '#/components/schemas/DestinationSummary'
+          published_offering_count:
+            type: integer
+            minimum: 0
+          membership:
+            anyOf:
+            - $ref: '#/components/schemas/ProviderMembership'
+            - type: 'null'
+            description: The viewer's own membership, if any.
+    ProviderWorkspace:
+      description: What the provider's own members see; the owner and managers edit it.
+      allOf:
+      - $ref: '#/components/schemas/ProviderProfile'
+      - type: object
+        required:
+        - country_code
+        - legal_name
+        - registration_number
+        - review_note
+        - suspended_reason
+        - submitted_at
+        - decided_at
+        - locked_fields
+        - terms_version
+        - terms_accepted_version
+        - missing_for_submit
+        - inquiry_count
+        - response_count
+        - version
+        - created_at
+        properties:
+          country_code:
+            $ref: '#/components/schemas/CountryCode'
+          legal_name:
+            type:
+            - string
+            - 'null'
+          registration_number:
+            type:
+            - string
+            - 'null'
+          review_note:
+            type:
+            - string
+            - 'null'
+            description: Staff note for `changes_requested` / `rejected`.
+          suspended_reason:
+            type:
+            - string
+            - 'null'
+          submitted_at:
+            $ref: '#/components/schemas/NullableTimestamp'
+          decided_at:
+            $ref: '#/components/schemas/NullableTimestamp'
+          locked_fields:
+            type: array
+            items:
+              type: string
+            description: Verified fields that only support can change (after the first approval).
+          terms_version:
+            type: string
+            description: Current Provider Terms version to send with submit.
+          terms_accepted_version:
+            type:
+            - string
+            - 'null'
+          missing_for_submit:
+            type: array
+            items:
+              type: string
+            description: E.g. `legal_name`, `document:identity`, `document:business_registration`.
+          inquiry_count:
+            type: integer
+            minimum: 0
+          response_count:
+            type: integer
+            minimum: 0
+          version:
+            type: integer
+            minimum: 1
+          created_at:
+            $ref: '#/components/schemas/Timestamp'
+    ProviderPage:
+      type: object
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProviderSummary'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+    ProviderMembershipEntry:
+      type: object
+      required:
+      - provider
+      - role
+      - status
+      - invited_by
+      - created_at
+      properties:
+        provider:
+          $ref: '#/components/schemas/ProviderSummary'
+        role:
+          $ref: '#/components/schemas/ProviderRole'
+        status:
+          $ref: '#/components/schemas/ProviderMemberStatus'
+        invited_by:
+          anyOf:
+          - $ref: '#/components/schemas/UserSummary'
+          - type: 'null'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+    ProviderMembershipList:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProviderMembershipEntry'
+    ProviderDocument:
+      type: object
+      required:
+      - id
+      - kind
+      - number
+      - issuing_country
+      - expires_on
+      - status
+      - file_available
+      - created_at
+      - decided_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        kind:
+          $ref: '#/components/schemas/ProviderDocumentKind'
+        number:
+          type:
+          - string
+          - 'null'
+          maxLength: 64
+        issuing_country:
+          type:
+          - string
+          - 'null'
+          pattern: ^[A-Z]{2}$
+        expires_on:
+          $ref: '#/components/schemas/NullableLocalDate'
+        status:
+          $ref: '#/components/schemas/ProviderDocumentStatus'
+        file_available:
+          type: boolean
+          description: Files are deleted 90 days after the decision (PROV-004).
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        decided_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+      description: Never carries a file URL for members (PROV-004).
+    ProviderDocumentList:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProviderDocument'
+    ProviderMember:
+      type: object
+      required:
+      - user
+      - role
+      - status
+      - created_at
+      - accepted_at
+      properties:
+        user:
+          anyOf:
+          - $ref: '#/components/schemas/UserSummary'
+          - type: 'null'
+        role:
+          $ref: '#/components/schemas/ProviderRole'
+        status:
+          $ref: '#/components/schemas/ProviderMemberStatus'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        accepted_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+    ProviderMemberList:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProviderMember'
+    OfferingPrice:
+      type: object
+      required:
+      - amount_minor
+      - currency
+      - unit
+      - indicative
+      properties:
+        amount_minor:
+          type: integer
+          minimum: 0
+          format: int64
+        currency:
+          $ref: '#/components/schemas/CurrencyCode'
+        unit:
+          anyOf:
+          - $ref: '#/components/schemas/PriceUnit'
+          - type: 'null'
+        indicative:
+          type: boolean
+          const: true
+      description: 'An indicative "from" price. Phase 8a moves no money: travelers and providers agree on payment outside
+        the app.'
+    Offering:
+      type: object
+      required:
+      - id
+      - provider
+      - status
+      - kind
+      - title
+      - description
+      - destination
+      - duration_minutes
+      - price_from
+      - max_group_size
+      - languages
+      - cover
+      - published_at
+      - created_at
+      - updated_at
+      - version
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        provider:
+          $ref: '#/components/schemas/ProviderSummary'
+        status:
+          $ref: '#/components/schemas/OfferingStatus'
+        kind:
+          $ref: '#/components/schemas/OfferingKind'
+        title:
+          type: string
+          minLength: 3
+          maxLength: 100
+        description:
+          type:
+          - string
+          - 'null'
+          maxLength: 4000
+        destination:
+          anyOf:
+          - $ref: '#/components/schemas/DestinationSummary'
+          - type: 'null'
+        duration_minutes:
+          type:
+          - integer
+          - 'null'
+          minimum: 15
+          maximum: 43200
+        price_from:
+          anyOf:
+          - $ref: '#/components/schemas/OfferingPrice'
+          - type: 'null'
+        max_group_size:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          maximum: 500
+        languages:
+          type: array
+          items:
+            type: string
+        cover:
+          anyOf:
+          - $ref: '#/components/schemas/MediaRef'
+          - type: 'null'
+        published_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        version:
+          type: integer
+          minimum: 1
+    OfferingPage:
+      type: object
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Offering'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+    OfferingRef:
+      type: object
+      required:
+      - id
+      - title
+      - kind
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        title:
+          type: string
+        kind:
+          $ref: '#/components/schemas/OfferingKind'
+    Inquiry:
+      type: object
+      required:
+      - id
+      - provider
+      - traveler
+      - offering
+      - start_date
+      - end_date
+      - flexible_dates
+      - party_size
+      - message
+      - status
+      - decline_reason
+      - conversation_id
+      - first_response_at
+      - decided_at
+      - completed_at
+      - viewer_side
+      - can_review
+      - review_id
+      - created_at
+      - updated_at
+      - version
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        provider:
+          $ref: '#/components/schemas/ProviderSummary'
+        traveler:
+          anyOf:
+          - $ref: '#/components/schemas/UserSummary'
+          - type: 'null'
+        offering:
+          anyOf:
+          - $ref: '#/components/schemas/OfferingRef'
+          - type: 'null'
+        start_date:
+          $ref: '#/components/schemas/NullableLocalDate'
+        end_date:
+          $ref: '#/components/schemas/NullableLocalDate'
+        flexible_dates:
+          type: boolean
+        party_size:
+          type: integer
+          minimum: 1
+          maximum: 50
+        message:
+          type: string
+          minLength: 10
+          maxLength: 2000
+        status:
+          $ref: '#/components/schemas/InquiryStatus'
+        decline_reason:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+        conversation_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: The provider chat (conversation kind `provider`).
+        first_response_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+        decided_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+        completed_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+        viewer_side:
+          type: string
+          enum:
+          - traveler
+          - provider
+        can_review:
+          type: boolean
+        review_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        version:
+          type: integer
+          minimum: 1
+      description: A traveler's request to a provider (PROV-009/010). Shown as a card in the provider chat.
+    InquiryPage:
+      type: object
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Inquiry'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+    ProviderReviewReply:
+      type: object
+      required:
+      - body
+      - replied_at
+      properties:
+        body:
+          type: string
+          maxLength: 2000
+        replied_at:
+          $ref: '#/components/schemas/Timestamp'
+    ProviderReview:
+      type: object
+      required:
+      - id
+      - provider_id
+      - rating
+      - body
+      - author
+      - reply
+      - created_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        provider_id:
+          $ref: '#/components/schemas/Uuid'
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        body:
+          type:
+          - string
+          - 'null'
+          maxLength: 2000
+        author:
+          anyOf:
+          - $ref: '#/components/schemas/UserSummary'
+          - type: 'null'
+          description: 'Null after the author''s account was erased: show "Former traveler".'
+        reply:
+          anyOf:
+          - $ref: '#/components/schemas/ProviderReviewReply'
+          - type: 'null'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+    ProviderReviewPage:
+      type: object
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProviderReview'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+    AdminProviderSummary:
+      type: object
+      required:
+      - id
+      - kind
+      - status
+      - display_name
+      - country_code
+      - owner
+      - submitted_at
+      - decided_at
+      - created_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        kind:
+          $ref: '#/components/schemas/ProviderKind'
+        status:
+          $ref: '#/components/schemas/ProviderStatus'
+        display_name:
+          type: string
+        country_code:
+          $ref: '#/components/schemas/CountryCode'
+        owner:
+          anyOf:
+          - $ref: '#/components/schemas/UserSummary'
+          - type: 'null'
+        submitted_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+        decided_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+    AdminProviderPage:
+      type: object
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminProviderSummary'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+    AdminProviderDocument:
+      allOf:
+      - $ref: '#/components/schemas/ProviderDocument'
+      - type: object
+        required:
+        - decided_by
+        - uploaded_by
+        properties:
+          decided_by:
+            type:
+            - string
+            - 'null'
+            format: uuid
+          uploaded_by:
+            type:
+            - string
+            - 'null'
+            format: uuid
+    AdminProvider:
+      type: object
+      required:
+      - provider
+      - owner
+      - members
+      - documents
+      - decided_by
+      - open_report_count
+      properties:
+        provider:
+          $ref: '#/components/schemas/ProviderWorkspace'
+        owner:
+          anyOf:
+          - $ref: '#/components/schemas/UserSummary'
+          - type: 'null'
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProviderMember'
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminProviderDocument'
+        decided_by:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        open_report_count:
+          type: integer
+          minimum: 0
+    ProviderDocumentFileLink:
+      type: object
+      required:
+      - url
+      - expires_at
+      properties:
+        url:
+          type: string
+          format: uri
+        expires_at:
+          $ref: '#/components/schemas/Timestamp'
+      description: A short-lived signed link; each opening is audited (PROV-004).
+    CreateProviderRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - display_name
+      - country_code
+      - base_destination_id
+      properties:
+        kind:
+          $ref: '#/components/schemas/ProviderKind'
+        display_name:
+          type: string
+          minLength: 2
+          maxLength: 80
+        legal_name:
+          type:
+          - string
+          - 'null'
+          minLength: 2
+          maxLength: 200
+        tagline:
+          type:
+          - string
+          - 'null'
+          maxLength: 120
+        about:
+          type:
+          - string
+          - 'null'
+          maxLength: 4000
+        country_code:
+          $ref: '#/components/schemas/CountryCode'
+        base_destination_id:
+          $ref: '#/components/schemas/Uuid'
+        languages:
+          type: array
+          maxItems: 12
+          items:
+            type: string
+            pattern: ^[a-z]{2,3}(-[A-Z]{2})?$
+        specialties:
+          type: array
+          maxItems: 8
+          items:
+            $ref: '#/components/schemas/ProviderSpecialty'
+        years_experience:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 80
+        website_url:
+          type:
+          - string
+          - 'null'
+          format: uri
+          maxLength: 300
+        registration_number:
+          type:
+          - string
+          - 'null'
+          minLength: 2
+          maxLength: 64
+        logo_media_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: Media with purpose `provider`.
+        cover_media_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+    UpdateProviderRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        kind:
+          $ref: '#/components/schemas/ProviderKind'
+        display_name:
+          type: string
+          minLength: 2
+          maxLength: 80
+        legal_name:
+          type:
+          - string
+          - 'null'
+          minLength: 2
+          maxLength: 200
+        tagline:
+          type:
+          - string
+          - 'null'
+          maxLength: 120
+        about:
+          type:
+          - string
+          - 'null'
+          maxLength: 4000
+        country_code:
+          $ref: '#/components/schemas/CountryCode'
+        base_destination_id:
+          $ref: '#/components/schemas/Uuid'
+        languages:
+          type: array
+          maxItems: 12
+          items:
+            type: string
+            pattern: ^[a-z]{2,3}(-[A-Z]{2})?$
+        specialties:
+          type: array
+          maxItems: 8
+          items:
+            $ref: '#/components/schemas/ProviderSpecialty'
+        years_experience:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 80
+        website_url:
+          type:
+          - string
+          - 'null'
+          format: uri
+          maxLength: 300
+        registration_number:
+          type:
+          - string
+          - 'null'
+          minLength: 2
+          maxLength: 64
+        logo_media_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        cover_media_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+      description: Only the fields sent change. After the first approval `kind`, `legal_name`, `country_code` and `registration_number`
+        are locked (`409 provider_field_locked`).
+    ProviderServiceAreasRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - destination_ids
+      properties:
+        destination_ids:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/Uuid'
+    AddProviderDocumentRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - media_id
+      properties:
+        kind:
+          $ref: '#/components/schemas/ProviderDocumentKind'
+        media_id:
+          $ref: '#/components/schemas/Uuid'
+          description: Media with purpose `provider_document` (private).
+        number:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 64
+        issuing_country:
+          type:
+          - string
+          - 'null'
+          pattern: ^[A-Z]{2}$
+        expires_on:
+          $ref: '#/components/schemas/NullableLocalDate'
+    SubmitProviderRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - terms_version
+      properties:
+        terms_version:
+          type: string
+          minLength: 1
+          maxLength: 40
+    InviteProviderMemberRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - handle
+      - role
+      properties:
+        handle:
+          type: string
+          minLength: 1
+          maxLength: 40
+        role:
+          type: string
+          enum:
+          - manager
+          - agent
+    ChangeProviderMemberRoleRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - role
+      properties:
+        role:
+          type: string
+          enum:
+          - manager
+          - agent
+    CreateOfferingRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - title
+      - destination_id
+      properties:
+        kind:
+          $ref: '#/components/schemas/OfferingKind'
+        title:
+          type: string
+          minLength: 3
+          maxLength: 100
+        description:
+          type:
+          - string
+          - 'null'
+          maxLength: 4000
+        destination_id:
+          $ref: '#/components/schemas/Uuid'
+        duration_minutes:
+          type:
+          - integer
+          - 'null'
+          minimum: 15
+          maximum: 43200
+        price_from_minor:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          format: int64
+          description: Send with `currency`.
+        currency:
+          type:
+          - string
+          - 'null'
+          pattern: ^[A-Z]{3}$
+        price_unit:
+          anyOf:
+          - $ref: '#/components/schemas/PriceUnit'
+          - type: 'null'
+        max_group_size:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          maximum: 500
+        languages:
+          type: array
+          maxItems: 12
+          items:
+            type: string
+            pattern: ^[a-z]{2,3}(-[A-Z]{2})?$
+        cover_media_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+    UpdateOfferingRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        kind:
+          $ref: '#/components/schemas/OfferingKind'
+        title:
+          type: string
+          minLength: 3
+          maxLength: 100
+        description:
+          type:
+          - string
+          - 'null'
+          maxLength: 4000
+        destination_id:
+          $ref: '#/components/schemas/Uuid'
+        duration_minutes:
+          type:
+          - integer
+          - 'null'
+          minimum: 15
+          maximum: 43200
+        price_from_minor:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          format: int64
+        currency:
+          type:
+          - string
+          - 'null'
+          pattern: ^[A-Z]{3}$
+        price_unit:
+          anyOf:
+          - $ref: '#/components/schemas/PriceUnit'
+          - type: 'null'
+        max_group_size:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          maximum: 500
+        languages:
+          type: array
+          maxItems: 12
+          items:
+            type: string
+            pattern: ^[a-z]{2,3}(-[A-Z]{2})?$
+        cover_media_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+    CreateInquiryRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - party_size
+      - message
+      properties:
+        offering_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        start_date:
+          $ref: '#/components/schemas/NullableLocalDate'
+          description: Required unless `flexible_dates`; from today on.
+        end_date:
+          $ref: '#/components/schemas/NullableLocalDate'
+        flexible_dates:
+          type: boolean
+          default: false
+        party_size:
+          type: integer
+          minimum: 1
+          maximum: 50
+        message:
+          type: string
+          minLength: 10
+          maxLength: 2000
+    DeclineInquiryRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+    CreateProviderReviewRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - rating
+      properties:
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        body:
+          type:
+          - string
+          - 'null'
+          maxLength: 2000
+    ReplyProviderReviewRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - body
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 2000
+    ProviderDecisionRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - decision
+      properties:
+        decision:
+          type: string
+          enum:
+          - approve
+          - request_changes
+          - reject
+        note:
+          type:
+          - string
+          - 'null'
+          maxLength: 1000
+          description: Required for `request_changes` and `reject`; shown to the applicant.
+        documents:
+          type: array
+          maxItems: 10
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - id
+            - status
+            properties:
+              id:
+                $ref: '#/components/schemas/Uuid'
+              status:
+                type: string
+                enum:
+                - accepted
+                - rejected
+          description: Per-document outcome. On approval, documents not listed are accepted.
+    SuspendProviderRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - reason
+      properties:
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 1000

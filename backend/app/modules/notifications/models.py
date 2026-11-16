@@ -31,6 +31,12 @@ class NotificationType(StrEnum):
     SUBSCRIPTION_NOTICE = "subscription_notice"
     AI_GENERATION_READY = "ai_generation_ready"
     DATA_EXPORT_READY = "data_export_ready"
+    # Guides and travel companies (ADR-0036, docs/18 §6).
+    PROVIDER_INVITATION = "provider_invitation"
+    PROVIDER_APPLICATION = "provider_application"
+    PROVIDER_INQUIRY = "provider_inquiry"
+    PROVIDER_INQUIRY_UPDATE = "provider_inquiry_update"
+    PROVIDER_REVIEW = "provider_review"
 
 
 class Notification(Base):

@@ -14,6 +14,7 @@ class ConversationKind(StrEnum):
     DIRECT = "direct"
     GROUP = "group"
     CHALLENGE_TEAM = "challenge_team"
+    PROVIDER = "provider"  # traveler ↔ a guide or company (ADR-0036)
 
 
 class MessageKind(StrEnum):
@@ -70,6 +71,7 @@ class SendRestriction(StrEnum):
     MEMBER_RESTRICTED = "member_restricted"
     CHAT_ADMINS_ONLY = "chat_admins_only"
     ARCHIVED = "archived"
+    PROVIDER_UNAVAILABLE = "provider_unavailable"  # suspended or closed (PROV-012)
 
 
 EDIT_WINDOW: Final = timedelta(minutes=15)  # DM-010

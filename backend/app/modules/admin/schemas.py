@@ -10,7 +10,18 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.modules.profiles.schemas import UserSummary
 
-TargetType = Literal["post", "comment", "user", "message", "group", "challenge", "media"]
+TargetType = Literal[
+    "post",
+    "comment",
+    "user",
+    "message",
+    "group",
+    "challenge",
+    "media",
+    "provider",
+    "provider_offering",
+    "provider_review",
+]
 RestrictionKind = Literal[
     "posting_limited",
     "commenting_limited",

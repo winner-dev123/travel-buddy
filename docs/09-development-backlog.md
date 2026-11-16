@@ -194,6 +194,31 @@ Web-workstream items (Next.js app, BFF, web admin) are tracked by the web workst
 
 More destinations and languages · additional audio tours · ML ranking behind A/B (FEED-021) · partner integrations · preference learning (AI-010) · expanded challenge types (CHAL-017) · public groups.
 
+## 9a. Phase 8 — Guides and travel companies marketplace
+
+Requested by the owner on 2026-11-16 ([ADR-0036](adr/0036-guides-and-travel-companies-marketplace.md), [docs/18](18-provider-marketplace.md), PRD §4.22). It depends on Phases 1–3 (identity, destinations, media, messaging, moderation, staff console). It is behind `provider_marketplace`.
+
+**8a — profiles, verification, requests (no money flow)**
+
+| ID | Item | Size | Deps | Req | Status |
+|---|---|---|---|---|---|
+| BL-8.01 | Migration 0050 and the `providers` module: providers, members, service areas, documents, offerings, inquiries, reviews, blocks; conversation kind `provider`; new media purposes, report targets, notification types, consent type and permission | M | — | PROV-001..015 | ✅ 2026-11-16: migration 0050, `app/modules/providers` (layer 5.5), conversation kind `provider`, enums, `providers.verify` for moderators and up |
+| BL-8.02 | Provider application API: create, edit (locked fields), service areas, documents, submit with completeness check, deactivate | M | 8.01 | PROV-001..004 | ✅ 2026-11-16: create (one guide profile per person), edit with `If-Match` and locked fields, service areas with copied ancestor paths, private document images (no member file links), submit with `missing` and the `provider_terms` consent, deactivate |
+| BL-8.03 | Teams: invite, accept, change role, remove, leave | S | 8.01 | PROV-005 | ✅ 2026-11-16: invite by handle, accept (joins every provider chat), owner-only role changes, remove or leave |
+| BL-8.04 | Offerings: draft, edit, publish, archive; public reads | S | 8.02 | PROV-006 | ✅ 2026-11-16: offerings with indicative "from" price; publish needs approval and caps at 50 |
+| BL-8.05 | Listing by destination (area match, filters, Bayesian order, keyset cursors), public profile, reviews list | M | 8.02 | PROV-007 | ✅ 2026-11-16: `GET /v1/providers` (place or inside it, language base match, specialty, kind), Bayesian order with keyset cursors, anonymous reads |
+| BL-8.06 | Requests and provider chat: send (rate limits, one open per pair), messaging policy for `provider` conversations, membership sync, lifecycle transitions, response stats, housekeeping job (expire, auto-complete, purge document files after 90 days) | L | 8.01 | PROV-009, PROV-010, PROV-004 | ✅ 2026-11-16: requests (10 a day, one open per pair, idempotent), shared provider thread, messaging policy hook, transitions with notifications, first response from decisions or the `message.sent` event, hourly housekeeping |
+| BL-8.07 | Reviews and replies; blocks both ways; report targets and moderation actions (remove/restore offering and review) | M | 8.06 | PROV-011, PROV-012 | ✅ 2026-11-16: reviews after completion (60 days), one public reply, blocks both ways, report evidence, staff remove/restore through moderation actions |
+| BL-8.08 | Staff API: queue, application detail, signed document links, decisions, suspend and reinstate; notifications for all provider events | M | 8.02 | PROV-003, PROV-013, PROV-014 | ✅ 2026-11-16: `/v1/admin/providers` queue, justified detail, audited 5-minute document links, decisions, suspend/reinstate; 5 notification types in 5 languages |
+| BL-8.09 | Erasure hand-over, export, contract (`providers` tag) and contract tests | S | 8.01..8.08 | PROV-015 | ✅ 2026-11-16: hand-over before erasure, data export, contract (tag `providers`, 36 paths) with web types regenerated; 11 integration tests (`test_providers.py`) |
+| BL-8.10 | Mobile for travelers: destination section, provider list and profile, offering, request form with safety tips, my requests, provider chat card, review | L | 8.05..8.07 | PROV-007..012 | ⬜ |
+| BL-8.11 | Mobile for providers: apply flow (kind, profile, areas, documents, terms, submit), status, profile and offerings editor, request inbox with actions, team | L | 8.02..8.06 | PROV-001..006, PROV-010 | ⬜ |
+| BL-8.12 | Staff console: verification queue and application review page, provider suspend/reinstate | M | 8.08 | PROV-013 | ⬜ |
+
+Before launch: the Provider Terms text and the docs/15 processing activity (provider verification) need legal review, and staff need a review rota with a target of a decision within 2 working days.
+
+**8b — bookings and revenue (planned):** Stripe Connect Express bookings with commission (PROV-016), provider plans (PROV-017), featured placement (PROV-018). Each needs its own ADR and legal review.
+
 ## 10. Immediate next steps (Phase 1 kickoff, needs approval)
 
 1. ~~Decide Q-1 (IdP vendor)~~: Supabase Auth (ADR-0020). Remaining dashboard steps are listed in the backend README.

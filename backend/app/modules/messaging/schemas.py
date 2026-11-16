@@ -12,7 +12,7 @@ from app.core.pagination import PageInfo
 from app.modules.media.schemas import MediaRef
 from app.modules.profiles.schemas import UserSummary
 
-Kind = Literal["direct", "group", "challenge_team"]
+Kind = Literal["direct", "group", "challenge_team", "provider"]
 MessageKindName = Literal["text", "image", "system", "announcement", "gift"]
 # DM-016: the gift catalog (mirrors ``domain.Gift``; the app ships the pictures).
 GiftCode = Literal[
@@ -22,7 +22,12 @@ GiftCode = Literal[
 GiftEffectName = Literal["petals", "splash", "confetti", "hearts"]
 Level = Literal["all", "mentions", "none"]
 Restriction = Literal[
-    "connection_required", "blocked", "member_restricted", "chat_admins_only", "archived"
+    "connection_required",
+    "blocked",
+    "member_restricted",
+    "chat_admins_only",
+    "archived",
+    "provider_unavailable",
 ]
 
 
@@ -116,6 +121,9 @@ class ConversationOut(_Response):
     avatar: MediaRef | None
     group_id: uuid.UUID | None
     challenge_team_id: uuid.UUID | None
+    # Provider chats (ADR-0036): the guide or company. The traveler sees its name and logo as
+    # title and avatar; provider members see the traveler as counterpart.
+    provider_id: uuid.UUID | None = None
     counterpart: UserSummary | None
     last_message: MessagePreview | None
     last_seq: int

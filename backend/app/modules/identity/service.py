@@ -1281,6 +1281,29 @@ async def purge_realtime_tickets(session: AsyncSession) -> int:
     return int(getattr(result, "rowcount", 0) or 0)
 
 
+async def record_consent(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    consent_type: str,
+    version: str,
+    granted: bool,
+    at: datetime,
+) -> None:
+    """Append to the consent ledger from another module's flow (e.g. Provider Terms accepted
+    when applying as a guide or company, ADR-0036)."""
+    session.add(
+        ConsentRecord(
+            user_id=user_id,
+            consent_type=ConsentType(consent_type),
+            version=version,
+            granted=granted,
+            source=ConsentSource.PROMPT,
+            recorded_at=at,
+        )
+    )
+
+
 async def consent_granted(session: AsyncSession, user_id: uuid.UUID, consent_type: str) -> bool:
     """Whether the user's latest ledger record for ``consent_type`` grants it (opt-in features)."""
     return any(

@@ -21,6 +21,7 @@ from app.modules.notifications import models as notifications_models
 from app.modules.observability import models as observability_models
 from app.modules.platform import models as platform_models
 from app.modules.profiles import models as profiles_models
+from app.modules.providers import models as providers_models
 from app.modules.social import models as social_models
 from app.modules.trips import models as trips_models
 from app.modules.trust_safety import models as trust_safety_models
@@ -43,6 +44,7 @@ __all__ = [
     "observability_models",
     "platform_models",
     "profiles_models",
+    "providers_models",
     "social_models",
     "trips_models",
     "trust_safety_models",

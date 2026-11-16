@@ -21,6 +21,7 @@ Phase 0 engineering artifacts (master prompt §26), all at **v1.0 draft for appr
 | 15 | Records of processing activities (GDPR Art. 30, draft) | [15-records-of-processing.md](15-records-of-processing.md) |
 | 16 | Destination launch playbook | [16-destination-launch-playbook.md](16-destination-launch-playbook.md) |
 | 17 | Penetration test scope and rules of engagement | [17-penetration-test-scope.md](17-penetration-test-scope.md) |
+| 18 | Guides and travel companies marketplace (ADR-0036) | [18-provider-marketplace.md](18-provider-marketplace.md) |
 | — | Architecture decision records | [adr/](adr/README.md) |
 | — | Web application (web workstream) | [web/](web/01-architecture.md) |
 

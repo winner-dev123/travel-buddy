@@ -8,7 +8,18 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
-TargetTypeName = Literal["post", "comment", "user", "message", "group", "challenge", "media"]
+TargetTypeName = Literal[
+    "post",
+    "comment",
+    "user",
+    "message",
+    "group",
+    "challenge",
+    "media",
+    "provider",
+    "provider_offering",
+    "provider_review",
+]
 ReasonName = Literal[
     "spam",
     "harassment",

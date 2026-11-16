@@ -13,6 +13,7 @@
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 2026-11-09 | Initial PRD derived from Master Development Prompt v1.0. Requirement IDs established. |
+| 1.5 | 2026-11-16 | Added §4.22 PROV-001..018: guides and travel companies marketplace (ADR-0036, docs/18). Providers apply and are approved by staff; travelers send requests through a provider chat (a DM-001 exception); paid bookings and provider revenue are phase 8b. Narrowed the §1.2 booking non-goal and added provider rows to the §3 access matrix. |
 | 1.4 | 2026-11-09 | Q-1 resolved: Supabase Auth is the identity provider (ADR-0020). No requirement changes. |
 | 1.3 | 2026-11-09 | Q-8 partially resolved: Supabase chosen as the managed PostgreSQL provider (ADR-0018). No requirement changes. |
 | 1.2 | 2026-11-09 | Added PROF-008 (opt-in search-engine indexing), NOTIF-005 (Web Push), ADM-007..009 (staff MFA, staff session timeouts, audit justification), SAFE-012 (web cache purge on visibility loss) and SAFE-013 (own-account restrictions shown to the user). Requested by the web workstream. All additive. |
@@ -45,7 +46,7 @@
 
 ### 1.2 Non-goals for v1
 
-* Booking or reselling flights, hotels or tickets (future partner integrations only).
+* Booking or reselling flights, hotels or tickets (future partner integrations only). Paid bookings with local guides and travel companies are phase 8b (PROV-016); phase 8a connects travelers and providers through requests and chat, with payment arranged outside the app.
 * Building a turn-by-turn navigation engine. Mapping and routing are integrated from providers.
 * End-to-end encrypted messaging (it needs its own threat model and key management spec first).
 * Paid-entry contests, raffles, wagers or cash prizes.
@@ -77,8 +78,15 @@
 | **Create challenges and riddles, define prizes, validate winners** | — | — | — | ✓ (owner premium) | — |
 | Premium guides, audio tours, expanded offline allowance | — | — | ✓ | — | — |
 | Moderate content and users, manage destinations and subscriptions config | — | — | — | — | ✓ (RBAC) |
+| Browse approved guides and travel companies, offerings and reviews | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Send requests to providers, chat with them, review after a completed request | — | ✓ | ✓ | ✓ | — |
+| Apply as a guide or travel company | — | ✓ | ✓ | ✓ | — |
+| Manage a provider's profile, offerings, team and requests (provider member†) | — | ✓ | ✓ | ✓ | — |
+| Verify, suspend and reinstate providers | — | — | — | — | ✓ (`providers.verify`) |
 
 \*Group admin is a **resource-scoped** role (owner, admin, moderator), not an account type. Premium capabilities of a group derive from the **owner's** entitlement ([07](07-subscription-entitlement-policy.md)). Safety moderation inside a group is never paywalled.
+
+†Provider member is a **resource-scoped** role (owner, manager, agent) on a provider record (ADR-0036), not an account type. The same account can travel, post and chat as itself. Phase 8a charges providers nothing.
 
 ---
 
@@ -407,6 +415,31 @@ destination_match = 1.0 exact, 0.8 child (neighborhood within city), 0.5 parent,
 | ADM-008 | Staff session limits on admin routes: 30 min idle, 12 h absolute | M | 1 | Expired → `401 reauthentication_required` |
 | ADM-009 | Admin mutations and sensitive reads require an `X-Audit-Justification` header, stored in the audit log | M | 1 | Missing → `400 justification_required`. Contract test enforces the header on every admin mutation |
 | ADM-006 | Operational dashboards (moderation SLAs, outbox lag, job failures) | S | 6 | — |
+
+### 4.22 Guides and travel companies: PROV
+
+Decision: [ADR-0036](adr/0036-guides-and-travel-companies-marketplace.md). Design: [18](18-provider-marketplace.md). Phase 8a = profiles, verification, offerings, requests, chat and reviews. Phase 8b = paid bookings and provider revenue. Everything sits behind the `provider_marketplace` flag.
+
+| ID | Requirement | Pri | Phase | Acceptance criteria |
+|---|---|---|---|---|
+| PROV-001 | Any account with a verified email can apply as an individual guide or a travel company. A provider is a business profile that accounts belong to, not an account type. A person owns at most one guide profile | M | 8a | `POST /v1/providers` creates a draft owned by the caller. A second guide profile → `409 guide_profile_exists`. Unverified email → `403 email_unverified` |
+| PROV-002 | Provider profile: display name, tagline, about, logo, cover, base town (any catalog destination), up to 20 service areas, languages spoken, up to 8 specialties from a fixed list, years of experience, website. Legal name, country and registration number are collected for verification only | M | 8a | `ProviderProfile` (public) has no legal name, registration number, documents, staff note or member list (contract test) |
+| PROV-003 | Staff approve a provider before travelers can see it. Submitting needs the Provider Terms consent, an identity document, and a business registration for companies. Staff approve, request changes (with a note) or reject. Kind, legal name, country and registration number lock at first approval | M | 8a | Non-approved providers → 404 for non-members in every read and list. Submit with gaps → `422 provider_incomplete` listing `missing`. Editing a locked field after approval → `409 provider_field_locked` |
+| PROV-004 | Verification documents are private: staff with `providers.verify` open them through 5-minute signed links, each opening audited with a justification, and the files are deleted 90 days after the decision while the decision record stays | M | 8a | Members never receive a file URL. No public variant is created. Housekeeping deletes the object and sets `file_deleted_at` |
+| PROV-005 | Company teams: the owner invites managers and agents, managers invite agents, and invitees accept before acting. Members answer requests for the provider. Anyone but the owner can leave | S | 8a | Role matrix unit tests. An invited member can't read the provider's requests until they accept |
+| PROV-006 | Approved providers publish offerings (tour, activity, transfer, package, class, other) with destination, duration, an indicative "from" price with currency and unit, group size, languages and a cover photo. Prices are labelled indicative. At most 50 published | M | 8a | Publishing for a non-approved provider → `409 provider_not_approved`. The 51st → `409 offering_limit_reached` |
+| PROV-007 | Travelers and guests browse approved providers serving a destination (base town or service area at or inside it), filtered by kind, language and specialty, in a deterministic order (Bayesian rating, response rate, approval date) | M | 8a | Provider serving Rio de Janeiro is listed on Copacabana and on Brazil. Blocked providers are hidden for the blocker. Stable cursor pagination |
+| PROV-008 | Destination screens show a "Local guides & companies" section when any approved provider serves the destination | S | 8a | Mobile test: section hidden for zero results, shown otherwise |
+| PROV-009 | A traveler sends a request (optional offering, dates or flexible, party size, message). It opens a `provider` conversation between the traveler and the provider's active members without a connection (an exception to DM-001), with safety tips before the first request | M | 8a | `POST /v1/providers/{id}/inquiries` returns `conversation_id`. A second open request to the same provider → `409 inquiry_already_open`. 11th request in a day → `429`. Members can't request their own provider |
+| PROV-010 | Request lifecycle: open → accepted, declined, withdrawn or expired (14 days, or past start date); accepted → completed (provider, or a day after the service date) or cancelled. Both sides see the status. The profile shows how quickly the provider usually replies | M | 8a | State machine unit tests for every transition. Invalid → `409 inquiry_transition_invalid`. `first_response_at` set by the first decision or provider message |
+| PROV-011 | Only travelers with a completed request can review the provider: once per request, within 60 days, rating 1–5 plus optional text. The provider replies once in public. Ratings count visible reviews only | M | 8a | Review before completion → `409 review_not_allowed`. Removed review leaves the cached rating |
+| PROV-012 | Safety: providers, offerings and reviews can be reported. Travelers and providers can block each other per provider (lists hidden, chat closed). Staff can suspend and reinstate a provider; suspension hides it at once and stops new requests while chats stay readable | M | 8a | Report targets `provider`, `provider_offering`, `provider_review`. Suspended provider → absent from lists, chat `can_send = false` |
+| PROV-013 | Staff console verification queue: submitted applications oldest first, full application view with documents, decisions with a note, suspend and reinstate. Every action needs `providers.verify` and a justification, and is audited. The applicant is notified | M | 8a | Admin contract test: every provider admin mutation requires `X-Audit-Justification` |
+| PROV-014 | Notifications for team invitations, application decisions, new requests, request updates and new reviews, following the user's notification preferences | M | 8a | One notification per event and recipient (dedupe keys) |
+| PROV-015 | Account erasure and export cover provider data: a company passes to its longest-serving manager or is deactivated, a guide profile is deactivated and cleared, reviews show "Former traveler", and the export includes memberships, offerings, requests and reviews | M | 8a | Deletion saga integration test with a company and a guide owner |
+| PROV-016 | Paid bookings in the app through Stripe Connect (Express accounts, application fee as commission), with availability, cancellation policies, refunds, disputes and payouts. Needs its own ADR and legal review | S | 8b | — |
+| PROV-017 | Provider plans: a monthly subscription for extra provider tools, sold on the web with Stripe and granted through the entitlement evaluator (ADR-0006) | C | 8b | — |
+| PROV-018 | Featured placement: paid, time-boxed slots per destination, always labelled "Sponsored" and kept apart from the organic order | C | 8b | — |
 
 ---
 

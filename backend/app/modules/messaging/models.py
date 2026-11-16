@@ -41,7 +41,9 @@ class Conversation(Base):
             "OR (kind = 'group' AND group_id IS NOT NULL AND direct_key IS NULL "
             "AND challenge_team_id IS NULL) "
             "OR (kind = 'challenge_team' AND challenge_team_id IS NOT NULL "
-            "AND direct_key IS NULL AND group_id IS NULL)",
+            "AND direct_key IS NULL AND group_id IS NULL) "
+            "OR (kind = 'provider' AND provider_id IS NOT NULL AND direct_key IS NULL "
+            "AND group_id IS NULL AND challenge_team_id IS NULL)",
             name="target_per_kind",
         ),
         CheckConstraint("last_seq >= 0", name="last_seq_nonnegative"),
@@ -51,6 +53,14 @@ class Conversation(Base):
             "group_id",
             unique=True,
             postgresql_where=text("kind = 'group'"),
+        ),
+        # One thread per provider and traveler (ADR-0036); erased travelers leave NULL behind.
+        Index(
+            "uq_conversations__provider_pair",
+            "provider_id",
+            "provider_traveler_id",
+            unique=True,
+            postgresql_where=text("kind = 'provider'"),
         ),
     )
 
@@ -63,6 +73,12 @@ class Conversation(Base):
     # challenge_teams also points here (team thread); use_alter breaks the cycle.
     challenge_team_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("challenge_teams.id", ondelete="CASCADE", use_alter=True)
+    )
+    provider_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("providers.id", ondelete="CASCADE")
+    )
+    provider_traveler_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="SET NULL")
     )
     last_seq: Mapped[int] = mapped_column(BigInteger, server_default=text("0"))
     last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

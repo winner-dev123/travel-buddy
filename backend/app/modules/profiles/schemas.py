@@ -39,6 +39,11 @@ NotificationType = Literal[
     "subscription_notice",
     "ai_generation_ready",
     "data_export_ready",
+    "provider_invitation",
+    "provider_application",
+    "provider_inquiry",
+    "provider_inquiry_update",
+    "provider_review",
 ]
 NotificationChannel = Literal["push", "in_app", "email"]
 NotificationMatrix = dict[NotificationType, dict[NotificationChannel, StrictBool]]

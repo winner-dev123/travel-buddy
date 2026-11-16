@@ -35,6 +35,10 @@ class MediaPurpose(StrEnum):
     # Destination covers and guide imagery uploaded by content staff (DEST-007). Published only
     # after a staff member verifies the rights; then the platform owns it (``owner_id`` NULL).
     EDITORIAL = "editorial"
+    # Guides and travel companies (ADR-0036): public logos, covers and offering photos, and
+    # private verification documents that only staff open through signed links (PROV-004).
+    PROVIDER = "provider"
+    PROVIDER_DOCUMENT = "provider_document"
 
 
 class MediaStatus(StrEnum):

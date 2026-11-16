@@ -30,7 +30,7 @@ from collections.abc import Awaitable, Callable, Mapping, Sequence
 from datetime import datetime
 from typing import Any, Protocol
 
-from sqlalchemy import and_, delete, exists, func, or_, select, tuple_, update
+from sqlalchemy import and_, delete, exists, func, or_, select, text, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.sql.elements import ColumnElement
@@ -117,6 +117,48 @@ class GroupChatPolicy(Protocol):
 GroupPolicy = Callable[[AsyncSession, uuid.UUID, uuid.UUID, datetime], Awaitable[GroupChatPolicy]]
 
 
+class ProviderChatPolicy(Protocol):
+    """What the providers module decides about one member of a provider chat (ADR-0036)."""
+
+    @property
+    def restriction(self) -> str | None: ...
+
+    @property
+    def title(self) -> str | None: ...
+
+    @property
+    def avatar_media_id(self) -> uuid.UUID | None: ...
+
+    @property
+    def counterpart_id(self) -> uuid.UUID | None: ...
+
+
+# (provider_id, traveler_id, viewer) -> policy; injected by main (providers sits above messaging).
+ProviderPolicy = Callable[
+    [AsyncSession, uuid.UUID, uuid.UUID | None, uuid.UUID], Awaitable[ProviderChatPolicy]
+]
+
+
+def _cached(policy: ProviderPolicy | None) -> ProviderPolicy | None:
+    """One policy lookup per conversation and viewer within a single response."""
+    if policy is None:
+        return None
+    found: dict[tuple[uuid.UUID, uuid.UUID | None, uuid.UUID], ProviderChatPolicy] = {}
+
+    async def lookup(
+        session: AsyncSession,
+        provider_id: uuid.UUID,
+        traveler_id: uuid.UUID | None,
+        user_id: uuid.UUID,
+    ) -> ProviderChatPolicy:
+        key = (provider_id, traveler_id, user_id)
+        if key not in found:
+            found[key] = await policy(session, provider_id, traveler_id, user_id)
+        return found[key]
+
+    return lookup
+
+
 def _not_found(what: str = "Conversation") -> AppError:
     return AppError(ErrorCode.NOT_FOUND, f"{what} not found.")
 
@@ -132,7 +174,8 @@ def _invalid(field: str, message: str) -> AppError:
 async def _ensure_not_filtered(
     session: AsyncSession, user_id: uuid.UUID, conversation: Conversation, body: str | None
 ) -> None:
-    """Direct messages to a new connection may not contain filtered terms (SAFE-006)."""
+    """Direct messages to a new connection may not contain filtered terms (SAFE-006). Provider
+    chats are left out on purpose: phase 1 payments are arranged there (ADR-0036)."""
     if not body or conversation.kind != ConversationKind.DIRECT:
         return
     peer = (await _peers(session, [conversation.id], user_id)).get(conversation.id)
@@ -248,9 +291,22 @@ async def _restrictions(
     conversations: Sequence[Conversation],
     peers: Mapping[uuid.UUID, uuid.UUID],
     group_policy: GroupPolicy | None = None,
+    provider_policy: ProviderPolicy | None = None,
 ) -> dict[uuid.UUID, SendRestriction | None]:
     direct = [c for c in conversations if c.kind == ConversationKind.DIRECT]
     result: dict[uuid.UUID, SendRestriction | None] = {c.id: None for c in conversations}
+    for conversation in conversations:
+        if conversation.kind != ConversationKind.PROVIDER or conversation.provider_id is None:
+            continue
+        if provider_policy is None:  # without the providers module nobody may write here
+            result[conversation.id] = SendRestriction.PROVIDER_UNAVAILABLE
+            continue
+        verdict = await provider_policy(
+            session, conversation.provider_id, conversation.provider_traveler_id, user_id
+        )
+        result[conversation.id] = (
+            SendRestriction(verdict.restriction) if verdict.restriction else None
+        )
     groups = [c for c in conversations if c.kind == ConversationKind.GROUP and c.group_id]
     if groups and group_policy is not None:
         now = await _db_now(session)
@@ -287,21 +343,26 @@ async def _ensure_can_send(
     user_id: uuid.UUID,
     conversation: Conversation,
     group_policy: GroupPolicy | None = None,
+    provider_policy: ProviderPolicy | None = None,
 ) -> None:
     peers = (
         await _peers(session, [conversation.id], user_id)
         if conversation.kind == ConversationKind.DIRECT
         else {}
     )
-    restriction = (await _restrictions(session, user_id, [conversation], peers, group_policy))[
-        conversation.id
-    ]
+    restriction = (
+        await _restrictions(session, user_id, [conversation], peers, group_policy, provider_policy)
+    )[conversation.id]
     if restriction is SendRestriction.MEMBER_RESTRICTED:
         raise AppError(ErrorCode.MEMBER_RESTRICTED, "You can't post in this group right now.")
     if restriction is SendRestriction.CHAT_ADMINS_ONLY:
         raise AppError(ErrorCode.CHAT_ADMINS_ONLY, "Only admins can post in this group.")
     if restriction is SendRestriction.ARCHIVED:
         raise AppError(ErrorCode.FORBIDDEN, "This group is archived.")
+    if restriction is SendRestriction.PROVIDER_UNAVAILABLE:
+        raise AppError(ErrorCode.FORBIDDEN, "This provider isn't taking messages right now.")
+    if restriction is SendRestriction.BLOCKED and conversation.kind == ConversationKind.PROVIDER:
+        raise AppError(ErrorCode.BLOCKED_RELATIONSHIP, "Messages are blocked in this chat.")
     if restriction is SendRestriction.BLOCKED:
         raise AppError(
             ErrorCode.BLOCKED_RELATIONSHIP, "You blocked this person. Unblock them to message."
@@ -366,6 +427,7 @@ async def _conversations_out(
     user_id: uuid.UUID,
     rows: Sequence[Row],
     group_policy: GroupPolicy | None = None,
+    provider_policy: ProviderPolicy | None = None,
 ) -> list[ConversationOut]:
     if not rows:
         return []
@@ -373,14 +435,35 @@ async def _conversations_out(
     peers = await _peers(
         session, [c.id for c in conversations if c.kind == ConversationKind.DIRECT], user_id
     )
-    users = await profiles.authors(session, list(set(peers.values())))
-    restrictions = await _restrictions(session, user_id, conversations, peers, group_policy)
+    provider_policy = _cached(provider_policy)
+    provider_views: dict[uuid.UUID, ProviderChatPolicy] = {}
+    if provider_policy is not None:
+        for c in conversations:
+            if c.kind == ConversationKind.PROVIDER and c.provider_id is not None:
+                provider_views[c.id] = await provider_policy(
+                    session, c.provider_id, c.provider_traveler_id, user_id
+                )
+    counterparts = {
+        cid: view.counterpart_id
+        for cid, view in provider_views.items()
+        if view.counterpart_id is not None
+    }
+    users = await profiles.authors(session, list(set(peers.values()) | set(counterparts.values())))
+    avatars = await media.refs(
+        session,
+        [v.avatar_media_id for v in provider_views.values() if v.avatar_media_id is not None],
+    )
+    restrictions = await _restrictions(
+        session, user_id, conversations, peers, group_policy, provider_policy
+    )
     titles: dict[uuid.UUID, str | None] = {}
     if group_policy is not None:
         now = await _db_now(session)
         for c in conversations:
             if c.kind == ConversationKind.GROUP and c.group_id:
                 titles[c.id] = (await group_policy(session, c.group_id, user_id, now)).title
+    for cid, view in provider_views.items():
+        titles[cid] = view.title
     receipts = await _receipts(
         session,
         [(c.id, user_id) for c in conversations] + [(c, u) for c, u in peers.items()],
@@ -421,14 +504,19 @@ async def _conversations_out(
         theirs = receipts.get((conversation.id, peer)) if peer else None
         restriction = restrictions[conversation.id]
         direct = conversation.kind == ConversationKind.DIRECT
+        provider_view = provider_views.get(conversation.id)
+        if provider_view is not None:
+            peer = provider_view.counterpart_id
+        avatar_id = provider_view.avatar_media_id if provider_view is not None else None
         out.append(
             ConversationOut(
                 id=conversation.id,
                 kind=conversation.kind,  # type: ignore[arg-type]
                 title=titles.get(conversation.id),
-                avatar=None,
+                avatar=avatars.get(avatar_id) if avatar_id is not None else None,
                 group_id=conversation.group_id,
                 challenge_team_id=conversation.challenge_team_id,
+                provider_id=conversation.provider_id,
                 counterpart=profiles.user_summary(users[peer]) if peer in users else None,
                 last_message=_preview(last[conversation.id]) if conversation.id in last else None,
                 last_seq=conversation.last_seq,
@@ -610,6 +698,7 @@ class MessagingService:
         publish: Publish | None = None,
         sign: media.Signer | None = None,
         group_policy: GroupPolicy | None = None,
+        provider_policy: ProviderPolicy | None = None,
         flags: FeatureFlags | None = None,
     ) -> None:
         self._sessionmaker = sessionmaker
@@ -617,17 +706,17 @@ class MessagingService:
         self._publish = publish
         self._sign = sign
         self._group_policy = group_policy
+        self._provider_policy = provider_policy
         self._flags = flags
 
     def _ensure_kind_enabled(self, conversation: Conversation) -> None:
         """BL-6.10: no new messages where the feature is off; history stays readable."""
         if self._flags is None:
             return
-        flag = (
-            Flag.DIRECT_MESSAGES
-            if conversation.kind == ConversationKind.DIRECT
-            else Flag.TRAVEL_GROUPS
-        )
+        flag = {
+            ConversationKind.DIRECT: Flag.DIRECT_MESSAGES,
+            ConversationKind.PROVIDER: Flag.PROVIDER_MARKETPLACE,
+        }.get(ConversationKind(conversation.kind), Flag.TRAVEL_GROUPS)
         if not self._flags.is_enabled(flag):
             raise feature_disabled(flag)
 
@@ -681,7 +770,11 @@ class MessagingService:
             has_more = len(found) > limit
             found = found[:limit]
             data = await _conversations_out(
-                session, user_id, [(c, m) for c, m, _ in found], self._group_policy
+                session,
+                user_id,
+                [(c, m) for c, m, _ in found],
+                self._group_policy,
+                self._provider_policy,
             )
         next_cursor = (
             self._cursors.encode(
@@ -739,7 +832,7 @@ class MessagingService:
             if member is None:
                 raise _not_found()
             [out] = await _conversations_out(
-                session, me, [(conversation, member)], self._group_policy
+                session, me, [(conversation, member)], self._group_policy, self._provider_policy
             )
         if created:
             await self._emit(
@@ -756,7 +849,9 @@ class MessagingService:
     ) -> ConversationOut:
         async with self._sessionmaker() as session:
             row = await _access(session, conversation_id, user_id)
-            [out] = await _conversations_out(session, user_id, [row], self._group_policy)
+            [out] = await _conversations_out(
+                session, user_id, [row], self._group_policy, self._provider_policy
+            )
         return out
 
     async def mute(
@@ -769,7 +864,11 @@ class MessagingService:
                 member.notification_level = request.notification_level
             await session.flush()
             [out] = await _conversations_out(
-                session, user_id, [(conversation, member)], self._group_policy
+                session,
+                user_id,
+                [(conversation, member)],
+                self._group_policy,
+                self._provider_policy,
             )
         await self._emit(
             [user_id],
@@ -958,7 +1057,9 @@ class MessagingService:
             )
             if kind != MessageKind.ANNOUNCEMENT:  # admins may announce in admins-only chats
                 self._ensure_kind_enabled(conversation)
-                await _ensure_can_send(session, me, conversation, self._group_policy)
+                await _ensure_can_send(
+                    session, me, conversation, self._group_policy, self._provider_policy
+                )
             await _ensure_not_filtered(session, me, conversation, request.body)
             if request.kind == "gift" and conversation.kind != ConversationKind.DIRECT:
                 raise _invalid("/kind", "Gifts can be sent in direct chats.")
@@ -974,7 +1075,7 @@ class MessagingService:
             if request.thread_root_id is not None:
                 root = await session.get(Message, request.thread_root_id)
                 if (
-                    conversation.kind == ConversationKind.DIRECT
+                    conversation.kind in (ConversationKind.DIRECT, ConversationKind.PROVIDER)
                     or root is None
                     or root.conversation_id != conversation.id
                     or root.thread_root_id is not None
@@ -1086,7 +1187,9 @@ class MessagingService:
                     "Messages can be edited for 15 minutes after sending.",
                 )
             self._ensure_kind_enabled(conversation)
-            await _ensure_can_send(session, user_id, conversation, self._group_policy)
+            await _ensure_can_send(
+                session, user_id, conversation, self._group_policy, self._provider_policy
+            )
             await _ensure_not_filtered(session, user_id, conversation, body)
             message.body = body
             message.edited_at = now
@@ -1236,7 +1339,9 @@ class MessagingService:
             else:
                 if _hidden(message):
                     raise _not_found("Message")
-                await _ensure_can_send(session, user_id, conversation, self._group_policy)
+                await _ensure_can_send(
+                    session, user_id, conversation, self._group_policy, self._provider_policy
+                )
                 added = await session.execute(
                     insert(MessageReaction)
                     .values(message_id=message.id, user_id=user_id, emoji=stored)
@@ -1417,7 +1522,9 @@ class MessagingService:
         async with self._sessionmaker() as session:
             conversation, _ = await _access(session, conversation_id, user_id)
             try:
-                await _ensure_can_send(session, user_id, conversation, self._group_policy)
+                await _ensure_can_send(
+                    session, user_id, conversation, self._group_policy, self._provider_policy
+                )
             except AppError:
                 return []
             blocked_by_me, blocked_me = await trust_safety.blocks_of(session, user_id)
@@ -1546,6 +1653,88 @@ async def create_team_conversation(
     session.add(ConversationMember(conversation_id=conversation.id, user_id=captain_id))
     await session.flush()
     return conversation.id
+
+
+async def _join(session: AsyncSession, conversation_id: uuid.UUID, user_id: uuid.UUID) -> None:
+    member = await session.get(ConversationMember, (conversation_id, user_id))
+    if member is None:
+        session.add(ConversationMember(conversation_id=conversation_id, user_id=user_id))
+    elif member.left_at is not None:
+        member.left_at = None
+
+
+async def open_provider_conversation(
+    session: AsyncSession,
+    provider_id: uuid.UUID,
+    traveler_id: uuid.UUID,
+    member_ids: Sequence[uuid.UUID],
+) -> uuid.UUID:
+    """The one thread between a provider and a traveler (ADR-0036), created by their first
+    request and reused by later ones. The traveler and the provider's active members are joined
+    (again, if they had left); a new team member sees the whole history, like a shared inbox."""
+    inserted = await session.execute(
+        insert(Conversation)
+        .values(
+            id=uuid7(),
+            kind=ConversationKind.PROVIDER,
+            provider_id=provider_id,
+            provider_traveler_id=traveler_id,
+        )
+        .on_conflict_do_nothing(
+            index_elements=[Conversation.provider_id, Conversation.provider_traveler_id],
+            index_where=text("kind = 'provider'"),
+        )
+        .returning(Conversation.id)
+    )
+    conversation_id = inserted.scalar_one_or_none()
+    if conversation_id is None:
+        conversation_id = await session.scalar(
+            select(Conversation.id).where(
+                Conversation.kind == ConversationKind.PROVIDER,
+                Conversation.provider_id == provider_id,
+                Conversation.provider_traveler_id == traveler_id,
+            )
+        )
+    assert conversation_id is not None
+    for user_id in dict.fromkeys([traveler_id, *member_ids]):
+        await _join(session, conversation_id, user_id)
+    await session.flush()
+    return conversation_id
+
+
+async def set_provider_member(
+    session: AsyncSession, provider_id: uuid.UUID, user_id: uuid.UUID, *, active: bool
+) -> None:
+    """A provider's team changed: join every thread of the provider, or leave them at once
+    (threads where this person is the traveler are left alone)."""
+    conversation_ids = (
+        await session.scalars(
+            select(Conversation.id).where(
+                Conversation.kind == ConversationKind.PROVIDER,
+                Conversation.provider_id == provider_id,
+                or_(
+                    Conversation.provider_traveler_id.is_(None),
+                    Conversation.provider_traveler_id != user_id,
+                ),
+            )
+        )
+    ).all()
+    if not conversation_ids:
+        return
+    if active:
+        for conversation_id in conversation_ids:
+            await _join(session, conversation_id, user_id)
+        await session.flush()
+        return
+    await session.execute(
+        update(ConversationMember)
+        .where(
+            ConversationMember.conversation_id.in_(conversation_ids),
+            ConversationMember.user_id == user_id,
+            ConversationMember.left_at.is_(None),
+        )
+        .values(left_at=func.now())
+    )
 
 
 async def add_group_member(

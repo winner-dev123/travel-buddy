@@ -59,6 +59,8 @@ LIMITS: Mapping[str, tuple[frozenset[str], int, int]] = {
     MediaPurpose.GROUP_COVER: (STILL_IMAGES, 10 * MB, 0),
     MediaPurpose.CHALLENGE: (STILL_IMAGES, 10 * MB, 0),
     MediaPurpose.EDITORIAL: (STILL_IMAGES, 25 * MB, 0),
+    MediaPurpose.PROVIDER: (STILL_IMAGES, 10 * MB, 0),
+    MediaPurpose.PROVIDER_DOCUMENT: (IMAGES, 15 * MB, 0),
 }
 PROCESSABLE = STILL_IMAGES  # HEIC needs a decoder, video a transcoding service
 
@@ -82,7 +84,7 @@ class NoopScanner:
 Signer = Callable[[str], tuple[str, datetime]]
 
 # Purposes whose processed variants are private and served through signed URLs (BL-3.05, DM-002).
-PRIVATE_PURPOSES = frozenset({MediaPurpose.MESSAGE})
+PRIVATE_PURPOSES = frozenset({MediaPurpose.MESSAGE, MediaPurpose.PROVIDER_DOCUMENT})
 
 
 def private_signer(storage: ObjectStorage | None) -> Signer | None:
