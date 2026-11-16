@@ -260,6 +260,7 @@ def test_a_hidden_place_stays_hidden_after_reloading(world: str) -> None:
 def test_gazetteer_towns_stay_out_of_the_directory(world: str, live_app: LiveApp) -> None:
     listed = _get(live_app, "/v1/destinations", country="BR", limit=50)
     assert "brazil/sao-paulo" not in {d["path"] for d in listed["data"]}
+    assert all(d["listed"] is True for d in listed["data"])  # what the web may index
     brazil = _get(live_app, "/v1/destinations/lookup", path="brazil")
     children = _get(live_app, f"/v1/destinations/{brazil['id']}/children", limit=50)
     assert {d["path"] for d in children["data"]} == {"brazil/rio-de-janeiro"}
@@ -268,6 +269,8 @@ def test_gazetteer_towns_stay_out_of_the_directory(world: str, live_app: LiveApp
     assert_matches_contract(campinas, "Destination")
     assert campinas["region_name"] == "São Paulo"
     assert campinas["country_name"] == "Brasil"
+    assert campinas["listed"] is False  # robots: noindex
+    assert campinas["ancestors"][0]["listed"] is True  # Brazil is in the directory
 
 
 def test_search_finds_towns_by_any_name_with_their_region(world: str, live_app: LiveApp) -> None:

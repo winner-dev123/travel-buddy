@@ -92,4 +92,4 @@ Testing showed most towns had no places in Explore: the famous tier keeps only w
    - Size: about 65 MB more on PostgreSQL.
 2. **Brazilian Portuguese town names.** GeoNames' Portuguese names are often European ("Moscovo", "Madrid"). GeoNames links about 19,600 towns to their Wikidata item (`wkdt`). The build fetches their `pt-br` labels (`towns-NNN.rq`) and prefers them, giving "Moscou", "Madri" and "Pequim" for 1,782 towns. Launch cities keep their editorial names.
 3. **Build order.** Build the cities once (for the Wikidata ids), write the queries, fetch them, then build again with `--wikidata` (docs/11 §1.6).
-
+4. **`listed` on every destination** (asked by the web): `DestinationSummary.listed` is `in_directory`. Clients index and put in sitemaps only listed destinations; gazetteer town pages are `noindex` until an editor lists them.

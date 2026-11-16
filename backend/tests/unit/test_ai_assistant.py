@@ -182,6 +182,7 @@ def test_proposal_joins_dates_attribution_and_flags_unverified_items() -> None:
             "name": "Lisboa",
             "country_code": "PT",
             "country_name": "Portugal",
+            "listed": True,
             "continent": "europe",
             "tagline": None,
             "cover": None,

@@ -202,7 +202,7 @@ erDiagram
 | geonames_id, osm_relation_id, wikidata_id | NULL | Each `uq` when present |
 | population | bigint NULL | Gazetteer (ADR-0035): people living there. A point belongs to the town with the smallest `distance / (reach + 1 km)`, reach growing with population (`ix (centroid_lat, centroid_lng) WHERE kind='city' AND status='active'`) |
 | region_name | text NULL | Gazetteer: first-level region shown beside a town's name ("Campinas, São Paulo") |
-| in_directory | boolean default true | Listed in the directory, children lists and sitemap. Gazetteer towns are `false` until an editor lists them; they still resolve, search and take posts |
+| in_directory | boolean default true | Listed in the directory, children lists and sitemap. Gazetteer towns are `false` until an editor lists them; they still resolve, search and take posts. Exposed as `DestinationSummary.listed` (robots index = listed) |
 | popularity_score | real | Recomputed nightly from content volume (seeded with an editorial score until then) |
 | is_featured | bool | |
 | has_guides | bool | Maintained from guides events (Phase 4) |

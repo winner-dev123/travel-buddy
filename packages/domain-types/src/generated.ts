@@ -5235,6 +5235,8 @@ export interface components {
             country_code: components["schemas"]["CountryCode"];
             /** @description Localized country name (null for `kind=country`, where it equals `name`). */
             country_name?: string | null;
+            /** @description In the editorial directory: appears in `GET /v1/destinations` and children lists and is eligible for search-engine indexing and sitemaps (robots index = listed). False for gazetteer towns until an editor lists them (ADR-0035). */
+            listed: boolean;
             /** @description Where it is below the country, to tell namesakes apart: the state or province of a town (Campinas, São Paulo) or the city of a neighbourhood. Null for countries and when unknown (ADR-0035). */
             region_name?: string | null;
             continent?: components["schemas"]["Continent"];

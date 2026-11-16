@@ -9559,7 +9559,7 @@ components:
     # ───────── Destinations & places ─────────
     DestinationSummary:
       type: object
-      required: [id, kind, slug, path, name, country_code]
+      required: [id, kind, slug, path, name, country_code, listed]
       properties:
         id: { $ref: '#/components/schemas/Uuid' }
         kind: { $ref: '#/components/schemas/DestinationKind' }
@@ -9568,6 +9568,7 @@ components:
         name: { type: string, description: Localized via Accept-Language. }
         country_code: { $ref: '#/components/schemas/CountryCode' }
         country_name: { type: [string, 'null'], description: 'Localized country name (null for `kind=country`, where it equals `name`).' }
+        listed: { type: boolean, description: 'In the editorial directory: appears in `GET /v1/destinations` and children lists and is eligible for search-engine indexing and sitemaps (robots index = listed). False for gazetteer towns until an editor lists them (ADR-0035).' }
         region_name: { type: [string, 'null'], description: 'Where it is below the country, to tell namesakes apart: the state or province of a town (Campinas, São Paulo) or the city of a neighbourhood. Null for countries and when unknown (ADR-0035).' }
         continent: { $ref: '#/components/schemas/Continent' }
         tagline: { type: [string, 'null'], maxLength: 140, description: Localized editorial one-liner for directory cards. }

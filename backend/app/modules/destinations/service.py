@@ -691,6 +691,7 @@ def _summary(
             ),
             # Below the country: a town's region, or the city a neighbourhood belongs to.
             "region_name": row.region_name or (_name(city, locs, preferences) if city else None),
+            "listed": row.in_directory,
             "continent": row.continent,
             "tagline": localized(taglines, preferences),
             "cover": (covers or {}).get(row.cover_media_id) if row.cover_media_id else None,

@@ -43,6 +43,9 @@ class DestinationSummary(_Model):
     # First-level region of a gazetteer town ("São Paulo" for Campinas), for telling namesakes
     # apart; absent for editorial destinations (ADR-0035).
     region_name: str | None = None
+    # In the editorial directory: listed by GET /v1/destinations and children, eligible for
+    # indexing and sitemaps. Gazetteer towns are not until an editor lists them (ADR-0035).
+    listed: bool
     continent: ContinentName
     tagline: str | None
     cover: MediaRef | None = None  # editorial media with verified rights (DEST-007)
