@@ -64,6 +64,21 @@
     "placeholder": "Where do you want to go?",
     "error": "Search is unavailable right now.",
     "noResults": "No destinations found.",
+    "placeCategory": {
+      "attraction": "Attraction",
+      "restaurant": "Restaurant",
+      "cafe": "Café",
+      "bar": "Bar",
+      "museum": "Museum",
+      "beach": "Beach",
+      "trail": "Trail",
+      "viewpoint": "Viewpoint",
+      "park": "Park",
+      "market": "Market",
+      "lodging": "Lodging",
+      "transit_hub": "Transit hub",
+      "other": "Place"
+    },
     "kind": {
       "country": "Country",
       "admin_region": "Region",

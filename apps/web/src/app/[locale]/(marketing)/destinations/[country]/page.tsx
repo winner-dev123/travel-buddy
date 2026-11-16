@@ -5,7 +5,7 @@ import type { LocaleCode } from '@travelbuddy/i18n';
 import { DestinationView } from '@/features/destinations/destination-view';
 import { getChildren, getDestination, getDestinationStories, getFreeGuide } from '@/features/destinations/data';
 import { destinationHref } from '@/lib/paths';
-import { publicPageMetadata } from '@/lib/seo';
+import { destinationRobots, publicPageMetadata } from '@/lib/seo';
 import { env } from '@/server/env';
 
 export const revalidate = 3600;
@@ -28,13 +28,16 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const destination = await getDestination(locale, country);
   if (!destination || destination.kind !== 'country') return {};
   const t = await getTranslations({ locale, namespace: 'destination.meta' });
-  return publicPageMetadata({
-    siteUrl: env().siteUrl,
-    locale,
-    path: destinationHref(destination.path),
-    title: t('countryTitle', { name: destination.name }),
-    description: destination.tagline ?? t('description', { name: destination.name }),
-  });
+  return {
+    ...publicPageMetadata({
+      siteUrl: env().siteUrl,
+      locale,
+      path: destinationHref(destination.path),
+      title: t('countryTitle', { name: destination.name }),
+      description: destination.tagline ?? t('description', { name: destination.name }),
+    }),
+    ...destinationRobots(destination),
+  };
 }
 
 export default async function CountryPage({ params }: { params: Promise<Params> }) {

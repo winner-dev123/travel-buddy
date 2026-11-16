@@ -64,6 +64,21 @@
     "placeholder": "Para onde você quer ir?",
     "error": "A busca está indisponível no momento.",
     "noResults": "Nenhum destino encontrado.",
+    "placeCategory": {
+      "attraction": "Atração",
+      "restaurant": "Restaurante",
+      "cafe": "Café",
+      "bar": "Bar",
+      "museum": "Museu",
+      "beach": "Praia",
+      "trail": "Trilha",
+      "viewpoint": "Mirante",
+      "park": "Parque",
+      "market": "Mercado",
+      "lodging": "Hospedagem",
+      "transit_hub": "Terminal de transporte",
+      "other": "Lugar"
+    },
     "kind": {
       "country": "País",
       "admin_region": "Região",

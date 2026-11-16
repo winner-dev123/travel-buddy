@@ -30,7 +30,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     let cursor: string | null | undefined;
     for (let i = 0; i < 100; i++) {
       const page = await api.destinations.list({ kind: ['country', 'city'], sort: 'slug', limit: 100, cursor }, SITEMAP_CACHE);
-      destinations.push(...page.data);
+      // The directory list never includes gazetteer towns; the guard keeps it so if that ever changes.
+      destinations.push(...page.data.filter((d) => d.listed));
       if (!page.page.has_more || !page.page.next_cursor) break;
       cursor = page.page.next_cursor;
     }

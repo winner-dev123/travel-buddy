@@ -139,6 +139,17 @@ describe('mock platform — destinations and guides', () => {
     expect((await pt.destinations.lookup('brazil/rio-de-janeiro/copacabana')).slug).toBe('copacabana-rio-de-janeiro-br');
   });
 
+  it('suggests destinations and tourist places as you type, with the region for namesakes (ADR-0035)', async () => {
+    const anon = clientFor(platform);
+    const rio = await anon.destinations.suggest('rio de');
+    expect(rio.data[0]).toMatchObject({ type: 'destination', place: null, destination: { path: 'brazil/rio-de-janeiro' } });
+    const sugar = await anon.destinations.suggest('sugarloaf');
+    expect(sugar.data[0]).toMatchObject({ type: 'place', place: { name: 'Sugarloaf Mountain', category: 'viewpoint' }, destination: { path: 'brazil/rio-de-janeiro' } });
+    const copa = (await anon.destinations.suggest('copacabana')).data.find((s) => s.type === 'destination');
+    expect(copa?.destination.region_name).toBe('Rio de Janeiro');
+    await expectApiError(anon.destinations.suggest('r'), 422, 'validation_failed');
+  });
+
   it('lists destinations anonymously with filters and a stable slug order for sitemaps', async () => {
     const anon = clientFor(platform);
     const cities = await anon.destinations.list({ kind: ['city'], continent: 'europe', sort: 'slug', limit: 100 });

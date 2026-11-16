@@ -14,6 +14,7 @@ import {
   type PostKind,
   type ReactionType,
   type SessionTokens,
+  type Suggestion,
   type TravelStyle,
 } from '@travelbuddy/domain-types';
 import { ageOn, commentSchema, createPostSchema, distanceKm, MINIMUM_AGE, parseNearParam, roundCoordinate } from '@travelbuddy/validation';
@@ -533,6 +534,33 @@ export function buildRouter(): Router<Handler> {
       .sort((a, b) => ctx.db.popularity(b) - ctx.db.popularity(a))
       .map((d) => ctx.db.destinationSummary(d, ctx.locale));
     return ok(paginate(items, ctx, 'featured', 12));
+  });
+
+  r.add('GET', '/v1/destinations/suggest', (ctx) => {
+    const q = normalize((ctx.query('q') ?? '').trim());
+    if (q.length < 2 || q.length > 80) throw validation('q', 'invalid', 'q must be 2–80 characters.');
+    const limit = intParam(ctx.query('limit'), 10, 1, 20);
+    const match = (name: string) => (normalize(name).startsWith(q) ? 3 : normalize(name).includes(q) ? 1 : 0);
+    const items: { score: number; key: string; value: Suggestion }[] = [];
+    for (const d of ctx.db.destinations.values()) {
+      const best = Math.max(...Object.values(d.f.name).map((n) => match(n as string)));
+      if (best > 0) {
+        items.push({ score: best + (d.f.kind === 'city' ? 1 : d.f.kind === 'country' ? 0.5 : 0), key: d.path, value: { type: 'destination', destination: ctx.db.destinationSummary(d, ctx.locale), place: null } });
+      }
+    }
+    for (const p of ctx.db.places.values()) {
+      const dest = ctx.db.destinationsByPath.get(p.destinationPath);
+      const best = match(p.f.name);
+      if (dest && best > 0) {
+        items.push({
+          score: best - 0.5, // destinations first on equal matches
+          key: `~${p.f.slug}`,
+          value: { type: 'place', destination: ctx.db.destinationSummary(dest, ctx.locale), place: { id: p.id, name: p.f.name, category: p.f.category, destination_id: dest.id, location: p.f.location } },
+        });
+      }
+    }
+    items.sort((a, b) => b.score - a.score || a.key.localeCompare(b.key));
+    return ok({ data: items.slice(0, limit).map((i) => i.value), page: { next_cursor: null, has_more: false } });
   });
 
   r.add('GET', '/v1/destinations/search', (ctx) => {

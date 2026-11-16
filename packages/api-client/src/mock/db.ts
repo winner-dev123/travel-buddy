@@ -396,10 +396,20 @@ export class MockDb {
       name: this.loc(rec.f.name, locale) ?? rec.slug,
       country_code: rec.f.country_code,
       country_name: rec.f.kind === 'country' || !country ? null : this.loc(country.f.name, locale),
+      // ADR-0035: the city of a neighbourhood (the mock catalog has no states/provinces for towns).
+      region_name: this.regionName(rec, locale),
+      // ADR-0035: every mock destination is in the editorial directory (no gazetteer towns here).
+      listed: true,
       continent: rec.f.continent,
       tagline: this.loc(rec.f.tagline, locale),
       cover: this.coverFor(rec),
     };
+  }
+
+  private regionName(rec: DestinationRecord, locale: LocaleCode): string | null {
+    if (rec.f.kind !== 'neighborhood' || !rec.parentPath) return null;
+    const parent = this.destinationsByPath.get(rec.parentPath);
+    return parent ? this.loc(parent.f.name, locale) : null;
   }
 
   /** Openly licensed cover photo with its attribution, or null (the UI shows a placeholder). */

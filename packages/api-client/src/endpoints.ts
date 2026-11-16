@@ -34,6 +34,7 @@ import type {
   ReportReceipt,
   SessionTokens,
   ShareLink,
+  SuggestionPage,
   UpdateMyProfileRequest,
   UpdatePostRequest,
   UpdatePreferencesRequest,
@@ -126,6 +127,9 @@ export function createApi(c: ApiClient) {
           path: '/v1/destinations/search',
           query: { q, kind: options.kind?.join(','), country: options.country, limit: options.limit ?? 8 },
         }),
+      /** Search-as-you-type over destinations (incl. gazetteer towns) and tourist places (ADR-0035). */
+      suggest: (q: string, limit = 8) =>
+        c.request<SuggestionPage>({ method: 'GET', path: '/v1/destinations/suggest', query: { q, limit } }),
       lookup: (path: string, cache?: CacheHint) =>
         c.request<Destination>({ method: 'GET', path: '/v1/destinations/lookup', query: { path }, cache }),
       get: (id: UUID, cache?: CacheHint) =>

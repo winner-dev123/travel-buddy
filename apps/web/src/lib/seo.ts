@@ -37,5 +37,13 @@ export function publicPageMetadata(options: {
   };
 }
 
+/**
+ * Destinations outside the editorial directory (gazetteer towns, ADR-0035) still render for people
+ * who reach them, but stay out of search results; links on them are still followed.
+ */
+export function destinationRobots(destination: { listed: boolean }): Pick<Metadata, 'robots'> {
+  return destination.listed ? {} : { robots: { index: false, follow: true } };
+}
+
 /** For authenticated/private areas: never indexed, never followed (brief §26). */
 export const PRIVATE_METADATA: Metadata = { robots: { index: false, follow: false, nocache: true } };

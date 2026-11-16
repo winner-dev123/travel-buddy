@@ -64,6 +64,21 @@
     "placeholder": "Wohin soll es gehen?",
     "error": "Die Suche ist gerade nicht verfügbar.",
     "noResults": "Keine Reiseziele gefunden.",
+    "placeCategory": {
+      "attraction": "Sehenswürdigkeit",
+      "restaurant": "Restaurant",
+      "cafe": "Café",
+      "bar": "Bar",
+      "museum": "Museum",
+      "beach": "Strand",
+      "trail": "Wanderweg",
+      "viewpoint": "Aussichtspunkt",
+      "park": "Park",
+      "market": "Markt",
+      "lodging": "Unterkunft",
+      "transit_hub": "Verkehrsknoten",
+      "other": "Ort"
+    },
     "kind": {
       "country": "Land",
       "admin_region": "Region",

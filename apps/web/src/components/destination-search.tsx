@@ -3,8 +3,8 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { MapPin, Search } from 'lucide-react';
-import type { DestinationSummary } from '@travelbuddy/domain-types';
+import { Landmark, MapPin, Search } from 'lucide-react';
+import type { DestinationSummary, Suggestion } from '@travelbuddy/domain-types';
 import { cn, Spinner } from '@travelbuddy/ui';
 import { browserApi } from '@/lib/api-browser';
 import { qk } from '@/lib/query-keys';
@@ -18,9 +18,16 @@ function useDebounced<T>(value: T, ms: number): T {
   return v;
 }
 
+/** "City · São Paulo, Brazil": the region tells namesakes apart (ADR-0035). */
+function whereLine(d: DestinationSummary): string {
+  return [d.region_name, d.country_name].filter(Boolean).join(', ');
+}
+
 /**
- * Accessible destination autocomplete (WAI-ARIA combobox pattern). Calls the platform search
- * through the BFF. `onSelect` decides what happens (navigate, set feed filter, …).
+ * Accessible destination autocomplete (WAI-ARIA combobox pattern). Uses the platform's
+ * search-as-you-type endpoint (towns, neighbourhoods, countries and tourist places) through the BFF.
+ * Choosing a place selects the destination it is in. `onSelect` decides what happens (navigate,
+ * set feed filter, …); the full suggestion is passed along for callers that care about places.
  */
 export function DestinationSearch({
   onSelect,
@@ -30,7 +37,7 @@ export function DestinationSearch({
   className,
   autoFocus,
 }: {
-  onSelect: (destination: DestinationSummary) => void;
+  onSelect: (destination: DestinationSummary, suggestion?: Suggestion) => void;
   placeholder?: string;
   label: string;
   size?: 'md' | 'lg';
@@ -50,17 +57,17 @@ export function DestinationSearch({
     queryKey: qk.destinationSearch(q),
     queryFn: ({ signal }) => {
       void signal;
-      return browserApi().destinations.search(q, { limit: 8 });
+      return browserApi().destinations.suggest(q, 8);
     },
     enabled: q.length >= 2,
     staleTime: 5 * 60_000,
   });
   const results = q.length >= 2 ? (data?.data ?? []) : [];
 
-  const choose = (d: DestinationSummary) => {
+  const choose = (s: Suggestion) => {
     setOpen(false);
-    setTerm(d.name);
-    onSelect(d);
+    setTerm(s.destination.name);
+    onSelect(s.destination, s);
   };
 
   return (
@@ -121,26 +128,40 @@ export function DestinationSearch({
           aria-label={label}
           className="absolute inset-x-0 top-full z-40 mt-2 max-h-80 overflow-y-auto rounded-2xl border border-border bg-surface p-1.5 shadow-lift"
         >
-          {results.map((d, i) => (
+          {results.map((s, i) => (
             <li
-              key={d.id}
+              key={s.type === 'place' && s.place ? `place:${s.place.id}` : `destination:${s.destination.id}`}
               id={`${listId}-${i}`}
               role="option"
               aria-selected={i === active}
               onMouseDown={(e) => {
                 e.preventDefault();
-                choose(d);
+                choose(s);
               }}
               onMouseEnter={() => setActive(i)}
               className={cn('flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5', i === active && 'bg-primary-soft')}
             >
-              <MapPin className="size-4 shrink-0 text-primary" aria-hidden="true" />
-              <span className="flex min-w-0 flex-col">
-                <span className="truncate font-semibold">{d.name}</span>
-                <span className="truncate text-xs text-muted-foreground">
-                  {[t(`kind.${d.kind}`), d.country_name].filter(Boolean).join(' · ')}
-                </span>
-              </span>
+              {s.type === 'place' && s.place ? (
+                <>
+                  <Landmark className="size-4 shrink-0 text-primary" aria-hidden="true" />
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate font-semibold">{s.place.name}</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {[t(`placeCategory.${s.place.category}`), [s.destination.name, s.destination.country_name].filter(Boolean).join(', ')].join(' · ')}
+                    </span>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <MapPin className="size-4 shrink-0 text-primary" aria-hidden="true" />
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate font-semibold">{s.destination.name}</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {[t(`kind.${s.destination.kind}`), whereLine(s.destination)].filter(Boolean).join(' · ')}
+                    </span>
+                  </span>
+                </>
+              )}
             </li>
           ))}
           {!isFetching && results.length === 0 ? (
