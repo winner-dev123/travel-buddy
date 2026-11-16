@@ -179,10 +179,20 @@ function entitlementsFor(user: UserRecord, now: number): Entitlements {
   };
 }
 
-/** Cumulative role ladder from the contract's PlatformPermission enum (backend is authoritative). */
+/** Cumulative role ladder, mirroring backend app/core/security/principal.py ROLE_PERMISSIONS (backend is authoritative). */
 const SUPPORT: PlatformPermission[] = ['users.read', 'moderation.reports.read', 'moderation.actions.read'];
-const MODERATOR: PlatformPermission[] = [...SUPPORT, 'moderation.reports.manage', 'moderation.actions.write', 'users.suspend', 'content.rewards.review'];
-const ADMIN: PlatformPermission[] = [...MODERATOR, 'users.read_sensitive', 'users.ban', 'content.destinations.write', 'content.feature', 'entitlements.grant', 'audit.read'];
+const MODERATOR: PlatformPermission[] = [...SUPPORT, 'moderation.reports.manage', 'moderation.actions.write', 'users.suspend', 'content.rewards.review', 'providers.verify'];
+const ADMIN: PlatformPermission[] = [
+  ...MODERATOR,
+  'users.read_sensitive',
+  'users.ban',
+  'content.destinations.write',
+  'content.feature',
+  'entitlements.grant',
+  'audit.read',
+  'privacy.requests.manage',
+  'safety.filters.manage',
+];
 const SUPERADMIN: PlatformPermission[] = [...ADMIN, 'billing.configure', 'roles.assign'];
 const LADDER: Record<PlatformRole, PlatformPermission[]> = { support: SUPPORT, moderator: MODERATOR, admin: ADMIN, superadmin: SUPERADMIN };
 

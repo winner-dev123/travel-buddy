@@ -321,6 +321,9 @@ describe('mock platform — social and privacy', () => {
     const { result: moderator } = await signIn(platform, 'priya.mod');
     expect(moderator.user.permissions).toEqual(expect.arrayContaining(['moderation.reports.manage', 'users.suspend', 'users.read']));
     expect(moderator.user.permissions).not.toContain('billing.configure');
+    // Mirrors principal.py: guide/company verification is a moderator duty (ADR-0036); GDPR and filters are admin.
+    expect(moderator.user.permissions).toContain('providers.verify');
+    expect(moderator.user.permissions).not.toContain('privacy.requests.manage');
     const { result: traveler } = await signIn(platform, 'amelia');
     expect(traveler.user.permissions).toEqual([]);
     expect(traveler.user.account.restrictions).toEqual([]);
